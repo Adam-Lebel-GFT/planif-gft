@@ -576,6 +576,92 @@ footer span {
   transition: background .15s;
 }
 .sb-apply:hover { background: var(--navy2); }
+/* ── Rapport inline ── */
+.rapport-overlay{position:fixed;inset:0;z-index:99999;background:#F4F5F7;overflow-y:auto;display:none;flex-direction:column}
+.rapport-overlay.open{display:flex}
+.rapport-close-bar{background:#0C1A2E;padding:8px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.rapport-close-bar span{color:rgba(255,255,255,.7);font-size:12px;font-family:Manrope,sans-serif}
+.rapport-close-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;font-family:Manrope,sans-serif}
+.rapport-close-btn:hover{background:rgba(255,255,255,.25)}
+.rapport-inner{flex:1}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0C1A2E;--navy2:#1A2E4A;--navy3:#243c5a;
+  --green:#1A7A42;--green-bg:#E6F4EE;--green-border:rgba(26,122,66,.25);
+  --red:#C0392B;--red-bg:#FCE8E6;
+  --gold:#C9A84C;
+  --grey:#F4F5F7;--grey2:#E8EAED;--grey3:#C8CDD6;
+  --text:#0C1A2E;--muted:#6B7A90;--white:#fff;
+  --radius:8px;--radius2:12px;
+}
+html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-serif;color:var(--text)}
+.topbar{background:var(--navy);height:52px;display:flex;align-items:center;padding:0 32px;gap:12px;position:sticky;top:0;z-index:100}
+.tb-logo{font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+.tb-sep{width:1px;height:20px;background:rgba(255,255,255,.2)}
+.tb-client{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:.5px;text-transform:uppercase}
+.tb-sprint{margin-left:auto;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1px}
+.tb-actions{display:flex;gap:8px;margin-left:16px}
+.btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;border:none;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.btn-xl{background:var(--green);color:#fff}.btn-xl:hover{background:#0f5c30}
+.btn-pm{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.25)}.btn-pm:hover{background:rgba(255,255,255,.22)}
+.btn-xl:disabled,.btn-pm:disabled{opacity:.35;cursor:not-allowed}
+.main{max-width:1000px;margin:0 auto;padding:32px 24px 80px}
+.hero{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:28px 32px;margin-bottom:28px;display:flex;align-items:center;gap:24px}
+.hero-icon{width:52px;height:52px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.hero-title{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-0.5px}
+.hero-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.hero-meta{margin-left:auto;text-align:right}
+.hero-sprint{font-size:18px;font-weight:700;color:var(--navy)}
+.hero-period{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.kpi{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:16px 20px}
+.kpi-lbl{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.kpi-val{font-size:26px;font-weight:800;color:var(--navy);line-height:1}
+.kpi-val span{font-size:12px;font-weight:500;color:var(--muted);margin-left:3px}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:4px}
+.section-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--grey2)}
+.team-card{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);margin-bottom:16px;overflow:hidden}
+.team-hdr{padding:14px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--grey2)}
+.team-badge{padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.badge-conf{background:#EEF3FF;color:#1A3A8A}
+.badge-integ{background:#FFF3EE;color:#8A3A1A}
+.badge-confirmed{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.team-name{font-size:14px;font-weight:700;color:var(--navy)}
+.team-stats{margin-left:auto;display:flex;gap:20px}
+.team-stat{text-align:right}
+.team-stat-val{font-size:16px;font-weight:800;color:var(--navy)}
+.team-stat-lbl{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.5px}
+.team-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.team-col{padding:16px 20px}
+.team-col+.team-col{border-left:1px solid var(--grey2)}
+.col-title{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.story-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--grey2);font-size:12px}
+.story-row:last-child{border-bottom:none}
+.story-key{font-family:'DM Mono',monospace;font-weight:500;color:var(--navy);min-width:90px}
+.story-sp{font-size:10px;font-weight:700;color:var(--green);min-width:32px}
+.story-dev{font-size:10px;color:var(--muted);flex:1}
+.story-spill{font-size:8px;font-weight:700;color:var(--red);background:var(--red-bg);padding:1px 5px;border-radius:3px}
+.conf-bar{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px}
+.conf-name{flex:1;color:var(--text);min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conf-stars{display:flex;gap:2px}
+.star{width:12px;height:12px;border-radius:2px}
+.star.on{background:var(--gold)}
+.star.off{background:var(--grey2)}
+.conf-num{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;min-width:24px;text-align:right}
+.risk-box{background:var(--red-bg);border:1px solid rgba(192,57,43,.2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--red);line-height:1.5;margin-top:8px}
+.notes-box{background:#FAFBFD;border:1px solid var(--grey2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;font-style:italic}
+.empty-state{text-align:center;padding:60px 24px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.empty-sub{font-size:12px;line-height:1.6}
+.pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center}
+.pm-box{background:#fff;border-radius:14px;padding:28px;max-width:640px;width:90%;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.pm-title{font-size:16px;font-weight:700}
+.pm-body{font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;background:var(--grey);padding:16px;border-radius:8px;white-space:pre-wrap;border:1px solid var(--grey2)}
+.pm-acts{display:flex;gap:8px;justify-content:flex-end}
+.pm-copy{padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.pm-close{padding:9px 18px;background:#fff;color:var(--muted);border:1.5px solid var(--grey2);border-radius:6px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2740,7 +2826,6 @@ function doOpenRapport(selectedTeams) {
   if (!selectedTeams.length) return;
   var sel = {};
   selectedTeams.forEach(function(t){ sel[t]=true; });
-  var rw = window.open('https://gft365.sharepoint.com/sites/Leadership-Community-FR/OutilsScrum/rapport_sprint.html','_blank');
   var s = SD[curI];
   var payload = {type:'rapport_sprint',sprint:s.sprint,sdStart:s.sdStart,sdEnd:s.sdEnd,wdText:s.wdText,curI:curI};
   payload.persons = s.persons.filter(function(p){ return sel[p.team]; }).map(function(p){
@@ -2753,7 +2838,17 @@ function doOpenRapport(selectedTeams) {
   payload.notes = window.NOTES||{};
   payload.risks = window.RISKS||{};
   payload.confirmed = sel;
-  setTimeout(function(){ if(rw&&!rw.closed) rw.postMessage(payload,'*'); },1000);
+  // Store in localStorage then open — works across GitHub Pages tabs
+  try {
+    localStorage.setItem('planif_rapport', JSON.stringify(payload));
+  } catch(e) {}
+  // Show inline rapport overlay
+  var overlay = document.getElementById('rapport-overlay');
+  if (overlay) {
+    overlay.classList.add('open');
+    // Send data to rapport JS via message (same page)
+    window.dispatchEvent(new MessageEvent('message', {data: payload}));
+  }
   // Save to SharePoint history
   saveToSharePoint(selectedTeams, s);
 }
@@ -3285,6 +3380,312 @@ render();`;
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
+}
+</script>
+<div class="rapport-overlay" id="rapport-overlay">
+  <div class="rapport-close-bar">
+    <span>Rapport Sprint Planning</span>
+    <button class="rapport-close-btn" onclick="document.getElementById('rapport-overlay').classList.remove('open')">✕ Fermer</button>
+  </div>
+  <div class="rapport-inner">
+<div class="topbar">
+  <span class="tb-logo">GFT</span>
+  <div class="tb-sep"></div>
+  <span class="tb-client">Vaudoise Assurances</span>
+  <span class="tb-sprint" id="tb-sprint">En attente des données...</span>
+  <div class="tb-actions">
+    <button class="btn btn-pm" id="btn-pm" disabled onclick="showPM()">✉ Texte PM</button>
+    <button class="btn btn-xl" id="btn-xl" disabled onclick="genExcel()">↓ Exporter Excel</button>
+  </div>
+</div>
+
+<div class="main" id="main">
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">En attente des données du dashboard</div>
+    <div class="empty-sub">Ouvrez ce rapport depuis le bouton "Rapport Sprint" dans le dashboard.<br>Les données seront chargées automatiquement.</div>
+  </div>
+</div>
+  </div>
+</div>
+<script>
+var DATA = null;
+var INTEG = new Set(['INTEG 4','INTEG 5']);
+
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'rapport_sprint') return;
+  DATA = e.data;
+  render();
+});
+
+// Read from localStorage on load (GitHub Pages cross-tab approach)
+window.addEventListener('load', function() {
+  if (DATA) return; // already received via postMessage
+  try {
+    var stored = localStorage.getItem('planif_rapport');
+    if (stored) {
+      var parsed = JSON.parse(stored);
+      if (parsed && parsed.type === 'rapport_sprint') {
+        DATA = parsed;
+        render();
+        localStorage.removeItem('planif_rapport'); // consume once
+      }
+    }
+  } catch(e) {}
+});
+
+function render() {
+  if (!DATA) return;
+  var d = DATA;
+  var sprint = d.sprint || 'Sprint';
+  var teams = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'].filter(function(t) {
+    return d.persons && d.persons.some(function(p) { return p.team === t; });
+  });
+
+  document.getElementById('tb-sprint').textContent = sprint;
+  document.getElementById('btn-pm').disabled = false;
+  document.getElementById('btn-xl').disabled = false;
+
+  // Global KPIs
+  var allPersons = d.persons || [];
+  var allStories = d.stories || [];
+  var engaged = allStories.filter(function(st) { return (d.scol||{})[st.key] === 'engaged'; });
+  var totalCAF = allPersons.reduce(function(a,p) { return a + (p.caf_n||0); }, 0);
+  var totalEng = engaged.reduce(function(a,st) { return a + (st.sp||0); }, 0);
+  var spillCount = engaged.filter(function(st) { return st.isSpillover; }).length;
+  var confScores = [];
+  allPersons.forEach(function(p) {
+    var v = (d.conf||{})[p.confKey];
+    if (v !== undefined && !isNaN(parseFloat(v))) confScores.push(parseFloat(v));
+  });
+  var avgConf = confScores.length ? (confScores.reduce(function(a,b){return a+b;},0)/confScores.length).toFixed(1) : '--';
+
+  var html = '';
+
+  // Hero
+  html += '<div class="hero">';
+  html += '<div class="hero-icon">📊</div>';
+  html += '<div><div class="hero-title">Rapport Sprint Planning</div>';
+  html += '<div class="hero-sub">GFT Technologies &times; Vaudoise Assurances &mdash; Usage interne</div></div>';
+  html += '<div class="hero-meta"><div class="hero-sprint">' + sprint + '</div>';
+  html += '<div class="hero-period">' + (d.sdStart||'') + ' &rarr; ' + (d.sdEnd||'') + ' &nbsp;&bull;&nbsp; ' + (d.wdText||'') + '</div></div>';
+  html += '</div>';
+
+  // KPIs
+  html += '<div class="kpi-row">';
+  html += kpi('Capacité nette', totalCAF.toFixed(1), 'SP', teams.length + ' équipes');
+  html += kpi('SP engagés', totalEng.toFixed(1), 'SP', engaged.length + ' stories');
+  html += kpi('Résiduel', (totalCAF - totalEng).toFixed(1), 'SP', '');
+  html += kpi('Confiance moy.', avgConf, '/ 5', spillCount + ' spillover(s)');
+  html += '</div>';
+
+  // Teams
+  html += '<div class="section-title">Détail par équipe</div>';
+
+  teams.forEach(function(team) {
+    var persons = allPersons.filter(function(p) { return p.team === team; });
+    var tSt = allStories.filter(function(st) {
+      return st.team === team && (d.scol||{})[st.key] === 'engaged';
+    });
+    var caf = persons.reduce(function(a,p) { return a + (p.caf_n||0); }, 0);
+    var eng = tSt.reduce(function(a,st) { return a + (st.sp||0); }, 0);
+    var isConf = (d.confirmed||{})[team];
+    var isInteg = INTEG.has(team);
+    var noteKey = 'notes_' + d.curI + '_' + team.replace(/ /g,'_');
+    var note = (d.notes||{})[noteKey] || '';
+    var riskKey = 'gen_' + d.curI + '_' + team.replace(/ /g,'_');
+    var risk = (d.risks||{})[riskKey] || '';
+
+    html += '<div class="team-card">';
+    html += '<div class="team-hdr">';
+    html += '<span class="team-badge ' + (isInteg?'badge-integ':'badge-conf') + '">' + (isInteg?'Intégration':'Configuration') + '</span>';
+    html += '<span class="team-name">' + team + '</span>';
+    if (isConf) html += '<span class="team-badge badge-confirmed">&#10003; Confirmé</span>';
+    html += '<div class="team-stats">';
+    html += '<div class="team-stat"><div class="team-stat-val">' + caf.toFixed(1) + ' <small style="font-size:11px;font-weight:500;color:var(--muted)">SP</small></div><div class="team-stat-lbl">Capacité</div></div>';
+    html += '<div class="team-stat"><div class="team-stat-val">' + eng.toFixed(1) + ' <small style="font-size:11px;font-weight:500;color:var(--green)">SP</small></div><div class="team-stat-lbl">Engagés</div></div>';
+    html += '<div class="team-stat"><div class="team-stat-val">' + (caf-eng).toFixed(1) + ' <small style="font-size:11px;font-weight:500;color:var(--muted)">SP</small></div><div class="team-stat-lbl">Résiduel</div></div>';
+    html += '</div></div>';
+
+    html += '<div class="team-body">';
+
+    // Stories column
+    html += '<div class="team-col">';
+    html += '<div class="col-title">Stories engagées (' + tSt.length + ')</div>';
+    if (tSt.length === 0) {
+      html += '<div style="font-size:11px;color:var(--muted);font-style:italic">Aucune story engagée</div>';
+    } else {
+      tSt.forEach(function(st) {
+        var dev = (d.assign||{})[st.key] || '';
+        html += '<div class="story-row">';
+        html += '<span class="story-key">' + st.key + '</span>';
+        html += '<span class="story-sp">' + (st.sp||0) + ' SP</span>';
+        if (dev) html += '<span class="story-dev">@' + dev + '</span>';
+        if (st.isSpillover) html += '<span class="story-spill">SPILL</span>';
+        html += '</div>';
+      });
+    }
+    if (risk) html += '<div class="risk-box">&#9888; ' + esc(risk) + '</div>';
+    if (note) html += '<div class="notes-box">' + esc(note) + '</div>';
+    html += '</div>';
+
+    // Confidence column
+    html += '<div class="team-col">';
+    html += '<div class="col-title">Confiance par dev</div>';
+    persons.forEach(function(p) {
+      var v = (d.conf||{})[p.confKey];
+      var score = (v !== undefined && !isNaN(parseFloat(v))) ? parseFloat(v) : null;
+      html += '<div class="conf-bar">';
+      html += '<span class="conf-name">' + esc(p.name) + '</span>';
+      html += '<div class="conf-stars">';
+      for (var i=1;i<=5;i++) html += '<div class="star ' + (score!==null&&i<=Math.round(score)?'on':'off') + '"></div>';
+      html += '</div>';
+      html += '<span class="conf-num">' + (score!==null?score.toFixed(1):'--') + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '</div></div>';
+  });
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function kpi(lbl, val, unit, sub) {
+  return '<div class="kpi"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val">' + val + '<span>' + unit + '</span></div><div class="kpi-sub">' + sub + '</div></div>';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function genExcel() {
+  if (!DATA) return;
+  var d = DATA;
+  var teams = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'].filter(function(t) {
+    return d.persons && d.persons.some(function(p) { return p.team === t; });
+  });
+  var allStories = d.stories || [];
+  var wb = XLSX.utils.book_new();
+
+  teams.forEach(function(team) {
+    var persons = (d.persons||[]).filter(function(p) { return p.team === team; });
+    var tSt = allStories.filter(function(st) {
+      return st.team === team && (d.scol||{})[st.key] === 'engaged';
+    });
+    var caf = persons.reduce(function(a,p) { return a+(p.caf_n||0); }, 0);
+    var eng = tSt.reduce(function(a,st) { return a+(st.sp||0); }, 0);
+    var confScores = persons.map(function(p) {
+      var v = (d.conf||{})[p.confKey];
+      return (v !== undefined && !isNaN(parseFloat(v))) ? parseFloat(v) : null;
+    }).filter(function(v) { return v !== null; });
+    var avg = confScores.length ? (confScores.reduce(function(a,b){return a+b;},0)/confScores.length).toFixed(1)+' / 5' : '--';
+    var noteKey = 'notes_' + d.curI + '_' + team.replace(/ /g,'_');
+    var note = (d.notes||{})[noteKey] || '';
+
+    var aoa = [];
+    aoa.push([d.sprint + ' — ' + team, '', '', '', '', '', '', '', '', '']);
+    aoa.push(['', '', '', '', '', '', '', '', '', '']);
+    aoa.push(['Personne', 'Dispo theo (JP)', 'Dispo brute (JP)', 'CAF nette (SP)', 'Confiance', '', 'Story', 'SP', 'Dev assigné', 'Statut']);
+    var maxR = Math.max(persons.length, tSt.length);
+    for (var i = 0; i < maxR; i++) {
+      var p = persons[i] || null;
+      var st = tSt[i] || null;
+      var pConf = p ? ((d.conf||{})[p.confKey]) : '';
+      aoa.push([
+        p ? p.name : '',
+        p ? (p.dispo_theo||0).toFixed(1) : '',
+        p ? (p.brute||0).toFixed(1) : '',
+        p ? (p.caf_n||0).toFixed(2) : '',
+        pConf !== undefined ? pConf : '',
+        '',
+        st ? st.key : '',
+        st ? (st.sp||0) : '',
+        st ? ((d.assign||{})[st.key] || '') : '',
+        st ? (st.isSpillover ? 'Engagée (spillover)' : 'Engagée') : ''
+      ]);
+    }
+    aoa.push(['', '', '', '', '', '', '', '', '', '']);
+    aoa.push(['Capacité nette', caf.toFixed(2), '', '', '', '', 'SP engagés', eng.toFixed(1), '', '']);
+    aoa.push(['Résiduel', (caf - eng).toFixed(2), '', '', '', '', 'Confiance moy.', avg, '', '']);
+    if (note) aoa.push(['Notes', note, '', '', '', '', '', '', '', '']);
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:24},{wch:14},{wch:14},{wch:12},{wch:10},{wch:2},{wch:14},{wch:6},{wch:22},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, ws, team.replace(/ /g,'_'));
+  });
+
+  var ts = new Date().toISOString().slice(0, 10);
+  var fn = 'Sprint_Planning_' + (d.sprint||'sprint').replace(/ /g,'_') + '_' + ts + '.xlsx';
+  var out = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  var blob = new Blob([out], {type:'application/octet-stream'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = fn; a.click();
+}
+
+function showPM() {
+  if (!DATA) return;
+  var d = DATA;
+  var teams = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'].filter(function(t) {
+    return d.persons && d.persons.some(function(p) { return p.team === t; });
+  });
+  var allStories = d.stories || [];
+  var L = [];
+  L.push('Objet : Résultat du Sprint Planning — ' + (d.sprint||''));
+  L.push('');
+  L.push('Bonjour,');
+  L.push('');
+  L.push('Veuillez trouver ci-dessous le résumé du sprint planning pour le ' + (d.sprint||'') + '.');
+  L.push('Période : ' + (d.sdStart||'') + ' → ' + (d.sdEnd||'') + ' (' + (d.wdText||'') + ')');
+  L.push('');
+
+  teams.forEach(function(team) {
+    var persons = (d.persons||[]).filter(function(p) { return p.team === team; });
+    var tSt = allStories.filter(function(st) {
+      return st.team === team && (d.scol||{})[st.key] === 'engaged';
+    });
+    var caf = persons.reduce(function(a,p) { return a+(p.caf_n||0); }, 0);
+    var eng = tSt.reduce(function(a,st) { return a+(st.sp||0); }, 0);
+    var confScores = persons.map(function(p) {
+      var v = (d.conf||{})[p.confKey];
+      return (v !== undefined && !isNaN(parseFloat(v))) ? parseFloat(v) : null;
+    }).filter(function(v) { return v !== null; });
+    var avg = confScores.length ? (confScores.reduce(function(a,b){return a+b;},0)/confScores.length).toFixed(1)+'/5' : 'N/A';
+    var isConf = (d.confirmed||{})[team];
+    var riskKey = 'gen_' + d.curI + '_' + team.replace(/ /g,'_');
+    var risk = (d.risks||{})[riskKey] || '';
+    var spill = tSt.filter(function(st) { return st.isSpillover; });
+
+    L.push('— ' + team + (isConf ? ' [CONFIRMÉ]' : ''));
+    L.push('  Capacité nette  : ' + caf.toFixed(1) + ' SP');
+    L.push('  SP engagés      : ' + eng.toFixed(1) + ' SP (' + tSt.length + ' stories)');
+    L.push('  Confiance moy.  : ' + avg);
+    if (risk) L.push('  Risques         : ' + risk.split('\n').join(' | '));
+    if (spill.length) L.push('  Spillover       : ' + spill.map(function(st){return st.key;}).join(', '));
+    L.push('');
+  });
+  L.push('Cordialement,');
+
+  var txt = L.join('\n');
+  var existing = document.getElementById('pm-overlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.className = 'pm-overlay';
+  overlay.id = 'pm-overlay';
+  overlay.innerHTML = '<div class="pm-box"><div class="pm-title">Texte pour le Project Manager</div><div class="pm-body">' + esc(txt) + '</div><div class="pm-acts"><button class="pm-copy" onclick="copyPM()">⧉ Copier</button><button class="pm-close" onclick="document.getElementById(\'pm-overlay\').remove()">Fermer</button></div></div>';
+  overlay.setAttribute('data-txt', txt);
+  document.body.appendChild(overlay);
+}
+
+function copyPM() {
+  var overlay = document.getElementById('pm-overlay');
+  if (!overlay) return;
+  var txt = overlay.getAttribute('data-txt');
+  navigator.clipboard.writeText(txt).then(function() {
+    var btn = overlay.querySelector('.pm-copy');
+    if (btn) { btn.textContent = '✓ Copié !'; setTimeout(function(){btn.textContent='⧉ Copier';}, 1500); }
+  });
 }
 </script>
 </body>
