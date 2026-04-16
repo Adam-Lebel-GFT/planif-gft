@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Disponibilité Sprint — GFT × Vaudoise</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -576,6 +577,21 @@ footer span {
   transition: background .15s;
 }
 .sb-apply:hover { background: var(--navy2); }
+.sb-input-text{width:100%;padding:5px 8px;border-radius:4px;border:1px solid var(--grey2);background:var(--white);color:var(--navy);font-family:Manrope,sans-serif;font-size:11px;margin-top:4px;box-sizing:border-box}
+.sb-input-text::placeholder{color:var(--muted)}
+.sb-input-text:focus{outline:none;border-color:#1A7A42;box-shadow:0 0 0 2px rgba(26,122,66,.15)}
+.team-sel-section{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius);padding:16px;margin-bottom:20px}
+.team-sel-title{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.team-sel-sub{font-size:11px;color:var(--muted);margin-bottom:10px}
+.team-check-row{display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer}
+.team-check-row:hover .team-check-box{border-color:#1A7A42}
+.team-check-box{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--grey3);background:var(--white);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;transition:all .15s}
+.team-check-box.checked{background:#1A7A42;border-color:#1A7A42;color:#fff}
+.team-check-lbl{font-size:12px;color:var(--navy);flex:1}
+.team-check-type{font-size:9px;font-weight:700;letter-spacing:1px;padding:1px 6px;border-radius:10px}
+.team-check-type.conf{background:#EEF3FF;color:#1A3A8A}
+.team-check-type.integ{background:#FFF3EE;color:#8A3A1A}
+.team-check-type.trans{background:#F2F5F8;color:#3A4A5A}
 /* ── Rapport inline ── */
 .rapport-overlay{position:fixed;inset:0;z-index:99999;background:#F4F5F7;overflow-y:auto;display:none;flex-direction:column}
 .rapport-overlay.open{display:flex}
@@ -626,6 +642,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 .team-badge{padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
 .badge-conf{background:#EEF3FF;color:#1A3A8A}
 .badge-integ{background:#FFF3EE;color:#8A3A1A}
+.badge-trans{background:#F2F5F8;color:#3A4A5A}
 .badge-confirmed{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
 .team-name{font-size:14px;font-weight:700;color:var(--navy)}
 .team-stats{margin-left:auto;display:flex;gap:20px}
@@ -674,7 +691,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
   </div>
   <div class="topbar-sep"></div>
   <span class="topbar-client">Vaudoise Assurances</span>
-  <span class="topbar-version">v2.0 · 2026</span>
+  <span class="topbar-version">v2.29.17 · 2026</span>
   <button class="params-btn" id="params-toggle-btn" onclick="toggleSidebar()">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
     Paramètres
@@ -739,6 +756,11 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
       <span style="font-size:11px;color:var(--muted);font-style:italic">Charger le planning pour voir les sprints…</span>
     </div>
   </div>
+  <div class="team-sel-section" id="team-sel-section" style="display:none">
+    <div class="team-sel-title">Équipes à inclure</div>
+    <div class="team-sel-sub">Sélectionnez les équipes pour ce calcul</div>
+    <div id="team-sel-list"></div>
+  </div>
 
   <!-- Run button -->
   <button class="run-btn" id="run-btn" disabled onclick="runCalculation()">
@@ -762,6 +784,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
       Dashboard
     </button>
     <a class="download-btn" id="download-btn" href="#" download>⬇ Excel</a>
+    <button class="download-btn" id="pptx-btn" onclick="exportPptx()" style="background:var(--orange);border-color:var(--orange);color:#fff;cursor:pointer;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:0 16px;border-radius:6px;font-size:12px;font-weight:700;height:36px">&#128202; PowerPoint</button>
   </div>
 
   <!-- Log -->
@@ -801,6 +824,10 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
         <span class="sb-lbl">INTEG (JP/SP)</span>
         <input class="sb-input" id="sb-vel-integ" type="number" step="0.1" min="0.1" value="2.0">
       </div>
+      <div class="sb-row">
+        <span class="sb-lbl">TRANS (JP/SP)</span>
+        <input class="sb-input" id="sb-vel-trans" type="number" step="0.1" min="0.1" value="2.0">
+      </div>
     </div>
     <div class="sb-divider"></div>
     <div>
@@ -830,6 +857,22 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
         <span id="sb-lead-calc" style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--navy)">70%</span>
       </div>
     </div>
+    <div class="sb-divider"></div>
+    <div>
+      <div class="sb-group-title">Équipes</div>
+      <div style="margin-bottom:6px">
+        <span class="sb-lbl">Configuration (CONF)</span>
+        <input class="sb-input-text" id="sb-teams-conf" placeholder="ex: CONF-1, CONF-2, CONF-3" value="CONF-1, CONF-2, CONF-3">
+      </div>
+      <div style="margin-bottom:6px">
+        <span class="sb-lbl">Intégration (INTEG)</span>
+        <input class="sb-input-text" id="sb-teams-integ" placeholder="ex: INTEG 4, INTEG 5" value="INTEG 4, INTEG 5">
+      </div>
+      <div style="margin-bottom:6px">
+        <span class="sb-lbl">Transverse (TRANS)</span>
+        <input class="sb-input-text" id="sb-teams-trans" placeholder="ex: TRANS" value="TRANS">
+      </div>
+    </div>
   </div>
   <div class="sb-footer">
     <button class="sb-apply" onclick="applySidebarParams()">Appliquer</button>
@@ -840,11 +883,38 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 // ── State ──
 const state = { planning:null, backlog:null, sprints:[], mode:'all', selected:new Set() };
 const WORKING_CODES  = new Set(['R','S','AS']);
-const INCLUDED_TEAMS = new Set(['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5']);
-const INTEG_TEAMS    = new Set(['INTEG 4','INTEG 5']);
+// ── Dynamic team sets (rebuilt from sidebar on apply) ──
+function parseTeamList(str) {
+  return str.split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+}
+function getTeamSets() {
+  var confEl = document.getElementById('sb-teams-conf');
+  var integEl = document.getElementById('sb-teams-integ');
+  var transEl = document.getElementById('sb-teams-trans');
+  var conf  = confEl  ? parseTeamList(confEl.value)  : ['CONF-1','CONF-2','CONF-3'];
+  var integ = integEl ? parseTeamList(integEl.value) : ['INTEG 4','INTEG 5'];
+  var trans = transEl ? parseTeamList(transEl.value) : ['TRANS'];
+  return {
+    conf: conf, integ: integ, trans: trans,
+    all: conf.concat(integ).concat(trans),
+    INCLUDED: new Set(conf.concat(integ).concat(trans)),
+    INTEG:    new Set(integ),
+    TRANS:    new Set(trans)
+  };
+}
+var _teamSets = getTeamSets();
+var INCLUDED_TEAMS = _teamSets.INCLUDED;
+var INTEG_TEAMS    = _teamSets.INTEG;
+var TRANS_TEAMS    = _teamSets.TRANS;
+function refreshTeamSets() {
+  _teamSets = getTeamSets();
+  INCLUDED_TEAMS = _teamSets.INCLUDED;
+  INTEG_TEAMS    = _teamSets.INTEG;
+  TRANS_TEAMS    = _teamSets.TRANS;
+}
 
 // Paramètres courants — initialisés avec les valeurs par défaut
-const currentParams = { velocite_conf:2.0, velocite_integ:2.0, agile_pct:0.10, bogues_pct:0.10, raffinage_pct:0.20, support_pct:0.10 };
+const currentParams = { velocite_conf:2.0, velocite_integ:2.0, velocite_trans:2.0, agile_pct:0.10, bogues_pct:0.10, raffinage_pct:0.20, support_pct:0.10 };
 
 // Résultats du dernier calcul — pour le dashboard
 let lastResults = null; // { allResults, params, sprintDates }
@@ -870,16 +940,19 @@ function applySidebarParams() {
   const pos = v => Math.max(0.1, parseFloat(v)||0.1);
   currentParams.velocite_conf  = pos(document.getElementById('sb-vel-conf').value);
   currentParams.velocite_integ = pos(document.getElementById('sb-vel-integ').value);
+  currentParams.velocite_trans  = pos(document.getElementById('sb-vel-trans').value);
   currentParams.agile_pct      = pct(document.getElementById('sb-agile').value);
   currentParams.bogues_pct     = pct(document.getElementById('sb-bogues').value);
   currentParams.raffinage_pct  = pct(document.getElementById('sb-raffinage').value);
   currentParams.support_pct    = pct(document.getElementById('sb-support').value);
+  refreshTeamSets();
   toggleSidebar();
 }
 
 function prefillSidebarFromFile(p) {
   document.getElementById('sb-vel-conf').value  = p.velocite_conf;
   document.getElementById('sb-vel-integ').value = p.velocite_integ;
+  document.getElementById('sb-vel-trans').value  = p.velocite_trans||2.0;
   document.getElementById('sb-agile').value     = Math.round(p.agile_pct  * 100);
   document.getElementById('sb-bogues').value    = Math.round(p.bogues_pct * 100);
   document.getElementById('sb-raffinage').value = Math.round((p.raffinage_pct||0.20) * 100);
@@ -940,8 +1013,11 @@ function clearFile(key) {
   if (key === 'planning') {
     state.sprints  = [];
     state.selected = new Set();
+    _selectedTeams = new Set();
     document.getElementById('sprint-picker').innerHTML =
       '<span style="font-size:11px;color:var(--muted);font-style:italic">Charger le planning pour voir les sprints…</span>';
+    var teamSel = document.getElementById('team-sel-section');
+    if (teamSel) teamSel.style.display = 'none';
   }
   updateRunBtn();
 }
@@ -1067,6 +1143,20 @@ async function loadSprintsFromPlanning(file) {
     }
     state.sprints = sprints;
     renderSprintPicker(sprints);
+    // Detect teams from column E (index 4) and show selector immediately
+    refreshTeamSets();
+    const persons = [];
+    const seen = {};
+    for (let i = 7; i < data.length; i++) {
+      const row = data[i];
+      if (!row || !row[0]) continue;
+      const team = String(row[4]||'').trim();
+      if (team && INCLUDED_TEAMS.has(team) && !seen[team]) {
+        seen[team] = 1;
+        persons.push({ team: team });
+      }
+    }
+    renderTeamSelector(persons);
   } catch(e) {}
 }
 
@@ -1108,7 +1198,7 @@ function setProgress(pct) {
 function parseParametersFromWB(wb) {
   const sheet = wb.Sheets['Parameters'];
   const data  = XLSX.utils.sheet_to_json(sheet, { header:1, defval:null });
-  const p = { raffinage_pct:0.20, support_pct:0.10, bogues_pct:0.1, agile_pct:0.1, velocite_conf:2.0, velocite_integ:2.0 };
+  const p = { raffinage_pct:0.20, support_pct:0.10, bogues_pct:0.1, agile_pct:0.1, velocite_conf:2.0, velocite_integ:2.0, velocite_trans:2.0 };
   for (const row of data) {
     if (!row) continue;
     const lbl = String(row[2]||'').trim();
@@ -1118,6 +1208,7 @@ function parseParametersFromWB(wb) {
     if (lbl==='support')   p.support_pct   = parseFloat(row[3])||0.10;
     if (lbl==='CONF')   p.velocite_conf  = parseFloat(row[3])||2.0;
     if (lbl==='INTEG')  p.velocite_integ = parseFloat(row[3])||2.0;
+    if (lbl==='TRANS')  p.velocite_trans  = parseFloat(row[3])||2.0;
     // Taux Lead (col D = index 3 quand col C = 'Role')
   }
   return p;
@@ -1229,7 +1320,7 @@ function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, pa
     const dispo      = dispo_theo_adj * lead_rate;
     const agile      = dispo * params.agile_pct;
     const brute      = dispo - agile;
-    const vel        = INTEG_TEAMS.has(p.team) ? params.velocite_integ : params.velocite_conf;
+    const vel        = INTEG_TEAMS.has(p.team) ? params.velocite_integ : TRANS_TEAMS.has(p.team) ? (params.velocite_trans||2.0) : params.velocite_conf;
     const caf_b      = vel>0 ? brute/vel : 0;
     const bog_sp     = caf_b * params.bogues_pct;
     const bog_jp     = bog_sp * vel;
@@ -1256,6 +1347,7 @@ function buildWorkbook(allResults, params, sprintDates) {
     cafGreen:  "C6EFCE", cafText:  "006100",
     confBg:    "DCE8F5", confText: "0C447C",
     integBg:   "FAE8D5", integText:"854F0B",
+    transBg:   "E8EDF2", transText:"3A4A5A",
     leadBg:    "EDE9FB", leadText: "3C3489",
   };
 
@@ -1290,8 +1382,9 @@ function buildWorkbook(allResults, params, sprintDates) {
 
   // ── Sheet builder ──
   const buildSheet = (sprintName, sprintPersons, minWorkdays, maxWorkdays) => {
-    const conf_p  = sprintPersons.filter(p => !INTEG_TEAMS.has(p.team));
+    const conf_p  = sprintPersons.filter(p => !INTEG_TEAMS.has(p.team) && !TRANS_TEAMS.has(p.team));
     const integ_p = sprintPersons.filter(p =>  INTEG_TEAMS.has(p.team));
+    const trans_p = sprintPersons.filter(p =>  TRANS_TEAMS.has(p.team));
     const sd      = sprintDates[sprintName] || {};
     const fmtDate = d => d ? dsUTC(d) : '';
     const sum     = (arr, f) => arr.reduce((s,p) => s + (p[f]||0), 0);
@@ -1319,7 +1412,7 @@ function buildWorkbook(allResults, params, sprintDates) {
     const t_brute= sum(sprintPersons,'brute');
     const t_caf_b= sum(sprintPersons,'caf_b');
     const t_bog  = sprintPersons.reduce((s,p) => {
-      const vel = INTEG_TEAMS.has(p.team) ? params.velocite_integ : params.velocite_conf;
+      const vel = INTEG_TEAMS.has(p.team) ? params.velocite_integ : TRANS_TEAMS.has(p.team) ? (params.velocite_trans||2.0) : params.velocite_conf;
       return s + p.bog_sp * vel;
     }, 0);
     const t_nette= t_brute - t_bog;
@@ -1425,7 +1518,7 @@ function buildWorkbook(allResults, params, sprintDates) {
     R++;
 
     // ── Grouper par équipe ────────────────────────────────
-    const teamOrder = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'];
+    const teamOrder = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5','TRANS'];
     const byTeam = {};
     for (const p of sprintPersons) {
       if (!byTeam[p.team]) byTeam[p.team] = [];
@@ -1442,6 +1535,8 @@ function buildWorkbook(allResults, params, sprintDates) {
         'conf-sub':{ bg: "EBF2FA",   fg: "0C447C",    fsb: false, h: 18, indent: 2 },
         integ:     { bg: "FAE0C8",   fg: "854F0B",    fsb: true,  h: 20, indent: 0 },
         'integ-sub':{ bg: "FDF0E6",  fg: "854F0B",    fsb: false, h: 18, indent: 2 },
+        trans:     { bg: "E8EDF2",   fg: "3A4A5A",    fsb: true,  h: 20, indent: 0 },
+        'trans-sub':{ bg: "F2F5F8",  fg: "3A4A5A",    fsb: false, h: 18, indent: 2 },
       };
       const s = styles[style];
       rowHeights[R] = s.h;
@@ -1517,27 +1612,36 @@ function buildWorkbook(allResults, params, sprintDates) {
       }
     }
 
+    // Ligne Transverse
+    if (trans_p.length > 0) {
+      writeSumRow("Transverse", subtotal(trans_p, params.velocite_trans||2.0), 'trans');
+      for (const team of teamsPresent.filter(t => TRANS_TEAMS.has(t))) {
+        writeSumRow(team, subtotal(byTeam[team], params.velocite_trans||2.0), 'trans-sub');
+      }
+    }
+
     // Spacer
     rowHeights[R] = 14;
     R++;
 
     // ── Helper : tableau détail pour une équipe ───────────
     const writeTeamBlock = (teamName, persons, isConf) => {
-      const vel      = isConf ? params.velocite_conf : params.velocite_integ;
-      const teamBg   = isConf ? C.confBg   : C.integBg;
-      const teamText = isConf ? C.confText  : C.integText;
-      const hdrFill  = isConf ? "1A3A6A"   : "7A3A0A"; // navy légèrement teinté par famille
+      const isTrans  = TRANS_TEAMS.has(teamName);
+      const vel      = isTrans ? (params.velocite_trans||2.0) : isConf ? params.velocite_conf : params.velocite_integ;
+      const teamBg   = isTrans ? C.transBg   : isConf ? C.confBg   : C.integBg;
+      const teamText = isTrans ? C.transText  : isConf ? C.confText  : C.integText;
+      const hdrFill  = isTrans ? "3A4A5A"    : isConf ? "1A3A6A"   : "7A3A0A";
 
       // Titre de section
       rowHeights[R] = 14;
       writeMerge(R,1,R,13);
       writeCell(R,1, teamName,'s',{
-        fill: fill(isConf ? "D6E8F5" : "FAE0C8"),
-        font: fnt(FSB, 9, isConf ? "0C447C" : "854F0B"),
+        fill: fill(isTrans ? "E8EDF2" : isConf ? "D6E8F5" : "FAE0C8"),
+        font: fnt(FSB, 9, isTrans ? "3A4A5A" : isConf ? "0C447C" : "854F0B"),
         alignment: { horizontal:"left", vertical:"center", indent:1 },
-        border: brd(isConf ? "B5CDE8" : "E8C8A0"),
+        border: brd(isTrans ? "C5CDD6" : isConf ? "B5CDE8" : "E8C8A0"),
       });
-      fillRow(R,2,13, isConf ? "D6E8F5" : "FAE0C8");
+      fillRow(R,2,13, isTrans ? "E8EDF2" : isConf ? "D6E8F5" : "FAE0C8");
       R++;
 
       // En-têtes colonnes
@@ -1611,7 +1715,7 @@ function buildWorkbook(allResults, params, sprintDates) {
 
     // ── Écrire un tableau par équipe ──────────────────────
     for (const team of teamsPresent) {
-      writeTeamBlock(team, byTeam[team], !INTEG_TEAMS.has(team));
+      writeTeamBlock(team, byTeam[team], !INTEG_TEAMS.has(team) && !TRANS_TEAMS.has(team));
     }
 
     // ── Assemble worksheet ────────────────────────────────
@@ -1650,6 +1754,238 @@ function buildWorkbook(allResults, params, sprintDates) {
 }
 
 // ── Main ──
+// ── Team selector state ──
+var _selectedTeams = new Set();
+
+function renderTeamSelector(persons) {
+  refreshTeamSets();
+  var section = document.getElementById('team-sel-section');
+  var list = document.getElementById('team-sel-list');
+  if (!section || !list) return;
+  // Detect all teams present in the planning file
+  var detectedTeams = [];
+  var seen = {};
+  (persons || []).forEach(function(p) {
+    if (p.team && INCLUDED_TEAMS.has(p.team) && !seen[p.team]) {
+      seen[p.team] = 1;
+      detectedTeams.push(p.team);
+    }
+  });
+  // Order by allTeamOrder
+  detectedTeams.sort(function(a,b) {
+    var ao = _teamSets.all.indexOf(a), bo = _teamSets.all.indexOf(b);
+    return (ao<0?99:ao) - (bo<0?99:bo);
+  });
+  // Only reset selections if teams list has changed
+  var prevTeams = [..._selectedTeams];
+  var teamsChanged = detectedTeams.some(function(t){ return !_selectedTeams.has(t); }) || 
+                     prevTeams.some(function(t){ return detectedTeams.indexOf(t) < 0; });
+  if (_selectedTeams.size === 0 || teamsChanged) {
+    _selectedTeams = new Set(detectedTeams);
+  }
+  list.innerHTML = detectedTeams.map(function(t) {
+    var type = INTEG_TEAMS.has(t) ? 'integ' : TRANS_TEAMS.has(t) ? 'trans' : 'conf';
+    var lbl = INTEG_TEAMS.has(t) ? 'Intégration' : TRANS_TEAMS.has(t) ? 'Transverse' : 'Configuration';
+    return '<div class="team-check-row" data-team="'+t+'" onclick="toggleTeamSel(this)">'
+      + '<div class="team-check-box checked">&#10003;</div>'
+      + '<span class="team-check-lbl">'+t+'</span>'
+      + '<span class="team-check-type '+type+'">'+lbl+'</span>'
+      + '</div>';
+  }).join('');
+  section.style.display = detectedTeams.length > 0 ? 'block' : 'none';
+}
+
+function toggleTeamSel(row) {
+  var team = row.dataset.team;
+  var box = row.querySelector('.team-check-box');
+  if (_selectedTeams.has(team)) {
+    _selectedTeams.delete(team);
+    box.classList.remove('checked');
+    box.innerHTML = '';
+  } else {
+    _selectedTeams.add(team);
+    box.classList.add('checked');
+    box.innerHTML = '&#10003;';
+  }
+}
+
+function getSelectedTeams() {
+  return _selectedTeams.size > 0 ? _selectedTeams : INCLUDED_TEAMS;
+}
+
+// ── PPTX Constants ──
+const VAUDOISE_PERSONS = ['Fardjana David', 'Dinesh Salhotra', 'Madalena Maria Marques Romano Pinheiro de Lima'];
+
+async function renderChartCanvas(sprints, vaudoise, conf, integ, trans) {
+  var W=1800, H=570;
+  var canvas = document.createElement('canvas');
+  canvas.width=W; canvas.height=H;
+  var ctx = canvas.getContext('2d');
+  var bg='#E8E8E8';
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  var pad={l:60,r:20,t:20,b:60};
+  var cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+
+  // Series
+  var series=[];
+  var colors={'Vaudoise':'#156082','CONF':'#4EA72E','INTEG':'#E97132','TRANS':'#0F9ED5'};
+  if(vaudoise.some(function(v){return v>0;})) series.push({name:'Vaudoise',vals:vaudoise,color:colors.Vaudoise});
+  if(conf.some(function(v){return v>0;}))     series.push({name:'CONF',    vals:conf,    color:colors.CONF});
+  if(integ.some(function(v){return v>0;}))    series.push({name:'INTEG',   vals:integ,   color:colors.INTEG});
+  if(trans.some(function(v){return v>0;}))    series.push({name:'TRANS',   vals:trans,   color:colors.TRANS});
+
+  // Compute stacks
+  var n=sprints.length;
+  var stacks=new Array(n).fill(0);
+  var maxVal=0;
+  series.forEach(function(s){ s.vals.forEach(function(v,i){ stacks[i]+=v; if(stacks[i]>maxVal) maxVal=stacks[i]; }); });
+  maxVal=Math.ceil(maxVal/100)*100*1.1;
+
+  // Grid lines
+  ctx.strokeStyle='#CCCCCC'; ctx.lineWidth=0.8;
+  var nGrid=5;
+  for(var g=0;g<=nGrid;g++){
+    var yv=(maxVal/nGrid)*g;
+    var yp=pad.t+ch-(yv/maxVal)*ch;
+    ctx.beginPath(); ctx.moveTo(pad.l,yp); ctx.lineTo(pad.l+cw,yp); ctx.stroke();
+    ctx.fillStyle='#404040'; ctx.font='18px Calibri,Arial';
+    ctx.textAlign='right'; ctx.fillText(Math.round(yv),pad.l-8,yp+5);
+  }
+
+  // Draw stacked areas
+  var bottoms=new Array(n).fill(0);
+  series.forEach(function(ser){
+    ctx.beginPath();
+    // Bottom edge (current stack)
+    ctx.moveTo(pad.l, pad.t+ch-((bottoms[0])/maxVal)*ch);
+    for(var i=0;i<n;i++){
+      var xp=pad.l+(i/(n-1))*cw;
+      var yp=pad.t+ch-((bottoms[i])/maxVal)*ch;
+      ctx.lineTo(xp,yp);
+    }
+    // Top edge
+    for(var i=n-1;i>=0;i--){
+      var xp=pad.l+(i/(n-1))*cw;
+      var yp=pad.t+ch-((bottoms[i]+ser.vals[i])/maxVal)*ch;
+      ctx.lineTo(xp,yp);
+    }
+    ctx.closePath();
+    ctx.fillStyle=ser.color; ctx.fill();
+    // Update bottoms
+    ser.vals.forEach(function(v,i){ bottoms[i]+=v; });
+  });
+
+  // X axis labels
+  ctx.fillStyle='#404040'; ctx.font='18px Calibri,Arial'; ctx.textAlign='center';
+  sprints.forEach(function(s,i){
+    var xp=pad.l+(i/(n-1))*cw;
+    ctx.fillText(s.replace('Sprint ',''),xp,pad.t+ch+28);
+  });
+
+  // Legend
+  var legX=W/2-(series.length*120)/2, legY=H-20;
+  series.forEach(function(ser,i){
+    var lx=legX+i*130;
+    ctx.fillStyle=ser.color; ctx.fillRect(lx,legY-14,16,14);
+    ctx.fillStyle='#404040'; ctx.font='16px Calibri,Arial'; ctx.textAlign='left';
+    ctx.fillText(ser.name,lx+20,legY-2);
+  });
+
+  return 'image/png;base64,'+canvas.toDataURL('image/png').split(',')[1];
+}
+
+async function exportPptx() {
+  if (!lastResults) { alert("Lancez d'abord le calcul."); return; }
+  const { allResults } = lastResults;
+  if (!allResults || allResults.length === 0) return;
+
+  const VAUDOISE = ['dinesh','madalena','marques','fardjana'];
+  function isVaudoise(name) {
+    var n = name.toLowerCase();
+    return VAUDOISE.some(function(v){ return n.includes(v); });
+  }
+
+  const pres = new PptxGenJS();
+  pres.layout = 'LAYOUT_WIDE';
+
+  const sprints = allResults.map(function(r){ return r.sprint; });
+  const today = new Date().toLocaleDateString('fr-CA', {day:'numeric', month:'long', year:'numeric'});
+  const subtitle = 'Visualisation de la capacité des ressources par équipe (' + sprints[0] + ' > ' + sprints[sprints.length-1] + ')';
+
+  // Aggregate dispo_theo by category per sprint
+  function sumSerie(filter) {
+    return allResults.map(function(r){
+      return parseFloat(r.persons.filter(filter).reduce(function(s,p){ return s+p.dispo_theo; }, 0).toFixed(1));
+    });
+  }
+  var vaudoise = sumSerie(function(p){ return isVaudoise(p.name); });
+  var conf     = sumSerie(function(p){ return !INTEG_TEAMS.has(p.team) && !TRANS_TEAMS.has(p.team) && !isVaudoise(p.name); });
+  var integ    = sumSerie(function(p){ return INTEG_TEAMS.has(p.team) && !isVaudoise(p.name); });
+  var trans    = sumSerie(function(p){ return TRANS_TEAMS.has(p.team); });
+
+  // ── Slide 1: Title ──
+  var s1 = pres.addSlide();
+  s1.background = { color: '0E2841' };
+  s1.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.35, h:7.5, fill:{color:'156082'}, line:{type:'none'} });
+  s1.addText('GFT Technologies', { x:1.0, y:2.1, w:11, h:0.5, fontSize:13, color:'9DB8CC', fontFace:'Calibri' });
+  s1.addText('Ressources – Capacité GFT par sprint', { x:1.0, y:2.7, w:11, h:1.1, fontSize:34, color:'FFFFFF', fontFace:'Calibri', bold:true });
+  s1.addText('Visualisation de la capacité des ressources par équipe', { x:1.0, y:3.95, w:11, h:0.5, fontSize:16, color:'9DB8CC', fontFace:'Calibri' });
+  s1.addShape(pres.shapes.RECTANGLE, { x:0, y:7.1, w:13.33, h:0.4, fill:{color:'156082'}, line:{type:'none'} });
+  s1.addText(today + '  |  COPER Vendor - GFT', { x:0.5, y:7.13, w:12, h:0.28, fontSize:9, color:'FFFFFF', fontFace:'Calibri', valign:'middle' });
+
+  // ── Slide 2: Chart ──
+  var s2 = pres.addSlide();
+  s2.background = { color: 'E8E8E8' };
+  s2.addText('Ressources – Capacité GFT par sprint', {
+    x:0.49, y:0.84, w:12.36, h:0.48, fontSize:28, color:'0E2841', fontFace:'Calibri', valign:'middle'
+  });
+  s2.addText(subtitle, {
+    x:0.48, y:1.32, w:9, h:0.24, fontSize:14, color:'404040', fontFace:'Calibri'
+  });
+
+  // Build chart data
+  var chartData = [];
+  if (vaudoise.some(function(v){return v>0;})) chartData.push({ name:'Vaudoise', labels:sprints, values:vaudoise });
+  if (conf.some(function(v){return v>0;}))     chartData.push({ name:'CONF',     labels:sprints, values:conf });
+  if (integ.some(function(v){return v>0;}))    chartData.push({ name:'INTEG',    labels:sprints, values:integ });
+  if (trans.some(function(v){return v>0;}))    chartData.push({ name:'TRANS',    labels:sprints, values:trans });
+
+  var colorMap = { Vaudoise:'156082', CONF:'4EA72E', INTEG:'E97132', TRANS:'0F9ED5' };
+  var chartColors = chartData.map(function(d){ return colorMap[d.name] || '888888'; });
+
+  // Render chart via canvas then insert as image
+  var chartPng = await renderChartCanvas(sprints, vaudoise, conf, integ, trans);
+  s2.addImage({ data: chartPng, x:1.614, y:2.115, w:9.902, h:3.8 });
+
+  // Data table with borders
+  var tableRows = [];
+  var hdrCells = [{ text:'', options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
+  sprints.forEach(function(s){ hdrCells.push({ text:s.replace('Sprint ',''), options:{fill:'D9D9D9', bold:true, align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
+  tableRows.push(hdrCells);
+  [['Vaudoise',vaudoise,'DCE8F5'],['CONF',conf,'E2EFDA'],['INTEG',integ,'FCE4D6'],['TRANS',trans,'DAEEF3']].forEach(function(row){
+    var name=row[0], vals=row[1], fill=row[2];
+    if (!vals.some(function(v){return v>0;})) return;
+    var cells = [{ text:name, options:{fill:fill, bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
+    vals.forEach(function(v){ cells.push({ text:String(Math.round(v*10)/10), options:{fill:'FFFFFF', align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
+    tableRows.push(cells);
+  });
+  var nCols = sprints.length + 1;
+  var colW = [1.2];
+  for (var ci=0; ci<sprints.length; ci++) colW.push((9.902-1.2)/sprints.length);
+  s2.addTable(tableRows, { x:1.614, y:5.95, w:9.902, colW:colW, fontSize:8, fontFace:'Calibri', border:{pt:1,color:'888888'} });
+
+  s2.addText('* Les ressources GFT faisant partie de l’Insight Team sont incluses dans l’Intégration', {
+    x:1.01, y:6.647, w:7, h:0.162, fontSize:9, color:'404040', fontFace:'Calibri', italic:true
+  });
+  s2.addText(today + ' |', { x:0.917, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
+  s2.addText('COPER Vendor - GFT', { x:1.614, y:7.061, w:5, h:0.144, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
+  s2.addText('2', { x:9.417, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', align:'right', valign:'middle' });
+
+  var ts = new Date().toISOString().slice(0,10);
+  pres.writeFile({ fileName: 'Capacity_GFT_' + ts + '.pptx' });
+}
+
 async function runCalculation() {
   clearLog();
   const btn = document.getElementById('run-btn');
@@ -1663,10 +1999,15 @@ async function runCalculation() {
     log('Lecture du planning…','info');
     const planAB = await state.planning.arrayBuffer();
     const planWB = XLSX.read(planAB, {type:'array'});
+    refreshTeamSets();
     const { sprintRanges, sprintDates, dates, persons } = parsePlanning(planWB);
     const sprintNames = Object.keys(sprintRanges);
     log(`${persons.length} personnes · ${sprintNames.length} sprints (${sprintNames[0]} → ${sprintNames[sprintNames.length-1]})`,'ok');
     setProgress(30);
+    // Apply selected teams filter
+    const activeTeams = getSelectedTeams();
+    const filteredPersons = persons.filter(p => activeTeams.has(p.team));
+    log(`Équipes actives : ${[...activeTeams].join(', ')} (${filteredPersons.length} personnes)`, 'info');
     let toCompute = sprintNames;
     if (state.mode==='select') toCompute = state.selected.size>0 ? [...state.selected].filter(s=>sprintNames.includes(s)) : sprintNames;
     if (toCompute.length===0) { log('Aucun sprint sélectionné.','warn'); return; }
@@ -1674,7 +2015,7 @@ async function runCalculation() {
     const allResults = [];
     for (let i=0; i<toCompute.length; i++) {
       const sprint = toCompute[i];
-      const sr = computeSprint(sprint, sprintRanges, sprintDates, dates, persons, params);
+      const sr = computeSprint(sprint, sprintRanges, sprintDates, dates, filteredPersons, params);
       const t = sr.persons.reduce((s,p)=>({dispo_theo:s.dispo_theo+p.dispo_theo,brute:s.brute+p.brute,caf_n:s.caf_n+p.caf_n}),{dispo_theo:0,brute:0,caf_n:0});
       const wdLabel = sr.minWorkdays===sr.maxWorkdays?`${sr.minWorkdays}j`:`${sr.minWorkdays}–${sr.maxWorkdays}j`;
       log(`${sprint} · ${wdLabel} ouvrés · ${sr.persons.length} actifs · ${t.dispo_theo}JP théo · ${t.brute.toFixed(1)}JP brut · ${t.caf_n.toFixed(2)}SP nets`,'ok');
@@ -1765,7 +2106,8 @@ function openDashboard() {
   const MN = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const DN = ['D','L','M','M','J','V','S'];
 
-  const allTeamOrder = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'];
+  refreshTeamSets();
+  const allTeamOrder = _teamSets.all;
   const allTeamsPresent = allTeamOrder.filter(t => allResults.some(r => r.persons.some(p => p.team === t)));
 
   // Serialise data
@@ -1799,7 +2141,7 @@ function openDashboard() {
   const storiesSerial = 'JSON.parse(' + JSON.stringify(JSON.stringify(stories)) + ')';
 
   const PR = {
-    vc: params.velocite_conf, vi: params.velocite_integ,
+    vc: params.velocite_conf, vi: params.velocite_integ, vt: params.velocite_trans||2.0,
     ap: params.agile_pct, bp: params.bogues_pct,
     lr: params.lead_rate, nr: params.normal_rate
   };
@@ -1821,7 +2163,7 @@ body{font-family:'Manrope',sans-serif;background:#F4F5F7;color:#0C1A2E;min-heigh
 .tc{padding:4px 12px;border-radius:4px;border:1.5px solid #C8CDD6;background:#fff;font-size:10px;font-weight:600;cursor:pointer;opacity:.4}
 .tc.on{opacity:1}
 .tc.cf{color:#0C447C;border-color:#B5CDE8}.tc.cf.on{background:#DCE8F5;border-color:#0C447C}
-.tc.ig{color:#854F0B;border-color:#E8C8A0}.tc.ig.on{background:#FAE8D5;border-color:#854F0B}
+.tc.ig{color:#854F0B;border-color:#E8C8A0}.tc.ig.on{background:#FAE8D5;border-color:#854F0B}.tc.tr{color:#3A4A5A;border-color:#C5CDD6}.tc.tr.on{background:#E8EDF2;border-color:#3A4A5A}
 .fs{width:1px;height:18px;background:#E8EAED}
 .ba{padding:4px 10px;border-radius:4px;border:1.5px solid #E8EAED;background:transparent;font-family:'Manrope',sans-serif;font-size:10px;color:#6B7A90;cursor:pointer}
 .ba:hover{border-color:#0C1A2E;color:#0C1A2E}
@@ -1985,6 +2327,7 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .wb-bar-sep{width:1px;height:16px;background:rgba(255,255,255,.15)}
 .wb-team-tag{padding:5px 12px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#0C447C;background:#EEF5FF;border-right:1px solid #DCE8F5;min-width:75px;white-space:nowrap}
 .wb-team-tag.ig{color:#854F0B;background:#FDF0E6;border-color:#FAE8D5}
+.wb-team-tag.tr{color:#3A4A5A;background:#E8EDF2;border-color:#C5CDD6}
 .wb-sp-bar{padding:5px 14px;display:flex;align-items:center;gap:10px;flex:1}
 .wb-sp-lbl{font-size:9px;color:#6B7A90;white-space:nowrap}
 .wb-sp-track{flex:1;height:5px;background:#E8EAED;border-radius:3px;overflow:hidden}
@@ -2084,8 +2427,9 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
   // Build filter chips HTML
   let chipsH = '';
   allTeamsPresent.forEach(t => {
-    const cf = !INTEG.has(t);
-    chipsH += '<button class="tc ' + (cf?'cf':'ig') + ' on" data-t="' + t + '" onclick="togTeam(\'' + t + '\')">' + t + '</button>';
+    const cf = !INTEG.has(t) && !TRANS_TEAMS.has(t);
+    const cls = TRANS_TEAMS.has(t) ? 'tr' : cf ? 'cf' : 'ig';
+    chipsH += '<button class="tc ' + cls + ' on" data-t="' + t + '" onclick="togTeam(\'' + t + '\')">' + t + '</button>';
   });
 
   const JS = `
@@ -2093,6 +2437,7 @@ const STORIES_ALL = ` + storiesSerial + `;
 const SD = ` + JSON.stringify(sprData) + `;
 const PR = ` + JSON.stringify(PR) + `;
 const IT = new Set(` + JSON.stringify([...INTEG_TEAMS]) + `);
+const TT = new Set(` + JSON.stringify([...TRANS_TEAMS]) + `);
 const AT = ` + JSON.stringify(allTeamsPresent) + `;
 const WK = new Set(['R','S','AS']);
 const MN = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -2167,7 +2512,7 @@ function recompP(si, p) {
   }
   const isLd = p.role && (p.role.toLowerCase().includes('lead') || p.role.toLowerCase().includes('architect'));
   const aff = isLd ? (PR.lr || 0.7) : (PR.nr || 1.0);
-  const vel = IT.has(p.team) ? PR.vi : PR.vc;
+  const vel = IT.has(p.team) ? PR.vi : TT.has(p.team) ? (PR.vt||PR.vc) : PR.vc;
   const dispo = dt * aff;
   const brute = dispo - dispo * (PR.ap || 0.1);
   const caf_b = vel > 0 ? brute / vel : 0;
@@ -2209,10 +2554,9 @@ function buildHdr(dates) {
     if (wk !== cw) { if (cw !== null) wg.push({n:cw,c:wc}); cw=wk; wc=1; } else wc++;
   }
   if (cw !== null) wg.push({n:cw,c:wc});
-  var spHdr = '<th class="gn-sp gn-sp-hdr" rowspan="4" style="font-size:9px;color:rgba(255,255,255,.6);vertical-align:middle">SP / dispo</th>';
   var h0 = '<tr class="g0"><th class="gn gsk" rowspan="4"></th>';
   for (var i=0;i<mg.length;i++) h0 += '<th colspan="'+mg[i].c+'">'+MN[mg[i].n]+'</th>';
-  h0 += spHdr + '</tr>';
+  h0 += '</tr>';
   var h1 = '<tr class="g1">';
   for (var i=0;i<wg.length;i++) h1 += '<th colspan="'+wg[i].c+'">S'+wg[i].n+'</th>';
   h1 += '</tr>';
@@ -2229,7 +2573,7 @@ function render() {
   var fp = s.persons.filter(function(p){ return actT.has(p.team); });
   var t_theo=0,t_brute=0,t_bog=0,t_caf=0,c_caf=0,i_caf=0;
   for (var i=0;i<fp.length;i++) {
-    var p=fp[i]; var vel=IT.has(p.team)?PR.vi:PR.vc;
+    var p=fp[i]; var vel=IT.has(p.team)?PR.vi:TT.has(p.team)?(PR.vt||PR.vc):PR.vc;
     t_theo  += getEff(curI,p,'dispo_theo');
     t_brute += getEff(curI,p,'brute');
     t_bog   += getEff(curI,p,'bog_sp')*vel;
@@ -2309,12 +2653,6 @@ function render() {
         var isOv = ds in pov;
         tbody += '<td class="gd '+cellCls(eff)+(isOv?' ov':'')+'" data-si="'+curI+'" data-pi="'+s.persons.indexOf(p)+'" data-ds="'+ds+'" data-clickable="1">'+(isOv?'<span class="ob">'+(eff||'×')+'</span>':'')+'</td>';
       }
-      // SP sticky right column
-      var spOverflow = effCaf < 0;
-      tbody += '<td class="gn-sp" style="height:28px"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1px">';
-      tbody += '<span style="font-size:10px;font-weight:600;color:'+(spOverflow?'#C0392B':'#1A7A42')+'">'+f1(effCaf)+' SP</span>';
-      tbody += '<span style="font-size:9px;color:#6B7A90">'+dispoTag+'</span>';
-      tbody += '</div></td>';
       tbody += '</tr>';
     }
   }
@@ -2375,7 +2713,7 @@ function render() {
     wbHtml += '</div>';
     for (var ti=0;ti<teams.length;ti++) {
       var team = teams[ti];
-      var isIg = IT.has(team);
+      var isIg = IT.has(team); var isTr = TT.has(team);
       var tStories = sprintStories.filter(function(st){ return st.team===team; });
       var engSP = tStories.filter(function(st){ return getScol(st.key)==='engaged'; }).reduce(function(a,st){ return a+st.sp; },0);
       var totalSP = s2.persons.filter(function(p){ return p.team===team; }).reduce(function(a,p){ return a+getEff(curI,p,'caf_n'); },0);
@@ -2386,7 +2724,7 @@ function render() {
       var colClasses= ['grey','green','blue','amber'];
       var colBodies = ['','eng','','rep'];
       wbHtml += '<div class="wb-team-block">';
-      wbHtml += '<div class="wb-team-hdr"><div class="wb-team-tag'+(isIg?' ig':'')+'">'+team+'</div>';
+      wbHtml += '<div class="wb-team-hdr"><div class="wb-team-tag'+(isIg?' ig':isTr?' tr':'')+'">'+team+'</div>';
       wbHtml += '<div class="wb-sp-bar"><span class="wb-sp-lbl">SP engagés</span>';
       wbHtml += '<div class="wb-sp-track"><div class="wb-sp-fill'+(warn?' warn':'')+'" style="width:'+pct.toFixed(0)+'%"></div></div>';
       wbHtml += '<span class="wb-sp-val'+(warn?' warn':'')+'">'+engSP.toFixed(1)+'</span>';
@@ -3050,7 +3388,7 @@ if(!window.CONFIRMED)window.CONFIRMED={}; // {team: bool}
 
 // ── Build Panel 3 ──
 function buildP3Html(s){
-  var TEAM_ORD=['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'];
+  var TEAM_ORD=['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5','TRANS'];
   var visTeams=TEAM_ORD.filter(function(t){return actT.has(t)&&s.persons.some(function(p){return p.team===t;});});
   var curSpName=s.sprint.trim();
   var sprintSt=STORIES_ALL.filter(function(st){
@@ -3060,10 +3398,11 @@ function buildP3Html(s){
   var h='';
 
   visTeams.forEach(function(team){
-    var isIg=IT.has(team);
-    var tbg=isIg?'#FAE8D5':'#EEF5FF', tclr=isIg?'#854F0B':'#0C447C';
+    var isIg=IT.has(team); var isTr=TT.has(team);
+    var tbg=isTr?'#F2F5F8':isIg?'#FAE8D5':'#EEF5FF';
+    var tclr=isTr?'#3A4A5A':isIg?'#854F0B':'#0C447C';
     h+='<div style="background:'+tbg+';padding:6px 14px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:'+tclr+';border-bottom:1px solid #E8EAED">';
-    h+=team+' — '+(isIg?'INTÉGRATION':'CONFIGURATION')+'</div>';
+    h+=team+' — '+(isTr?'TRANSVERSE':isIg?'INTÉGRATION':'CONFIGURATION')+'</div>';
 
     // ALL members of this team
     var teamPersons=s.persons.filter(function(p){return p.team===team;});
@@ -3354,7 +3693,7 @@ render();`;
     + '<div class="tb-r"><button id="rb" class="rb" onclick="resetOV()"></button>'
 
     + '<button class="eb" onclick="openRapport()" style="background:rgba(201,168,76,.15);border-color:rgba(201,168,76,.4)">&#128203; Rapport Sprint</button>'
-    + '<span style="font-family:DM Mono,monospace;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:1px">v2.0 · 2026</span></div></div>'
+    + '<span style="font-family:DM Mono,monospace;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:1px">v2.29.17 · 2026</span></div></div>'
     + '<div class="sb">' + tabsH + '</div>'
     + '<div class="fb"><span class="fl">Équipes</span>' + chipsH
     + '<div class="fs"></div><button class="ba" onclick="selAll()">Tout sélectionner</button>'
@@ -3490,7 +3829,7 @@ function render() {
     var caf = persons.reduce(function(a,p) { return a + (p.caf_n||0); }, 0);
     var eng = tSt.reduce(function(a,st) { return a + (st.sp||0); }, 0);
     var isConf = (d.confirmed||{})[team];
-    var isInteg = INTEG.has(team);
+    var isInteg = INTEG.has(team); var isTrans = (team === 'TRANS');
     var noteKey = 'notes_' + d.curI + '_' + team.replace(/ /g,'_');
     var note = (d.notes||{})[noteKey] || '';
     var riskKey = 'gen_' + d.curI + '_' + team.replace(/ /g,'_');
@@ -3498,7 +3837,7 @@ function render() {
 
     html += '<div class="team-card">';
     html += '<div class="team-hdr">';
-    html += '<span class="team-badge ' + (isInteg?'badge-integ':'badge-conf') + '">' + (isInteg?'Intégration':'Configuration') + '</span>';
+    html += '<span class="team-badge ' + (isTrans?'badge-trans':isInteg?'badge-integ':'badge-conf') + '">' + (isTrans?'Transverse':isInteg?'Intégration':'Configuration') + '</span>';
     html += '<span class="team-name">' + team + '</span>';
     if (isConf) html += '<span class="team-badge badge-confirmed">&#10003; Confirmé</span>';
     html += '<div class="team-stats">';
