@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python (script de validation dans CONTRIBUTING.md)
+__pycache__/
+*.pyc
+*.pyo
+
+# Données de test locales (Excel planning + export Jira)
+# Ne PAS commiter de vraies données client
+/test-data/
+/samples/
+*.local.xlsx
+*.local.csv
+
+# Logs et artefacts
+*.log
+*.tmp
