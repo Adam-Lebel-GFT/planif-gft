@@ -52,7 +52,7 @@ L'outil contient **trois contextes JS distincts** dans un seul fichier `.html` :
 ```python
 import subprocess, tempfile, os
 
-with open('Planif_tool_GFT_v2.html', 'r', encoding='utf-8') as f:
+with open('index.html', 'r', encoding='utf-8') as f:
     content = f.read()
 
 def node_check(js, label):
@@ -89,10 +89,10 @@ node_check(stub + '\n'.join(lines_r[func_start:]), 'Dashboard JS')
 
 ## Architecture — fichier unique
 
-Tout l'outil tient dans **un seul fichier** `Planif_tool_GFT_v2.html`. Pas de fichier sibling, pas de serveur.
+Tout l'outil tient dans **un seul fichier** `index.html`. Pas de fichier sibling, pas de serveur.
 
 ```
-Planif_tool_GFT_v2.html
+index.html
 ├── <style>          CSS page principale
 ├── <script>         JS page principale (Main JS)
 │   ├── parsePlanning()
@@ -183,13 +183,13 @@ La version est affichée dans les deux topbars (page principale + dashboard). Ch
 
 | Environnement | URL | Notes |
 |---------------|-----|-------|
-| **GitHub Pages** | `https://adam-lebel-gft.github.io/planif-gft/Planif_tool_GFT_v2.html` | Hébergement principal |
+| **GitHub Pages** | `https://adam-lebel-gft.github.io/planif-gft/` | Hébergement principal (sert `index.html`) |
 | **Local** | `file:///...` | Développement — restrictions Chrome actives |
 | **SharePoint** | `https://gft365.sharepoint.com/sites/Leadership-Community-FR/OutilsScrum/` | Télécharge au lieu d'ouvrir — ne pas utiliser |
 
 ### Mise à jour GitHub Pages
 
-1. Modifier `Planif_tool_GFT_v2.html`
+1. Modifier `index.html`
 2. Uploader dans le repo `Adam-Lebel-GFT/planif-gft`
 3. GitHub Pages se met à jour en ~1 minute
 
