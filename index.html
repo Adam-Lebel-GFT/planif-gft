@@ -3493,54 +3493,17 @@ function doOpenRapport(selectedTeams) {
   var inject = OPEN_S + 'window.__PLANIF_DATA__ = ' + payloadJson + ';' + CLOSE_S;
   var html = RAPPORT_TPL.replace('__PLANIF_DATA_INJECT__', inject);
 
-  // Open a blank tab, then write the HTML to it using document.write.
-  // IMPORTANT: we pre-parse the HTML in the dashboard using DOMParser to
-  // validate it, then we transplant <head> and <body> into the new document
-  // by cloning nodes. Scripts added this way are NOT executed by the browser,
-  // so we re-create each <script> element manually (new Script() gets re-executed).
-  // This works around document.write parsing edge cases with huge inlined libs.
-  var w = window.open('', '_blank');
+  // Open the rapport in a new tab via a Blob URL. The page loads like any
+  // normal document, so its own load handler picks up window.__PLANIF_DATA__
+  // and calls render() — no DOM transplantation or manual bootstrap needed.
+  var blob = new Blob([html], {type: 'text/html'});
+  var url = URL.createObjectURL(blob);
+  var w = window.open(url, '_blank');
   if (!w) {
+    URL.revokeObjectURL(url);
     alert("Le navigateur a bloque l'ouverture d'une nouvelle fenetre. Autorisez les pop-ups pour ce site.");
     return;
   }
-  var doc = new DOMParser().parseFromString(html, 'text/html');
-  // Copy the parsed document's attributes, title, head children, and body children.
-  w.document.documentElement.setAttribute('lang', doc.documentElement.getAttribute('lang') || 'fr');
-  // Clear target head/body
-  while (w.document.head.firstChild) w.document.head.removeChild(w.document.head.firstChild);
-  while (w.document.body.firstChild) w.document.body.removeChild(w.document.body.firstChild);
-  // Transplant head children (scripts re-created so they execute)
-  function transplantNode(srcNode, targetParent) {
-    if (srcNode.nodeType === 1 && srcNode.tagName === 'SCRIPT') {
-      var s = w.document.createElement('script');
-      for (var i = 0; i < srcNode.attributes.length; i++) {
-        s.setAttribute(srcNode.attributes[i].name, srcNode.attributes[i].value);
-      }
-      s.text = srcNode.textContent;
-      targetParent.appendChild(s);
-    } else {
-      var clone = w.document.importNode(srcNode, true);
-      targetParent.appendChild(clone);
-    }
-  }
-  var headChildren = Array.prototype.slice.call(doc.head.childNodes);
-  for (var i = 0; i < headChildren.length; i++) transplantNode(headChildren[i], w.document.head);
-  var bodyChildren = Array.prototype.slice.call(doc.body.childNodes);
-  for (var i = 0; i < bodyChildren.length; i++) transplantNode(bodyChildren[i], w.document.body);
-  w.document.title = doc.title || 'Rapport Sprint Planning';
-  // The DOMContentLoaded/load events already fired when window.open() created
-  // the blank document; the rapport's internal handlers listening for them
-  // won't fire. So we replicate what the load handler does (assign DATA from
-  // window.__PLANIF_DATA__) then call render() manually.
-  setTimeout(function(){
-    try {
-      if (w.__PLANIF_DATA__ && (w.DATA === null || typeof w.DATA === 'undefined')) {
-        w.DATA = w.__PLANIF_DATA__;
-      }
-      if (typeof w.render === 'function') w.render();
-    } catch(e) { console.warn('rapport bootstrap:', e); }
-  }, 100);
 
   // Save to SharePoint history (no-op locally)
   saveToSharePoint(selectedTeams, s);
