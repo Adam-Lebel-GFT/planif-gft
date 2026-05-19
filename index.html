@@ -691,7 +691,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
   </div>
   <div class="topbar-sep"></div>
   <span class="topbar-client">Vaudoise Assurances</span>
-  <span class="topbar-version">v2.4.0 · 2026</span>
+  <span class="topbar-version">v2.33.3 · 2026</span>
   <button class="params-btn" id="params-toggle-btn" onclick="toggleSidebar()">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
     Paramètres
@@ -1329,7 +1329,7 @@ function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, pa
     const bog_jp     = bog_sp * vel;
     const nette      = brute - bog_jp;
     const caf_n      = vel>0 ? nette/vel : 0;
-    result.push({ team:p.team, name:p.name, role:p.role, dispo_theo:dispo_theo_adj, raffinage, support, lead_rate, dispo, agile, brute, caf_b, bog_sp, nette, caf_n, dailyCodes });
+    result.push({ team:p.team, name:p.name, role:p.role, alloc, dispo_theo:dispo_theo_adj, raffinage, support, lead_rate, dispo, agile, brute, caf_b, bog_sp, nette, caf_n, dailyCodes });
   }
   const minF = fCounts.length>0?Math.min(...fCounts):0;
   const maxF = fCounts.length>0?Math.max(...fCounts):0;
@@ -1620,6 +1620,69 @@ function buildWorkbook(allResults, params, sprintDates, enrichment) {
       writeSumRow("Transverse", subtotal(trans_p, params.velocite_trans||2.0), 'trans');
       for (const team of teamsPresent.filter(t => TRANS_TEAMS.has(t))) {
         writeSumRow(team, subtotal(byTeam[team], params.velocite_trans||2.0), 'trans-sub');
+      }
+    }
+
+    // Spacer
+    rowHeights[R] = 14;
+    R++;
+
+    // ── SYNTHÈSE DÉTAILLÉE (par rôle BA / DEV / QA) ──────────
+    rowHeights[R] = 14;
+    writeMerge(R,1,R,13);
+    writeCell(R,1,"SYNTHÈSE DÉTAILLÉE",'s',{
+      fill:fill(C.navy), font:fnt(FSB,9,C.white),
+      alignment:{horizontal:"center",vertical:"center"}, border:hdrBrd()
+    });
+    fillRow(R,2,13,C.navy);
+    R++;
+
+    // En-têtes synthèse détaillée (mêmes colonnes que synthèse principale)
+    rowHeights[R] = 32;
+    for (let i=0; i<sumHdrs.length; i++) {
+      const col = i+1;
+      const isCaf = (col===10 || col===13);
+      writeCell(R, col, sumHdrs[i], 's', {
+        fill: fill(isCaf ? "1A7A42" : C.navy),
+        font: fnt(FSB, 9, C.white),
+        alignment: AC, border: hdrBrd(),
+      });
+    }
+    R++;
+
+    // Helpers de groupage par rôle
+    const roleGroups = [
+      { key:'BA',  roles: new Set(['BA Lead','BA','Lead BA']) },
+      { key:'DEV', roles: new Set(['DEV Lead','DEV','Lead DEV','Architect','Lead Architect']) },
+      { key:'QA',  roles: new Set(['QA Lead','QA','Lead QA']) },
+    ];
+    const classifyRole = (role) => {
+      const r = (role||'').toUpperCase();
+      if (r.indexOf('BA') >= 0) return 'BA';
+      if (r.indexOf('DEV') >= 0 || r.indexOf('ARCHITECT') >= 0) return 'DEV';
+      if (r.indexOf('QA') >= 0) return 'QA';
+      return null;
+    };
+
+    // Pour chaque équipe présente, écrire le header puis les 3 lignes BA/DEV/QA
+    const writeDetailBlock = (teamName, persons, style) => {
+      const isTrans = TRANS_TEAMS.has(teamName);
+      const isInteg = INTEG_TEAMS.has(teamName);
+      const isConf  = !isTrans && !isInteg;
+      const vel     = isTrans ? (params.velocite_trans||2.0) : isInteg ? params.velocite_integ : params.velocite_conf;
+      const hdrStyle = isTrans ? 'trans' : isInteg ? 'integ' : 'conf';
+      writeSumRow(teamName, subtotal(persons, vel), hdrStyle);
+      for (const rg of roleGroups) {
+        const rolePersons = persons.filter(p => classifyRole(p.role) === rg.key);
+        if (rolePersons.length === 0) continue;
+        const subStyle = isTrans ? 'trans-sub' : isInteg ? 'integ-sub' : 'conf-sub';
+        writeSumRow(rg.key, subtotal(rolePersons, vel), subStyle);
+      }
+    };
+
+    for (const team of teamsPresent) {
+      if (byTeam[team] && byTeam[team].length > 0) {
+        writeDetailBlock(team, byTeam[team]);
       }
     }
 
@@ -2261,6 +2324,7 @@ function openDashboard() {
       teamsPresent: allTeamOrder.filter(t => r.persons.some(p => p.team === t)),
       persons: r.persons.map(p => ({
         name: p.name, team: p.team, role: p.role,
+        alloc: (p.alloc !== undefined) ? p.alloc : 1.0,
         dispo_theo: p.dispo_theo, brute: p.brute,
         bog_sp: p.bog_sp, nette: p.nette, caf_n: p.caf_n,
         dailyCodes: p.dailyCodes || {}
@@ -2346,6 +2410,12 @@ table.gt.collapsed .g3 th:not(.gsk):not(.gn-sp-hdr){display:none}
 .gnn{font-size:11px;font-weight:500;color:#0C1A2E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gnr{font-size:9px;color:#6B7A90}
 .gnf{font-size:10px;font-weight:500;color:#1A7A42;white-space:nowrap}
+.gnf-w{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.gnf-alloc{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:600;line-height:1}
+.gnf-alloc-val{font-family:'DM Mono',monospace}
+.gnf-alloc-pen{background:none;border:none;cursor:pointer;color:#9AA3B0;font-size:10px;padding:0 2px;line-height:1}
+.gnf-alloc-pen:hover{color:#0C447C}
+.gnf-alloc-input{width:46px;font-size:10px;font-family:'DM Mono',monospace;font-weight:600;padding:1px 3px;border:1.5px solid #0C447C;border-radius:3px;color:#0C447C;text-align:center}
 .lb{background:#EDE9FB;color:#3C3489;border-radius:3px;padding:1px 4px;font-size:8px;font-weight:600}
 tr:nth-child(even) .gn{background:#F9FAFB!important}
 .ts td{padding:5px 10px;font-size:9px;font-weight:500;letter-spacing:2px;text-transform:uppercase;border-top:1.5px solid #E8EAED!important}
@@ -2517,11 +2587,24 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .ss-status.yellow{background:#FFF8E1;color:#7B5800}
 .ss-status.green{background:#E6F4EE;color:#1A7A42}
 .ss-status.grey{background:#F4F5F7;color:#6B7A90}
+.ss-status-sel{padding:4px 26px 4px 12px;border-radius:12px;font-size:10px;font-weight:700;border:1.5px solid;cursor:pointer;font-family:inherit;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 8px center;background-size:9px;letter-spacing:.3px}
+.ss-status-sel.red{background-color:#FEECEC;color:#C0392B;border-color:#F5C6C6;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23C0392B' d='M8 11L3 6h10z'/%3E%3C/svg%3E")}
+.ss-status-sel.yellow{background-color:#FFF8E1;color:#7B5800;border-color:#FFE082;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%237B5800' d='M8 11L3 6h10z'/%3E%3C/svg%3E")}
+.ss-status-sel.green{background-color:#E6F4EE;color:#1A7A42;border-color:#A8D5B5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%231A7A42' d='M8 11L3 6h10z'/%3E%3C/svg%3E")}
+.ss-status-sel.grey{background-color:#F4F5F7;color:#6B7A90;border-color:#C8CDD6;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%236B7A90' d='M8 11L3 6h10z'/%3E%3C/svg%3E")}
 .ss-field{display:flex;flex-direction:column;gap:3px}
 .ss-lbl{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#6B7A90}
 .ss-val{font-size:12px;color:#0C1A2E;line-height:1.5}
 .ss-val.mono{font-family:'DM Mono',monospace;font-size:11px}
-.ss-sp-badge{display:inline-block;font-size:14px;font-weight:700;color:#0C447C;background:#E6F1FB;padding:3px 12px;border-radius:6px;font-family:'DM Mono',monospace}
+.ss-sp-badge{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:#0C447C;background:#E6F1FB;padding:3px 8px 3px 12px;border-radius:6px;font-family:'DM Mono',monospace}
+.ss-sp-edit-btn{background:none;border:none;cursor:pointer;color:#0C447C;font-size:12px;padding:0 2px;line-height:1;opacity:.55;transition:opacity .15s}
+.ss-sp-edit-btn:hover{opacity:1}
+.ss-sp-selector{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.ss-sp-fib-btn{padding:5px 9px;border-radius:4px;border:1.5px solid #E8EAED;background:#fff;font-size:11px;font-weight:700;cursor:pointer;color:#6B7A90;font-family:'DM Mono',monospace;transition:all .12s;min-width:30px}
+.ss-sp-fib-btn:hover{border-color:#0C447C;color:#0C447C;background:#F5F9FE}
+.ss-sp-fib-btn.active{background:#0C447C;border-color:#0C447C;color:#fff}
+.ss-sp-cancel{margin-top:6px;padding:4px 12px;border-radius:4px;border:1px solid #C8CDD6;background:#fff;font-size:10px;font-weight:600;cursor:pointer;color:#6B7A90}
+.ss-sp-cancel:hover{background:#F4F5F7;border-color:#6B7A90}
 .ss-link{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:6px;background:#0C1A2E;color:#fff;font-size:11px;font-weight:600;text-decoration:none;transition:background .15s;align-self:flex-start}
 .ss-link:hover{background:#1A2E4A}
 .ss-divider{height:1px;background:#F0F2F5}
@@ -2634,6 +2717,15 @@ function cellCls(code) {
   if (code === 'F') return 'fe';
   return 'ab';
 }
+function getAlloc(si, p) {
+  if (window.ALLOC_OV && window.ALLOC_OV[si] && window.ALLOC_OV[si][p.name] !== undefined) {
+    return window.ALLOC_OV[si][p.name] / 100;
+  }
+  return (p.alloc !== undefined) ? p.alloc : 1.0;
+}
+function hasAllocOv(si, p) {
+  return !!(window.ALLOC_OV && window.ALLOC_OV[si] && window.ALLOC_OV[si][p.name] !== undefined);
+}
 function recompP(si, p) {
   const s = SD[si];
   const pov = OV[si] && OV[si][p.name] || {};
@@ -2647,16 +2739,19 @@ function recompP(si, p) {
   const isLd = p.role && (p.role.toLowerCase().includes('lead') || p.role.toLowerCase().includes('architect'));
   const aff = isLd ? (PR.lr || 0.7) : (PR.nr || 1.0);
   const vel = IT.has(p.team) ? PR.vi : TT.has(p.team) ? (PR.vt||PR.vc) : PR.vc;
-  const dispo = dt * aff;
+  const alloc = getAlloc(si, p);
+  const dispo_theo_adj = dt * alloc;
+  const dispo = dispo_theo_adj * aff;
   const brute = dispo - dispo * (PR.ap || 0.1);
   const caf_b = vel > 0 ? brute / vel : 0;
   const bog_sp = caf_b * (PR.bp || 0.1);
   const nette = brute - bog_sp * vel;
   const caf_n = vel > 0 ? nette / vel : 0;
-  return { dispo_theo: dt, brute: brute, bog_sp: bog_sp, nette: nette, caf_n: caf_n };
+  return { dispo_theo: dispo_theo_adj, brute: brute, bog_sp: bog_sp, nette: nette, caf_n: caf_n };
 }
 function getEff(si, p, field) {
-  if (!OV[si] || !OV[si][p.name]) return p[field];
+  var hasOv = (OV[si] && OV[si][p.name]) || hasAllocOv(si, p);
+  if (!hasOv) return p[field];
   const c = recompP(si, p);
   return c[field];
 }
@@ -2670,6 +2765,41 @@ function toggleGantt() {
 }
 document.addEventListener('click', function(e) {
   if (e.target.closest('[data-action="toggle-gantt"]')) { toggleGantt(); return; }
+  var penBtn = e.target.closest('[data-action="edit-alloc"]');
+  if (penBtn) {
+    e.stopPropagation();
+    var si = parseInt(penBtn.getAttribute('data-si'), 10);
+    var pi = parseInt(penBtn.getAttribute('data-pi'), 10);
+    var sp = SD[si]; if (!sp) return;
+    var p  = sp.persons[pi]; if (!p) return;
+    var wrap = penBtn.parentNode;
+    var curPct = Math.round(getAlloc(si, p) * 100);
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.max = '100'; inp.step = '1';
+    inp.value = curPct;
+    inp.className = 'gnf-alloc-input';
+    wrap.innerHTML = '';
+    wrap.appendChild(inp);
+    inp.focus(); inp.select();
+    var commit = function(save) {
+      var raw = parseInt(inp.value, 10);
+      if (save && !isNaN(raw)) {
+        var v = Math.max(0, Math.min(100, raw));
+        if (!window.ALLOC_OV) window.ALLOC_OV = {};
+        if (!window.ALLOC_OV[si]) window.ALLOC_OV[si] = {};
+        var origPct = Math.round(((p.alloc !== undefined) ? p.alloc : 1.0) * 100);
+        if (v === origPct) { delete window.ALLOC_OV[si][p.name]; }
+        else { window.ALLOC_OV[si][p.name] = v; }
+      }
+      render();
+    };
+    inp.addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(true); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); commit(false); }
+    });
+    inp.addEventListener('blur', function(){ commit(true); });
+    return;
+  }
 });
 function buildHdr(dates) {
   var mg = [], cm = null, mc = 0;
@@ -2776,8 +2906,16 @@ function render() {
       var displayName = p.name.length > 20 ? p.name.slice(0,20) + '…' : p.name;
 
       var dispoTag = '('+num+'/'+den+')';
+      var allocPct = Math.round(getAlloc(curI, p) * 100);
+      var allocOv  = hasAllocOv(curI, p);
+      var allocColor = allocOv ? '#1A7A42' : '#6B7A90';
+      var pIdx = s.persons.indexOf(p);
+      var allocHtml = '<div class="gnf-alloc" data-alloc-si="'+curI+'" data-alloc-pi="'+pIdx+'">'
+        + '<span class="gnf-alloc-val" style="color:'+allocColor+'">'+allocPct+'%</span>'
+        + '<button class="gnf-alloc-pen" title="Modifier affectation" data-action="edit-alloc" data-si="'+curI+'" data-pi="'+pIdx+'">&#9998;</button>'
+        + '</div>';
       // Name cell — no SP here anymore
-      tbody += '<tr><td class="gn"><div class="gnc"><div><div class="gnn" title="'+p.name+'">'+displayName+'</div><div class="gnr">'+p.role+(ld?' <span class="lb">Lead</span>':'')+'</div></div><div class="gnf">'+f1(effCaf)+' SP<span style="font-size:8px;color:#6B7A90;margin-left:3px">('+num+'/'+den+')</span></div></div></td>';
+      tbody += '<tr><td class="gn"><div class="gnc"><div><div class="gnn" title="'+p.name+'">'+displayName+'</div><div class="gnr">'+p.role+(ld?' <span class="lb">Lead</span>':'')+'</div></div><div class="gnf-w"><div class="gnf">'+f1(effCaf)+' SP<span style="font-size:8px;color:#6B7A90;margin-left:3px">('+num+'/'+den+')</span></div>'+allocHtml+'</div></div></td>';
       for (var di=0;di<s.ganttDates.length;di++) {
         var ds = s.ganttDates[di];
         var d = new Date(ds+'T00:00:00Z');
@@ -3562,9 +3700,9 @@ function openStorySidebar(key) {
   var dotColor = st.color==='red'?'#E24B4A':st.color==='yellow'?'#F9A825':st.color==='green'?'#1A7A42':'#C8CDD6';
   body.innerHTML =
     (st.isSpillover ? '<div style="font-size:10px;font-weight:800;color:#C0392B;background:#FCE4E4;padding:4px 10px;border-radius:4px;letter-spacing:1px;margin-bottom:2px">⚠ SPILLOVER</div>' : '') +
-    '<div class="ss-status '+st.color+'"><div style="width:7px;height:7px;border-radius:50%;background:'+dotColor+'"></div>'+st.status+'</div>' +
+    '<div id="ss-status-zone"></div>' +
     '<div class="ss-field"><div class="ss-lbl">Summary</div><div class="ss-val">'+st.summary+'</div></div>' +
-    '<div class="ss-field"><div class="ss-lbl">Story Points</div><div><span class="ss-sp-badge">'+st.sp+' SP</span></div></div>' +
+    '<div class="ss-field"><div class="ss-lbl">Story Points</div><div id="ss-sp-zone"></div></div>' +
     (st.epic?'<div class="ss-field"><div class="ss-lbl">Épopée</div><div class="ss-val mono">'+st.epic+'</div></div>':'') +
     (st.labels?'<div class="ss-field"><div class="ss-lbl">Labels</div><div class="ss-val mono">'+st.labels+'</div></div>':'') +
     (st.created?'<div class="ss-field"><div class="ss-lbl">Créée</div><div class="ss-val mono">'+st.created+'</div></div>':'') +
@@ -3600,11 +3738,81 @@ function openStorySidebar(key) {
       });
     });
   }
+  // \u2500\u2500 Statut zone (T-31) \u2500\u2500
+  var STATUS_MAP = [
+    {label:'Open',                  value:'open',                  color:'red'},
+    {label:'Selected for Analyse',  value:'selected for analyse',  color:'red'},
+    {label:'In Analyze',            value:'in analyze',            color:'yellow'},
+    {label:'Under Review',          value:'under review',          color:'yellow'},
+    {label:'Ready for Development', value:'ready for development', color:'green'},
+    {label:'In Progress',           value:'in progress',           color:'green'},
+    {label:'QA Testing',            value:'qa testing',            color:'green'},
+    {label:'Closed',                value:'closed',                color:'green'}
+  ];
+  function renderStatusZone() {
+    var zone = document.getElementById('ss-status-zone');
+    if (!zone) return;
+    var curVal = (st.status||'').toLowerCase();
+    var matched = STATUS_MAP.filter(function(m){ return m.value === curVal; })[0];
+    var curColor = matched ? matched.color : (st.color || 'grey');
+    var opts = STATUS_MAP.map(function(m){
+      return '<option value="'+m.value+'" data-color="'+m.color+'"'+(m.value===curVal?' selected':'')+'>'+m.label+'</option>';
+    }).join('');
+    if (!matched && st.status) {
+      opts = '<option value="'+curVal+'" data-color="'+curColor+'" selected>'+st.status+'</option>' + opts;
+    }
+    zone.innerHTML = '<select class="ss-status-sel '+curColor+'" id="ss-status-sel">'+opts+'</select>';
+    var sel = document.getElementById('ss-status-sel');
+    sel.addEventListener('change', function(){
+      var opt = sel.options[sel.selectedIndex];
+      var newColor = opt.getAttribute('data-color') || 'grey';
+      var newLabel = opt.textContent;
+      st.status = newLabel;
+      st.color  = newColor;
+      if (!window.STATUS_OVERRIDES) window.STATUS_OVERRIDES = {};
+      window.STATUS_OVERRIDES[st.key] = { status: newLabel, color: newColor };
+      sel.className = 'ss-status-sel ' + newColor;
+      render();
+    });
+  }
+  renderStatusZone();
+  // \u2500\u2500 Story Points zone (T-32) \u2500\u2500
+  var FIB = [0, 0.5, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+  function renderSpZone(editing) {
+    var zone = document.getElementById('ss-sp-zone');
+    if (!zone) return;
+    if (!editing) {
+      zone.innerHTML = '<span class="ss-sp-badge"><span>'+st.sp+' SP</span>'
+        + '<button class="ss-sp-edit-btn" id="ss-sp-pen" title="Modifier">&#9998;</button></span>';
+      var pen = document.getElementById('ss-sp-pen');
+      if (pen) pen.addEventListener('click', function(e){ e.stopPropagation(); renderSpZone(true); });
+    } else {
+      var btns = FIB.map(function(v){
+        return '<button class="ss-sp-fib-btn'+(v===st.sp?' active':'')+'" data-sp-val="'+v+'">'+v+'</button>';
+      }).join('');
+      zone.innerHTML = '<div class="ss-sp-selector">'+btns+'</div>'
+        + '<button class="ss-sp-cancel" id="ss-sp-cancel">Annuler</button>';
+      zone.querySelectorAll('[data-sp-val]').forEach(function(b){
+        b.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          var v = parseFloat(b.getAttribute('data-sp-val'));
+          st.sp = v;
+          if (!window.SP_OVERRIDES) window.SP_OVERRIDES = {};
+          window.SP_OVERRIDES[st.key] = v;
+          renderSpZone(false);
+          render();
+        });
+      });
+      var cancel = document.getElementById('ss-sp-cancel');
+      if (cancel) cancel.addEventListener('click', function(ev){ ev.stopPropagation(); renderSpZone(false); });
+    }
+  }
+  renderSpZone(false);
   // ── Équipe zone ──
   function renderTeamZone() {
     var zone = document.getElementById('ss-team-zone');
     if (!zone) return;
-    var teams = ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'];
+    var teams = (typeof AT !== 'undefined' && AT && AT.length > 0) ? AT.slice() : ['CONF-1','CONF-2','CONF-3','INTEG 4','INTEG 5'];
     var opts = teams.map(function(t) {
       return '<option value="'+t+'"'+(t===st.team?' selected':'')+'>'+t+'</option>';
     }).join('');
@@ -4049,7 +4257,7 @@ render();`;
 
     + '<button class="eb" onclick="openExcelFinal()" style="background:rgba(26,122,66,.15);border-color:rgba(26,122,66,.4)">&#128202; Excel final</button>'
     + '<button class="eb" onclick="openRapport()" style="background:rgba(201,168,76,.15);border-color:rgba(201,168,76,.4)">&#128203; Rapport Sprint</button>'
-    + '<span style="font-family:DM Mono,monospace;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:1px">v2.4.0 · 2026</span></div></div>'
+    + '<span style="font-family:DM Mono,monospace;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:1px">v2.33.3 · 2026</span></div></div>'
     + '<div class="sb">' + tabsH + '</div>'
     + '<div class="fb"><span class="fl">Équipes</span>' + chipsH
     + '<div class="fs"></div><button class="ba" onclick="selAll()">Tout sélectionner</button>'
