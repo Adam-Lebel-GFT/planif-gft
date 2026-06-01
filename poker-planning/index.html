@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Planning — Maquette · Agile Toolkit</title>
+<meta name="description" content="Maquette statique non fonctionnelle de l'outil de planning poker.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ── Bandeau maquette (discret, tout en haut) ─────────────── */
+.mockup-banner {
+  background: #EAF1F8;
+  border-bottom: 1px solid rgba(12, 68, 124, .15);
+  color: var(--accent);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 7px 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.mockup-banner::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* ── Topbar session ───────────────────────────────────────── */
+.pk-topbar {
+  background: var(--navy);
+  height: 60px;
+  display: flex; align-items: center; gap: 16px;
+  padding-inline: clamp(16px, 4vw, 40px);
+}
+.pk-back {
+  color: rgba(255, 255, 255, .7); font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.pk-back:hover { color: var(--white); text-decoration: none; }
+.pk-sep { width: 1px; height: 24px; background: rgba(255, 255, 255, .16); flex-shrink: 0; }
+.pk-session { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pk-session .name { color: var(--white); font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-session .room { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.pk-topbar .spacer { margin-left: auto; }
+
+/* ── Plateau ──────────────────────────────────────────────── */
+.board {
+  display: grid; grid-template-columns: 1fr;
+  gap: clamp(16px, 2.4vw, 24px);
+  padding-block: clamp(20px, 4vw, 36px) clamp(36px, 7vw, 64px);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .board { grid-template-columns: minmax(0, 1fr) 304px; }
+  .sidebar { position: sticky; top: 20px; }
+}
+
+.panel-label {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.panel-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── Carte story ──────────────────────────────────────────── */
+.story { padding: 24px; }
+.story .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.chip {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 9px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.chip .key { font-family: var(--font-mono); color: var(--accent); letter-spacing: .5px; }
+.story h1 { font-size: clamp(18px, 3vw, 23px); font-weight: 800; letter-spacing: -.4px; color: var(--navy); line-height: 1.25; }
+.story .desc { margin-top: 12px; font-size: 14px; line-height: 1.65; color: var(--muted); }
+.story .desc strong { color: var(--text); font-weight: 600; }
+
+/* ── Deck de cartes poker ─────────────────────────────────── */
+.deck-wrap { border: 0; margin-top: clamp(16px, 2.5vw, 24px); }
+.deck { display: flex; flex-wrap: wrap; gap: 10px; }
+.card-radio { position: absolute; opacity: 0; width: 0; height: 0; }
+.pcard {
+  width: 58px; height: 80px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 11px;
+  font-size: 19px; font-weight: 800; color: var(--navy);
+  cursor: pointer; user-select: none; box-shadow: var(--shadow);
+  transition: var(--ease);
+}
+.pcard:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--shadow-hover); }
+.card-radio:checked + .pcard {
+  background: var(--accent); border-color: var(--accent); color: var(--white);
+  transform: translateY(-7px); box-shadow: var(--shadow-hover);
+}
+.card-radio:focus-visible + .pcard { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pcard.special { font-size: 22px; }
+
+/* ── Ligne révélation ─────────────────────────────────────── */
+.reveal-row {
+  margin-top: clamp(18px, 3vw, 26px);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
+}
+.reveal-row .hint { font-size: 12.5px; color: var(--muted); }
+.reveal-row .hint b { color: var(--text); font-weight: 700; }
+
+/* ── Résultats figés ──────────────────────────────────────── */
+.results { padding: 22px 24px; margin-top: clamp(16px, 2.5vw, 24px); }
+.results-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.results-head h2 { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -.2px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+.stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.stat .v { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; letter-spacing: -1px; }
+.stat .v.ok { color: var(--green); }
+.stat .l { margin-top: 6px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+
+.dist { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
+.dist-row { display: flex; align-items: center; gap: 12px; }
+.dist-row .pt { width: 22px; text-align: right; font-weight: 800; color: var(--navy); font-size: 13px; flex-shrink: 0; }
+.dist-row .bar { flex: 1; height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.dist-row .bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.dist-row.peak .bar span { background: var(--green); }
+.dist-row .n { width: 64px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+
+/* ── Sidebar participants ─────────────────────────────────── */
+.sidebar { padding: 20px; }
+.side-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+.side-head h2 { font-size: 14px; font-weight: 800; color: var(--navy); }
+.side-head .count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.ppl { display: flex; flex-direction: column; gap: 4px; }
+.person { display: flex; align-items: center; gap: 11px; padding: 8px 6px; border-radius: 8px; }
+.person:hover { background: var(--bg); }
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--navy-2); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+}
+.person .nm { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.pk-footer {
+  border-top: 1px solid var(--border);
+  padding: 20px 0 40px;
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--muted);
+}
+</style>
+</head>
+<body class="tk">
+
+  <div class="mockup-banner">Maquette non fonctionnelle — aperçu visuel uniquement</div>
+
+  <header class="pk-topbar">
+    <a class="pk-back" href="../"><span aria-hidden="true">←</span> Outils</a>
+    <span class="pk-sep" aria-hidden="true"></span>
+    <div class="pk-session">
+      <span class="name">Sprint 58 — Estimation</span>
+      <span class="room">Salle&nbsp;· PK-58-EST</span>
+    </div>
+    <span class="spacer"></span>
+    <button class="tk-btn tk-btn--on-dark" type="button" tabindex="-1">＋ Inviter</button>
+  </header>
+
+  <main class="tk-container">
+    <div class="board">
+
+      <!-- ── Colonne principale ── -->
+      <section>
+        <p class="panel-label">Story en cours d'estimation</p>
+
+        <article class="story tk-card">
+          <div class="chips">
+            <span class="chip"><span class="key">SCRUM-1287</span></span>
+            <span class="chip">📘 Story</span>
+            <span class="chip">🔺 Priorité haute</span>
+            <span class="chip">Sprint 58</span>
+          </div>
+          <h1>Export PDF du rapport de sprint planning</h1>
+          <p class="desc">
+            <strong>En tant que</strong> Scrum Master, <strong>je veux</strong> exporter
+            le rapport de fin de planning au format PDF <strong>afin de</strong> le partager
+            avec les stakeholders qui n'ont pas accès à l'outil. Le PDF doit reprendre la
+            synthèse par équipe, le Gantt des présences et la liste des stories engagées.
+          </p>
+        </article>
+
+        <fieldset class="deck-wrap">
+          <legend class="sr-only">Votre estimation</legend>
+          <div class="deck">
+            <input type="radio" name="vote" id="v1"  class="card-radio"><label for="v1"  class="pcard">1</label>
+            <input type="radio" name="vote" id="v2"  class="card-radio"><label for="v2"  class="pcard">2</label>
+            <input type="radio" name="vote" id="v3"  class="card-radio"><label for="v3"  class="pcard">3</label>
+            <input type="radio" name="vote" id="v5"  class="card-radio" checked><label for="v5"  class="pcard">5</label>
+            <input type="radio" name="vote" id="v8"  class="card-radio"><label for="v8"  class="pcard">8</label>
+            <input type="radio" name="vote" id="v13" class="card-radio"><label for="v13" class="pcard">13</label>
+            <input type="radio" name="vote" id="v21" class="card-radio"><label for="v21" class="pcard">21</label>
+            <input type="radio" name="vote" id="vq"  class="card-radio"><label for="vq"  class="pcard special">?</label>
+            <input type="radio" name="vote" id="vc"  class="card-radio"><label for="vc"  class="pcard special">☕</label>
+          </div>
+        </fieldset>
+
+        <div class="reveal-row">
+          <button class="tk-btn tk-btn--accent" type="button" tabindex="-1">👁 Révéler les votes</button>
+          <span class="hint"><b>4</b> votes sur <b>6</b> — en attente de 2 participants…</span>
+        </div>
+
+        <!-- Résultats figés (illustration) -->
+        <section class="results tk-card" aria-label="Résultats de l'estimation (exemple figé)">
+          <div class="results-head">
+            <h2>Résultats du tour</h2>
+            <span class="tk-badge tk-badge--ok tk-badge--dot">Consensus proche</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="v">5.4</div><div class="l">Moyenne</div></div>
+            <div class="stat"><div class="v">5</div><div class="l">Médiane</div></div>
+            <div class="stat"><div class="v ok">82%</div><div class="l">Consensus</div></div>
+            <div class="stat"><div class="v">3–8</div><div class="l">Étendue</div></div>
+          </div>
+          <div class="dist">
+            <div class="dist-row">
+              <span class="pt">3</span><div class="bar"><span style="width:18%"></span></div><span class="n">1 vote</span>
+            </div>
+            <div class="dist-row peak">
+              <span class="pt">5</span><div class="bar"><span style="width:78%"></span></div><span class="n">6 votes</span>
+            </div>
+            <div class="dist-row">
+              <span class="pt">8</span><div class="bar"><span style="width:30%"></span></div><span class="n">2 votes</span>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ── Sidebar participants ── -->
+      <aside class="sidebar tk-card">
+        <div class="side-head">
+          <h2>Participants</h2>
+          <span class="count">4 / 6 ont voté</span>
+        </div>
+        <div class="ppl">
+          <div class="person">
+            <span class="avatar" aria-hidden="true">SL</span>
+            <span class="nm">Sarah Lemoine</span>
+            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
+          </div>
+          <div class="person">
+            <span class="avatar" aria-hidden="true">MD</span>
+            <span class="nm">Marc Dubois</span>
+            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
+          </div>
+          <div class="person">
+            <span class="avatar" aria-hidden="true">IK</span>
+            <span class="nm">Inès Khelifi</span>
+            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
+          </div>
+          <div class="person">
+            <span class="avatar" aria-hidden="true">TR</span>
+            <span class="nm">Thomas Roy</span>
+            <span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>
+          </div>
+          <div class="person">
+            <span class="avatar" aria-hidden="true">LF</span>
+            <span class="nm">Léa Fontaine</span>
+            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
+          </div>
+          <div class="person">
+            <span class="avatar" aria-hidden="true">DN</span>
+            <span class="nm">David Nguyen</span>
+            <span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <footer class="pk-footer">
+      <a href="../">← Retour aux outils</a>
+      <span>Maquette statique — aucune donnée réelle, aucune connexion.</span>
+    </footer>
+
+  </main>
+
+</body>
+</html>
