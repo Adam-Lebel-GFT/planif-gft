@@ -694,6 +694,22 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 .sidebar { width: min(280px, 90vw); }
 /* Modale (Tâche 5) : largeur min(90vw, …) — jamais de débordement */
 .pm-box { width: min(92vw, 640px); max-width: none; }
+
+/* ═══ Responsive — ajustements par breakpoint (Tâche 6) ═══ */
+/* Mobile (<640px) : paddings réduits, empilement, polices fluides. */
+@media (max-width: 640px) {
+  .topbar { padding: 0 16px; }
+  .topbar-version { display: none; }
+  .hero { padding: 20px 16px; }
+  .hero-title { font-size: clamp(20px, 5.5vw, 26px); }
+  footer { padding: 16px; flex-wrap: wrap; gap: 8px; }
+  /* Cartes de fichiers empilées en une colonne */
+  .files-grid { grid-template-columns: 1fr; }
+  /* Carte de résultats : les boutons passent à la ligne au lieu de déborder */
+  .result-card { flex-wrap: wrap; }
+  .result-card .dashboard-btn,
+  .result-card .download-btn { flex: 1 1 auto; justify-content: center; }
+}
 </style>
 </head>
 <body>
@@ -2666,7 +2682,35 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .wb-cols::-webkit-scrollbar-track{background:#F4F5F7}
 /* ── Modales (Tâche 5) : largeur min(90vw, …) -> jamais de débordement + scroll interne ── */
 .rapport-box{min-width:0;width:min(92vw,440px);max-height:90vh;overflow-y:auto}
-.pm-box{width:min(92vw,600px);max-width:none;max-height:85vh}`;
+.pm-box{width:min(92vw,600px);max-width:none;max-height:85vh}
+/* ═══ Responsive — ajustements par breakpoint (Tâche 6) ═══ */
+/* Tablette + mobile (≤1024px) : topbar qui s'enroule, barres non collantes,
+   KPI sur 2 colonnes, et les 3 panneaux s'empilent verticalement. */
+@media (max-width:1024px){
+  .tb{height:auto;min-height:52px;flex-wrap:wrap;padding:8px 14px;row-gap:6px;position:static}
+  .tb-tool{display:none}
+  .tb-r>span{display:none}
+  .sb,.fb{position:static;top:auto}
+  .kr{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #kpi-banner{padding:10px 14px!important}
+  .panels3{flex-direction:column;min-height:0;overflow:visible}
+  .panel-sep{display:none}
+  .panel{flex:0 0 auto!important;width:100%!important;max-width:none!important;min-width:0!important}
+  .panel-content{max-height:80vh}
+  /* le « collapse » devient un accordéon vertical (pleine largeur) */
+  .panel.collapsed{flex:0 0 auto!important;width:100%!important;max-width:none!important;min-width:0!important;min-height:0!important}
+  .panel.collapsed .panel-hdr{flex-direction:row!important;height:auto!important;justify-content:space-between!important;align-items:center!important;padding:8px 12px!important;gap:8px!important}
+  .panel.collapsed .panel-title{writing-mode:horizontal-tb!important;text-orientation:initial!important;transform:none!important;max-height:none!important;overflow:visible!important}
+  .split{grid-template-columns:1fr}
+}
+/* Mobile (≤640px) : paddings réduits, barre du board qui s'enroule,
+   tailles de police ajustées via clamp(). */
+@media (max-width:640px){
+  .sb,.fb{padding-left:14px;padding-right:14px}
+  .wb-bar{flex-wrap:wrap;height:auto;padding:10px 12px;gap:8px 12px}
+  .kr{gap:8px}
+  .kv{font-size:clamp(18px,5vw,22px)}
+}`;
 
   // Build tabs HTML
   let tabsH = '';
