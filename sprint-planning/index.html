@@ -681,6 +681,17 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 .pm-acts{display:flex;gap:8px;justify-content:flex-end}
 .pm-copy{padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 .pm-close{padding:9px 18px;background:#fff;color:var(--muted);border:1.5px solid var(--grey2);border-radius:6px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+
+/* ═══════════════════════════════════════════════════════════
+   Responsive — conteneurs fluides (Tâche 3)
+   Surcharges placées en fin de feuille : au-delà de ~1000px de
+   viewport elles valent exactement les dimensions historiques,
+   donc le rendu desktop reste inchangé.
+   ═══════════════════════════════════════════════════════════ */
+/* Conteneur racine : centré, max-width raisonnable, padding fluide */
+.main { width: 100%; padding: clamp(20px, 3.4vw, 32px) clamp(14px, 3vw, 24px) 80px; }
+/* Panneau latéral (drawer) : ne déborde jamais sur petit écran */
+.sidebar { width: min(280px, 90vw); }
 </style>
 </head>
 <body>
@@ -2634,7 +2645,9 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .pb.pF{background:#EDE9FB;color:#3C3489;border-color:rgba(60,52,137,.3)}
 .pb.pX{background:#F4F5F7;color:#6B7A90}
 .rb{display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:4px;border:1.5px solid #F9A825;background:rgba(249,168,37,.15);color:#F9A825;font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
-.eb{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:4px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;cursor:pointer}`;
+.eb{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:4px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
+/* ── Responsive — conteneur fluide (Tâche 3) : le drawer ne déborde jamais ── */
+.story-sidebar{width:min(390px,92vw)}`;
 
   // Build tabs HTML
   let tabsH = '';
