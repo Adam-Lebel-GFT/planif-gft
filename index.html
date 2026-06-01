@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agile Toolkit — Lanceur d'outils</title>
+<meta name="description" content="Suite d'outils web pour les cérémonies agiles : sprint planning, planning poker, et plus à venir.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+/* ── Topbar ─────────────────────────────────────────────── */
+.lnk-topbar {
+  background: var(--navy);
+  height: 56px;
+  display: flex; align-items: center; gap: 12px;
+  padding-inline: clamp(16px, 4vw, 40px);
+}
+.lnk-logo { display: flex; align-items: center; gap: 10px; }
+.lnk-logo .sq { width: 11px; height: 11px; background: var(--accent); flex-shrink: 0; }
+.lnk-logo .wm {
+  font-weight: 800; font-size: 17px; color: var(--white);
+  letter-spacing: -.4px;
+}
+.lnk-topbar .tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255, 255, 255, .5);
+}
+
+/* ── Hero ───────────────────────────────────────────────── */
+.hero { padding: clamp(40px, 7vw, 76px) 0 clamp(26px, 4vw, 40px); }
+.hero h1 {
+  margin-top: 16px;
+  font-size: clamp(30px, 5.2vw, 46px);
+  font-weight: 800; letter-spacing: -1.2px; line-height: 1.07;
+  color: var(--navy);
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .sub {
+  margin-top: 16px; max-width: 580px;
+  font-size: clamp(14px, 2.2vw, 17px); line-height: 1.6; color: var(--muted);
+}
+
+/* ── Grille d'outils ────────────────────────────────────── */
+.tools {
+  display: grid;
+  /* auto-fit + min() : 1 à N colonnes, jamais de débordement < 280px */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: clamp(16px, 2.4vw, 22px);
+  padding-bottom: clamp(40px, 8vw, 80px);
+}
+
+.tool {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 26px 24px; min-height: 232px;
+  text-decoration: none; color: inherit;
+  position: relative; overflow: hidden;
+}
+.tool:hover { text-decoration: none; }
+/* barre d'accent latérale = statut */
+.tool::after {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--border);
+  border-radius: 3px 0 0 3px; transition: var(--ease);
+}
+.tool.is-available::after { background: var(--green); }
+.tool.is-preview::after   { background: var(--accent); }
+
+.tool-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tool-icon {
+  width: 50px; height: 50px; flex-shrink: 0;
+  border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; line-height: 1;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.tool.is-available .tool-icon { background: var(--green-bg); border-color: rgba(26, 122, 66, .2); }
+.tool.is-preview   .tool-icon { background: #EAF1F8; border-color: rgba(12, 68, 124, .18); }
+
+.tool h2 {
+  font-size: 19px; font-weight: 800; letter-spacing: -.3px;
+  color: var(--navy); line-height: 1.25;
+}
+.tool p { flex: 1; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+
+.tool-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 700; letter-spacing: .2px; color: var(--accent);
+}
+.tool-cta .arw { transition: transform .18s ease; }
+.tool:hover .tool-cta .arw { transform: translateX(4px); }
+
+/* ── Carte fantôme (extensibilité) ──────────────────────── */
+.tool--ghost {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-2);
+  background: transparent; box-shadow: none;
+  color: var(--muted); justify-content: flex-start;
+}
+.tool--ghost::after { display: none; }
+.tool--ghost .tool-icon { background: transparent; border-style: dashed; color: var(--muted); }
+.tool--ghost h2 { color: var(--muted); font-weight: 700; }
+
+/* ── Footer ─────────────────────────────────────────────── */
+.lnk-footer {
+  border-top: 1px solid var(--border);
+  padding: 22px 0 40px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px;
+  align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--muted);
+}
+.lnk-footer .mono { font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; font-size: 10px; }
+</style>
+</head>
+<body class="tk">
+
+  <header class="lnk-topbar">
+    <a class="lnk-logo" href="./" aria-label="Agile Toolkit — accueil">
+      <span class="sq" aria-hidden="true"></span>
+      <span class="wm">Agile Toolkit</span>
+    </a>
+    <span class="tag">Plateforme&nbsp;d'outils</span>
+  </header>
+
+  <main class="tk-container">
+
+    <section class="hero">
+      <span class="tk-eyebrow">Suite&nbsp;agile</span>
+      <h1>Vos cérémonies agiles,<br><em>sans la corvée Excel.</em></h1>
+      <p class="sub">
+        Une collection d'outils web autonomes pour les Scrum Masters, RTE et
+        coachs. Choisissez un outil pour commencer.
+      </p>
+    </section>
+
+    <section class="tools" aria-label="Outils disponibles">
+
+      <!-- Outil 1 : Sprint Planning (disponible) -->
+      <a class="tool tk-card tk-card--hover is-available" href="./sprint-planning/">
+        <div class="tool-top">
+          <span class="tool-icon" aria-hidden="true">📊</span>
+          <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
+        </div>
+        <h2>Sprint Planning</h2>
+        <p>
+          Calculez la capacité réelle de vos équipes — disponibilités, raffinage,
+          support et CAF nette — puis assignez vos stories sur un board interactif.
+        </p>
+        <span class="tool-cta">Ouvrir l'outil <span class="arw">→</span></span>
+      </a>
+
+      <!-- Outil 2 : Poker Planning (maquette) -->
+      <a class="tool tk-card tk-card--hover is-preview" href="./poker-planning/">
+        <div class="tool-top">
+          <span class="tool-icon" aria-hidden="true">🃏</span>
+          <span class="tk-badge tk-badge--preview">Aperçu&nbsp;· Maquette</span>
+        </div>
+        <h2>Poker Planning</h2>
+        <p>
+          Estimez vos stories en équipe : votes simultanés, révélation en un clic,
+          moyenne et consensus visuel. Aperçu de l'interface à venir.
+        </p>
+        <span class="tool-cta">Voir la maquette <span class="arw">→</span></span>
+      </a>
+
+      <!-- Carte fantôme : montre que la grille accueille d'autres outils -->
+      <div class="tool tool--ghost" aria-hidden="true">
+        <div class="tool-top">
+          <span class="tool-icon">＋</span>
+        </div>
+        <h2>D'autres outils arrivent</h2>
+        <p>Rétrospectives, suivi de vélocité, météo d'équipe… La grille s'étend ici.</p>
+      </div>
+
+    </section>
+
+    <footer class="lnk-footer">
+      <span>Plateforme interne — outils de démonstration.</span>
+      <span class="mono">Agile&nbsp;Toolkit · v0.1</span>
+    </footer>
+
+  </main>
+
+</body>
+</html>
