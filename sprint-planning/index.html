@@ -692,6 +692,8 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 .main { width: 100%; padding: clamp(20px, 3.4vw, 32px) clamp(14px, 3vw, 24px) 80px; }
 /* Panneau latéral (drawer) : ne déborde jamais sur petit écran */
 .sidebar { width: min(280px, 90vw); }
+/* Modale (Tâche 5) : largeur min(90vw, …) — jamais de débordement */
+.pm-box { width: min(92vw, 640px); max-width: none; }
 </style>
 </head>
 <body>
@@ -2656,7 +2658,15 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .gs::-webkit-scrollbar{height:9px;width:9px}
 .gs::-webkit-scrollbar-thumb{background:#C8CDD6;border-radius:5px}
 .gs::-webkit-scrollbar-thumb:hover{background:#9AA3B0}
-.gs::-webkit-scrollbar-track{background:#F4F5F7}`;
+.gs::-webkit-scrollbar-track{background:#F4F5F7}
+/* ── Board d'assignation (Tâche 5) : colonnes kanban, défilement horizontal propre ── */
+.wb-cols{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#C8CDD6 #F4F5F7}
+.wb-cols::-webkit-scrollbar{height:9px}
+.wb-cols::-webkit-scrollbar-thumb{background:#C8CDD6;border-radius:5px}
+.wb-cols::-webkit-scrollbar-track{background:#F4F5F7}
+/* ── Modales (Tâche 5) : largeur min(90vw, …) -> jamais de débordement + scroll interne ── */
+.rapport-box{min-width:0;width:min(92vw,440px);max-height:90vh;overflow-y:auto}
+.pm-box{width:min(92vw,600px);max-width:none;max-height:85vh}`;
 
   // Build tabs HTML
   let tabsH = '';
