@@ -2647,7 +2647,16 @@ tr:nth-child(even) .gn{background:#F9FAFB!important}
 .rb{display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:4px;border:1.5px solid #F9A825;background:rgba(249,168,37,.15);color:#F9A825;font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
 .eb{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:4px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
 /* ── Responsive — conteneur fluide (Tâche 3) : le drawer ne déborde jamais ── */
-.story-sidebar{width:min(390px,92vw)}`;
+.story-sidebar{width:min(390px,92vw)}
+/* ── Gantt (Tâche 4) : défilement horizontal propre et confiné ──
+   .gs porte déjà overflow-x:auto et .gn (1re colonne) est sticky ;
+   on ajoute le momentum tactile, on empêche le scroll de se propager
+   à la page entière, et on affine la barre de défilement. */
+.gs{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#C8CDD6 #F4F5F7}
+.gs::-webkit-scrollbar{height:9px;width:9px}
+.gs::-webkit-scrollbar-thumb{background:#C8CDD6;border-radius:5px}
+.gs::-webkit-scrollbar-thumb:hover{background:#9AA3B0}
+.gs::-webkit-scrollbar-track{background:#F4F5F7}`;
 
   // Build tabs HTML
   let tabsH = '';
