@@ -42,6 +42,24 @@
   --shadow:        0 1px 3px rgba(12, 26, 46, .05);
   --shadow-hover:  0 8px 28px rgba(12, 26, 46, .10);
   --ease:      all .18s ease;
+
+  /* ── Échelle d'espacement ──────────────────────────────── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  40px;
+
+  /* ── Points de rupture (breakpoints) ────────────────────
+     Référence partagée pour les media queries du toolkit :
+       • mobile   : < 640px
+       • tablette : 640px – 1024px
+       • desktop  : > 1024px
+     CSS n'autorise pas une variable custom dans une condition
+     @media : ces valeurs sont donc dupliquées dans les @media et
+     doivent rester synchronisées avec celles-ci. */
+  --bp-mobile: 640px;
+  --bp-tablet: 1024px;
 }
 
 /* ── Base (scopée à .tk) ──────────────────────────────────── */
