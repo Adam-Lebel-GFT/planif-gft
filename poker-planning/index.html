@@ -3,59 +3,152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Poker Planning — Maquette · Agile Toolkit</title>
-<meta name="description" content="Maquette statique non fonctionnelle de l'outil de planning poker.">
+<title>Poker Planning — Agile Toolkit</title>
+<meta name="description" content="Prototype fonctionnel (Mode A — animateur) de l'outil de planning poker.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/theme.css">
 <style>
+/* ════════════════════════════════════════════════════════════
+   TOKENS — reconstruits depuis la maquette (assets/theme.css
+   non fourni). Remplacer ce bloc :root par le theme officiel
+   le jour où il arrive : tout le fichier suivra.
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --navy:    #0C1A2E;
+  --navy-2:  #1A2E4A;
+  --accent:  #0C447C;
+  --accent-2:#0E5396;
+  --green:   #0D7A4E;
+  --green-bg:#E6F4EE;
+  --amber:   #9A5B0B;
+  --amber-bg:#FCF1E0;
+  --red:     #B03A2E;
+  --red-bg:  #FBEAE8;
+  --bg:      #F4F6F9;
+  --border:  #E3E8F0;
+  --muted:   #5E6B7E;
+  --text:    #1C2A3A;
+  --white:   #FFFFFF;
+  --shadow:       0 1px 2px rgba(12,26,46,.05), 0 4px 14px rgba(12,26,46,.06);
+  --shadow-hover: 0 10px 28px rgba(12,26,46,.16);
+  --ease: all .18s ease;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+body.tk {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Manrope', sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
+}
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+[hidden] { display: none !important; }
 
-/* ── Bandeau maquette (discret, tout en haut) ─────────────── */
-.mockup-banner {
-  background: #EAF1F8;
-  border-bottom: 1px solid rgba(12, 68, 124, .15);
-  color: var(--accent);
+/* ── Primitives toolkit ─────────────────────────────────────── */
+.tk-container { max-width: 1100px; margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); }
+
+.tk-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.tk-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 18px;
+  border: 1.5px solid var(--border); border-radius: 9px;
+  background: var(--white); color: var(--navy);
+  font-size: 13px; font-weight: 700; letter-spacing: .1px;
+  cursor: pointer; transition: var(--ease); white-space: nowrap;
+}
+.tk-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tk-btn--accent { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.tk-btn--accent:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--white); }
+.tk-btn--ghost { background: transparent; }
+.tk-btn--on-dark {
+  background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--white);
+}
+.tk-btn--on-dark:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); color: var(--white); }
+.tk-btn[disabled] { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+.tk-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  white-space: nowrap;
+}
+.tk-badge--dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.tk-badge--ok    { background: var(--green-bg); border-color: rgba(13,122,78,.25);  color: var(--green); }
+.tk-badge--warn  { background: var(--amber-bg); border-color: rgba(154,91,11,.25);  color: var(--amber); }
+.tk-badge--danger{ background: var(--red-bg);   border-color: rgba(176,58,46,.25);  color: var(--red); }
+.tk-badge--muted { background: var(--bg); }
+
+/* ── Bandeau statut ─────────────────────────────────────────── */
+.proto-banner {
+  background: var(--green-bg);
+  border-bottom: 1px solid rgba(13,122,78,.18);
+  color: var(--green);
   text-align: center;
   font-family: var(--font-mono);
   font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
   padding: 7px 16px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.mockup-banner::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.proto-banner::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-/* ── Topbar session ───────────────────────────────────────── */
+/* ── Topbar session ─────────────────────────────────────────── */
 .pk-topbar {
   background: var(--navy);
-  height: 60px;
+  min-height: 60px;
   display: flex; align-items: center; gap: 16px;
-  padding-inline: clamp(16px, 4vw, 40px);
+  padding: 8px clamp(16px, 4vw, 40px);
 }
 .pk-back {
-  color: rgba(255, 255, 255, .7); font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,.7); font-size: 13px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
-.pk-back:hover { color: var(--white); text-decoration: none; }
-.pk-sep { width: 1px; height: 24px; background: rgba(255, 255, 255, .16); flex-shrink: 0; }
+.pk-back:hover { color: var(--white); }
+.pk-sep { width: 1px; height: 24px; background: rgba(255,255,255,.16); flex-shrink: 0; }
 .pk-session { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pk-session .name { color: var(--white); font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1.1;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pk-session .room { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.pk-session .name {
+  color: var(--white); font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pk-session .room {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: rgba(255,255,255,.5);
+}
 .pk-topbar .spacer { margin-left: auto; }
+.tb-mode {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.45); margin-right: 12px; white-space: nowrap;
+}
+@media (max-width: 640px) { .tb-mode { display: none; } }
 
-/* ── Plateau ──────────────────────────────────────────────── */
+/* ── Plateau ────────────────────────────────────────────────── */
 .board {
   display: grid; grid-template-columns: 1fr;
   gap: clamp(16px, 2.4vw, 24px);
-  padding-block: clamp(20px, 4vw, 36px) clamp(36px, 7vw, 64px);
+  padding-block: clamp(20px, 4vw, 36px) clamp(28px, 5vw, 48px);
   align-items: start;
 }
 @media (min-width: 900px) {
   .board { grid-template-columns: minmax(0, 1fr) 304px; }
-  .sidebar { position: sticky; top: 20px; }
+  .sidebar-sticky { position: sticky; top: 20px; }
 }
 
 .panel-label {
@@ -65,7 +158,7 @@
 }
 .panel-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-/* ── Carte story ──────────────────────────────────────────── */
+/* ── Carte story ────────────────────────────────────────────── */
 .story { padding: 24px; }
 .story .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
@@ -75,14 +168,40 @@
   display: inline-flex; align-items: center; gap: 6px;
 }
 .chip .key { font-family: var(--font-mono); color: var(--accent); letter-spacing: .5px; }
-.story h1 { font-size: clamp(18px, 3vw, 23px); font-weight: 800; letter-spacing: -.4px; color: var(--navy); line-height: 1.25; }
+.chip--done { background: var(--green-bg); border-color: rgba(13,122,78,.25); color: var(--green); }
+.story h1 {
+  font-size: clamp(18px, 3vw, 23px); font-weight: 800;
+  letter-spacing: -.4px; color: var(--navy); line-height: 1.25;
+}
 .story .desc { margin-top: 12px; font-size: 14px; line-height: 1.65; color: var(--muted); }
 .story .desc strong { color: var(--text); font-weight: 600; }
+.story .desc.empty { font-style: italic; }
 
-/* ── Deck de cartes poker ─────────────────────────────────── */
-.deck-wrap { border: 0; margin-top: clamp(16px, 2.5vw, 24px); }
+/* ── Tour de vote (Mode A) ──────────────────────────────────── */
+.turn {
+  margin-top: clamp(16px, 2.5vw, 22px);
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  background: #EAF1F8; border: 1px solid rgba(12,68,124,.18); border-radius: 12px;
+}
+.turn .txt { min-width: 0; }
+.turn .who { font-size: 14px; font-weight: 700; color: var(--navy); }
+.turn .who b { color: var(--accent); }
+.turn .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.turn.allset { background: var(--green-bg); border-color: rgba(13,122,78,.22); }
+.turn.allset .who { color: var(--green); }
+
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--navy-2); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+}
+.turn .avatar { width: 38px; height: 38px; background: var(--accent); }
+
+/* ── Deck de cartes ─────────────────────────────────────────── */
+.deck-wrap { margin-top: clamp(14px, 2.2vw, 20px); }
 .deck { display: flex; flex-wrap: wrap; gap: 10px; }
-.card-radio { position: absolute; opacity: 0; width: 0; height: 0; }
 .pcard {
   width: 58px; height: 80px;
   display: flex; align-items: center; justify-content: center;
@@ -92,22 +211,25 @@
   transition: var(--ease);
 }
 .pcard:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--shadow-hover); }
-.card-radio:checked + .pcard {
-  background: var(--accent); border-color: var(--accent); color: var(--white);
-  transform: translateY(-7px); box-shadow: var(--shadow-hover);
-}
-.card-radio:focus-visible + .pcard { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pcard:active { transform: translateY(-2px) scale(.97); }
 .pcard.special { font-size: 22px; }
+.pcard[disabled] { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.pcard[disabled]:hover { transform: none; border-color: var(--border); }
 
-/* ── Ligne révélation ─────────────────────────────────────── */
+/* ── Ligne révélation ───────────────────────────────────────── */
 .reveal-row {
   margin-top: clamp(18px, 3vw, 26px);
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
 }
 .reveal-row .hint { font-size: 12.5px; color: var(--muted); }
 .reveal-row .hint b { color: var(--text); font-weight: 700; }
+.btn-pulse { animation: pulse 1.6s ease infinite; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(12,68,124,.35); }
+  55%      { box-shadow: 0 0 0 10px rgba(12,68,124,0); }
+}
 
-/* ── Résultats figés ──────────────────────────────────────── */
+/* ── Résultats ──────────────────────────────────────────────── */
 .results { padding: 22px 24px; margin-top: clamp(16px, 2.5vw, 24px); }
 .results-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .results-head h2 { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -.2px; }
@@ -115,174 +237,733 @@
 .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
 .stat .v { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; letter-spacing: -1px; }
 .stat .v.ok { color: var(--green); }
+.stat .v.warn { color: var(--amber); }
+.stat .v.danger { color: var(--red); }
 .stat .l { margin-top: 6px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 
 .dist { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
 .dist-row { display: flex; align-items: center; gap: 12px; }
-.dist-row .pt { width: 22px; text-align: right; font-weight: 800; color: var(--navy); font-size: 13px; flex-shrink: 0; }
+.dist-row .pt { width: 24px; text-align: right; font-weight: 800; color: var(--navy); font-size: 13px; flex-shrink: 0; }
 .dist-row .bar { flex: 1; height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
 .dist-row .bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
 .dist-row.peak .bar span { background: var(--green); }
-.dist-row .n { width: 64px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+.dist-row.off .bar span { background: var(--border); }
+.dist-row.off .pt { color: var(--muted); }
+.dist-row .n { width: 130px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+.dist-note { margin-top: 12px; font-size: 11.5px; color: var(--muted); font-style: italic; }
 
-/* ── Sidebar participants ─────────────────────────────────── */
-.sidebar { padding: 20px; }
-.side-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
-.side-head h2 { font-size: 14px; font-weight: 800; color: var(--navy); }
-.side-head .count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
-.ppl { display: flex; flex-direction: column; gap: 4px; }
-.person { display: flex; align-items: center; gap: 11px; padding: 8px 6px; border-radius: 8px; }
-.person:hover { background: var(--bg); }
-.avatar {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-  background: var(--navy-2); color: var(--white);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+/* ── Validation ─────────────────────────────────────────────── */
+.validate { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.validate .vh { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.validate .vt { font-size: 13px; font-weight: 800; color: var(--navy); }
+.vals { display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 20px; }
+.val {
+  min-width: 52px; height: 64px; padding-inline: 12px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--white); color: var(--navy);
+  font-size: 18px; font-weight: 800; cursor: pointer;
+  transition: var(--ease); position: relative;
 }
-.person .nm { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.val:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.val.suggest { border-color: var(--green); box-shadow: 0 0 0 3px rgba(13,122,78,.14); }
+.val.suggest::after {
+  content: 'médiane'; position: absolute; left: 50%; transform: translateX(-50%); bottom: -18px;
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--green);
+}
 
-/* ── Footer ───────────────────────────────────────────────── */
+/* ── Sidebar ────────────────────────────────────────────────── */
+.sidebar { padding: 20px; }
+.side-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; gap: 8px; }
+.side-head h2 { font-size: 14px; font-weight: 800; color: var(--navy); }
+.side-head .count { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); text-align: right; }
+.ppl { display: flex; flex-direction: column; gap: 4px; }
+.person {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; text-align: left;
+  padding: 8px 8px; border: 0; border-radius: 8px;
+  background: transparent; cursor: default; transition: var(--ease);
+}
+button.person { cursor: pointer; }
+button.person:hover { background: var(--bg); }
+.person.active { background: #EAF1F8; box-shadow: inset 3px 0 0 var(--accent); }
+.person .nm {
+  flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.mini {
+  width: 26px; height: 36px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: var(--navy);
+}
+.mini.back { background: repeating-linear-gradient(45deg, var(--navy), var(--navy) 3px, var(--navy-2) 3px, var(--navy-2) 6px); border: 1px solid var(--navy-2); }
+.mini.face { background: var(--white); border: 1.5px solid var(--accent); box-shadow: var(--shadow); }
+.mini.none { background: var(--bg); border: 1px dashed var(--border); color: var(--muted); font-weight: 600; font-size: 12px; }
+
+.side-sep { height: 1px; background: var(--border); margin: 18px -20px; }
+
+.srows { display: flex; flex-direction: column; gap: 4px; }
+.srow {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 8px 8px; border: 0; border-radius: 8px;
+  background: transparent; cursor: pointer; transition: var(--ease);
+}
+.srow:hover { background: var(--bg); }
+.srow.cur { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
+.srow .k { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent); flex-shrink: 0; }
+.srow .t {
+  flex: 1; font-size: 12px; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Lobby ──────────────────────────────────────────────────── */
+.lobby { max-width: 680px; margin-inline: auto; padding-block: clamp(28px, 6vw, 56px) clamp(36px, 7vw, 64px); }
+.lobby-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--accent); display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.lobby-eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
+.lobby h1 { font-size: clamp(24px, 4.5vw, 32px); font-weight: 800; letter-spacing: -.8px; color: var(--navy); }
+.lobby .sub { margin-top: 8px; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+.lobby-card { margin-top: 24px; padding: clamp(20px, 4vw, 28px); }
+.fgroup { margin-bottom: 24px; }
+.fgroup:last-of-type { margin-bottom: 0; }
+.flabel {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+}
+.flabel::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.tk-input {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--border); border-radius: 9px;
+  background: var(--white); color: var(--text);
+  font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600;
+  transition: var(--ease);
+}
+.tk-input::placeholder { color: var(--muted); font-weight: 500; }
+.tk-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(12,68,124,.1); }
+
+.pchips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pchip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 6px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--border);
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+}
+.pchip .avatar { width: 24px; height: 24px; font-size: 9.5px; }
+.pchip .x {
+  width: 18px; height: 18px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.pchip .x:hover { background: var(--red-bg); color: var(--red); }
+.prow { display: flex; gap: 10px; }
+.prow .tk-input { flex: 1; }
+
+.ls-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+.ls-row .lst-key { width: 132px; flex-shrink: 0; font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.ls-row .x {
+  width: 34px; height: 34px; flex-shrink: 0; border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--white); color: var(--muted); cursor: pointer; font-size: 14px;
+  transition: var(--ease);
+}
+.ls-row .x:hover { border-color: rgba(176,58,46,.4); color: var(--red); background: var(--red-bg); }
+.add-story { margin-top: 2px; }
+.lobby-err { margin-top: 14px; font-size: 12.5px; font-weight: 600; color: var(--red); }
+.lobby-go { margin-top: 24px; display: flex; justify-content: flex-end; }
+.lobby-go .tk-btn { padding: 13px 26px; font-size: 14px; }
+
+/* ── Récap ──────────────────────────────────────────────────── */
+.recap-wrap { max-width: 760px; margin-inline: auto; padding-block: clamp(24px, 5vw, 44px) clamp(36px, 7vw, 64px); }
+.recap { padding: clamp(20px, 4vw, 28px); }
+.recap-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.recap-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: var(--navy); }
+.recap-head .sub { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.recap table { width: 100%; border-collapse: collapse; }
+.recap th {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); text-align: left; padding: 0 10px 10px; border-bottom: 1px solid var(--border);
+}
+.recap td { padding: 11px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.recap td.k { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent); white-space: nowrap; }
+.recap td.sp { font-weight: 800; color: var(--navy); white-space: nowrap; }
+.recap td.r  { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.recap .total {
+  margin-top: 16px; display: flex; align-items: baseline; justify-content: flex-end; gap: 10px;
+  font-size: 13px; color: var(--muted);
+}
+.recap .total b { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: -.5px; }
+.recap-actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+
+/* ── Footer ─────────────────────────────────────────────────── */
 .pk-footer {
   border-top: 1px solid var(--border);
   padding: 20px 0 40px;
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
   font-size: 12px; color: var(--muted);
 }
+.pk-footer .mono { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1px; }
+
+/* ── Animations ─────────────────────────────────────────────── */
+.flip { animation: flipIn .45s ease both; }
+@keyframes flipIn {
+  from { transform: perspective(400px) rotateY(90deg) scale(.8); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.rise { animation: rise .5s ease both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
 </style>
 </head>
 <body class="tk">
 
-  <div class="mockup-banner">Maquette non fonctionnelle — aperçu visuel uniquement</div>
+  <div class="proto-banner">Prototype fonctionnel · Mode A — animateur</div>
 
-  <header class="pk-topbar">
-    <a class="pk-back" href="../"><span aria-hidden="true">←</span> Outils</a>
-    <span class="pk-sep" aria-hidden="true"></span>
-    <div class="pk-session">
-      <span class="name">Sprint 58 — Estimation</span>
-      <span class="room">Salle&nbsp;· PK-58-EST</span>
-    </div>
-    <span class="spacer"></span>
-    <button class="tk-btn tk-btn--on-dark" type="button" tabindex="-1">＋ Inviter</button>
-  </header>
+  <!-- ════════ VUE 1 — LOBBY ════════ -->
+  <div id="view-lobby">
+    <main class="tk-container">
+      <div class="lobby">
+        <p class="lobby-eyebrow">Agile Toolkit · Poker Planning</p>
+        <h1>Nouvelle session d'estimation</h1>
+        <p class="sub">Prépare la salle : nomme la session, liste l'équipe, charge les stories.
+          Tout est modifiable — les données ci-dessous sont fictives.</p>
 
-  <main class="tk-container">
-    <div class="board">
-
-      <!-- ── Colonne principale ── -->
-      <section>
-        <p class="panel-label">Story en cours d'estimation</p>
-
-        <article class="story tk-card">
-          <div class="chips">
-            <span class="chip"><span class="key">SCRUM-1287</span></span>
-            <span class="chip">📘 Story</span>
-            <span class="chip">🔺 Priorité haute</span>
-            <span class="chip">Sprint 58</span>
+        <div class="lobby-card tk-card">
+          <div class="fgroup">
+            <p class="flabel">Nom de la session</p>
+            <input class="tk-input" id="in-name" type="text" value="Sprint 58 — Estimation" autocomplete="off">
           </div>
-          <h1>Export PDF du rapport de sprint planning</h1>
-          <p class="desc">
-            <strong>En tant que</strong> Scrum Master, <strong>je veux</strong> exporter
-            le rapport de fin de planning au format PDF <strong>afin de</strong> le partager
-            avec les stakeholders qui n'ont pas accès à l'outil. Le PDF doit reprendre la
-            synthèse par équipe, le Gantt des présences et la liste des stories engagées.
-          </p>
-        </article>
 
-        <fieldset class="deck-wrap">
-          <legend class="sr-only">Votre estimation</legend>
-          <div class="deck">
-            <input type="radio" name="vote" id="v1"  class="card-radio"><label for="v1"  class="pcard">1</label>
-            <input type="radio" name="vote" id="v2"  class="card-radio"><label for="v2"  class="pcard">2</label>
-            <input type="radio" name="vote" id="v3"  class="card-radio"><label for="v3"  class="pcard">3</label>
-            <input type="radio" name="vote" id="v5"  class="card-radio" checked><label for="v5"  class="pcard">5</label>
-            <input type="radio" name="vote" id="v8"  class="card-radio"><label for="v8"  class="pcard">8</label>
-            <input type="radio" name="vote" id="v13" class="card-radio"><label for="v13" class="pcard">13</label>
-            <input type="radio" name="vote" id="v21" class="card-radio"><label for="v21" class="pcard">21</label>
-            <input type="radio" name="vote" id="vq"  class="card-radio"><label for="vq"  class="pcard special">?</label>
-            <input type="radio" name="vote" id="vc"  class="card-radio"><label for="vc"  class="pcard special">☕</label>
+          <div class="fgroup">
+            <p class="flabel">Participants</p>
+            <div class="pchips" id="lp"></div>
+            <div class="prow">
+              <input class="tk-input" id="in-p" type="text" placeholder="Ajouter un participant…" autocomplete="off">
+              <button class="tk-btn" type="button" data-act="add-p">Ajouter</button>
+            </div>
           </div>
-        </fieldset>
 
-        <div class="reveal-row">
-          <button class="tk-btn tk-btn--accent" type="button" tabindex="-1">👁 Révéler les votes</button>
-          <span class="hint"><b>4</b> votes sur <b>6</b> — en attente de 2 participants…</span>
+          <div class="fgroup">
+            <p class="flabel">Stories à estimer</p>
+            <div id="ls"></div>
+            <button class="tk-btn tk-btn--ghost add-story" type="button" data-act="add-s">＋ Ajouter une story</button>
+          </div>
+
+          <p class="lobby-err" id="lobby-err" hidden>Il faut au moins un participant et une story pour lancer la session.</p>
+          <div class="lobby-go">
+            <button class="tk-btn tk-btn--accent" type="button" data-act="launch">Lancer la session →</button>
+          </div>
         </div>
+      </div>
+    </main>
+  </div>
 
-        <!-- Résultats figés (illustration) -->
-        <section class="results tk-card" aria-label="Résultats de l'estimation (exemple figé)">
-          <div class="results-head">
-            <h2>Résultats du tour</h2>
-            <span class="tk-badge tk-badge--ok tk-badge--dot">Consensus proche</span>
-          </div>
-          <div class="stats">
-            <div class="stat"><div class="v">5.4</div><div class="l">Moyenne</div></div>
-            <div class="stat"><div class="v">5</div><div class="l">Médiane</div></div>
-            <div class="stat"><div class="v ok">82%</div><div class="l">Consensus</div></div>
-            <div class="stat"><div class="v">3–8</div><div class="l">Étendue</div></div>
-          </div>
-          <div class="dist">
-            <div class="dist-row">
-              <span class="pt">3</span><div class="bar"><span style="width:18%"></span></div><span class="n">1 vote</span>
-            </div>
-            <div class="dist-row peak">
-              <span class="pt">5</span><div class="bar"><span style="width:78%"></span></div><span class="n">6 votes</span>
-            </div>
-            <div class="dist-row">
-              <span class="pt">8</span><div class="bar"><span style="width:30%"></span></div><span class="n">2 votes</span>
-            </div>
-          </div>
+  <!-- ════════ VUE 2 — SESSION ════════ -->
+  <div id="view-session" hidden>
+    <header class="pk-topbar">
+      <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
+      <span class="pk-sep" aria-hidden="true"></span>
+      <div class="pk-session">
+        <span class="name" id="tb-name">—</span>
+        <span class="room" id="tb-code">Salle · —</span>
+      </div>
+      <span class="spacer"></span>
+      <span class="tb-mode">Mode A · animateur</span>
+      <button class="tk-btn tk-btn--on-dark" type="button" data-act="finish">Terminer la session</button>
+    </header>
+
+    <main class="tk-container">
+      <div class="board">
+
+        <!-- Colonne principale -->
+        <section>
+          <p class="panel-label">Story en cours d'estimation</p>
+          <div id="story-zone"></div>
+          <div id="turn-zone"></div>
+          <div id="deck-zone" class="deck-wrap"></div>
+          <div id="reveal-zone"></div>
+          <div id="results-zone"></div>
         </section>
-      </section>
 
-      <!-- ── Sidebar participants ── -->
-      <aside class="sidebar tk-card">
-        <div class="side-head">
-          <h2>Participants</h2>
-          <span class="count">4 / 6 ont voté</span>
-        </div>
-        <div class="ppl">
-          <div class="person">
-            <span class="avatar" aria-hidden="true">SL</span>
-            <span class="nm">Sarah Lemoine</span>
-            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
+        <!-- Sidebar -->
+        <aside class="sidebar-sticky">
+          <div class="sidebar tk-card">
+            <div class="side-head">
+              <h2>Participants</h2>
+              <span class="count" id="ppl-count"></span>
+            </div>
+            <div class="ppl" id="ppl"></div>
+            <div class="side-sep"></div>
+            <div class="side-head">
+              <h2>Stories</h2>
+              <span class="count" id="sto-count"></span>
+            </div>
+            <div class="srows" id="sto"></div>
           </div>
-          <div class="person">
-            <span class="avatar" aria-hidden="true">MD</span>
-            <span class="nm">Marc Dubois</span>
-            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
-          </div>
-          <div class="person">
-            <span class="avatar" aria-hidden="true">IK</span>
-            <span class="nm">Inès Khelifi</span>
-            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
-          </div>
-          <div class="person">
-            <span class="avatar" aria-hidden="true">TR</span>
-            <span class="nm">Thomas Roy</span>
-            <span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>
-          </div>
-          <div class="person">
-            <span class="avatar" aria-hidden="true">LF</span>
-            <span class="nm">Léa Fontaine</span>
-            <span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>
-          </div>
-          <div class="person">
-            <span class="avatar" aria-hidden="true">DN</span>
-            <span class="nm">David Nguyen</span>
-            <span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>
-          </div>
-        </div>
-      </aside>
+        </aside>
 
-    </div>
+      </div>
 
-    <footer class="pk-footer">
-      <a href="../">← Retour aux outils</a>
-      <span>Maquette statique — aucune donnée réelle, aucune connexion.</span>
-    </footer>
+      <footer class="pk-footer">
+        <span>Prototype fonctionnel — Mode A (animateur) · Données fictives, aucune connexion.</span>
+        <span class="mono">AGILE TOOLKIT · V0.1</span>
+      </footer>
+    </main>
+  </div>
 
-  </main>
+  <!-- ════════ VUE 3 — RÉCAP ════════ -->
+  <div id="view-recap" hidden>
+    <header class="pk-topbar">
+      <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
+      <span class="pk-sep" aria-hidden="true"></span>
+      <div class="pk-session">
+        <span class="name" id="rc-tb-name">—</span>
+        <span class="room" id="rc-tb-code">Salle · —</span>
+      </div>
+      <span class="spacer"></span>
+      <span class="tb-mode">Mode A · animateur</span>
+    </header>
 
+    <main class="tk-container">
+      <div class="recap-wrap">
+        <div class="recap tk-card rise" id="recap-card"></div>
+      </div>
+    </main>
+  </div>
+
+<script>
+(function () {
+'use strict';
+
+/* ── Constantes ──────────────────────────────────────────── */
+var DECK = ['1', '2', '3', '5', '8', '13', '21', '?', '☕'];
+var NUM  = { '1':1, '2':1, '3':1, '5':1, '8':1, '13':1, '21':1 };
+
+var SEED_P = ['Sarah Lemoine', 'Marc Dubois', 'Inès Khelifi', 'Thomas Roy', 'Léa Fontaine', 'David Nguyen'];
+var SEED_S = [
+  { key: 'SCRUM-1287', title: 'Export PDF du rapport de sprint planning', type: 'story', prio: 'haute',
+    desc: '<strong>En tant que</strong> Scrum Master, <strong>je veux</strong> exporter le rapport de fin de planning au format PDF <strong>afin de</strong> le partager avec les stakeholders qui n\'ont pas accès à l\'outil. Le PDF reprend la synthèse par équipe, le Gantt des présences et la liste des stories engagées.' },
+  { key: 'SCRUM-1290', title: 'Filtrer le board par équipe et par développeur', type: 'story', prio: 'moyenne',
+    desc: '<strong>En tant que</strong> Scrum Master, <strong>je veux</strong> filtrer le board par équipe et par développeur <strong>afin de</strong> préparer les points de synchronisation sans bruit visuel.' },
+  { key: 'SCRUM-1304', title: 'Corriger le calcul de capacité lors des jours fériés cantonaux', type: 'bug', prio: 'haute',
+    desc: 'Le calcul de capacité ignore les jours fériés cantonaux : la disponibilité affichée est surestimée d\'un jour-personne par férié. <strong>Résultat attendu :</strong> les fériés du canton paramétré sont déduits automatiquement.' }
+];
+
+/* ── État ────────────────────────────────────────────────── */
+var lobby = {
+  participants: SEED_P.slice(),
+  stories: SEED_S.map(function (s) { return { key: s.key, title: s.title, type: s.type, prio: s.prio, desc: s.desc }; })
+};
+var S = null;            // état de session
+var justRevealed = false; // déclenche les animations une seule fois
+
+/* ── Utilitaires ─────────────────────────────────────────── */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join('').toUpperCase();
+}
+function fmt(n) {
+  if (n == null) return '—';
+  if (n === Math.round(n)) return String(n);
+  return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
+}
+function show(id) {
+  ['view-lobby', 'view-session', 'view-recap'].forEach(function (v) { $(v).hidden = (v !== id); });
+  window.scrollTo(0, 0);
+}
+
+/* ── Lobby ───────────────────────────────────────────────── */
+function renderLobby() {
+  $('lp').innerHTML = lobby.participants.map(function (name, i) {
+    return '<span class="pchip"><span class="avatar" aria-hidden="true">' + esc(initials(name)) + '</span>' +
+      esc(name) +
+      '<button class="x" type="button" data-act="rm-p" data-i="' + i + '" aria-label="Retirer ' + esc(name) + '">✕</button></span>';
+  }).join('');
+
+  $('ls').innerHTML = lobby.stories.map(function (st, i) {
+    return '<div class="ls-row">' +
+      '<input class="tk-input lst-key" type="text" value="' + esc(st.key) + '" placeholder="CLÉ-000" autocomplete="off">' +
+      '<input class="tk-input lst-title" type="text" value="' + esc(st.title) + '" placeholder="Titre de la story…" autocomplete="off">' +
+      '<button class="x" type="button" data-act="rm-s" data-i="' + i + '" aria-label="Retirer la story">✕</button>' +
+      '</div>';
+  }).join('');
+}
+function syncLobbyStories() {
+  var rows = document.querySelectorAll('#ls .ls-row');
+  rows.forEach(function (row, i) {
+    if (!lobby.stories[i]) return;
+    lobby.stories[i].key = row.querySelector('.lst-key').value.trim();
+    lobby.stories[i].title = row.querySelector('.lst-title').value.trim();
+  });
+}
+function addParticipant() {
+  var inp = $('in-p');
+  var name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  var dup = lobby.participants.some(function (p) { return p.toLowerCase() === name.toLowerCase(); });
+  if (!dup) lobby.participants.push(name);
+  inp.value = '';
+  syncLobbyStories();
+  renderLobby();
+  inp.focus();
+}
+function launch() {
+  syncLobbyStories();
+  var stories = lobby.stories.filter(function (s) { return s.title || s.key; });
+  if (lobby.participants.length < 1 || stories.length < 1) {
+    $('lobby-err').hidden = false;
+    return;
+  }
+  $('lobby-err').hidden = true;
+  S = {
+    name: $('in-name').value.trim() || 'Session d\'estimation',
+    code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+    participants: lobby.participants.map(function (n, i) { return { id: 'p' + i, name: n }; }),
+    stories: stories.map(function (s, i) {
+      return { id: 's' + i, key: s.key || ('STORY-' + (i + 1)), title: s.title || s.key,
+               type: s.type || 'story', prio: s.prio || '', desc: s.desc || '',
+               sp: null, rounds: 0 };
+    }),
+    cur: 0, round: 1, phase: 'vote', votes: {}, activeP: null
+  };
+  S.activeP = S.participants[0].id;
+  show('view-session');
+  render();
+}
+
+/* ── Logique de session ──────────────────────────────────── */
+function nextUnvoted() {
+  for (var i = 0; i < S.participants.length; i++) {
+    if (!(S.participants[i].id in S.votes)) return S.participants[i].id;
+  }
+  return null;
+}
+function pickCard(v) {
+  if (!S || S.phase !== 'vote' || !S.activeP) return;
+  S.votes[S.activeP] = v;
+  S.activeP = nextUnvoted();
+  render();
+}
+function selectParticipant(pid) {
+  if (!S || S.phase !== 'vote') return;
+  S.activeP = pid;
+  render();
+}
+function reveal() {
+  if (!S || S.phase !== 'vote' || Object.keys(S.votes).length === 0) return;
+  S.phase = 'revealed';
+  justRevealed = true;
+  render();
+}
+function revote() {
+  if (!S || S.phase !== 'revealed') return;
+  S.round += 1;
+  S.votes = {};
+  S.phase = 'vote';
+  S.activeP = S.participants[0].id;
+  render();
+}
+function validate(v) {
+  if (!S || S.phase !== 'revealed') return;
+  var st = S.stories[S.cur];
+  st.sp = Number(v);
+  st.rounds = S.round;
+  var next = -1;
+  for (var i = 0; i < S.stories.length; i++) {
+    if (S.stories[i].sp == null) { next = i; break; }
+  }
+  if (next === -1) { renderRecap(); show('view-recap'); return; }
+  jumpTo(next);
+}
+function jumpTo(idx) {
+  S.cur = idx;
+  S.round = 1;
+  S.votes = {};
+  S.phase = 'vote';
+  S.activeP = S.participants[0].id;
+  show('view-session');
+  render();
+}
+
+/* ── Statistiques ────────────────────────────────────────── */
+function computeStats() {
+  var all = Object.keys(S.votes).map(function (k) { return S.votes[k]; });
+  var nums = all.filter(function (v) { return NUM[v]; }).map(Number).sort(function (a, b) { return a - b; });
+  var n = nums.length;
+  var mean = null, med = null, pct = null, range = null, maxC = 0;
+  var counts = {};
+  nums.forEach(function (v) { counts[v] = (counts[v] || 0) + 1; });
+  if (n > 0) {
+    var sum = nums.reduce(function (a, b) { return a + b; }, 0);
+    mean = sum / n;
+    med = (n % 2 === 1) ? nums[(n - 1) / 2] : (nums[n / 2 - 1] + nums[n / 2]) / 2;
+    Object.keys(counts).forEach(function (k) { if (counts[k] > maxC) maxC = counts[k]; });
+    pct = Math.round(maxC / n * 100);
+    range = (nums[0] === nums[n - 1]) ? fmt(nums[0]) : fmt(nums[0]) + '–' + fmt(nums[n - 1]);
+  }
+  var allCounts = {};
+  all.forEach(function (v) { allCounts[v] = (allCounts[v] || 0) + 1; });
+  var nonNum = all.length - n;
+  return { all: all, nums: nums, n: n, mean: mean, med: med, counts: counts, maxC: maxC,
+           pct: pct, range: range, allCounts: allCounts, nonNum: nonNum };
+}
+function consensusBadge(st) {
+  if (st.n === 0) return '<span class="tk-badge tk-badge--muted tk-badge--dot">Aucun vote chiffré</span>';
+  if (st.pct === 100) return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus atteint 🎉</span>';
+  if (st.pct >= 70)  return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus proche</span>';
+  if (st.pct >= 40)  return '<span class="tk-badge tk-badge--warn tk-badge--dot">À discuter</span>';
+  return '<span class="tk-badge tk-badge--danger tk-badge--dot">Divergence forte</span>';
+}
+
+/* ── Rendu session ───────────────────────────────────────── */
+function render() {
+  if (!S) return;
+  var st = S.stories[S.cur];
+  var total = S.participants.length;
+  var voted = Object.keys(S.votes).length;
+  var anim = justRevealed;
+  justRevealed = false;
+
+  $('tb-name').textContent = S.name;
+  $('tb-code').textContent = 'Salle · ' + S.code;
+
+  /* Story */
+  var chips = '<span class="chip"><span class="key">' + esc(st.key) + '</span></span>';
+  chips += '<span class="chip">' + (st.type === 'bug' ? '🐞 Bug' : '📘 Story') + '</span>';
+  if (st.prio === 'haute') chips += '<span class="chip">🔺 Priorité haute</span>';
+  else if (st.prio) chips += '<span class="chip">Priorité ' + esc(st.prio) + '</span>';
+  chips += '<span class="chip">Tour ' + S.round + '</span>';
+  if (st.sp != null) chips += '<span class="chip chip--done">✓ Estimée · ' + fmt(st.sp) + ' SP</span>';
+  var descHtml = st.desc
+    ? '<p class="desc">' + st.desc + '</p>'
+    : '<p class="desc empty">Aucune description fournie — comme au vrai planning, ça se raconte à l\'oral.</p>';
+  $('story-zone').innerHTML =
+    '<article class="story tk-card"><div class="chips">' + chips + '</div>' +
+    '<h1>' + esc(st.title) + '</h1>' + descHtml + '</article>';
+
+  /* Tour de vote */
+  if (S.phase === 'vote') {
+    if (S.activeP) {
+      var p = S.participants.filter(function (x) { return x.id === S.activeP; })[0];
+      var idx = S.participants.indexOf(p) + 1;
+      $('turn-zone').innerHTML =
+        '<div class="turn"><span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+        '<div class="txt"><p class="who">Au tour de <b>' + esc(p.name) + '</b></p>' +
+        '<p class="sub">Clique une carte pour enregistrer son vote · ' + idx + ' sur ' + total + '</p></div></div>';
+    } else {
+      $('turn-zone').innerHTML =
+        '<div class="turn allset"><span class="avatar" aria-hidden="true">✓</span>' +
+        '<div class="txt"><p class="who">Tous les votes sont enregistrés.</p>' +
+        '<p class="sub">Révèle quand l\'équipe est prête — ou clique un nom pour corriger un vote.</p></div></div>';
+    }
+  } else {
+    $('turn-zone').innerHTML = '';
+  }
+
+  /* Deck */
+  var deckOn = (S.phase === 'vote' && S.activeP);
+  $('deck-zone').innerHTML =
+    '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
+    DECK.map(function (v) {
+      var sp = (v === '?' || v === '☕') ? ' special' : '';
+      return '<button type="button" class="pcard' + sp + '" data-act="pick" data-v="' + esc(v) + '"' +
+        (deckOn ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
+    }).join('') + '</div>';
+
+  /* Révélation */
+  if (S.phase === 'vote') {
+    var waiting = S.participants.filter(function (x) { return !(x.id in S.votes); }).map(function (x) { return x.name; });
+    var hint;
+    if (voted === 0) hint = 'Aucun vote pour l\'instant — sélectionne un participant et une carte.';
+    else if (waiting.length === 0) hint = '<b>' + voted + '</b> votes sur <b>' + total + '</b> — l\'équipe a voté.';
+    else {
+      var names = waiting.slice(0, 2).map(esc).join(', ') + (waiting.length > 2 ? ' +' + (waiting.length - 2) : '');
+      hint = '<b>' + voted + '</b> vote' + (voted > 1 ? 's' : '') + ' sur <b>' + total + '</b> — en attente de ' + names + '…';
+    }
+    $('reveal-zone').innerHTML =
+      '<div class="reveal-row"><button type="button" class="tk-btn tk-btn--accent' +
+      (voted === total && total > 0 ? ' btn-pulse' : '') + '" data-act="reveal"' +
+      (voted === 0 ? ' disabled' : '') + '>👁 Révéler les votes</button>' +
+      '<span class="hint">' + hint + '</span></div>';
+  } else {
+    $('reveal-zone').innerHTML = '';
+  }
+
+  /* Résultats */
+  if (S.phase === 'revealed') {
+    var stx = computeStats();
+    var statsHtml =
+      '<div class="stat"><div class="v">' + fmt(stx.mean) + '</div><div class="l">Moyenne</div></div>' +
+      '<div class="stat"><div class="v">' + fmt(stx.med) + '</div><div class="l">Médiane</div></div>' +
+      '<div class="stat"><div class="v ' + (stx.pct == null ? '' : stx.pct >= 70 ? 'ok' : stx.pct >= 40 ? 'warn' : 'danger') + '">' +
+        (stx.pct == null ? '—' : stx.pct + '%') + '</div><div class="l">Consensus</div></div>' +
+      '<div class="stat"><div class="v">' + (stx.range || '—') + '</div><div class="l">Étendue</div></div>';
+
+    var maxAll = 0;
+    Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
+    var distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
+      var c = stx.allCounts[v];
+      var w = Math.max(8, Math.round(c / maxAll * 100));
+      var isNum = !!NUM[v];
+      var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
+      var cls = peak ? ' peak' : (isNum ? '' : ' off');
+      var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
+      return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
+        '<div class="bar"><span style="width:' + w + '%"></span></div>' +
+        '<span class="n">' + lab + '</span></div>';
+    }).join('');
+
+    var note = stx.nonNum > 0
+      ? '<p class="dist-note">' + stx.nonNum + ' vote' + (stx.nonNum > 1 ? 's' : '') + ' « ? » ou « ☕ » — affiché' + (stx.nonNum > 1 ? 's' : '') + ', exclu' + (stx.nonNum > 1 ? 's' : '') + ' des statistiques.</p>'
+      : '';
+
+    /* Validation : valeurs distinctes votées, médiane suggérée */
+    var distinct = Object.keys(stx.counts).map(Number).sort(function (a, b) { return a - b; });
+    var suggest = null;
+    if (distinct.length && stx.med != null) {
+      var best = Infinity;
+      distinct.forEach(function (v) {
+        var d = Math.abs(v - stx.med);
+        if (d < best || (d === best && v > suggest)) { best = d; suggest = v; }
+      });
+    }
+    var valsHtml = distinct.map(function (v) {
+      return '<button type="button" class="val' + (v === suggest ? ' suggest' : '') +
+        '" data-act="validate" data-v="' + v + '">' + fmt(v) + '</button>';
+    }).join('');
+    var validateHtml = distinct.length
+      ? '<div class="validate"><div class="vh"><span class="vt">Valider l\'estimation</span>' +
+        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (S.round + 1) + ')</button></div>' +
+        '<div class="vals">' + valsHtml + '</div></div>'
+      : '<div class="validate"><div class="vh"><span class="vt">Aucune valeur chiffrée à valider</span>' +
+        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (S.round + 1) + ')</button></div></div>';
+
+    $('results-zone').innerHTML =
+      '<section class="results tk-card' + (anim ? ' rise' : '') + '" aria-label="Résultats du tour">' +
+      '<div class="results-head"><h2>Résultats — Tour ' + S.round + '</h2>' + consensusBadge(stx) + '</div>' +
+      '<div class="stats">' + statsHtml + '</div>' +
+      '<div class="dist">' + distHtml + '</div>' + note + validateHtml + '</section>';
+  } else {
+    $('results-zone').innerHTML = '';
+  }
+
+  /* Sidebar — participants */
+  $('ppl-count').textContent = (S.phase === 'revealed')
+    ? 'Tour ' + S.round + ' révélé'
+    : voted + ' / ' + total + ' ont voté';
+  $('ppl').innerHTML = S.participants.map(function (p, i) {
+    var hasVote = (p.id in S.votes);
+    if (S.phase === 'vote') {
+      var right = hasVote
+        ? '<span class="mini back" aria-hidden="true"></span><span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>'
+        : '<span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>';
+      return '<button type="button" class="person' + (S.activeP === p.id ? ' active' : '') +
+        '" data-act="sel-p" data-id="' + p.id + '">' +
+        '<span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+        '<span class="nm">' + esc(p.name) + '</span>' + right + '</button>';
+    }
+    var card = hasVote
+      ? '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(S.votes[p.id]) + '</span>'
+      : '<span class="mini none" title="N\'a pas voté">—</span>';
+    return '<div class="person">' +
+      '<span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+      '<span class="nm">' + esc(p.name) + '</span>' + card + '</div>';
+  }).join('');
+
+  /* Sidebar — stories */
+  var estimated = S.stories.filter(function (x) { return x.sp != null; }).length;
+  $('sto-count').textContent = estimated + ' / ' + S.stories.length + ' estimées';
+  $('sto').innerHTML = S.stories.map(function (x, i) {
+    var right = (x.sp != null)
+      ? '<span class="tk-badge tk-badge--ok">' + fmt(x.sp) + ' SP</span>'
+      : '<span class="tk-badge tk-badge--muted">—</span>';
+    return '<button type="button" class="srow' + (i === S.cur ? ' cur' : '') + '" data-act="jump" data-i="' + i + '">' +
+      '<span class="k">' + esc(x.key) + '</span><span class="t">' + esc(x.title) + '</span>' + right + '</button>';
+  }).join('');
+}
+
+/* ── Récap & export ──────────────────────────────────────── */
+function renderRecap() {
+  $('rc-tb-name').textContent = S.name;
+  $('rc-tb-code').textContent = 'Salle · ' + S.code;
+  var rows = S.stories.map(function (x) {
+    return '<tr><td class="k">' + esc(x.key) + '</td><td>' + esc(x.title) + '</td>' +
+      '<td class="sp">' + (x.sp != null ? fmt(x.sp) + ' SP' : '—') + '</td>' +
+      '<td class="r">' + (x.rounds ? x.rounds + ' tour' + (x.rounds > 1 ? 's' : '') : '—') + '</td></tr>';
+  }).join('');
+  var totalSP = S.stories.reduce(function (a, x) { return a + (x.sp || 0); }, 0);
+  var estimated = S.stories.filter(function (x) { return x.sp != null; }).length;
+  var allDone = estimated === S.stories.length;
+  $('recap-card').innerHTML =
+    '<div class="recap-head"><div><h1>Récap de session</h1>' +
+    '<p class="sub">' + esc(S.name) + ' · Salle ' + esc(S.code) + ' · ' + estimated + ' / ' + S.stories.length + ' stories estimées</p></div>' +
+    (allDone ? '<span class="tk-badge tk-badge--ok tk-badge--dot">Session terminée</span>'
+             : '<span class="tk-badge tk-badge--warn tk-badge--dot">Estimation partielle</span>') +
+    '</div>' +
+    '<table><thead><tr><th>Clé</th><th>Story</th><th>SP</th><th>Tours</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="total">Total engagé <b>' + fmt(totalSP) + ' SP</b></div>' +
+    '<div class="recap-actions">' +
+    (allDone ? '' : '<button type="button" class="tk-btn tk-btn--ghost" data-act="resume">← Reprendre le vote</button>') +
+    '<button type="button" class="tk-btn" data-act="restart">Nouvelle session</button>' +
+    '<button type="button" class="tk-btn tk-btn--accent" data-act="export">⬇ Exporter (CSV)</button>' +
+    '</div>';
+}
+function exportCSV() {
+  var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
+  var lines = [['Clé', 'Story', 'Story points', 'Tours'].map(q).join(';')];
+  S.stories.forEach(function (x) {
+    lines.push([x.key, x.title, x.sp != null ? fmt(x.sp) : '', x.rounds || ''].map(q).join(';'));
+  });
+  var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'poker-planning_' + S.code + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+/* ── Délégation d'événements ─────────────────────────────── */
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-act]');
+  if (!t) return;
+  var act = t.dataset.act;
+  if (act === 'noop')    { e.preventDefault(); return; }
+  if (act === 'add-p')   { addParticipant(); return; }
+  if (act === 'rm-p')    { syncLobbyStories(); lobby.participants.splice(Number(t.dataset.i), 1); renderLobby(); return; }
+  if (act === 'add-s')   { syncLobbyStories(); lobby.stories.push({ key: '', title: '', type: 'story', prio: '', desc: '' }); renderLobby(); return; }
+  if (act === 'rm-s')    { syncLobbyStories(); lobby.stories.splice(Number(t.dataset.i), 1); renderLobby(); return; }
+  if (act === 'launch')  { launch(); return; }
+  if (act === 'pick')    { pickCard(t.dataset.v); return; }
+  if (act === 'sel-p')   { selectParticipant(t.dataset.id); return; }
+  if (act === 'reveal')  { reveal(); return; }
+  if (act === 'revote')  { revote(); return; }
+  if (act === 'validate'){ validate(t.dataset.v); return; }
+  if (act === 'jump')    { jumpTo(Number(t.dataset.i)); return; }
+  if (act === 'finish')  { renderRecap(); show('view-recap'); return; }
+  if (act === 'resume')  { show('view-session'); render(); return; }
+  if (act === 'restart') { location.reload(); return; }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && e.target && e.target.id === 'in-p') { e.preventDefault(); addParticipant(); }
+});
+
+/* ── Démarrage ───────────────────────────────────────────── */
+renderLobby();
+})();
+</script>
 </body>
 </html>
