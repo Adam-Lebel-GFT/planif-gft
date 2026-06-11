@@ -4,14 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Poker Planning — Agile Toolkit</title>
-<meta name="description" content="Prototype fonctionnel (Mode A — animateur) de l'outil de planning poker.">
+<meta name="description" content="Poker planning — mode local (animateur) et mode live (chacun vote de son appareil).">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ════════════════════════════════════════════════════════════
-   TOKENS — reconstruits depuis la maquette (assets/theme.css
-   officiel : planif-gft/assets/theme.css). Remplacer ce bloc :root par le theme officiel
-   le jour où il arrive : tout le fichier suivra.
+   TOKENS — alignés sur assets/theme.css officiel (planif-gft)
    ════════════════════════════════════════════════════════════ */
 :root {
   --navy:    #0C1A2E;
@@ -136,8 +134,15 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .tb-mode {
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase;
   color: rgba(255,255,255,.45); margin-right: 12px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 10px;
 }
 @media (max-width: 640px) { .tb-mode { display: none; } }
+.livebadge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px;
+  color: #7EE2A8; text-transform: uppercase;
+}
+.livebadge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #34D27B; animation: pulse 1.6s ease infinite; }
 
 /* ── Plateau ────────────────────────────────────────────────── */
 .board {
@@ -158,6 +163,16 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 .panel-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
+/* ── Barre d'invitation (live) ──────────────────────────────── */
+.invite {
+  padding: 14px 18px; margin-bottom: clamp(14px, 2vw, 18px);
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.invite .code { font-family: var(--font-mono); font-weight: 500; font-size: 15px; letter-spacing: 2px; color: var(--accent); white-space: nowrap; }
+.invite .lnk { flex: 1; min-width: 220px; }
+.invite .ok { font-size: 12px; font-weight: 700; color: var(--green); }
+.invite .ihint { width: 100%; font-size: 11px; color: var(--muted); font-style: italic; }
+
 /* ── Carte story ────────────────────────────────────────────── */
 .story { padding: 24px; }
 .story .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -177,7 +192,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .story .desc strong { color: var(--text); font-weight: 600; }
 .story .desc.empty { font-style: italic; }
 
-/* ── Tour de vote (Mode A) ──────────────────────────────────── */
+/* ── Statut / tour de vote ──────────────────────────────────── */
 .turn {
   margin-top: clamp(16px, 2.5vw, 22px);
   display: flex; align-items: center; gap: 14px;
@@ -190,6 +205,14 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .turn .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .turn.allset { background: var(--green-bg); border-color: rgba(26,122,66,.22); }
 .turn.allset .who { color: var(--green); }
+
+.alert {
+  margin-top: clamp(16px, 2.5vw, 22px);
+  padding: 13px 16px; border-radius: 11px;
+  font-size: 13px; font-weight: 600; line-height: 1.5;
+  background: var(--red-bg); border: 1px solid rgba(176,58,46,.25); color: var(--red);
+}
+.alert.warn { background: var(--amber-bg); border-color: rgba(154,91,11,.25); color: var(--amber); }
 
 .avatar {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
@@ -213,8 +236,10 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .pcard:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--shadow-hover); }
 .pcard:active { transform: translateY(-2px) scale(.97); }
 .pcard.special { font-size: 22px; }
+.pcard.sel { background: var(--accent); border-color: var(--accent); color: var(--white); transform: translateY(-7px); box-shadow: var(--shadow-hover); }
 .pcard[disabled] { opacity: .4; cursor: not-allowed; box-shadow: none; }
 .pcard[disabled]:hover { transform: none; border-color: var(--border); }
+.pcard.sel[disabled] { opacity: 1; transform: none; }
 
 /* ── Ligne révélation ───────────────────────────────────────── */
 .reveal-row {
@@ -286,10 +311,12 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 button.person { cursor: pointer; }
 button.person:hover { background: var(--bg); }
 .person.active { background: #EAF1F8; box-shadow: inset 3px 0 0 var(--accent); }
+.person.me { background: #F7FAFD; }
 .person .nm {
   flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.person .nm .you { font-size: 10.5px; color: var(--muted); font-weight: 600; }
 
 .mini {
   width: 26px; height: 36px; border-radius: 6px; flex-shrink: 0;
@@ -309,7 +336,8 @@ button.person:hover { background: var(--bg); }
   padding: 8px 8px; border: 0; border-radius: 8px;
   background: transparent; cursor: pointer; transition: var(--ease);
 }
-.srow:hover { background: var(--bg); }
+.srow[disabled] { cursor: default; }
+.srow:not([disabled]):hover { background: var(--bg); }
 .srow.cur { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
 .srow .k { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent); flex-shrink: 0; }
 .srow .t {
@@ -317,7 +345,7 @@ button.person:hover { background: var(--bg); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* ── Lobby ──────────────────────────────────────────────────── */
+/* ── Lobby & Join ───────────────────────────────────────────── */
 .lobby { max-width: 680px; margin-inline: auto; padding-block: clamp(28px, 6vw, 56px) clamp(36px, 7vw, 64px); }
 .lobby-eyebrow {
   font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
@@ -326,6 +354,7 @@ button.person:hover { background: var(--bg); }
 .lobby-eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
 .lobby h1 { font-size: clamp(24px, 4.5vw, 32px); font-weight: 800; letter-spacing: -.8px; color: var(--navy); }
 .lobby .sub { margin-top: 8px; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+.lobby .sub b { color: var(--text); }
 .lobby-card { margin-top: 24px; padding: clamp(20px, 4vw, 28px); }
 .fgroup { margin-bottom: 24px; }
 .fgroup:last-of-type { margin-bottom: 0; }
@@ -343,6 +372,24 @@ button.person:hover { background: var(--bg); }
 }
 .tk-input::placeholder { color: var(--muted); font-weight: 500; }
 .tk-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(12,68,124,.1); }
+.tk-input.mono { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
+
+.mode-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .mode-pick { grid-template-columns: 1fr; } }
+.mcard {
+  padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 11px;
+  background: var(--white); cursor: pointer; text-align: left; transition: var(--ease);
+}
+.mcard:hover { border-color: var(--accent); }
+.mcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(12,68,124,.12); background: #F7FAFD; }
+.mcard .mt { font-size: 13.5px; font-weight: 800; color: var(--navy); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mcard .mt .tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.5px; color: var(--accent); text-transform: uppercase; font-weight: 500; }
+.mcard .md { margin-top: 5px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.mcard[disabled] { opacity: .55; cursor: not-allowed; }
+
+.cfg { margin-top: 12px; padding: 14px; border: 1px dashed var(--border); border-radius: 11px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+.cfg .hint { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+.cfg .hint b { color: var(--text); }
 
 .pchips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .pchip {
@@ -373,6 +420,18 @@ button.person:hover { background: var(--bg); }
 .lobby-err { margin-top: 14px; font-size: 12.5px; font-weight: 600; color: var(--red); }
 .lobby-go { margin-top: 24px; display: flex; justify-content: flex-end; }
 .lobby-go .tk-btn { padding: 13px 26px; font-size: 14px; }
+
+.resume-card {
+  margin-top: 20px; padding: 14px 18px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between;
+  background: #EAF1F8; border: 1px solid rgba(12,68,124,.2);
+}
+.resume-card .rt { font-size: 13px; font-weight: 700; color: var(--navy); }
+.resume-card .rt .code { font-family: var(--font-mono); color: var(--accent); }
+
+.waitcard { padding: 30px 24px; text-align: center; }
+.waitcard .w1 { font-size: 15px; font-weight: 800; color: var(--navy); }
+.waitcard .w2 { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
 
 /* ── Récap ──────────────────────────────────────────────────── */
 .recap-wrap { max-width: 760px; margin-inline: auto; padding-block: clamp(24px, 5vw, 44px) clamp(36px, 7vw, 64px); }
@@ -423,24 +482,46 @@ button.person:hover { background: var(--bg); }
 </head>
 <body class="tk">
 
-  <div class="proto-banner">Prototype fonctionnel · Mode A — animateur</div>
+  <div class="proto-banner">Poker Planning · local + live bêta</div>
 
-  <!-- ════════ VUE 1 — LOBBY ════════ -->
+  <!-- ════════ VUE 1 — LOBBY (animateur) ════════ -->
   <div id="view-lobby">
     <main class="tk-container">
       <div class="lobby">
         <p class="lobby-eyebrow">Agile Toolkit · Poker Planning</p>
         <h1>Nouvelle session d'estimation</h1>
-        <p class="sub">Prépare la salle : nomme la session, liste l'équipe, charge les stories.
-          Tout est modifiable — les données ci-dessous sont fictives.</p>
+        <p class="sub">Choisis ton mode, nomme la session, charge les stories. <b>Local</b> : tu saisis les votes.
+          <b>Live</b> : tu partages un lien et chacun vote depuis son appareil.</p>
+
+        <div id="resume-zone"></div>
 
         <div class="lobby-card tk-card">
+          <div class="fgroup">
+            <p class="flabel">Mode de session</p>
+            <div class="mode-pick">
+              <button class="mcard on" type="button" id="mc-local" data-act="mode-local">
+                <span class="mt">🖥️ Local</span>
+                <span class="md">Un seul écran : l'animateur saisit les votes annoncés. Zéro connexion.</span>
+              </button>
+              <button class="mcard" type="button" id="mc-live" data-act="mode-live">
+                <span class="mt">📡 Live <span class="tag">bêta</span></span>
+                <span class="md">Chacun rejoint via un lien et vote de son appareil. Temps réel, rien n'est stocké.</span>
+              </button>
+            </div>
+            <div class="cfg" id="cfg" hidden>
+              <input class="tk-input mono" id="sb-url" type="text" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
+              <input class="tk-input mono" id="sb-key" type="text" placeholder="clé anon publique (eyJhbGciOi…)" autocomplete="off" spellcheck="false">
+              <p class="hint">Où trouver ça : <b>Supabase → ton projet → Settings → API</b> → « Project URL » et « anon public ».
+                La clé anon est publique par design ; elle voyage dans le lien d'invitation, jamais stockée côté participants.</p>
+            </div>
+          </div>
+
           <div class="fgroup">
             <p class="flabel">Nom de la session</p>
             <input class="tk-input" id="in-name" type="text" value="Sprint 58 — Estimation" autocomplete="off">
           </div>
 
-          <div class="fgroup">
+          <div class="fgroup" id="grp-p">
             <p class="flabel">Participants</p>
             <div class="pchips" id="lp"></div>
             <div class="prow">
@@ -455,16 +536,39 @@ button.person:hover { background: var(--bg); }
             <button class="tk-btn tk-btn--ghost add-story" type="button" data-act="add-s">＋ Ajouter une story</button>
           </div>
 
-          <p class="lobby-err" id="lobby-err" hidden>Il faut au moins un participant et une story pour lancer la session.</p>
+          <p class="lobby-err" id="lobby-err" hidden></p>
           <div class="lobby-go">
-            <button class="tk-btn tk-btn--accent" type="button" data-act="launch">Lancer la session →</button>
+            <button class="tk-btn tk-btn--accent" type="button" id="btn-launch" data-act="launch">Lancer la session →</button>
           </div>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- ════════ VUE 2 — SESSION ════════ -->
+  <!-- ════════ VUE 2 — REJOINDRE (participant) ════════ -->
+  <div id="view-join" hidden>
+    <main class="tk-container">
+      <div class="lobby">
+        <p class="lobby-eyebrow">Agile Toolkit · Poker Planning</p>
+        <h1>Rejoindre la session</h1>
+        <p class="sub">Salle <b id="join-code" style="font-family:var(--font-mono);color:var(--accent)">—</b> ·
+          ton pseudo s'affiche aux autres pendant la session, puis disparaît. Rien n'est enregistré.</p>
+
+        <div class="lobby-card tk-card">
+          <div class="fgroup">
+            <p class="flabel">Ton pseudo</p>
+            <input class="tk-input" id="in-pseudo" type="text" placeholder="Ex. Inès, MD, Thomas R…" autocomplete="off" maxlength="24">
+          </div>
+          <p class="lobby-err" id="join-err" hidden></p>
+          <div class="lobby-go">
+            <button class="tk-btn tk-btn--accent" type="button" data-act="join">Rejoindre →</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ════════ VUE 3 — SESSION ════════ -->
   <div id="view-session" hidden>
     <header class="pk-topbar">
       <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
@@ -474,8 +578,8 @@ button.person:hover { background: var(--bg); }
         <span class="room" id="tb-code">Salle · —</span>
       </div>
       <span class="spacer"></span>
-      <span class="tb-mode">Mode A · animateur</span>
-      <button class="tk-btn tk-btn--on-dark" type="button" data-act="finish">Terminer la session</button>
+      <span class="tb-mode" id="tb-mode">Mode A · animateur</span>
+      <button class="tk-btn tk-btn--on-dark" type="button" id="btn-finish" data-act="finish">Terminer la session</button>
     </header>
 
     <main class="tk-container">
@@ -484,6 +588,7 @@ button.person:hover { background: var(--bg); }
         <!-- Colonne principale -->
         <section>
           <p class="panel-label">Story en cours d'estimation</p>
+          <div id="invite-zone"></div>
           <div id="story-zone"></div>
           <div id="turn-zone"></div>
           <div id="deck-zone" class="deck-wrap"></div>
@@ -511,13 +616,13 @@ button.person:hover { background: var(--bg); }
       </div>
 
       <footer class="pk-footer">
-        <span>Prototype fonctionnel — Mode A (animateur) · Données fictives, aucune connexion.</span>
-        <span class="mono">AGILE TOOLKIT · V0.1</span>
+        <span id="ft-note">Mode local — données fictives, aucune connexion.</span>
+        <span class="mono">AGILE TOOLKIT · V0.2</span>
       </footer>
     </main>
   </div>
 
-  <!-- ════════ VUE 3 — RÉCAP ════════ -->
+  <!-- ════════ VUE 4 — RÉCAP ════════ -->
   <div id="view-recap" hidden>
     <header class="pk-topbar">
       <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
@@ -527,7 +632,6 @@ button.person:hover { background: var(--bg); }
         <span class="room" id="rc-tb-code">Salle · —</span>
       </div>
       <span class="spacer"></span>
-      <span class="tb-mode">Mode A · animateur</span>
     </header>
 
     <main class="tk-container">
@@ -537,13 +641,15 @@ button.person:hover { background: var(--bg); }
     </main>
   </div>
 
+<script src="supabase.js"></script>
 <script>
 (function () {
 'use strict';
 
-/* ── Constantes ──────────────────────────────────────────── */
+/* ══════════════ A. Constantes & utilitaires ══════════════ */
 var DECK = ['1', '2', '3', '5', '8', '13', '21', '?', '☕'];
 var NUM  = { '1':1, '2':1, '3':1, '5':1, '8':1, '13':1, '21':1 };
+var SB   = (typeof supabase !== 'undefined' && supabase && supabase.createClient) ? supabase : (window.supabase || null);
 
 var SEED_P = ['Sarah Lemoine', 'Marc Dubois', 'Inès Khelifi', 'Thomas Roy', 'Léa Fontaine', 'David Nguyen'];
 var SEED_S = [
@@ -555,15 +661,6 @@ var SEED_S = [
     desc: 'Le calcul de capacité ignore les jours fériés cantonaux : la disponibilité affichée est surestimée d\'un jour-personne par férié. <strong>Résultat attendu :</strong> les fériés du canton paramétré sont déduits automatiquement.' }
 ];
 
-/* ── État ────────────────────────────────────────────────── */
-var lobby = {
-  participants: SEED_P.slice(),
-  stories: SEED_S.map(function (s) { return { key: s.key, title: s.title, type: s.type, prio: s.prio, desc: s.desc }; })
-};
-var S = null;            // état de session
-var justRevealed = false; // déclenche les animations une seule fois
-
-/* ── Utilitaires ─────────────────────────────────────────── */
 function $(id) { return document.getElementById(id); }
 function esc(s) {
   return String(s == null ? '' : s)
@@ -571,7 +668,7 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function initials(name) {
-  return name.trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join('').toUpperCase();
+  return String(name).trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join('').toUpperCase() || '?';
 }
 function fmt(n) {
   if (n == null) return '—';
@@ -579,11 +676,152 @@ function fmt(n) {
   return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
 }
 function show(id) {
-  ['view-lobby', 'view-session', 'view-recap'].forEach(function (v) { $(v).hidden = (v !== id); });
+  ['view-lobby', 'view-join', 'view-session', 'view-recap'].forEach(function (v) { $(v).hidden = (v !== id); });
   window.scrollTo(0, 0);
 }
+function ssGet(k) { try { return window.sessionStorage.getItem(k); } catch (e) { return null; } }
+function ssSet(k, v) { try { window.sessionStorage.setItem(k, v); } catch (e) {} }
+function ssDel(k) { try { window.sessionStorage.removeItem(k); } catch (e) {} }
+function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+function copyText(txt, onDone) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(onDone, function () { window.prompt('Copie manuelle :', txt); onDone(); });
+  } else { window.prompt('Copie manuelle :', txt); onDone(); }
+}
 
-/* ── Lobby ───────────────────────────────────────────────── */
+/* ══════════════ B. Lien d'invitation & config ══════════════ */
+function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64d(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); }
+function buildLink(code, cfg) {
+  var base = location.origin + location.pathname;
+  return base + '?room=' + encodeURIComponent(code) + '#sb=' + b64e(cfg.url + '|' + cfg.key);
+}
+function parseHashCfg(hash) {
+  var m = String(hash || '').match(/sb=([A-Za-z0-9_-]+)/);
+  if (!m) return null;
+  try {
+    var parts = b64d(m[1]).split('|');
+    if (parts.length === 2 && /^https:\/\//i.test(parts[0]) && parts[1].length > 20) return { url: parts[0], key: parts[1] };
+  } catch (e) {}
+  return null;
+}
+function validCfg(cfg) {
+  return cfg && /^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(cfg.url) && String(cfg.key || '').length > 20;
+}
+function loadCfg() { try { return JSON.parse(lsGet('pk-sb') || 'null'); } catch (e) { return null; } }
+function saveCfg(cfg) { lsSet('pk-sb', JSON.stringify(cfg)); }
+
+/* ══════════════ C. Statistiques (partagées) ══════════════ */
+function computeStats(allVals) {
+  var all = allVals.slice();
+  var nums = all.filter(function (v) { return NUM[v]; }).map(Number).sort(function (a, b) { return a - b; });
+  var n = nums.length;
+  var mean = null, med = null, pct = null, range = null, maxC = 0;
+  var counts = {};
+  nums.forEach(function (v) { counts[v] = (counts[v] || 0) + 1; });
+  if (n > 0) {
+    var sum = nums.reduce(function (a, b) { return a + b; }, 0);
+    mean = sum / n;
+    med = (n % 2 === 1) ? nums[(n - 1) / 2] : (nums[n / 2 - 1] + nums[n / 2]) / 2;
+    Object.keys(counts).forEach(function (k) { if (counts[k] > maxC) maxC = counts[k]; });
+    pct = Math.round(maxC / n * 100);
+    range = (nums[0] === nums[n - 1]) ? fmt(nums[0]) : fmt(nums[0]) + '–' + fmt(nums[n - 1]);
+  }
+  var allCounts = {};
+  all.forEach(function (v) { allCounts[v] = (allCounts[v] || 0) + 1; });
+  return { all: all, n: n, mean: mean, med: med, counts: counts, maxC: maxC,
+           pct: pct, range: range, allCounts: allCounts, nonNum: all.length - n };
+}
+function consensusBadge(st) {
+  if (st.n === 0) return '<span class="tk-badge tk-badge--muted tk-badge--dot">Aucun vote chiffré</span>';
+  if (st.pct === 100) return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus atteint 🎉</span>';
+  if (st.pct >= 70)  return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus proche</span>';
+  if (st.pct >= 40)  return '<span class="tk-badge tk-badge--warn tk-badge--dot">À discuter</span>';
+  return '<span class="tk-badge tk-badge--danger tk-badge--dot">Divergence forte</span>';
+}
+
+/* ══════════════ D. Briques HTML partagées ══════════════ */
+function storyCardHTML(st, round, idx, total) {
+  var chips = '<span class="chip"><span class="key">' + esc(st.key) + '</span></span>';
+  chips += '<span class="chip">' + (st.type === 'bug' ? '🐞 Bug' : '📘 Story') + '</span>';
+  if (st.prio === 'haute') chips += '<span class="chip">🔺 Priorité haute</span>';
+  else if (st.prio) chips += '<span class="chip">Priorité ' + esc(st.prio) + '</span>';
+  if (total != null) chips += '<span class="chip">Story ' + (idx + 1) + ' / ' + total + '</span>';
+  chips += '<span class="chip">Tour ' + round + '</span>';
+  if (st.sp != null) chips += '<span class="chip chip--done">✓ Estimée · ' + fmt(st.sp) + ' SP</span>';
+  var descHtml = st.desc
+    ? '<p class="desc">' + st.desc + '</p>'
+    : '<p class="desc empty">Aucune description fournie — comme au vrai planning, ça se raconte à l\'oral.</p>';
+  return '<article class="story tk-card"><div class="chips">' + chips + '</div>' +
+    '<h1>' + esc(st.title) + '</h1>' + descHtml + '</article>';
+}
+
+function resultsHTML(allVals, round, withValidate, anim, footNote) {
+  var stx = computeStats(allVals);
+  var statsHtml =
+    '<div class="stat"><div class="v">' + fmt(stx.mean) + '</div><div class="l">Moyenne</div></div>' +
+    '<div class="stat"><div class="v">' + fmt(stx.med) + '</div><div class="l">Médiane</div></div>' +
+    '<div class="stat"><div class="v ' + (stx.pct == null ? '' : stx.pct >= 70 ? 'ok' : stx.pct >= 40 ? 'warn' : 'danger') + '">' +
+      (stx.pct == null ? '—' : stx.pct + '%') + '</div><div class="l">Consensus</div></div>' +
+    '<div class="stat"><div class="v">' + (stx.range || '—') + '</div><div class="l">Étendue</div></div>';
+
+  var maxAll = 0;
+  Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
+  var distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
+    var c = stx.allCounts[v];
+    var w = Math.max(8, Math.round(c / maxAll * 100));
+    var isNum = !!NUM[v];
+    var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
+    var cls = peak ? ' peak' : (isNum ? '' : ' off');
+    var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
+    return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
+      '<div class="bar"><span style="width:' + w + '%"></span></div>' +
+      '<span class="n">' + lab + '</span></div>';
+  }).join('');
+
+  var note = stx.nonNum > 0
+    ? '<p class="dist-note">' + stx.nonNum + ' vote' + (stx.nonNum > 1 ? 's' : '') + ' « ? » ou « ☕ » — affiché' + (stx.nonNum > 1 ? 's' : '') + ', exclu' + (stx.nonNum > 1 ? 's' : '') + ' des statistiques.</p>'
+    : '';
+
+  var validateHtml = '';
+  if (withValidate) {
+    var distinct = Object.keys(stx.counts).map(Number).sort(function (a, b) { return a - b; });
+    var suggest = null;
+    if (distinct.length && stx.med != null) {
+      var best = Infinity;
+      distinct.forEach(function (v) {
+        var d = Math.abs(v - stx.med);
+        if (d < best || (d === best && v > suggest)) { best = d; suggest = v; }
+      });
+    }
+    var valsHtml = distinct.map(function (v) {
+      return '<button type="button" class="val' + (v === suggest ? ' suggest' : '') +
+        '" data-act="validate" data-v="' + v + '">' + fmt(v) + '</button>';
+    }).join('');
+    validateHtml = distinct.length
+      ? '<div class="validate"><div class="vh"><span class="vt">Valider l\'estimation</span>' +
+        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (round + 1) + ')</button></div>' +
+        '<div class="vals">' + valsHtml + '</div></div>'
+      : '<div class="validate"><div class="vh"><span class="vt">Aucune valeur chiffrée à valider</span>' +
+        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (round + 1) + ')</button></div></div>';
+  } else if (footNote) {
+    validateHtml = '<p class="dist-note">' + footNote + '</p>';
+  }
+
+  return '<section class="results tk-card' + (anim ? ' rise' : '') + '" aria-label="Résultats du tour">' +
+    '<div class="results-head"><h2>Résultats — Tour ' + round + '</h2>' + consensusBadge(stx) + '</div>' +
+    '<div class="stats">' + statsHtml + '</div>' +
+    '<div class="dist">' + distHtml + '</div>' + note + validateHtml + '</section>';
+}
+
+/* ══════════════ E. Lobby (animateur) ══════════════ */
+var MODE = 'local';
+var lobby = {
+  participants: SEED_P.slice(),
+  stories: SEED_S.map(function (s) { return { key: s.key, title: s.title, type: s.type, prio: s.prio, desc: s.desc }; })
+};
+
 function renderLobby() {
   $('lp').innerHTML = lobby.participants.map(function (name, i) {
     return '<span class="pchip"><span class="avatar" aria-hidden="true">' + esc(initials(name)) + '</span>' +
@@ -618,31 +856,64 @@ function addParticipant() {
   renderLobby();
   inp.focus();
 }
-function launch() {
-  syncLobbyStories();
-  var stories = lobby.stories.filter(function (s) { return s.title || s.key; });
-  if (lobby.participants.length < 1 || stories.length < 1) {
-    $('lobby-err').hidden = false;
+function setMode(m) {
+  if (m === 'live' && !SB) {
+    lobbyErr('Librairie temps réel introuvable (supabase.js doit être à côté de cette page).');
     return;
   }
-  $('lobby-err').hidden = true;
+  MODE = m;
+  $('mc-local').classList.toggle('on', m === 'local');
+  $('mc-live').classList.toggle('on', m === 'live');
+  $('cfg').hidden = (m !== 'live');
+  $('grp-p').hidden = (m === 'live');
+  $('btn-launch').textContent = (m === 'live') ? 'Lancer la session live →' : 'Lancer la session →';
+  lobbyErr('');
+  if (m === 'live') {
+    var c = loadCfg();
+    if (c) { $('sb-url').value = c.url || ''; $('sb-key').value = c.key || ''; }
+  }
+}
+function lobbyErr(msg) {
+  var el = $('lobby-err');
+  el.textContent = msg || '';
+  el.hidden = !msg;
+}
+function readStories() {
+  syncLobbyStories();
+  return lobby.stories
+    .filter(function (s) { return s.title || s.key; })
+    .map(function (s, i) {
+      return { id: 's' + i, key: s.key || ('STORY-' + (i + 1)), title: s.title || s.key,
+               type: s.type || 'story', prio: s.prio || '', desc: s.desc || '',
+               sp: null, rounds: 0 };
+    });
+}
+function launch() {
+  if (MODE === 'live') { launchLive(); return; }
+  var stories = readStories();
+  if (lobby.participants.length < 1 || stories.length < 1) {
+    lobbyErr('Il faut au moins un participant et une story pour lancer la session.');
+    return;
+  }
+  lobbyErr('');
   S = {
     name: $('in-name').value.trim() || 'Session d\'estimation',
     code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
     participants: lobby.participants.map(function (n, i) { return { id: 'p' + i, name: n }; }),
-    stories: stories.map(function (s, i) {
-      return { id: 's' + i, key: s.key || ('STORY-' + (i + 1)), title: s.title || s.key,
-               type: s.type || 'story', prio: s.prio || '', desc: s.desc || '',
-               sp: null, rounds: 0 };
-    }),
+    stories: stories,
     cur: 0, round: 1, phase: 'vote', votes: {}, activeP: null
   };
   S.activeP = S.participants[0].id;
+  ROLE = 'local';
   show('view-session');
   render();
 }
 
-/* ── Logique de session ──────────────────────────────────── */
+/* ══════════════ F. MODE LOCAL (v0.1, inchangé) ══════════════ */
+var ROLE = null;          // null | 'local' | 'host' | 'peer'
+var S = null;
+var justRevealed = false;
+
 function nextUnvoted() {
   for (var i = 0; i < S.participants.length; i++) {
     if (!(S.participants[i].id in S.votes)) return S.participants[i].id;
@@ -683,7 +954,7 @@ function validate(v) {
   for (var i = 0; i < S.stories.length; i++) {
     if (S.stories[i].sp == null) { next = i; break; }
   }
-  if (next === -1) { renderRecap(); show('view-recap'); return; }
+  if (next === -1) { localRecap(); return; }
   jumpTo(next);
 }
 function jumpTo(idx) {
@@ -695,38 +966,11 @@ function jumpTo(idx) {
   show('view-session');
   render();
 }
-
-/* ── Statistiques ────────────────────────────────────────── */
-function computeStats() {
-  var all = Object.keys(S.votes).map(function (k) { return S.votes[k]; });
-  var nums = all.filter(function (v) { return NUM[v]; }).map(Number).sort(function (a, b) { return a - b; });
-  var n = nums.length;
-  var mean = null, med = null, pct = null, range = null, maxC = 0;
-  var counts = {};
-  nums.forEach(function (v) { counts[v] = (counts[v] || 0) + 1; });
-  if (n > 0) {
-    var sum = nums.reduce(function (a, b) { return a + b; }, 0);
-    mean = sum / n;
-    med = (n % 2 === 1) ? nums[(n - 1) / 2] : (nums[n / 2 - 1] + nums[n / 2]) / 2;
-    Object.keys(counts).forEach(function (k) { if (counts[k] > maxC) maxC = counts[k]; });
-    pct = Math.round(maxC / n * 100);
-    range = (nums[0] === nums[n - 1]) ? fmt(nums[0]) : fmt(nums[0]) + '–' + fmt(nums[n - 1]);
-  }
-  var allCounts = {};
-  all.forEach(function (v) { allCounts[v] = (allCounts[v] || 0) + 1; });
-  var nonNum = all.length - n;
-  return { all: all, nums: nums, n: n, mean: mean, med: med, counts: counts, maxC: maxC,
-           pct: pct, range: range, allCounts: allCounts, nonNum: nonNum };
-}
-function consensusBadge(st) {
-  if (st.n === 0) return '<span class="tk-badge tk-badge--muted tk-badge--dot">Aucun vote chiffré</span>';
-  if (st.pct === 100) return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus atteint 🎉</span>';
-  if (st.pct >= 70)  return '<span class="tk-badge tk-badge--ok tk-badge--dot">Consensus proche</span>';
-  if (st.pct >= 40)  return '<span class="tk-badge tk-badge--warn tk-badge--dot">À discuter</span>';
-  return '<span class="tk-badge tk-badge--danger tk-badge--dot">Divergence forte</span>';
+function localRecap() {
+  renderRecapData({ name: S.name, code: S.code, stories: S.stories, role: 'local' });
+  show('view-recap');
 }
 
-/* ── Rendu session ───────────────────────────────────────── */
 function render() {
   if (!S) return;
   var st = S.stories[S.cur];
@@ -737,22 +981,13 @@ function render() {
 
   $('tb-name').textContent = S.name;
   $('tb-code').textContent = 'Salle · ' + S.code;
+  $('tb-mode').textContent = 'Mode local · animateur';
+  $('btn-finish').style.display = '';
+  $('ft-note').textContent = 'Mode local — l\'animateur saisit les votes. Aucune connexion.';
+  $('invite-zone').innerHTML = '';
 
-  /* Story */
-  var chips = '<span class="chip"><span class="key">' + esc(st.key) + '</span></span>';
-  chips += '<span class="chip">' + (st.type === 'bug' ? '🐞 Bug' : '📘 Story') + '</span>';
-  if (st.prio === 'haute') chips += '<span class="chip">🔺 Priorité haute</span>';
-  else if (st.prio) chips += '<span class="chip">Priorité ' + esc(st.prio) + '</span>';
-  chips += '<span class="chip">Tour ' + S.round + '</span>';
-  if (st.sp != null) chips += '<span class="chip chip--done">✓ Estimée · ' + fmt(st.sp) + ' SP</span>';
-  var descHtml = st.desc
-    ? '<p class="desc">' + st.desc + '</p>'
-    : '<p class="desc empty">Aucune description fournie — comme au vrai planning, ça se raconte à l\'oral.</p>';
-  $('story-zone').innerHTML =
-    '<article class="story tk-card"><div class="chips">' + chips + '</div>' +
-    '<h1>' + esc(st.title) + '</h1>' + descHtml + '</article>';
+  $('story-zone').innerHTML = storyCardHTML(st, S.round, S.cur, S.stories.length);
 
-  /* Tour de vote */
   if (S.phase === 'vote') {
     if (S.activeP) {
       var p = S.participants.filter(function (x) { return x.id === S.activeP; })[0];
@@ -771,7 +1006,6 @@ function render() {
     $('turn-zone').innerHTML = '';
   }
 
-  /* Deck */
   var deckOn = (S.phase === 'vote' && S.activeP);
   $('deck-zone').innerHTML =
     '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
@@ -781,7 +1015,6 @@ function render() {
         (deckOn ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
     }).join('') + '</div>';
 
-  /* Révélation */
   if (S.phase === 'vote') {
     var waiting = S.participants.filter(function (x) { return !(x.id in S.votes); }).map(function (x) { return x.name; });
     var hint;
@@ -800,65 +1033,13 @@ function render() {
     $('reveal-zone').innerHTML = '';
   }
 
-  /* Résultats */
   if (S.phase === 'revealed') {
-    var stx = computeStats();
-    var statsHtml =
-      '<div class="stat"><div class="v">' + fmt(stx.mean) + '</div><div class="l">Moyenne</div></div>' +
-      '<div class="stat"><div class="v">' + fmt(stx.med) + '</div><div class="l">Médiane</div></div>' +
-      '<div class="stat"><div class="v ' + (stx.pct == null ? '' : stx.pct >= 70 ? 'ok' : stx.pct >= 40 ? 'warn' : 'danger') + '">' +
-        (stx.pct == null ? '—' : stx.pct + '%') + '</div><div class="l">Consensus</div></div>' +
-      '<div class="stat"><div class="v">' + (stx.range || '—') + '</div><div class="l">Étendue</div></div>';
-
-    var maxAll = 0;
-    Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
-    var distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
-      var c = stx.allCounts[v];
-      var w = Math.max(8, Math.round(c / maxAll * 100));
-      var isNum = !!NUM[v];
-      var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
-      var cls = peak ? ' peak' : (isNum ? '' : ' off');
-      var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
-      return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
-        '<div class="bar"><span style="width:' + w + '%"></span></div>' +
-        '<span class="n">' + lab + '</span></div>';
-    }).join('');
-
-    var note = stx.nonNum > 0
-      ? '<p class="dist-note">' + stx.nonNum + ' vote' + (stx.nonNum > 1 ? 's' : '') + ' « ? » ou « ☕ » — affiché' + (stx.nonNum > 1 ? 's' : '') + ', exclu' + (stx.nonNum > 1 ? 's' : '') + ' des statistiques.</p>'
-      : '';
-
-    /* Validation : valeurs distinctes votées, médiane suggérée */
-    var distinct = Object.keys(stx.counts).map(Number).sort(function (a, b) { return a - b; });
-    var suggest = null;
-    if (distinct.length && stx.med != null) {
-      var best = Infinity;
-      distinct.forEach(function (v) {
-        var d = Math.abs(v - stx.med);
-        if (d < best || (d === best && v > suggest)) { best = d; suggest = v; }
-      });
-    }
-    var valsHtml = distinct.map(function (v) {
-      return '<button type="button" class="val' + (v === suggest ? ' suggest' : '') +
-        '" data-act="validate" data-v="' + v + '">' + fmt(v) + '</button>';
-    }).join('');
-    var validateHtml = distinct.length
-      ? '<div class="validate"><div class="vh"><span class="vt">Valider l\'estimation</span>' +
-        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (S.round + 1) + ')</button></div>' +
-        '<div class="vals">' + valsHtml + '</div></div>'
-      : '<div class="validate"><div class="vh"><span class="vt">Aucune valeur chiffrée à valider</span>' +
-        '<button type="button" class="tk-btn tk-btn--ghost" data-act="revote">↻ Re-voter (Tour ' + (S.round + 1) + ')</button></div></div>';
-
-    $('results-zone').innerHTML =
-      '<section class="results tk-card' + (anim ? ' rise' : '') + '" aria-label="Résultats du tour">' +
-      '<div class="results-head"><h2>Résultats — Tour ' + S.round + '</h2>' + consensusBadge(stx) + '</div>' +
-      '<div class="stats">' + statsHtml + '</div>' +
-      '<div class="dist">' + distHtml + '</div>' + note + validateHtml + '</section>';
+    var vals = Object.keys(S.votes).map(function (k) { return S.votes[k]; });
+    $('results-zone').innerHTML = resultsHTML(vals, S.round, true, anim, null);
   } else {
     $('results-zone').innerHTML = '';
   }
 
-  /* Sidebar — participants */
   $('ppl-count').textContent = (S.phase === 'revealed')
     ? 'Tour ' + S.round + ' révélé'
     : voted + ' / ' + total + ' ont voté';
@@ -881,88 +1062,600 @@ function render() {
       '<span class="nm">' + esc(p.name) + '</span>' + card + '</div>';
   }).join('');
 
-  /* Sidebar — stories */
-  var estimated = S.stories.filter(function (x) { return x.sp != null; }).length;
-  $('sto-count').textContent = estimated + ' / ' + S.stories.length + ' estimées';
-  $('sto').innerHTML = S.stories.map(function (x, i) {
+  renderStoriesSide(S.stories, S.cur, true);
+}
+
+function renderStoriesSide(stories, cur, clickable) {
+  var estimated = stories.filter(function (x) { return x.sp != null; }).length;
+  $('sto-count').textContent = estimated + ' / ' + stories.length + ' estimées';
+  $('sto').innerHTML = stories.map(function (x, i) {
     var right = (x.sp != null)
       ? '<span class="tk-badge tk-badge--ok">' + fmt(x.sp) + ' SP</span>'
       : '<span class="tk-badge tk-badge--muted">—</span>';
-    return '<button type="button" class="srow' + (i === S.cur ? ' cur' : '') + '" data-act="jump" data-i="' + i + '">' +
+    return '<button type="button" class="srow' + (i === cur ? ' cur' : '') + '"' +
+      (clickable ? ' data-act="jump" data-i="' + i + '"' : ' disabled') + '>' +
       '<span class="k">' + esc(x.key) + '</span><span class="t">' + esc(x.title) + '</span>' + right + '</button>';
   }).join('');
 }
 
-/* ── Récap & export ──────────────────────────────────────── */
-function renderRecap() {
-  $('rc-tb-name').textContent = S.name;
-  $('rc-tb-code').textContent = 'Salle · ' + S.code;
-  var rows = S.stories.map(function (x) {
+/* ══════════════ G. Récap (partagé) ══════════════ */
+var RECAP = null;
+function renderRecapData(d) {
+  RECAP = d;
+  $('rc-tb-name').textContent = d.name;
+  $('rc-tb-code').textContent = 'Salle · ' + d.code;
+  var rows = d.stories.map(function (x) {
     return '<tr><td class="k">' + esc(x.key) + '</td><td>' + esc(x.title) + '</td>' +
       '<td class="sp">' + (x.sp != null ? fmt(x.sp) + ' SP' : '—') + '</td>' +
       '<td class="r">' + (x.rounds ? x.rounds + ' tour' + (x.rounds > 1 ? 's' : '') : '—') + '</td></tr>';
   }).join('');
-  var totalSP = S.stories.reduce(function (a, x) { return a + (x.sp || 0); }, 0);
-  var estimated = S.stories.filter(function (x) { return x.sp != null; }).length;
-  var allDone = estimated === S.stories.length;
+  var totalSP = d.stories.reduce(function (a, x) { return a + (x.sp || 0); }, 0);
+  var estimated = d.stories.filter(function (x) { return x.sp != null; }).length;
+  var allDone = estimated === d.stories.length;
+  var actions = '';
+  if (d.role === 'peer') {
+    actions = '<button type="button" class="tk-btn tk-btn--accent" data-act="export">⬇ Exporter (CSV)</button>';
+  } else {
+    actions =
+      (allDone ? '' : '<button type="button" class="tk-btn tk-btn--ghost" data-act="resume">← Reprendre le vote</button>') +
+      '<button type="button" class="tk-btn" data-act="restart">Nouvelle session</button>' +
+      '<button type="button" class="tk-btn tk-btn--accent" data-act="export">⬇ Exporter (CSV)</button>';
+  }
   $('recap-card').innerHTML =
     '<div class="recap-head"><div><h1>Récap de session</h1>' +
-    '<p class="sub">' + esc(S.name) + ' · Salle ' + esc(S.code) + ' · ' + estimated + ' / ' + S.stories.length + ' stories estimées</p></div>' +
+    '<p class="sub">' + esc(d.name) + ' · Salle ' + esc(d.code) + ' · ' + estimated + ' / ' + d.stories.length + ' stories estimées' +
+    (d.role === 'peer' ? ' · session close par l\'animateur' : '') + '</p></div>' +
     (allDone ? '<span class="tk-badge tk-badge--ok tk-badge--dot">Session terminée</span>'
              : '<span class="tk-badge tk-badge--warn tk-badge--dot">Estimation partielle</span>') +
     '</div>' +
     '<table><thead><tr><th>Clé</th><th>Story</th><th>SP</th><th>Tours</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<div class="total">Total engagé <b>' + fmt(totalSP) + ' SP</b></div>' +
-    '<div class="recap-actions">' +
-    (allDone ? '' : '<button type="button" class="tk-btn tk-btn--ghost" data-act="resume">← Reprendre le vote</button>') +
-    '<button type="button" class="tk-btn" data-act="restart">Nouvelle session</button>' +
-    '<button type="button" class="tk-btn tk-btn--accent" data-act="export">⬇ Exporter (CSV)</button>' +
-    '</div>';
+    '<div class="recap-actions">' + actions + '</div>';
 }
 function exportCSV() {
+  if (!RECAP) return;
   var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
   var lines = [['Clé', 'Story', 'Story points', 'Tours'].map(q).join(';')];
-  S.stories.forEach(function (x) {
+  RECAP.stories.forEach(function (x) {
     lines.push([x.key, x.title, x.sp != null ? fmt(x.sp) : '', x.rounds || ''].map(q).join(';'));
   });
   var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'poker-planning_' + S.code + '.csv';
+  a.download = 'poker-planning_' + RECAP.code + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 }
 
-/* ── Délégation d'événements ─────────────────────────────── */
+/* ══════════════ H. MODE LIVE — Animateur (hôte-autorité) ══════════════ */
+var LH = null;
+
+function launchLive() {
+  var stories = readStories();
+  var cfg = { url: $('sb-url').value.trim().replace(/\/+$/, ''), key: $('sb-key').value.trim() };
+  if (!validCfg(cfg)) { lobbyErr('Config Supabase invalide : URL « https://xxxx.supabase.co » + clé anon (Settings → API).'); return; }
+  if (stories.length < 1) { lobbyErr('Il faut au moins une story pour lancer la session.'); return; }
+  lobbyErr('');
+  saveCfg(cfg);
+  LH = {
+    cfg: cfg,
+    name: $('in-name').value.trim() || 'Session d\'estimation',
+    code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+    stories: stories,
+    cur: 0, round: 1, phase: 'vote',
+    votes: {},          // pid -> { v, name }
+    peers: {},          // pid -> { name }
+    ready: false, err: null, chan: null, client: null
+  };
+  ROLE = 'host';
+  connectHost();
+  show('view-session');
+  lhRender();
+}
+
+function connectHost() {
+  try {
+    LH.client = SB.createClient(LH.cfg.url, LH.cfg.key, { auth: { persistSession: false } });
+  } catch (e) { LH.err = 'Création du client impossible : ' + e.message; return; }
+  LH.chan = LH.client.channel('pk:' + LH.code, { config: { broadcast: { self: false }, presence: { key: 'host' } } });
+  LH.chan.on('broadcast', { event: 'vote' }, function (m) { lhOnVote(m.payload || {}); });
+  LH.chan.on('broadcast', { event: 'hello' }, function () { lhBroadcast(); });
+  LH.chan.on('presence', { event: 'sync' }, function () { lhOnPresence(); });
+  LH.chan.subscribe(function (status) {
+    if (status === 'SUBSCRIBED') {
+      LH.ready = true; LH.err = null;
+      LH.chan.track({ role: 'host', name: 'Animateur' });
+      lhBroadcast();
+      lhSnap();
+      lhRender();
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      LH.ready = false;
+      LH.err = 'Connexion au canal temps réel impossible (' + status + ') — vérifie l\'URL, la clé anon et le réseau (WebSocket sortant).';
+      lhRender();
+    }
+  });
+}
+
+function lhOnPresence() {
+  if (!LH || !LH.chan) return;
+  var ps = LH.chan.presenceState();
+  LH.peers = {};
+  Object.keys(ps).forEach(function (k) {
+    if (k === 'host') return;
+    var meta = (ps[k] && ps[k][0]) || {};
+    if (meta.role === 'p') LH.peers[k] = { name: meta.name || '?' };
+  });
+  lhBroadcast(); // couvre les arrivées tardives (idempotent)
+  lhRender();
+}
+
+function lhOnVote(p) {
+  if (!LH || LH.phase !== 'vote') return;
+  if (!p.pid || DECK.indexOf(String(p.value)) === -1) return;
+  LH.votes[p.pid] = { v: String(p.value), name: String(p.name || '?').slice(0, 24) };
+  lhBroadcast();
+  lhSnap();
+  lhRender();
+}
+
+function lhPayload() {
+  var st = LH.stories[LH.cur];
+  return {
+    v: 1, name: LH.name, code: LH.code, phase: LH.phase, round: LH.round,
+    story: { key: st.key, title: st.title, desc: st.desc, type: st.type, prio: st.prio, sp: st.sp, idx: LH.cur, total: LH.stories.length },
+    stories: LH.stories.map(function (x) { return { key: x.key, title: x.title, sp: x.sp }; }),
+    votedIds: Object.keys(LH.votes),
+    reveal: (LH.phase === 'revealed') ? { votes: LH.votes } : null,
+    recap: (LH.phase === 'recap')
+      ? { name: LH.name, code: LH.code, stories: LH.stories.map(function (x) { return { key: x.key, title: x.title, sp: x.sp, rounds: x.rounds }; }) }
+      : null
+  };
+}
+function lhBroadcast() {
+  if (LH && LH.chan && LH.ready) {
+    try { LH.chan.send({ type: 'broadcast', event: 'state', payload: lhPayload() }); } catch (e) {}
+  }
+}
+function lhSnap() {
+  if (!LH) return;
+  ssSet('pk-snap', JSON.stringify({
+    t: Date.now(), name: LH.name, code: LH.code, stories: LH.stories,
+    cur: LH.cur, round: LH.round, phase: LH.phase === 'recap' ? 'recap' : LH.phase, votes: LH.votes
+  }));
+}
+
+function lhReveal() {
+  if (!LH || LH.phase !== 'vote' || Object.keys(LH.votes).length === 0) return;
+  LH.phase = 'revealed';
+  justRevealed = true;
+  lhBroadcast(); lhSnap(); lhRender();
+}
+function lhRevote() {
+  if (!LH || LH.phase !== 'revealed') return;
+  LH.round += 1; LH.votes = {}; LH.phase = 'vote';
+  lhBroadcast(); lhSnap(); lhRender();
+}
+function lhValidate(v) {
+  if (!LH || LH.phase !== 'revealed') return;
+  var st = LH.stories[LH.cur];
+  st.sp = Number(v);
+  st.rounds = LH.round;
+  var next = -1;
+  for (var i = 0; i < LH.stories.length; i++) {
+    if (LH.stories[i].sp == null) { next = i; break; }
+  }
+  if (next === -1) { lhFinish(); return; }
+  lhJump(next);
+}
+function lhJump(idx) {
+  if (!LH) return;
+  LH.cur = idx; LH.round = 1; LH.votes = {}; LH.phase = 'vote';
+  lhBroadcast(); lhSnap();
+  show('view-session');
+  lhRender();
+}
+function lhFinish() {
+  if (!LH) return;
+  LH.phase = 'recap';
+  lhBroadcast(); lhSnap();
+  renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host' });
+  show('view-recap');
+}
+function lhResume() {
+  if (!LH) return;
+  var first = 0;
+  for (var i = 0; i < LH.stories.length; i++) { if (LH.stories[i].sp == null) { first = i; break; } }
+  lhJump(first);
+}
+
+function lhRender() {
+  if (!LH) return;
+  var st = LH.stories[LH.cur];
+  var peerIds = Object.keys(LH.peers);
+  var nP = peerIds.length;
+  var nV = Object.keys(LH.votes).length;
+  var anim = justRevealed;
+  justRevealed = false;
+
+  $('tb-name').textContent = LH.name;
+  $('tb-code').textContent = 'Salle · ' + LH.code;
+  $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + nP + ' connecté' + (nP > 1 ? 's' : '');
+  $('btn-finish').style.display = '';
+  $('ft-note').textContent = 'Mode live — bêta. Tout transite en temps réel, rien n\'est stocké.';
+
+  var link = buildLink(LH.code, LH.cfg);
+  $('invite-zone').innerHTML =
+    '<div class="invite tk-card"><span class="code">' + esc(LH.code) + '</span>' +
+    '<input class="tk-input mono lnk" id="invite-link" type="text" readonly value="' + esc(link) + '">' +
+    '<button type="button" class="tk-btn tk-btn--accent" data-act="copy-link">Copier le lien</button>' +
+    '<span class="ok" id="copy-ok" hidden>Copié ✓</span>' +
+    '<span class="ihint">Le lien contient la config de connexion — partage-le uniquement à ton équipe.' +
+    (location.protocol === 'file:' ? ' ⚠ Page ouverte en local : ce lien ne marchera que sur ce poste — utilise l\'URL déployée pour la vraie cérémonie.' : '') +
+    '</span></div>';
+
+  $('story-zone').innerHTML = storyCardHTML(st, LH.round, LH.cur, LH.stories.length);
+
+  if (LH.err) {
+    $('turn-zone').innerHTML = '<div class="alert">' + esc(LH.err) + '</div>';
+  } else if (!LH.ready) {
+    $('turn-zone').innerHTML =
+      '<div class="turn"><span class="avatar" aria-hidden="true">…</span>' +
+      '<div class="txt"><p class="who">Connexion au canal temps réel…</p>' +
+      '<p class="sub">Salle ' + esc(LH.code) + '</p></div></div>';
+  } else if (LH.phase === 'vote') {
+    if (nP === 0) {
+      $('turn-zone').innerHTML =
+        '<div class="turn"><span class="avatar" aria-hidden="true">📡</span>' +
+        '<div class="txt"><p class="who">En attente des participants…</p>' +
+        '<p class="sub">Partage le lien ci-dessus — la liste se remplit toute seule.</p></div></div>';
+    } else {
+      var waitNames = peerIds.filter(function (k) { return !(k in LH.votes); }).map(function (k) { return LH.peers[k].name; });
+      var subTxt = waitNames.length === 0
+        ? 'Tout le monde a voté — révèle quand tu veux.'
+        : 'En attente de ' + waitNames.slice(0, 3).map(esc).join(', ') + (waitNames.length > 3 ? ' +' + (waitNames.length - 3) : '') + '…';
+      $('turn-zone').innerHTML =
+        '<div class="turn' + (waitNames.length === 0 ? ' allset' : '') + '"><span class="avatar" aria-hidden="true">' + (waitNames.length === 0 ? '✓' : '🗳️') + '</span>' +
+        '<div class="txt"><p class="who"><b>' + nV + '</b> / ' + nP + ' ont voté</p>' +
+        '<p class="sub">' + subTxt + '</p></div></div>';
+    }
+  } else {
+    $('turn-zone').innerHTML = '';
+  }
+
+  $('deck-zone').innerHTML = '';
+
+  if (LH.phase === 'vote') {
+    $('reveal-zone').innerHTML =
+      '<div class="reveal-row"><button type="button" class="tk-btn tk-btn--accent' +
+      (nV > 0 && nV >= nP && nP > 0 ? ' btn-pulse' : '') + '" data-act="reveal"' +
+      (nV === 0 ? ' disabled' : '') + '>👁 Révéler les votes</button>' +
+      '<span class="hint"><b>' + nV + '</b> vote' + (nV > 1 ? 's' : '') + ' reçu' + (nV > 1 ? 's' : '') + '</span></div>';
+  } else {
+    $('reveal-zone').innerHTML = '';
+  }
+
+  if (LH.phase === 'revealed') {
+    var vals = Object.keys(LH.votes).map(function (k) { return LH.votes[k].v; });
+    $('results-zone').innerHTML = resultsHTML(vals, LH.round, true, anim, null);
+  } else {
+    $('results-zone').innerHTML = '';
+  }
+
+  /* Sidebar : présence + votants partis */
+  var rows = [];
+  var seen = {};
+  peerIds.forEach(function (k) { seen[k] = true; });
+  var allIds = peerIds.slice();
+  Object.keys(LH.votes).forEach(function (k) { if (!seen[k]) allIds.push(k); });
+  $('ppl-count').textContent = (LH.phase === 'revealed') ? 'Tour ' + LH.round + ' révélé' : nV + ' / ' + nP + ' ont voté';
+  allIds.forEach(function (k, i) {
+    var online = !!LH.peers[k];
+    var nm = online ? LH.peers[k].name : (LH.votes[k] ? LH.votes[k].name : '?');
+    var label = esc(nm) + (online ? '' : ' <span class="you">(parti)</span>');
+    var right;
+    if (LH.phase === 'revealed' && LH.votes[k]) {
+      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(LH.votes[k].v) + '</span>';
+    } else if (LH.phase === 'revealed') {
+      right = '<span class="mini none" title="N\'a pas voté">—</span>';
+    } else {
+      right = (k in LH.votes)
+        ? '<span class="mini back" aria-hidden="true"></span><span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>'
+        : '<span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>';
+    }
+    rows.push('<div class="person"><span class="avatar" aria-hidden="true">' + esc(initials(nm)) + '</span>' +
+      '<span class="nm">' + label + '</span>' + right + '</div>');
+  });
+  if (allIds.length === 0) rows.push('<div class="person"><span class="nm" style="color:var(--muted)">Personne n\'a encore rejoint…</span></div>');
+  $('ppl').innerHTML = rows.join('');
+
+  renderStoriesSide(LH.stories, LH.cur, true);
+}
+
+/* Reprise après refresh de l'onglet animateur */
+function maybeResume() {
+  var raw = ssGet('pk-snap');
+  var cfg = loadCfg();
+  if (!raw || !validCfg(cfg) || !SB) { $('resume-zone').innerHTML = ''; return; }
+  var snap = null;
+  try { snap = JSON.parse(raw); } catch (e) {}
+  if (!snap || !snap.code || (Date.now() - (snap.t || 0)) > 3 * 3600 * 1000) { $('resume-zone').innerHTML = ''; return; }
+  $('resume-zone').innerHTML =
+    '<div class="resume-card tk-card"><span class="rt">Session live <span class="code">' + esc(snap.code) + '</span> interrompue — ' +
+    esc(snap.name) + '</span>' +
+    '<button type="button" class="tk-btn tk-btn--accent" data-act="resume-live">Reprendre</button></div>';
+}
+function resumeLive() {
+  var snap = null;
+  try { snap = JSON.parse(ssGet('pk-snap') || 'null'); } catch (e) {}
+  var cfg = loadCfg();
+  if (!snap || !validCfg(cfg) || !SB) return;
+  LH = {
+    cfg: cfg, name: snap.name, code: snap.code, stories: snap.stories,
+    cur: snap.cur || 0, round: snap.round || 1,
+    phase: snap.phase === 'recap' ? 'recap' : snap.phase,
+    votes: snap.votes || {}, peers: {}, ready: false, err: null, chan: null, client: null
+  };
+  ROLE = 'host';
+  connectHost();
+  if (LH.phase === 'recap') {
+    renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host' });
+    show('view-recap');
+  } else {
+    show('view-session');
+    lhRender();
+  }
+}
+
+/* ══════════════ I. MODE LIVE — Participant ══════════════ */
+var LP = null;
+var ROOMQ = '';
+var HCFG = null;
+
+function joinErr(msg) {
+  var el = $('join-err');
+  el.textContent = msg || '';
+  el.hidden = !msg;
+}
+function joinSession() {
+  var name = $('in-pseudo').value.trim();
+  if (!name) { $('in-pseudo').focus(); return; }
+  if (!SB) { joinErr('Librairie temps réel introuvable — la page est mal déployée (supabase.js manquant).'); return; }
+  if (!validCfg(HCFG)) { joinErr('Lien incomplet — redemande le lien d\'invitation à l\'animateur.'); return; }
+  var pid = ssGet('pk-pid');
+  if (!pid) { pid = 'u' + Math.random().toString(36).slice(2, 10); ssSet('pk-pid', pid); }
+  LP = { pid: pid, name: name.slice(0, 24), code: ROOMQ, cfg: HCFG,
+         state: null, myVote: null, lastSig: '', hostOn: true, ready: false, err: null,
+         prevPhase: '', chan: null, client: null, peersPs: {} };
+  ROLE = 'peer';
+  try {
+    LP.client = SB.createClient(HCFG.url, HCFG.key, { auth: { persistSession: false } });
+  } catch (e) { joinErr('Connexion impossible : ' + e.message); return; }
+  LP.chan = LP.client.channel('pk:' + LP.code, { config: { broadcast: { self: false }, presence: { key: pid } } });
+  LP.chan.on('broadcast', { event: 'state' }, function (m) { pOnState(m.payload || null); });
+  LP.chan.on('presence', { event: 'sync' }, function () { pOnPresence(); });
+  LP.chan.subscribe(function (status) {
+    if (status === 'SUBSCRIBED') {
+      LP.ready = true; LP.err = null;
+      LP.chan.track({ role: 'p', name: LP.name });
+      try { LP.chan.send({ type: 'broadcast', event: 'hello', payload: { pid: pid } }); } catch (e) {}
+      pRender();
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      LP.ready = false;
+      LP.err = 'Connexion au canal impossible (' + status + ') — réseau ou lien invalide.';
+      pRender();
+    }
+  });
+  show('view-session');
+  pRender();
+}
+
+function pOnState(p) {
+  if (!LP || !p || !p.story) return;
+  LP.state = p;
+  var sig = p.story.key + '#' + p.round;
+  if (sig !== LP.lastSig) { LP.lastSig = sig; LP.myVote = null; }
+  if (p.phase === 'revealed' && LP.prevPhase !== 'revealed') justRevealed = true;
+  LP.prevPhase = p.phase;
+  if (p.phase === 'recap' && p.recap) {
+    renderRecapData({ name: p.recap.name, code: p.recap.code, stories: p.recap.stories, role: 'peer' });
+    show('view-recap');
+    return;
+  }
+  show('view-session');
+  pRender();
+}
+function pOnPresence() {
+  if (!LP || !LP.chan) return;
+  LP.peersPs = LP.chan.presenceState() || {};
+  LP.hostOn = Object.keys(LP.peersPs).some(function (k) {
+    var m = (LP.peersPs[k] && LP.peersPs[k][0]) || {};
+    return m.role === 'host';
+  });
+  pRender();
+}
+function pPick(v) {
+  if (!LP || !LP.state || LP.state.phase !== 'vote' || !LP.ready) return;
+  LP.myVote = v;
+  try { LP.chan.send({ type: 'broadcast', event: 'vote', payload: { pid: LP.pid, name: LP.name, value: v } }); } catch (e) {}
+  pRender();
+}
+
+function pRender() {
+  if (!LP) return;
+  var st = LP.state;
+  var anim = justRevealed;
+  justRevealed = false;
+
+  $('tb-name').textContent = (st && st.name) || 'Poker Planning';
+  $('tb-code').textContent = 'Salle · ' + LP.code;
+  $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + esc(LP.name);
+  $('btn-finish').style.display = 'none';
+  $('ft-note').textContent = 'Mode live — ton pseudo disparaît à la fermeture. Rien n\'est stocké.';
+  $('invite-zone').innerHTML = '';
+
+  if (LP.err) {
+    $('story-zone').innerHTML = '';
+    $('turn-zone').innerHTML = '<div class="alert">' + esc(LP.err) + '</div>';
+    $('deck-zone').innerHTML = ''; $('reveal-zone').innerHTML = ''; $('results-zone').innerHTML = '';
+    $('ppl-count').textContent = ''; $('ppl').innerHTML = ''; $('sto-count').textContent = ''; $('sto').innerHTML = '';
+    return;
+  }
+  if (!st) {
+    $('story-zone').innerHTML =
+      '<div class="waitcard tk-card"><p class="w1">' + (LP.ready ? 'Connecté à la salle ' + esc(LP.code) + ' ✓' : 'Connexion…') + '</p>' +
+      '<p class="w2">' + (LP.ready ? 'En attente de l\'animateur — la story apparaîtra ici.' : 'Ouverture du canal temps réel.') + '</p></div>';
+    $('turn-zone').innerHTML = LP.hostOn ? '' : '<div class="alert warn">L\'animateur n\'est pas (encore) connecté.</div>';
+    $('deck-zone').innerHTML = ''; $('reveal-zone').innerHTML = ''; $('results-zone').innerHTML = '';
+    $('ppl-count').textContent = ''; $('ppl').innerHTML = ''; $('sto-count').textContent = ''; $('sto').innerHTML = '';
+    return;
+  }
+
+  $('story-zone').innerHTML = storyCardHTML(st.story, st.round, st.story.idx, st.story.total);
+
+  var hostAlert = LP.hostOn ? '' : '<div class="alert warn">Animateur déconnecté — session en pause, ton écran se réactivera à son retour.</div>';
+  var votedMe = LP.myVote != null || (st.votedIds || []).indexOf(LP.pid) !== -1;
+
+  if (st.phase === 'vote') {
+    $('turn-zone').innerHTML = hostAlert + (votedMe
+      ? '<div class="turn allset"><span class="avatar" aria-hidden="true">✓</span><div class="txt">' +
+        '<p class="who">Ton vote est enregistré' + (LP.myVote ? ' : <b>' + esc(LP.myVote) + '</b>' : '') + '</p>' +
+        '<p class="sub">Modifiable jusqu\'à la révélation — clique une autre carte pour changer.</p></div></div>'
+      : '<div class="turn"><span class="avatar" aria-hidden="true">' + esc(initials(LP.name)) + '</span><div class="txt">' +
+        '<p class="who">À toi de voter, <b>' + esc(LP.name) + '</b></p>' +
+        '<p class="sub">Choisis ta carte — elle reste cachée jusqu\'à la révélation.</p></div></div>');
+  } else {
+    $('turn-zone').innerHTML = hostAlert;
+  }
+
+  var deckOn = (st.phase === 'vote' && LP.ready && LP.hostOn);
+  $('deck-zone').innerHTML =
+    '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
+    DECK.map(function (v) {
+      var sp = (v === '?' || v === '☕') ? ' special' : '';
+      var sel = (LP.myVote === v) ? ' sel' : '';
+      return '<button type="button" class="pcard' + sp + sel + '" data-act="pick" data-v="' + esc(v) + '"' +
+        (deckOn ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
+    }).join('') + '</div>';
+
+  var nVoted = (st.votedIds || []).length;
+  if (st.phase === 'vote') {
+    $('reveal-zone').innerHTML =
+      '<div class="reveal-row"><span class="hint"><b>' + nVoted + '</b> vote' + (nVoted > 1 ? 's' : '') +
+      ' enregistré' + (nVoted > 1 ? 's' : '') + ' — l\'animateur révélera pour tout le monde en même temps.</span></div>';
+    $('results-zone').innerHTML = '';
+  } else if (st.phase === 'revealed' && st.reveal) {
+    $('reveal-zone').innerHTML = '';
+    var vals = Object.keys(st.reveal.votes).map(function (k) { return st.reveal.votes[k].v; });
+    $('results-zone').innerHTML = resultsHTML(vals, st.round, false, anim, 'L\'animateur décide : valider l\'estimation ou relancer un tour.');
+  } else {
+    $('reveal-zone').innerHTML = ''; $('results-zone').innerHTML = '';
+  }
+
+  /* Sidebar participant : présence + statut de vote */
+  var rows = [];
+  var ids = Object.keys(LP.peersPs).filter(function (k) {
+    var m = (LP.peersPs[k] && LP.peersPs[k][0]) || {};
+    return m.role === 'p';
+  });
+  $('ppl-count').textContent = (st.phase === 'revealed') ? 'Tour ' + st.round + ' révélé' : nVoted + ' / ' + ids.length + ' ont voté';
+  rows.push('<div class="person"><span class="avatar" aria-hidden="true" style="background:var(--accent)">🎙</span>' +
+    '<span class="nm">Animateur</span>' +
+    (LP.hostOn ? '<span class="tk-badge tk-badge--ok tk-badge--dot">En ligne</span>' : '<span class="tk-badge tk-badge--danger tk-badge--dot">Absent</span>') + '</div>');
+  ids.forEach(function (k, i) {
+    var m = LP.peersPs[k][0] || {};
+    var me = (k === LP.pid);
+    var nm = esc(m.name || '?') + (me ? ' <span class="you">(toi)</span>' : '');
+    var right;
+    if (st.phase === 'revealed' && st.reveal && st.reveal.votes[k]) {
+      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(st.reveal.votes[k].v) + '</span>';
+    } else if (st.phase === 'revealed') {
+      right = '<span class="mini none">—</span>';
+    } else {
+      right = ((st.votedIds || []).indexOf(k) !== -1)
+        ? '<span class="mini back" aria-hidden="true"></span><span class="tk-badge tk-badge--ok tk-badge--dot">A voté</span>'
+        : '<span class="tk-badge tk-badge--muted tk-badge--dot">En attente</span>';
+    }
+    rows.push('<div class="person' + (me ? ' me' : '') + '"><span class="avatar" aria-hidden="true">' + esc(initials(m.name || '?')) + '</span>' +
+      '<span class="nm">' + nm + '</span>' + right + '</div>');
+  });
+  $('ppl').innerHTML = rows.join('');
+
+  renderStoriesSide(st.stories || [], st.story.idx, false);
+}
+
+/* ══════════════ J. Routeur d'événements ══════════════ */
 document.addEventListener('click', function (e) {
   var t = e.target.closest('[data-act]');
   if (!t) return;
   var act = t.dataset.act;
-  if (act === 'noop')    { e.preventDefault(); return; }
-  if (act === 'add-p')   { addParticipant(); return; }
-  if (act === 'rm-p')    { syncLobbyStories(); lobby.participants.splice(Number(t.dataset.i), 1); renderLobby(); return; }
-  if (act === 'add-s')   { syncLobbyStories(); lobby.stories.push({ key: '', title: '', type: 'story', prio: '', desc: '' }); renderLobby(); return; }
-  if (act === 'rm-s')    { syncLobbyStories(); lobby.stories.splice(Number(t.dataset.i), 1); renderLobby(); return; }
-  if (act === 'launch')  { launch(); return; }
-  if (act === 'pick')    { pickCard(t.dataset.v); return; }
-  if (act === 'sel-p')   { selectParticipant(t.dataset.id); return; }
-  if (act === 'reveal')  { reveal(); return; }
-  if (act === 'revote')  { revote(); return; }
-  if (act === 'validate'){ validate(t.dataset.v); return; }
-  if (act === 'jump')    { jumpTo(Number(t.dataset.i)); return; }
-  if (act === 'finish')  { renderRecap(); show('view-recap'); return; }
-  if (act === 'resume')  { show('view-session'); render(); return; }
-  if (act === 'restart') { location.reload(); return; }
+
+  if (act === 'noop')      { e.preventDefault(); return; }
+  /* Lobby */
+  if (act === 'mode-local'){ setMode('local'); return; }
+  if (act === 'mode-live') { setMode('live'); return; }
+  if (act === 'add-p')     { addParticipant(); return; }
+  if (act === 'rm-p')      { syncLobbyStories(); lobby.participants.splice(Number(t.dataset.i), 1); renderLobby(); return; }
+  if (act === 'add-s')     { syncLobbyStories(); lobby.stories.push({ key: '', title: '', type: 'story', prio: '', desc: '' }); renderLobby(); return; }
+  if (act === 'rm-s')      { syncLobbyStories(); lobby.stories.splice(Number(t.dataset.i), 1); renderLobby(); return; }
+  if (act === 'launch')    { launch(); return; }
+  if (act === 'resume-live'){ resumeLive(); return; }
+  /* Join */
+  if (act === 'join')      { joinSession(); return; }
+  /* Session */
+  if (act === 'copy-link') {
+    var inp = $('invite-link');
+    if (inp) copyText(inp.value, function () { var ok = $('copy-ok'); if (ok) ok.hidden = false; });
+    return;
+  }
+  if (act === 'pick')      { if (ROLE === 'peer') pPick(t.dataset.v); else if (ROLE === 'local') pickCard(t.dataset.v); return; }
+  if (act === 'sel-p')     { if (ROLE === 'local') selectParticipant(t.dataset.id); return; }
+  if (act === 'reveal')    { if (ROLE === 'host') lhReveal(); else if (ROLE === 'local') reveal(); return; }
+  if (act === 'revote')    { if (ROLE === 'host') lhRevote(); else if (ROLE === 'local') revote(); return; }
+  if (act === 'validate')  { if (ROLE === 'host') lhValidate(t.dataset.v); else if (ROLE === 'local') validate(t.dataset.v); return; }
+  if (act === 'jump')      { if (ROLE === 'host') lhJump(Number(t.dataset.i)); else if (ROLE === 'local') jumpTo(Number(t.dataset.i)); return; }
+  if (act === 'finish')    { if (ROLE === 'host') lhFinish(); else if (ROLE === 'local') localRecap(); return; }
+  /* Récap */
+  if (act === 'resume')    { if (ROLE === 'host') lhResume(); else if (ROLE === 'local') { show('view-session'); render(); } return; }
+  if (act === 'restart')   { ssDel('pk-snap'); location.reload(); return; }
+  if (act === 'export')    { exportCSV(); return; }
 });
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter' && e.target && e.target.id === 'in-p') { e.preventDefault(); addParticipant(); }
+  if (e.key !== 'Enter' || !e.target) return;
+  if (e.target.id === 'in-p') { e.preventDefault(); addParticipant(); }
+  if (e.target.id === 'in-pseudo') { e.preventDefault(); joinSession(); }
 });
 
-/* ── Démarrage ───────────────────────────────────────────── */
-renderLobby();
+/* ══════════════ K. Démarrage ══════════════ */
+function boot() {
+  var q = new URLSearchParams(location.search);
+  ROOMQ = String(q.get('room') || '').toUpperCase();
+  HCFG = parseHashCfg(location.hash);
+
+  if (ROOMQ && HCFG) {
+    $('join-code').textContent = ROOMQ;
+    show('view-join');
+    if (!SB) joinErr('Librairie temps réel introuvable — la page est mal déployée (supabase.js manquant).');
+    var pi = $('in-pseudo'); if (pi) pi.focus();
+    return;
+  }
+  if (ROOMQ && !HCFG) {
+    $('join-code').textContent = ROOMQ;
+    show('view-join');
+    joinErr('Lien incomplet (config manquante après le « # ») — redemande le lien complet à l\'animateur.');
+    return;
+  }
+  renderLobby();
+  maybeResume();
+  show('view-lobby');
+}
+
+/* Hooks de test (jsdom) — sans effet en usage normal */
+window.__pk = { buildLink: buildLink, parseHashCfg: parseHashCfg, computeStats: computeStats, validCfg: validCfg };
+
+boot();
 })();
 </script>
 </body>
