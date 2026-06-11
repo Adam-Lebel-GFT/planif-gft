@@ -10,7 +10,7 @@
 <style>
 /* ════════════════════════════════════════════════════════════
    TOKENS — reconstruits depuis la maquette (assets/theme.css
-   non fourni). Remplacer ce bloc :root par le theme officiel
+   officiel : planif-gft/assets/theme.css). Remplacer ce bloc :root par le theme officiel
    le jour où il arrive : tout le fichier suivra.
    ════════════════════════════════════════════════════════════ */
 :root {
@@ -18,14 +18,14 @@
   --navy-2:  #1A2E4A;
   --accent:  #0C447C;
   --accent-2:#0E5396;
-  --green:   #0D7A4E;
+  --green:   #1A7A42;
   --green-bg:#E6F4EE;
   --amber:   #9A5B0B;
   --amber-bg:#FCF1E0;
   --red:     #B03A2E;
   --red-bg:  #FBEAE8;
-  --bg:      #F4F6F9;
-  --border:  #E3E8F0;
+  --bg:      #F4F5F7;
+  --border:  #E8EAED;
   --muted:   #5E6B7E;
   --text:    #1C2A3A;
   --white:   #FFFFFF;
@@ -92,7 +92,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   white-space: nowrap;
 }
 .tk-badge--dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.tk-badge--ok    { background: var(--green-bg); border-color: rgba(13,122,78,.25);  color: var(--green); }
+.tk-badge--ok    { background: var(--green-bg); border-color: rgba(26,122,66,.25);  color: var(--green); }
 .tk-badge--warn  { background: var(--amber-bg); border-color: rgba(154,91,11,.25);  color: var(--amber); }
 .tk-badge--danger{ background: var(--red-bg);   border-color: rgba(176,58,46,.25);  color: var(--red); }
 .tk-badge--muted { background: var(--bg); }
@@ -100,7 +100,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 /* ── Bandeau statut ─────────────────────────────────────────── */
 .proto-banner {
   background: var(--green-bg);
-  border-bottom: 1px solid rgba(13,122,78,.18);
+  border-bottom: 1px solid rgba(26,122,66,.18);
   color: var(--green);
   text-align: center;
   font-family: var(--font-mono);
@@ -168,7 +168,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   display: inline-flex; align-items: center; gap: 6px;
 }
 .chip .key { font-family: var(--font-mono); color: var(--accent); letter-spacing: .5px; }
-.chip--done { background: var(--green-bg); border-color: rgba(13,122,78,.25); color: var(--green); }
+.chip--done { background: var(--green-bg); border-color: rgba(26,122,66,.25); color: var(--green); }
 .story h1 {
   font-size: clamp(18px, 3vw, 23px); font-weight: 800;
   letter-spacing: -.4px; color: var(--navy); line-height: 1.25;
@@ -188,7 +188,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .turn .who { font-size: 14px; font-weight: 700; color: var(--navy); }
 .turn .who b { color: var(--accent); }
 .turn .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.turn.allset { background: var(--green-bg); border-color: rgba(13,122,78,.22); }
+.turn.allset { background: var(--green-bg); border-color: rgba(26,122,66,.22); }
 .turn.allset .who { color: var(--green); }
 
 .avatar {
@@ -265,7 +265,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   transition: var(--ease); position: relative;
 }
 .val:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
-.val.suggest { border-color: var(--green); box-shadow: 0 0 0 3px rgba(13,122,78,.14); }
+.val.suggest { border-color: var(--green); box-shadow: 0 0 0 3px rgba(26,122,66,.14); }
 .val.suggest::after {
   content: 'médiane'; position: absolute; left: 50%; transform: translateX(-50%); bottom: -18px;
   font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--green);
