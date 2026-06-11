@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnostic réseau — Poker Planning live</title>
+<style>
+:root {
+  --navy:#0C1A2E; --navy-2:#1A2E4A; --accent:#0C447C; --green:#1A7A42;
+  --amber:#9A5B0B; --red:#B03A2E; --bg:#F4F5F7; --border:#E8EAED;
+  --muted:#5E6B7E; --text:#1C2A3A; --white:#fff;
+  --shadow:0 1px 2px rgba(12,26,46,.05),0 4px 14px rgba(12,26,46,.06);
+  --mono:'DM Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:var(--bg);font-family:Manrope,system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin-inline:auto;padding:clamp(28px,6vw,56px) clamp(16px,4vw,40px)}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.eyebrow::before{content:'';width:18px;height:2px;background:var(--accent)}
+h1{font-size:clamp(22px,4vw,28px);font-weight:800;letter-spacing:-.6px;color:var(--navy)}
+.sub{margin-top:8px;font-size:13.5px;line-height:1.65;color:var(--muted)}
+.sub b{color:var(--text)}
+.card{background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-top:18px;padding:18px 20px}
+.probe{display:flex;align-items:flex-start;gap:14px}
+.pnum{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:var(--navy-2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.pbody{flex:1;min-width:0}
+.pname{font-size:14px;font-weight:800;color:var(--navy)}
+.pdesc{margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--muted)}
+.status{margin-top:10px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--muted)}
+.status::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.status.run{color:var(--accent);background:#EAF1F8;border-color:rgba(12,68,124,.25)}
+.status.ok{color:var(--green);background:#E6F4EE;border-color:rgba(26,122,66,.25)}
+.status.ko{color:var(--red);background:#FBEAE8;border-color:rgba(176,58,46,.25)}
+.inputs{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.tk-input{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--white)}
+.tk-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(12,68,124,.1)}
+.hint{font-size:11.5px;color:var(--muted);font-style:italic}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border:1.5px solid var(--border);border-radius:9px;background:var(--white);color:var(--navy);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s ease}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn--accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--accent:hover{background:#0E5396;border-color:#0E5396;color:#fff}
+.verdict{margin-top:18px;padding:16px 20px;border-radius:12px;font-size:13.5px;font-weight:700;display:none}
+.verdict.ok{display:block;background:#E6F4EE;border:1px solid rgba(26,122,66,.25);color:var(--green)}
+.verdict.ko{display:block;background:#FBEAE8;border:1px solid rgba(176,58,46,.25);color:var(--red)}
+.verdict.warn{display:block;background:#FCF1E0;border:1px solid rgba(154,91,11,.25);color:var(--amber)}
+.actions{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.copied{font-size:12px;font-weight:700;color:var(--green)}
+footer{margin-top:28px;font-size:11.5px;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Agile Toolkit · Diagnostic</p>
+  <h1>Test réseau — Poker Planning live</h1>
+  <p class="sub">Ouvre cette page <b>depuis le poste où tu animeras</b> (réseau d'entreprise), puis une seconde fois
+    <b>depuis la 4G ou un wifi invité</b>. Compare les deux rapports : c'est le réseau qu'on teste, pas la machine.
+    Verdict en moins de deux minutes.</p>
+
+  <div class="card">
+    <div class="probe">
+      <span class="pnum">1</span>
+      <div class="pbody">
+        <p class="pname">WebSocket sortant (le voyant décisif)</p>
+        <p class="pdesc">Le Mode B vit sur une connexion WebSocket persistante. Ce test ouvre un canal vers un service
+          d'écho public. S'il est rouge ici et vert en 4G, le réseau bloque — plan B Cloudflare.</p>
+        <span class="status" id="st1">En attente…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="probe">
+      <span class="pnum">2</span>
+      <div class="pbody">
+        <p class="pname">HTTPS sortant vers Google Fonts</p>
+        <p class="pdesc">L'outil charge ses polices depuis fonts.googleapis.com. Rouge = on inlinera les polices, rien de bloquant.</p>
+        <span class="status" id="st2">En attente…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="probe">
+      <span class="pnum">3</span>
+      <div class="pbody">
+        <p class="pname">Canal Supabase Realtime (optionnel, le test grandeur nature)</p>
+        <p class="pdesc">Colle l'URL de ton projet Supabase et la clé <i>anon</i> (publique par design) pour tester
+          le vrai point d'entrée temps réel.</p>
+        <div class="inputs">
+          <input class="tk-input" id="sb-url" type="text" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
+          <input class="tk-input" id="sb-key" type="text" placeholder="clé anon (eyJhbGciOi…)" autocomplete="off" spellcheck="false">
+          <div><button class="btn" id="btn3" type="button">Tester le canal Realtime</button></div>
+        </div>
+        <span class="status" id="st3">Non testé</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+
+  <div class="actions">
+    <button class="btn btn--accent" id="btn-copy" type="button">📋 Copier le rapport</button>
+    <span class="copied" id="copied" hidden>Copié — colle-le dans la War Room ✓</span>
+  </div>
+
+  <footer>Page autonome, aucune donnée envoyée nulle part hormis les connexions de test elles-mêmes.
+    Les deux services d'écho utilisés sont publics ; si les deux sont morts, le voyant 1 peut être un faux négatif — la comparaison 4G tranche.</footer>
+</div>
+
+<script>
+(function () {
+'use strict';
+var R = { p1: null, p2: null, p3: null };
+
+function $(id) { return document.getElementById(id); }
+function setStatus(id, cls, txt) { var el = $(id); el.className = 'status' + (cls ? ' ' + cls : ''); el.textContent = txt; }
+
+function testWS(url, timeout) {
+  return new Promise(function (res) {
+    var t0 = performance.now(), done = false, s;
+    try { s = new WebSocket(url); }
+    catch (e) { return res({ ok: false, why: 'constructeur : ' + e.message, url: url }); }
+    var to = setTimeout(function () {
+      if (done) return; done = true;
+      try { s.close(); } catch (e) {}
+      res({ ok: false, why: 'timeout ' + Math.round(timeout / 1000) + ' s', url: url });
+    }, timeout);
+    s.onopen = function () {
+      if (done) return; done = true; clearTimeout(to);
+      var ms = Math.round(performance.now() - t0);
+      try { s.close(); } catch (e) {}
+      res({ ok: true, ms: ms, url: url });
+    };
+    s.onerror = function () {
+      if (done) return; done = true; clearTimeout(to);
+      res({ ok: false, why: 'connexion refusée ou interceptée', url: url });
+    };
+  });
+}
+
+function probe1() {
+  setStatus('st1', 'run', 'Test en cours…');
+  return testWS('wss://echo.websocket.org/', 8000).then(function (r1) {
+    if (r1.ok) return r1;
+    return testWS('wss://echo.websocket.events/', 8000);
+  }).then(function (r) {
+    R.p1 = r;
+    if (r.ok) setStatus('st1', 'ok', 'OK — ' + r.ms + ' ms (' + new URL(r.url).host + ')');
+    else setStatus('st1', 'ko', 'Échec — ' + r.why);
+  });
+}
+
+function probe2() {
+  setStatus('st2', 'run', 'Test en cours…');
+  var t0 = performance.now();
+  var ctl = new AbortController();
+  var to = setTimeout(function () { ctl.abort(); }, 8000);
+  return fetch('https://fonts.googleapis.com/css2?family=Manrope&display=swap', { mode: 'no-cors', signal: ctl.signal })
+    .then(function () {
+      clearTimeout(to);
+      R.p2 = { ok: true, ms: Math.round(performance.now() - t0) };
+      setStatus('st2', 'ok', 'OK — ' + R.p2.ms + ' ms');
+    })
+    .catch(function (e) {
+      clearTimeout(to);
+      R.p2 = { ok: false, why: e.name === 'AbortError' ? 'timeout 8 s' : 'bloqué' };
+      setStatus('st2', 'ko', 'Échec — ' + R.p2.why);
+    });
+}
+
+function probe3() {
+  var url = $('sb-url').value.trim().replace(/\/+$/, '');
+  var key = $('sb-key').value.trim();
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url) || key.length < 20) {
+    R.p3 = { ok: false, why: 'URL ou clé invalide' };
+    setStatus('st3', 'ko', 'URL de projet ou clé anon invalide');
+    verdict(); return;
+  }
+  setStatus('st3', 'run', 'Test en cours…');
+  var ws = url.replace(/^https:/i, 'wss:') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(key) + '&vsn=1.0.0';
+  testWS(ws, 8000).then(function (r) {
+    R.p3 = r;
+    if (r.ok) setStatus('st3', 'ok', 'OK — canal ouvert en ' + r.ms + ' ms');
+    else setStatus('st3', 'ko', 'Échec — ' + r.why);
+    verdict();
+  });
+}
+
+function verdict() {
+  var v = $('verdict');
+  if (!R.p1) return;
+  if (R.p1.ok && (R.p3 === null || R.p3.ok)) {
+    v.className = 'verdict ok';
+    v.textContent = '✓ Verdict : GO Supabase Realtime' + (R.p3 && R.p3.ok ? ' — confirmé sur ton vrai projet.' : ' — les WebSockets sortent de ce réseau.');
+  } else if (R.p1.ok && R.p3 && !R.p3.ok) {
+    v.className = 'verdict warn';
+    v.textContent = '⚠ Les WebSockets sortent, mais ton point d\u2019entrée Supabase échoue — vérifie URL/clé, sinon le domaine *.supabase.co est filtré : plan B Cloudflare.';
+  } else {
+    v.className = 'verdict ko';
+    v.textContent = '✗ WebSockets bloqués sur ce réseau (re-teste en 4G pour confirmer). Plan B : Cloudflare Durable Objects sur ton propre domaine.';
+  }
+}
+
+function report() {
+  var L = [];
+  L.push('RAPPORT TEST RÉSEAU — Poker Planning live');
+  L.push('Date : ' + new Date().toLocaleString('fr-CH'));
+  L.push('Navigateur : ' + navigator.userAgent);
+  L.push('1. WebSocket sortant : ' + (R.p1 ? (R.p1.ok ? 'OK (' + R.p1.ms + ' ms via ' + new URL(R.p1.url).host + ')' : 'ÉCHEC — ' + R.p1.why) : 'non testé'));
+  L.push('2. HTTPS Google Fonts : ' + (R.p2 ? (R.p2.ok ? 'OK (' + R.p2.ms + ' ms)' : 'ÉCHEC — ' + R.p2.why) : 'non testé'));
+  L.push('3. Canal Supabase Realtime : ' + (R.p3 ? (R.p3.ok ? 'OK (' + R.p3.ms + ' ms)' : 'ÉCHEC — ' + R.p3.why) : 'non testé'));
+  var vd = $('verdict');
+  if (vd.textContent) L.push('Verdict : ' + vd.textContent);
+  return L.join('\n');
+}
+
+$('btn3').addEventListener('click', probe3);
+$('btn-copy').addEventListener('click', function () {
+  var txt = report();
+  function done() { $('copied').hidden = false; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, function () { window.prompt('Copie manuelle :', txt); done(); });
+  } else { window.prompt('Copie manuelle :', txt); done(); }
+});
+
+probe1().then(probe2).then(verdict);
+})();
+</script>
+</body>
+</html>
