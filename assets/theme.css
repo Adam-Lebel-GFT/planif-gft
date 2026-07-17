@@ -201,3 +201,35 @@
   border-radius: 50%;
   background: currentColor;
 }
+
+/* ── Barre supérieure partagée (topbar outil) ─────────────────
+   Entête neutre commune à tous les outils : carré accent +
+   « Agile Toolkit » (lien vers le lanceur), séparateur, nom de
+   l'outil, version, puis emplacement d'actions à droite.
+   Couleurs en littéral pour un rendu identique quel que soit le
+   thème local de l'outil. */
+.tk-topbar {
+  background: #0C1A2E;
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding-inline: clamp(16px, 4vw, 40px);
+  position: relative; z-index: 40;
+}
+.tk-topbar__logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.tk-topbar__logo:hover { text-decoration: none; }
+.tk-topbar__logo .sq { width: 11px; height: 11px; background: #0C447C; flex-shrink: 0; }
+.tk-topbar__logo .wm {
+  font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 16px;
+  color: #FFFFFF; letter-spacing: -.4px; white-space: nowrap;
+}
+.tk-topbar__sep { width: 1px; height: 24px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+.tk-topbar__tool {
+  font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,.85); letter-spacing: .3px; white-space: nowrap;
+}
+.tk-topbar__version {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: rgba(255,255,255,.35); letter-spacing: 1px; white-space: nowrap;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.tk-topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
