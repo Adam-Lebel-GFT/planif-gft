@@ -984,9 +984,9 @@ var drag = null;            // geste pointeur en cours
 var HINTS = {
   select:    'Sélection : cliquez un objet pour le déplacer, double-clic pour éditer son texte.',
   pan:       'Main : glissez pour déplacer la vue. Molette : zoom.',
-  rect:      'Rectangle : cliquez (taille par défaut) ou glissez pour dimensionner. Double-clic ensuite pour le texte.',
-  diamond:   'Losange (décision) : cliquez ou glissez pour dimensionner.',
-  ellipse:   'Cercle / ovale (début, fin) : cliquez ou glissez pour dimensionner.',
+  rect:      'Rectangle : cliquez pour poser une case (taille standard). Double-clic ensuite pour le texte, poignées pour redimensionner.',
+  diamond:   'Losange (décision) : cliquez pour poser une forme de taille standard.',
+  ellipse:   'Cercle / ovale (début, fin) : cliquez pour poser une forme de taille standard.',
   connector: 'Connecteur : glissez d’une forme vers une autre. La flèche suivra les formes.',
   pen:       'Crayon : dessinez à main levée. Couleur et épaisseur dans le panneau de droite.',
   highlight: 'Surligneur : trait semi-transparent, idéal pour mettre en évidence.',
@@ -1326,7 +1326,9 @@ stage.addEventListener('pointerdown', function (e) {
   if (currentTool === 'rect' || currentTool === 'diamond' || currentTool === 'ellipse') {
     var id = nid();
     beginGesture('shape-create', { id: id, p0: p });   // instantané AVANT l'ajout
-    state.diagram.push({ id: id, type: currentTool, x: p.x, y: p.y, w: 1, h: 1, text: '', color: settings.shape.color });
+    var d = DEFAULT_SIZE[currentTool];                  // toujours la taille par défaut ; le glissement ne fait que positionner
+    state.diagram.push({ id: id, type: currentTool, x: p.x - d[0] / 2, y: p.y - d[1] / 2,
+                         w: d[0], h: d[1], text: '', color: settings.shape.color });
     drag.changed = true;
     renderDiagram();
     return;
@@ -1385,10 +1387,8 @@ stage.addEventListener('pointermove', function (e) {
   }
   if (drag.kind === 'shape-create') {
     var s = getShape(drag.id);
-    if (s) {
-      s.x = Math.min(drag.p0.x, p.x); s.y = Math.min(drag.p0.y, p.y);
-      s.w = Math.abs(p.x - drag.p0.x); s.h = Math.abs(p.y - drag.p0.y);
-      if (s.w > 6 || s.h > 6) { drag.sized = true; }
+    if (s) {                                   // taille fixe : le glissement recentre la case sur le curseur
+      s.x = p.x - s.w / 2; s.y = p.y - s.h / 2;
       renderDiagram();
     }
     return;
@@ -1480,14 +1480,7 @@ stage.addEventListener('pointerup', function (e) {
   }
   if (drag.kind === 'shape-create') {
     var s = getShape(drag.id);
-    if (s) {
-      if (!drag.sized) {                       // simple clic : taille par défaut, centrée
-        var d = DEFAULT_SIZE[s.type];
-        s.w = d[0]; s.h = d[1];
-        s.x = drag.p0.x - d[0] / 2; s.y = drag.p0.y - d[1] / 2;
-      } else {
-        s.w = Math.max(s.w, 24); s.h = Math.max(s.h, 24);
-      }
+    if (s) {                                   // taille par défaut déjà posée à la création
       selection = { layer: 'diagram', id: s.id };
     }
     commitGesture();
