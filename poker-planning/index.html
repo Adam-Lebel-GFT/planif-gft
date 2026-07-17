@@ -109,6 +109,22 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .proto-banner::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 /* ── Topbar session ─────────────────────────────────────────── */
+/* ── Entête partagée de la plateforme (identique aux autres outils) ── */
+.tk-topbar {
+  background: #0C1A2E; height: 56px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding-inline: clamp(16px, 4vw, 40px);
+  position: relative; z-index: 40;
+}
+.tk-topbar__logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.tk-topbar__logo:hover { text-decoration: none; }
+.tk-topbar__logo .sq { width: 11px; height: 11px; background: #0C447C; flex-shrink: 0; }
+.tk-topbar__logo .wm { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 16px; color: #FFFFFF; letter-spacing: -.4px; white-space: nowrap; }
+.tk-topbar__sep { width: 1px; height: 24px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+.tk-topbar__tool { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .3px; white-space: nowrap; }
+.tk-topbar__version { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: 1px; white-space: nowrap; }
+.tk-topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
 .pk-topbar {
   background: var(--navy);
   min-height: 60px;
@@ -487,9 +503,15 @@ button.person:hover { background: var(--bg); }
 
   <!-- ════════ VUE 1 — LOBBY (animateur) ════════ -->
   <div id="view-lobby">
+    <header class="tk-topbar">
+      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+        <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+      </a>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
+      <span class="tk-topbar__tool">Poker Planning</span>
+    </header>
     <main class="tk-container">
       <div class="lobby">
-        <p class="lobby-eyebrow">Agile Toolkit · Poker Planning</p>
         <h1>Nouvelle session d'estimation</h1>
         <p class="sub">Choisis ton mode, nomme la session, charge les stories. <b>Local</b> : tu saisis les votes.
           <b>Live</b> : tu partages un lien et chacun vote depuis son appareil.</p>
@@ -549,9 +571,15 @@ button.person:hover { background: var(--bg); }
 
   <!-- ════════ VUE 2 — REJOINDRE (participant) ════════ -->
   <div id="view-join" hidden>
+    <header class="tk-topbar">
+      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+        <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+      </a>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
+      <span class="tk-topbar__tool">Poker Planning</span>
+    </header>
     <main class="tk-container">
       <div class="lobby">
-        <p class="lobby-eyebrow">Agile Toolkit · Poker Planning</p>
         <h1>Rejoindre la session</h1>
         <p class="sub">Salle <b id="join-code" style="font-family:var(--font-mono);color:var(--accent)">—</b> ·
           ton pseudo s'affiche aux autres pendant la session, puis disparaît. Rien n'est enregistré.</p>
@@ -572,16 +600,21 @@ button.person:hover { background: var(--bg); }
 
   <!-- ════════ VUE 3 — SESSION ════════ -->
   <div id="view-session" hidden>
-    <header class="pk-topbar">
-      <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
-      <span class="pk-sep" aria-hidden="true"></span>
+    <header class="tk-topbar">
+      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+        <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+      </a>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
+      <span class="tk-topbar__tool">Poker Planning</span>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
       <div class="pk-session">
         <span class="name" id="tb-name">—</span>
         <span class="room" id="tb-code">Salle · —</span>
       </div>
-      <span class="spacer"></span>
-      <span class="tb-mode" id="tb-mode">Mode A · animateur</span>
-      <button class="tk-btn tk-btn--on-dark" type="button" id="btn-finish" data-act="finish">Terminer la session</button>
+      <div class="tk-topbar__actions">
+        <span class="tb-mode" id="tb-mode">Mode A · animateur</span>
+        <button class="tk-btn tk-btn--on-dark" type="button" id="btn-finish" data-act="finish">Terminer la session</button>
+      </div>
     </header>
 
     <main class="tk-container">
@@ -626,14 +659,18 @@ button.person:hover { background: var(--bg); }
 
   <!-- ════════ VUE 4 — RÉCAP ════════ -->
   <div id="view-recap" hidden>
-    <header class="pk-topbar">
-      <a class="pk-back" href="#" data-act="noop" title="Hub Outils — à venir"><span aria-hidden="true">←</span> Outils</a>
-      <span class="pk-sep" aria-hidden="true"></span>
+    <header class="tk-topbar">
+      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+        <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+      </a>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
+      <span class="tk-topbar__tool">Poker Planning</span>
+      <span class="tk-topbar__sep" aria-hidden="true"></span>
       <div class="pk-session">
         <span class="name" id="rc-tb-name">—</span>
         <span class="room" id="rc-tb-code">Salle · —</span>
       </div>
-      <span class="spacer"></span>
+      <span class="tk-topbar__actions"></span>
     </header>
 
     <main class="tk-container">
