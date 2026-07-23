@@ -506,17 +506,17 @@ function handleFile(file){
     var COUNTRY_RE = /^(canada|qu[eé]bec|france|suisse|espagne|maroc|portugal|pologne|inde|br[eé]sil|allemagne|italie|royaume|belgique|roumanie)/i;
     for(var r=7;r<data.length;r++){
       var row=data[r]; if(!row) continue;
-      var name=String(row[0]||'').trim();
+      var name=String(row[1]||'').trim();
       if(!name || name==='Full Names' || name==='NaN') continue;
-      var team=String(row[4]||'').trim();
+      var team=String(row[5]||'').trim();
       if(!team){
         if(name.toLowerCase().indexOf('support')<0 && COUNTRY_RE.test(name)) currentCountry=name;
         continue;
       }
-      var role=String(row[5]||'').trim();
-      var allocRaw=(row[8]!==null&&row[8]!==undefined&&row[8]!=='')?parseFloat(row[8]):1.0;
+      var role=String(row[6]||'').trim();
+      var allocRaw=(row[9]!==null&&row[9]!==undefined&&row[9]!=='')?parseFloat(row[9]):1.0;
       var alloc=Math.min(1, Math.max(0, allocRaw>1?allocRaw/100:allocRaw));
-      var p=mkPerson(name, team, role, alloc, toDS(row[6]), toDS(row[7]), currentCountry);
+      var p=mkPerson(name, team, role, alloc, toDS(row[7]), toDS(row[8]), currentCountry);
       for(var cc=0;cc<colDates.length;cc++){ var dd=colDates[cc]; if(!dd) continue; var code=String(row[cc]||'').trim(); if(code) p.dailyCodes[dsU(dd)]=code; }
       persons.push(p);
     }
