@@ -877,22 +877,17 @@ function chartPeriodLabel(g){
   if(gran==='sprint') return g.label.replace('Sprint ','');
   return g.label; // semaine → « S25 », mois → « Juin 2026 »
 }
-async function renderCapacityChartCanvas(labels, ba, dev, qa, autre){
-  var W=1800, H=570;
-  var canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
-  var ctx=canvas.getContext('2d');
-  ctx.fillStyle='#E8E8E8'; ctx.fillRect(0,0,W,H);
-  var pad={l:60,r:20,t:20,b:60}, cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  var colors={'BA':'#4472C4','DEV':'#ED7D31','QA':'#70AD47','Autre':'#A5A5A5'};
+var CHART_COLORS = {'BA':'#4472C4','DEV':'#ED7D31','QA':'#70AD47','Autre':'#A5A5A5'};
+// Ne garde que les séries non nulles, avec leur couleur — commun aux 3 types de graphique
+function activeChartSeries(ba,dev,qa,autre){
   var series=[];
-  if(ba.some(function(v){return v>0;}))    series.push({name:'BA',vals:ba,color:colors.BA});
-  if(dev.some(function(v){return v>0;}))   series.push({name:'DEV',vals:dev,color:colors.DEV});
-  if(qa.some(function(v){return v>0;}))    series.push({name:'QA',vals:qa,color:colors.QA});
-  if(autre.some(function(v){return v>0;})) series.push({name:'Autre',vals:autre,color:colors.Autre});
-  var n=labels.length;
-  var stacks=new Array(n).fill(0), maxVal=0;
-  series.forEach(function(s){ s.vals.forEach(function(v,i){ stacks[i]+=v; if(stacks[i]>maxVal) maxVal=stacks[i]; }); });
-  maxVal = maxVal>0 ? Math.ceil(maxVal/100)*100*1.1 : 100;
+  if(ba.some(function(v){return v>0;}))    series.push({name:'BA',vals:ba,color:CHART_COLORS.BA});
+  if(dev.some(function(v){return v>0;}))   series.push({name:'DEV',vals:dev,color:CHART_COLORS.DEV});
+  if(qa.some(function(v){return v>0;}))    series.push({name:'QA',vals:qa,color:CHART_COLORS.QA});
+  if(autre.some(function(v){return v>0;})) series.push({name:'Autre',vals:autre,color:CHART_COLORS.Autre});
+  return series;
+}
+function drawChartGrid(ctx, pad, cw, ch, maxVal){
   ctx.strokeStyle='#CCCCCC'; ctx.lineWidth=0.8;
   var nGrid=5;
   for(var g=0; g<=nGrid; g++){
@@ -900,23 +895,138 @@ async function renderCapacityChartCanvas(labels, ba, dev, qa, autre){
     ctx.beginPath(); ctx.moveTo(pad.l,yp); ctx.lineTo(pad.l+cw,yp); ctx.stroke();
     ctx.fillStyle='#404040'; ctx.font='18px Calibri,Arial'; ctx.textAlign='right'; ctx.fillText(Math.round(yv),pad.l-8,yp+5);
   }
-  var bottoms=new Array(n).fill(0);
-  series.forEach(function(ser){
-    ctx.beginPath();
-    ctx.moveTo(pad.l, pad.t+ch-((bottoms[0])/maxVal)*ch);
-    for(var i=0;i<n;i++){ var xp=pad.l+(n>1?(i/(n-1)):0.5)*cw, yp=pad.t+ch-((bottoms[i])/maxVal)*ch; ctx.lineTo(xp,yp); }
-    for(var i2=n-1;i2>=0;i2--){ var xp2=pad.l+(n>1?(i2/(n-1)):0.5)*cw, yp2=pad.t+ch-((bottoms[i2]+ser.vals[i2])/maxVal)*ch; ctx.lineTo(xp2,yp2); }
-    ctx.closePath(); ctx.fillStyle=ser.color; ctx.fill();
-    ser.vals.forEach(function(v,i){ bottoms[i]+=v; });
-  });
+}
+function drawChartXLabelsAndLegend(ctx, W, H, pad, ch, labels, xCenters, series){
   ctx.fillStyle='#404040'; ctx.font='18px Calibri,Arial'; ctx.textAlign='center';
-  labels.forEach(function(s,i){ var xp=pad.l+(n>1?(i/(n-1)):0.5)*cw; ctx.fillText(String(s), xp, pad.t+ch+28); });
+  labels.forEach(function(s,i){ ctx.fillText(String(s), xCenters[i], pad.t+ch+28); });
   var legX=W/2-(series.length*120)/2, legY=H-20;
   series.forEach(function(ser,i){
     var lx=legX+i*130;
     ctx.fillStyle=ser.color; ctx.fillRect(lx,legY-14,16,14);
     ctx.fillStyle='#404040'; ctx.font='16px Calibri,Arial'; ctx.textAlign='left'; ctx.fillText(ser.name,lx+20,legY-2);
   });
+}
+// Étiquette de donnée blanche cerclée de noir — lisible sur n'importe quelle couleur de série
+function drawChartValueLabel(ctx, x, y, val){
+  if(val<=0) return;
+  var r=Math.round(val*10)/10;
+  var text=(r%1===0)?String(r):r.toFixed(1);
+  ctx.font='14px Calibri,Arial'; ctx.textAlign='center';
+  ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.strokeText(text,x,y);
+  ctx.fillStyle='#FFFFFF'; ctx.fillText(text,x,y);
+}
+
+// ── Graphique 1 : aires empilées (vue continue) ──
+async function renderCapacityChartCanvas(labels, ba, dev, qa, autre){
+  var W=1800, H=570;
+  var canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#E8E8E8'; ctx.fillRect(0,0,W,H);
+  var pad={l:60,r:20,t:20,b:60}, cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  var series=activeChartSeries(ba,dev,qa,autre);
+  var n=labels.length;
+  var stacks=new Array(n).fill(0), maxVal=0;
+  series.forEach(function(s){ s.vals.forEach(function(v,i){ stacks[i]+=v; if(stacks[i]>maxVal) maxVal=stacks[i]; }); });
+  maxVal = maxVal>0 ? Math.ceil(maxVal/100)*100*1.1 : 100;
+
+  drawChartGrid(ctx, pad, cw, ch, maxVal);
+
+  var xCenters=[]; for(var i=0;i<n;i++) xCenters.push(pad.l+(n>1?(i/(n-1)):0.5)*cw);
+  var bottoms=new Array(n).fill(0);
+  series.forEach(function(ser){
+    ctx.beginPath();
+    ctx.moveTo(xCenters[0], pad.t+ch-((bottoms[0])/maxVal)*ch);
+    for(var i=0;i<n;i++){ ctx.lineTo(xCenters[i], pad.t+ch-((bottoms[i])/maxVal)*ch); }
+    for(var i2=n-1;i2>=0;i2--){ ctx.lineTo(xCenters[i2], pad.t+ch-((bottoms[i2]+ser.vals[i2])/maxVal)*ch); }
+    ctx.closePath(); ctx.fillStyle=ser.color; ctx.fill();
+    // Étiquettes : centrées dans chaque segment, seulement si assez de place verticale
+    for(var i3=0;i3<n;i3++){
+      var v=ser.vals[i3]; if(v<=0) continue;
+      var segH=(v/maxVal)*ch;
+      if(segH<16) continue;
+      var yMid=pad.t+ch-((bottoms[i3]+v/2)/maxVal)*ch;
+      drawChartValueLabel(ctx, xCenters[i3], yMid+5, v);
+    }
+    ser.vals.forEach(function(v,i){ bottoms[i]+=v; });
+  });
+
+  drawChartXLabelsAndLegend(ctx, W, H, pad, ch, labels, xCenters, series);
+  return 'image/png;base64,'+canvas.toDataURL('image/png').split(',')[1];
+}
+
+// ── Graphique 2 : histogramme groupé (une barre par rôle, par période) ──
+async function renderGroupedBarChartCanvas(labels, ba, dev, qa, autre){
+  var W=1800, H=570;
+  var canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#E8E8E8'; ctx.fillRect(0,0,W,H);
+  var pad={l:60,r:20,t:20,b:60}, cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  var series=activeChartSeries(ba,dev,qa,autre);
+  var n=labels.length, k=Math.max(1,series.length);
+  var maxVal=0;
+  series.forEach(function(s){ s.vals.forEach(function(v){ if(v>maxVal) maxVal=v; }); });
+  maxVal = maxVal>0 ? Math.ceil(maxVal/20)*20*1.15 : 20;
+
+  drawChartGrid(ctx, pad, cw, ch, maxVal);
+
+  var groupW = n>0 ? cw/n : cw;
+  var barGap = groupW*0.12, barsW = groupW-2*barGap, barW = barsW/k;
+  var xCenters=[];
+  for(var i=0;i<n;i++){
+    var gx0 = pad.l + i*groupW + barGap;
+    xCenters.push(gx0 + barsW/2);
+    series.forEach(function(ser, si){
+      var v=ser.vals[i];
+      var bx = gx0 + si*barW;
+      var bh = (v/maxVal)*ch;
+      var by = pad.t+ch-bh;
+      ctx.fillStyle=ser.color;
+      ctx.fillRect(bx+1, by, Math.max(1,barW-2), bh);
+      if(v>0){
+        var r=Math.round(v*10)/10, text=(r%1===0)?String(r):r.toFixed(1);
+        ctx.font='13px Calibri,Arial'; ctx.textAlign='center'; ctx.fillStyle='#404040';
+        ctx.fillText(text, bx+barW/2, by-6);
+      }
+    });
+  }
+
+  drawChartXLabelsAndLegend(ctx, W, H, pad, ch, labels, xCenters, series);
+  return 'image/png;base64,'+canvas.toDataURL('image/png').split(',')[1];
+}
+
+// ── Graphique 3 : histogramme empilé (une barre par période, rôles empilés) ──
+async function renderStackedBarChartCanvas(labels, ba, dev, qa, autre){
+  var W=1800, H=570;
+  var canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#E8E8E8'; ctx.fillRect(0,0,W,H);
+  var pad={l:60,r:20,t:20,b:60}, cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  var series=activeChartSeries(ba,dev,qa,autre);
+  var n=labels.length;
+  var stacks=new Array(n).fill(0), maxVal=0;
+  series.forEach(function(s){ s.vals.forEach(function(v,i){ stacks[i]+=v; if(stacks[i]>maxVal) maxVal=stacks[i]; }); });
+  maxVal = maxVal>0 ? Math.ceil(maxVal/100)*100*1.1 : 100;
+
+  drawChartGrid(ctx, pad, cw, ch, maxVal);
+
+  var groupW = n>0 ? cw/n : cw;
+  var barW = groupW*0.55;
+  var xCenters=[], bottoms=new Array(n).fill(0);
+  for(var i=0;i<n;i++) xCenters.push(pad.l + i*groupW + groupW/2);
+
+  series.forEach(function(ser){
+    for(var i=0;i<n;i++){
+      var v=ser.vals[i]; if(v<=0) continue;
+      var segH=(v/maxVal)*ch;
+      var bx=xCenters[i]-barW/2, by=pad.t+ch-((bottoms[i]+v)/maxVal)*ch;
+      ctx.fillStyle=ser.color;
+      ctx.fillRect(bx, by, barW, segH);
+      if(segH>=16) drawChartValueLabel(ctx, xCenters[i], by+segH/2+5, v);
+      bottoms[i]+=v;
+    }
+  });
+
+  drawChartXLabelsAndLegend(ctx, W, H, pad, ch, labels, xCenters, series);
   return 'image/png;base64,'+canvas.toDataURL('image/png').split(',')[1];
 }
 var GRAN_NOUN      = { jour:'jour',   semaine:'semaine',   mois:'mois', sprint:'sprint' };
@@ -955,6 +1065,17 @@ async function exportCapacityPptx(){
   var subtitle = 'Visualisation de la capacité des ressources par rôle, en ' + unitLbl +
     ' (' + pers[0].label + ' → ' + pers[pers.length-1].label + ')';
 
+  // Bandeau commun (titre + sous-titre en haut, note + pied de page en bas) des diapos de contenu —
+  // resserré pour laisser un maximum de place au graphique/tableau au centre.
+  function addContentChrome(s, slideTitle, pageNum){
+    s.addText(slideTitle, { x:0.49, y:0.32, w:12.36, h:0.42, fontSize:24, color:'0E2841', fontFace:'Calibri', bold:true, valign:'middle' });
+    s.addText(subtitle, { x:0.48, y:0.74, w:11.5, h:0.22, fontSize:12, color:'404040', fontFace:'Calibri' });
+    s.addText('* Ressources rattachées au projet Vaudoise exclues de ce graphique', { x:1.01, y:6.18, w:9, h:0.16, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
+    s.addText(today + ' |', { x:0.917, y:6.45, w:3, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
+    s.addText('Analyse de capacité - GFT', { x:1.614, y:6.45, w:5, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
+    s.addText(String(pageNum), { x:9.417, y:6.45, w:3, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', align:'right', valign:'middle' });
+  }
+
   var s1 = pres.addSlide();
   s1.background = { color: '0E2841' };
   s1.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.35, h:7.5, fill:{color:'156082'}, line:{type:'none'} });
@@ -964,16 +1085,17 @@ async function exportCapacityPptx(){
   s1.addShape(pres.shapes.RECTANGLE, { x:0, y:7.1, w:13.33, h:0.4, fill:{color:'156082'}, line:{type:'none'} });
   s1.addText(today + '  |  Analyse de capacité - GFT', { x:0.5, y:7.13, w:12, h:0.28, fontSize:9, color:'FFFFFF', fontFace:'Calibri', valign:'middle' });
 
+  // ── Diapo 2 : aires empilées + tableau de données ──
   var s2 = pres.addSlide();
   s2.background = { color: 'E8E8E8' };
-  s2.addText(titleTxt, { x:0.49, y:0.84, w:12.36, h:0.48, fontSize:28, color:'0E2841', fontFace:'Calibri', valign:'middle' });
-  s2.addText(subtitle, { x:0.48, y:1.32, w:9, h:0.24, fontSize:14, color:'404040', fontFace:'Calibri' });
+  addContentChrome(s2, titleTxt, 2);
 
   var chartPng = await renderCapacityChartCanvas(chartLabels, series.ba, series.dev, series.qa, series.autre);
-  s2.addImage({ data: chartPng, x:1.614, y:2.115, w:9.902, h:3.8 });
+  s2.addImage({ data: chartPng, x:1.614, y:1.02, w:9.902, h:3.3 });
 
+  var granCap = GRAN_NOUN[gran].charAt(0).toUpperCase() + GRAN_NOUN[gran].slice(1);
   var tableRows = [];
-  var hdrCells = [{ text:unit, options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
+  var hdrCells = [{ text:granCap+' — '+unit, options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
   chartLabels.forEach(function(s){ hdrCells.push({ text:s, options:{fill:'D9D9D9', bold:true, align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
   tableRows.push(hdrCells);
   [['BA',series.ba,'DCE6F1'],['DEV',series.dev,'FCE4D6'],['QA',series.qa,'E2EFDA'],['Autre',series.autre,'EDEDED']].forEach(function(row){
@@ -983,13 +1105,28 @@ async function exportCapacityPptx(){
     vals.forEach(function(v){ cells.push({ text:String(Math.round(v*10)/10), options:{fill:'FFFFFF', align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
     tableRows.push(cells);
   });
+  var totalCells=[{ text:'Total', options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
+  chartLabels.forEach(function(_,i){
+    var t = series.ba[i]+series.dev[i]+series.qa[i]+series.autre[i];
+    totalCells.push({ text:String(Math.round(t*10)/10), options:{fill:'D9D9D9', bold:true, align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} });
+  });
+  tableRows.push(totalCells);
   var colW=[1.2]; for(var ci=0; ci<chartLabels.length; ci++) colW.push((9.902-1.2)/chartLabels.length);
-  s2.addTable(tableRows, { x:1.614, y:5.95, w:9.902, colW:colW, fontSize:8, fontFace:'Calibri', border:{pt:1,color:'888888'} });
+  s2.addTable(tableRows, { x:1.614, y:4.42, w:9.902, colW:colW, rowH:0.24, fontSize:8, fontFace:'Calibri', border:{pt:1,color:'888888'} });
 
-  s2.addText('* Ressources rattachées au projet Vaudoise exclues de ce graphique', { x:1.01, y:6.647, w:7, h:0.162, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
-  s2.addText(today + ' |', { x:0.917, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
-  s2.addText('Analyse de capacité - GFT', { x:1.614, y:7.061, w:5, h:0.144, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
-  s2.addText('2', { x:9.417, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', align:'right', valign:'middle' });
+  // ── Diapo 3 : histogramme groupé (une barre par rôle, par période) ──
+  var s3 = pres.addSlide();
+  s3.background = { color: 'E8E8E8' };
+  addContentChrome(s3, titleTxt + ' — histogramme', 3);
+  var barPng = await renderGroupedBarChartCanvas(chartLabels, series.ba, series.dev, series.qa, series.autre);
+  s3.addImage({ data: barPng, x:1.614, y:1.05, w:9.902, h:4.65 });
+
+  // ── Diapo 4 : histogramme empilé ──
+  var s4 = pres.addSlide();
+  s4.background = { color: 'E8E8E8' };
+  addContentChrome(s4, titleTxt + ' — histogramme empilé', 4);
+  var stackedPng = await renderStackedBarChartCanvas(chartLabels, series.ba, series.dev, series.qa, series.autre);
+  s4.addImage({ data: stackedPng, x:1.614, y:1.05, w:9.902, h:4.65 });
 
   var ts = new Date().toISOString().slice(0,10);
   pres.writeFile({ fileName: 'Capacite_GFT_' + gran + '_' + unit.toLowerCase() + '_' + ts + '.pptx' });
