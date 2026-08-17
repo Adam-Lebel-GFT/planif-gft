@@ -301,7 +301,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
           <button data-u="JP" class="active">Jours-personne</button>
           <button data-u="SP">Story points</button>
         </div>
-        <button class="pptx-btn" id="btn-pptx" title="Générer le graphique de capacité par sprint (CONF/INTEG/TRANS/Vaudoise) en PowerPoint">📊 PowerPoint</button>
+        <button class="pptx-btn" id="btn-pptx" title="Générer le graphique de capacité par sprint (BA/DEV/QA/Autre) en PowerPoint">📊 PowerPoint</button>
       </div>
     </div>
   </div>
@@ -371,9 +371,9 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     </div>
     <div class="sb-divider"></div>
     <div>
-      <div class="sb-group-title">Regroupement « Vaudoise » (export PowerPoint)</div>
+      <div class="sb-group-title">Exclusion « Vaudoise » (export PowerPoint)</div>
       <input class="sb-input-text" id="sb-vaudoise" placeholder="ex: Dinesh, Madalena, Fardjana" value="Dinesh, Madalena, Marques, Fardjana">
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Noms (ou fragments de noms) isolés dans une série à part sur le graphique de capacité par sprint. Vide = pas de regroupement séparé.</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Noms (ou fragments de noms) exclus du graphique de capacité par sprint et de son tableau. Vide = personne n'est exclu.</div>
     </div>
     <div class="sb-divider"></div>
     <div>
@@ -397,7 +397,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 var P = { vc:2.0, vi:2.0, vt:2.0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10 };
 var ITSET = new Set(['INTEG 4','INTEG 5']);
 var TTSET = new Set(['TRANS']);
-var VSET  = ['dinesh','madalena','marques','fardjana']; // fragments (minuscules) identifiant les ressources « Vaudoise » pour le graphique PowerPoint
+var VSET  = ['dinesh','madalena','marques','fardjana']; // fragments (minuscules) identifiant les ressources « Vaudoise » à exclure du graphique PowerPoint
 var WORKING = new Set(['R', 'S', 'AS']);
 var MN  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 var MNc = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -883,42 +883,53 @@ function isVaudoise(name){
   var n=(name||'').toLowerCase();
   return VSET.some(function(t){ return n.indexOf(t)>=0; });
 }
+// Rôle canonique pour le graphique — même logique de détection que roleRank(), sans distinction Lead
+function roleCategory(role){
+  var r=(role||'').toLowerCase();
+  if(r.indexOf('ba')>=0) return 'BA';
+  if(r.indexOf('dev')>=0 || r.indexOf('architect')>=0) return 'DEV';
+  if(r.indexOf('qa')>=0) return 'QA';
+  return 'Autre';
+}
 function sprintsInRange(){
   if(!state.sprints.length) return [];
   return state.sprints.filter(function(s){ return s.end>=rangeStart && s.start<=rangeEnd; });
 }
-// Ventile la capacité (JP) de chaque sprint en 4 séries : Vaudoise / CONF / INTEG / TRANS
+// Ventile la capacité (JP) de chaque sprint en 4 séries par rôle : BA / DEV / QA / Autre.
+// Les personnes « Vaudoise » (VSET) sont exclues du calcul, pas seulement isolées.
 function categorySeries(sprintsList, ppl){
-  var vaud=[], conf=[], integ=[], trans=[];
+  var ba=[], dev=[], qa=[], autre=[];
   sprintsList.forEach(function(s){
-    var v=0, c=0, ig=0, tr=0;
+    var b=0, d2=0, q=0, a=0;
     state.dates.forEach(function(d){
       if(d<s.start || d>s.end || isWE(d)) return;
       ppl.forEach(function(p){
+        if(isVaudoise(p.name)) return;
         if(!activeOn(p,d)) return;
         if(!WORKING.has(p.dailyCodes[d])) return;
-        if(isVaudoise(p.name)){ v+=p.alloc; return; }
-        if(ITSET.has(p.team)) ig+=p.alloc;
-        else if(TTSET.has(p.team)) tr+=p.alloc;
-        else c+=p.alloc;
+        var cat=roleCategory(p.role);
+        if(cat==='BA') b+=p.alloc;
+        else if(cat==='DEV') d2+=p.alloc;
+        else if(cat==='QA') q+=p.alloc;
+        else a+=p.alloc;
       });
     });
-    vaud.push(v); conf.push(c); integ.push(ig); trans.push(tr);
+    ba.push(b); dev.push(d2); qa.push(q); autre.push(a);
   });
-  return { vaud:vaud, conf:conf, integ:integ, trans:trans };
+  return { ba:ba, dev:dev, qa:qa, autre:autre };
 }
-async function renderCapacityChartCanvas(sprintNames, vaudoise, conf, integ, trans){
+async function renderCapacityChartCanvas(sprintNames, ba, dev, qa, autre){
   var W=1800, H=570;
   var canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
   var ctx=canvas.getContext('2d');
   ctx.fillStyle='#E8E8E8'; ctx.fillRect(0,0,W,H);
   var pad={l:60,r:20,t:20,b:60}, cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  var colors={'Vaudoise':'#156082','CONF':'#4EA72E','INTEG':'#E97132','TRANS':'#0F9ED5'};
+  var colors={'BA':'#4472C4','DEV':'#ED7D31','QA':'#70AD47','Autre':'#A5A5A5'};
   var series=[];
-  if(vaudoise.some(function(v){return v>0;})) series.push({name:'Vaudoise',vals:vaudoise,color:colors.Vaudoise});
-  if(conf.some(function(v){return v>0;}))     series.push({name:'CONF',vals:conf,color:colors.CONF});
-  if(integ.some(function(v){return v>0;}))    series.push({name:'INTEG',vals:integ,color:colors.INTEG});
-  if(trans.some(function(v){return v>0;}))    series.push({name:'TRANS',vals:trans,color:colors.TRANS});
+  if(ba.some(function(v){return v>0;}))    series.push({name:'BA',vals:ba,color:colors.BA});
+  if(dev.some(function(v){return v>0;}))   series.push({name:'DEV',vals:dev,color:colors.DEV});
+  if(qa.some(function(v){return v>0;}))    series.push({name:'QA',vals:qa,color:colors.QA});
+  if(autre.some(function(v){return v>0;})) series.push({name:'Autre',vals:autre,color:colors.Autre});
   var n=sprintNames.length;
   var stacks=new Array(n).fill(0), maxVal=0;
   series.forEach(function(s){ s.vals.forEach(function(v,i){ stacks[i]+=v; if(stacks[i]>maxVal) maxVal=stacks[i]; }); });
@@ -962,14 +973,14 @@ async function exportCapacityPptx(){
   var pres = new PptxGenJS();
   pres.layout = 'LAYOUT_WIDE';
   var today = new Date().toLocaleDateString('fr-CA', {day:'numeric', month:'long', year:'numeric'});
-  var subtitle = 'Visualisation de la capacité des ressources par équipe (' + names[0] + ' > ' + names[names.length-1] + ')';
+  var subtitle = 'Visualisation de la capacité des ressources par rôle (' + names[0] + ' > ' + names[names.length-1] + ')';
 
   var s1 = pres.addSlide();
   s1.background = { color: '0E2841' };
   s1.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.35, h:7.5, fill:{color:'156082'}, line:{type:'none'} });
   s1.addText('GFT Technologies', { x:1.0, y:2.1, w:11, h:0.5, fontSize:13, color:'9DB8CC', fontFace:'Calibri' });
   s1.addText('Ressources – Capacité GFT par sprint', { x:1.0, y:2.7, w:11, h:1.1, fontSize:34, color:'FFFFFF', fontFace:'Calibri', bold:true });
-  s1.addText('Visualisation de la capacité des ressources par équipe', { x:1.0, y:3.95, w:11, h:0.5, fontSize:16, color:'9DB8CC', fontFace:'Calibri' });
+  s1.addText('Visualisation de la capacité des ressources par rôle', { x:1.0, y:3.95, w:11, h:0.5, fontSize:16, color:'9DB8CC', fontFace:'Calibri' });
   s1.addShape(pres.shapes.RECTANGLE, { x:0, y:7.1, w:13.33, h:0.4, fill:{color:'156082'}, line:{type:'none'} });
   s1.addText(today + '  |  Analyse de capacité - GFT', { x:0.5, y:7.13, w:12, h:0.28, fontSize:9, color:'FFFFFF', fontFace:'Calibri', valign:'middle' });
 
@@ -978,14 +989,14 @@ async function exportCapacityPptx(){
   s2.addText('Ressources – Capacité GFT par sprint', { x:0.49, y:0.84, w:12.36, h:0.48, fontSize:28, color:'0E2841', fontFace:'Calibri', valign:'middle' });
   s2.addText(subtitle, { x:0.48, y:1.32, w:9, h:0.24, fontSize:14, color:'404040', fontFace:'Calibri' });
 
-  var chartPng = await renderCapacityChartCanvas(names, series.vaud, series.conf, series.integ, series.trans);
+  var chartPng = await renderCapacityChartCanvas(names, series.ba, series.dev, series.qa, series.autre);
   s2.addImage({ data: chartPng, x:1.614, y:2.115, w:9.902, h:3.8 });
 
   var tableRows = [];
   var hdrCells = [{ text:'', options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
   names.forEach(function(s){ hdrCells.push({ text:s.replace('Sprint ',''), options:{fill:'D9D9D9', bold:true, align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
   tableRows.push(hdrCells);
-  [['Vaudoise',series.vaud,'DCE8F5'],['CONF',series.conf,'E2EFDA'],['INTEG',series.integ,'FCE4D6'],['TRANS',series.trans,'DAEEF3']].forEach(function(row){
+  [['BA',series.ba,'DCE6F1'],['DEV',series.dev,'FCE4D6'],['QA',series.qa,'E2EFDA'],['Autre',series.autre,'EDEDED']].forEach(function(row){
     var name=row[0], vals=row[1], fill=row[2];
     if(!vals.some(function(v){ return v>0; })) return;
     var cells=[{ text:name, options:{fill:fill, bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
@@ -995,7 +1006,7 @@ async function exportCapacityPptx(){
   var colW=[1.2]; for(var ci=0; ci<names.length; ci++) colW.push((9.902-1.2)/names.length);
   s2.addTable(tableRows, { x:1.614, y:5.95, w:9.902, colW:colW, fontSize:8, fontFace:'Calibri', border:{pt:1,color:'888888'} });
 
-  s2.addText('* Les ressources GFT faisant partie de l’Insight Team sont incluses dans l’Intégration', { x:1.01, y:6.647, w:7, h:0.162, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
+  s2.addText('* Ressources rattachées au projet Vaudoise exclues de ce graphique', { x:1.01, y:6.647, w:7, h:0.162, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
   s2.addText(today + ' |', { x:0.917, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
   s2.addText('Analyse de capacité - GFT', { x:1.614, y:7.061, w:5, h:0.144, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
   s2.addText('2', { x:9.417, y:6.951, w:3, h:0.4, fontSize:10, color:'404040', fontFace:'Calibri', align:'right', valign:'middle' });
