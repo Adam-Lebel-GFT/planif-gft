@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan de livraisons — Stabilisation — Maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+:root {
+  /* Variables communes (--navy, --accent, --green, --red, --muted, --border,
+     --bg, --white, --text, --font, --font-mono, --radius, --radius-2, ...)
+     proviennent d'assets/theme.css. Seule --gold est spécifique à cet outil. */
+  --gold: #A6741B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+
+.topbar { background: var(--navy); height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 32px; }
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo .sq { width: 10px; height: 10px; background: var(--accent); flex-shrink: 0; }
+.logo .wm { font-weight: 800; font-size: 17px; color: var(--white); letter-spacing: -.4px; }
+.sep { width: 1px; height: 22px; background: rgba(255,255,255,.15); }
+.client { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.5); letter-spacing: .5px; text-transform: uppercase; }
+.tag { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,.35); text-transform: uppercase; }
+
+.hero { max-width: 1300px; margin: 0 auto; padding: 32px 32px 20px; }
+.eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
+h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy); }
+.sub { margin-top: 8px; color: var(--muted); font-size: 13px; max-width: 720px; }
+
+.panel { max-width: 1300px; margin: 0 auto 24px; padding: 0 32px; }
+.card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); padding: 18px 22px; }
+.card h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .3px; color: var(--navy); margin-bottom: 4px; text-transform: uppercase; }
+.card .hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); }
+.field input, .field select { font-family: var(--font); font-size: 12.5px; color: var(--text); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 6px 9px; background: var(--white); }
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.field.w-date input { width: 145px; }
+.field.w-num input { width: 70px; }
+.field.w-text input { width: 90px; }
+
+.events-grid { display: flex; flex-direction: column; gap: 7px; }
+.ev-row { display: flex; align-items: center; gap: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); }
+.ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
+.ev-label { flex: 1; font-size: 12px; font-weight: 600; min-width: 190px; }
+.ev-row select { font-family: var(--font); font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 8px; }
+
+.gantt-wrap { max-width: 1300px; margin: 0 auto 60px; padding: 0 32px; }
+.gantt-card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); overflow: hidden; }
+.gantt-scroll { overflow-x: auto; }
+.gantt { display: grid; }
+
+.hdr { position: sticky; top: 0; background: var(--white); z-index: 3; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); border-left: 1px solid var(--border); }
+.hdr-month { height: 26px; font-size: 10.5px; font-weight: 700; color: var(--white); background: var(--navy); letter-spacing: .6px; text-transform: uppercase; }
+.hdr-sprint { height: 22px; font-size: 10px; font-weight: 700; color: var(--navy); background: #E9F0F6; letter-spacing: .3px; text-transform: uppercase; border-top: 1px solid var(--border); }
+.hdr-week { height: 22px; font-size: 10px; font-weight: 700; color: var(--muted); background: var(--bg); border-top: 1px solid var(--border); }
+.corner { position: sticky; left: 0; background: var(--white); z-index: 4; border-right: 1.5px solid var(--border); }
+
+.ver-row { display: flex; border-bottom: 1px solid var(--border); }
+.ver-label { position: sticky; left: 0; background: var(--white); z-index: 2; width: 190px; flex-shrink: 0; padding: 10px 16px; border-right: 1.5px solid var(--border); display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.ver-label .v { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; color: var(--navy); }
+.ver-label .d { font-size: 10px; color: var(--muted); }
+
+.ver-track { position: relative; background: repeating-linear-gradient(90deg, transparent, transparent 39px, #F0F1F3 39px, #F0F1F3 40px); }
+.ver-track.shade { background-color: #FAFBFD; }
+
+.bar { position: absolute; height: 20px; border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; box-shadow: 0 1px 2px rgba(12,26,46,.15); }
+.bar.chargement { background: var(--accent); }
+.bar.dev { background: var(--navy); }
+.bar.testiat { background: var(--green); }
+
+.jalons-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #C7CDD6; }
+.marker { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); transform: translateX(-50%); cursor: default; }
+.marker-label { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; color: var(--muted); white-space: nowrap; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg); }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--navy); font-weight: 600; }
+.legend-item .dot { width: 10px; height: 10px; flex-shrink: 0; }
+.legend-item .dot.round { border-radius: 50%; }
+.legend-item .dot.square { border-radius: 3px; }
+.legend-note { font-size: 10.5px; color: var(--muted); padding: 0 20px 14px; background: var(--bg); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><div class="sq"></div><div class="wm">GFT</div></div>
+  <div class="sep"></div>
+  <div class="client">La Vaudoise · PRJ297</div>
+  <div class="tag">Plan de livraisons — Maquette</div>
+</div>
+
+<div class="hero">
+  <div class="eyebrow">Stabilisation · Cadence en train (chevauchement)</div>
+  <h1>Plan de livraisons de stabilité</h1>
+  <p class="sub">Une ligne par version, avec ses 3 phases (Chargement de la version, DEV, Test IAT) et ses 5 jalons. Les versions se chevauchent façon "train" : la version suivante démarre avant la fin de la précédente.</p>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <h2>Paramètres</h2>
+    <div class="hint">Hypothèses par défaut ci-dessous — tout est ajustable, le Gantt se régénère automatiquement.</div>
+    <div class="row">
+      <div class="field w-date"><label>Début (lundi)</label><input type="date" id="startDate" value="2026-08-03"></div>
+      <div class="field w-text"><label>Première version</label><input type="text" id="firstVersion" value="3.9.0"></div>
+      <div class="field w-num"><label>Nb. de versions</label><input type="number" id="nbVersions" value="10" min="1" max="40"></div>
+      <div class="field w-num"><label>Durée version (sem.)</label><input type="number" id="weeksPerVersion" value="2" min="1" max="4"></div>
+      <div class="field w-num"><label>Décalage entre versions (sem.)</label><input type="number" id="offsetWeeks" value="1" min="1" max="4"></div>
+      <div class="field w-num"><label>Sem. par sprint</label><input type="number" id="weeksPerSprint" value="2" min="1" max="4"></div>
+      <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" value="34" min="1" max="200"></div>
+    </div>
+    <div class="events-grid" id="eventsConfig"></div>
+    <div class="row" style="margin-top:14px;margin-bottom:0">
+      <button id="resetBtn" type="button" style="font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--muted);background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 14px;cursor:pointer">Réinitialiser aux valeurs par défaut</button>
+      <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
+    </div>
+  </div>
+</div>
+
+<div class="gantt-wrap">
+  <div class="gantt-card">
+    <div class="gantt-scroll"><div id="ganttRoot"></div></div>
+    <div class="legend" id="legend"></div>
+    <div class="legend-note">Maquette de préparation — phases, jalons et cadence de chevauchement restent à confirmer avec les squad leads avant diffusion.</div>
+  </div>
+</div>
+
+<script>
+const WEEKDAY_FULL = ['lundi','mardi','mercredi','jeudi','vendredi'];
+const COLW = 40; // px par jour ouvré
+const STORAGE_KEY = 'gft-vaudoise-plan-livraisons-v1';
+
+const DEFAULT_EVENTS = [
+  { key:'freeze',  label:'Code freeze',                color:'var(--navy)',    day:5 },
+  { key:'gonogo',  label:'Go / No-go',                 color:'var(--accent)',  day:8 },
+  { key:'deploy',  label:'Déploiement sur la branche',  color:'var(--green)',   day:9 },
+  { key:'revert',  label:'Dernier revert possible',     color:'var(--red)',     day:9 },
+  { key:'nextbr',  label:'Branche suivante disponible', color:'var(--gold)',    day:9 },
+];
+const DEFAULT_FIELDS = {
+  startDate: '2026-08-03', firstVersion: '3.9.0', nbVersions: '10',
+  weeksPerVersion: '2', offsetWeeks: '1', weeksPerSprint: '2', firstSprint: '34',
+};
+
+let EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
+
+function saveState() {
+  const fields = {};
+  Object.keys(DEFAULT_FIELDS).forEach(id => { fields[id] = document.getElementById(id).value; });
+  const state = { fields, events: EVENTS.map(e => ({ key: e.key, day: e.day })) };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const tag = document.getElementById('savedTag');
+    tag.style.opacity = '1';
+    clearTimeout(saveState._t);
+    saveState._t = setTimeout(() => { tag.style.opacity = '0'; }, 1400);
+  } catch (e) { /* stockage indisponible (mode privé, etc.) — on continue sans persister */ }
+}
+
+function loadState() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { saved = null; }
+  if (!saved) return;
+  if (saved.fields) {
+    Object.keys(DEFAULT_FIELDS).forEach(id => {
+      if (saved.fields[id] !== undefined) document.getElementById(id).value = saved.fields[id];
+    });
+  }
+  if (Array.isArray(saved.events)) {
+    saved.events.forEach(se => {
+      const ev = EVENTS.find(e => e.key === se.key);
+      if (ev && typeof se.day === 'number') ev.day = se.day;
+    });
+  }
+}
+
+function resetState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  Object.keys(DEFAULT_FIELDS).forEach(id => { document.getElementById(id).value = DEFAULT_FIELDS[id]; });
+  EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
+  buildEventsForm();
+  render();
+}
+
+function totalDays() { return Math.max(5, (+document.getElementById('weeksPerVersion').value || 2) * 5); }
+
+function buildEventsForm() {
+  const root = document.getElementById('eventsConfig');
+  root.innerHTML = '';
+  const nd = totalDays();
+  const labels = [];
+  for (let w = 0; w < nd / 5; w++) ['Lun','Mar','Mer','Jeu','Ven'].forEach(d => labels.push(d + ' S' + (w+1)));
+  EVENTS.forEach((ev, i) => {
+    if (ev.day > nd - 1) ev.day = nd - 1;
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = '<div class="ev-dot" style="background:' + ev.color + '"></div>' +
+      '<div class="ev-label">' + ev.label + '</div>' +
+      '<select data-i="' + i + '">' +
+      labels.map((w, wi) => '<option value="' + wi + '"' + (wi === ev.day ? ' selected' : '') + '>' + w + '</option>').join('') +
+      '</select>';
+    root.appendChild(row);
+  });
+  root.querySelectorAll('select').forEach(el => {
+    el.addEventListener('change', e => { EVENTS[+e.target.dataset.i].day = +e.target.value; render(); saveState(); });
+  });
+}
+
+function bumpVersion(ver, i) {
+  const parts = ver.split('.');
+  const last = parseInt(parts[parts.length - 1], 10);
+  parts[parts.length - 1] = (isNaN(last) ? 0 : last) + i;
+  return parts.join('.');
+}
+
+function businessDayOffset(monday, n) {
+  // n-ième jour ouvré après "monday" (0 = monday lui-même), en sautant les week-ends par blocs de 5
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + n + Math.floor(n / 5) * 2);
+  return d;
+}
+function fmtDate(d) { return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
+function fmtMonth(d) { return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); }
+function isoWeek(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - day + 3);
+  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((dt - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+}
+
+function render() {
+  const start = new Date(document.getElementById('startDate').value + 'T00:00:00');
+  const firstVersion = document.getElementById('firstVersion').value || '3.9.0';
+  const nb = Math.max(1, Math.min(40, +document.getElementById('nbVersions').value || 10));
+  const verDays = totalDays();
+  const offsetDays = Math.max(5, (+document.getElementById('offsetWeeks').value || 1) * 5);
+  const weeksPerSprint = Math.max(1, +document.getElementById('weeksPerSprint').value || 2);
+  const firstSprint = +document.getElementById('firstSprint').value || 1;
+
+  const versions = [];
+  for (let i = 0; i < nb; i++) {
+    versions.push({ label: bumpVersion(firstVersion, i), startOffset: i * offsetDays });
+  }
+  const totalBusinessDays = versions[versions.length - 1].startOffset + verDays;
+
+  // liste de toutes les dates (jours ouvrés) de la timeline globale
+  const days = [];
+  for (let n = 0; n < totalBusinessDays; n++) days.push(businessDayOffset(start, n));
+
+  const root = document.getElementById('ganttRoot');
+  root.innerHTML = '';
+  const totalW = days.length * COLW;
+
+  // ── En-têtes ──
+  const headWrap = document.createElement('div');
+  headWrap.style.display = 'flex';
+
+  const cornerCol = document.createElement('div');
+  cornerCol.className = 'corner';
+  cornerCol.style.width = '190px';
+  cornerCol.style.flexShrink = '0';
+  headWrap.appendChild(cornerCol);
+
+  const headMain = document.createElement('div');
+  headMain.style.width = totalW + 'px';
+
+  // ligne mois
+  const monthRow = document.createElement('div');
+  monthRow.style.display = 'flex';
+  let idx = 0;
+  while (idx < days.length) {
+    const m = days[idx].getMonth(), y = days[idx].getFullYear();
+    let span = 0;
+    while (idx + span < days.length && days[idx+span].getMonth() === m && days[idx+span].getFullYear() === y) span++;
+    const cell = document.createElement('div');
+    cell.className = 'hdr hdr-month';
+    cell.style.width = (span * COLW) + 'px';
+    cell.textContent = fmtMonth(days[idx]);
+    monthRow.appendChild(cell);
+    idx += span;
+  }
+  headMain.appendChild(monthRow);
+
+  // ligne sprint (groupes de weeksPerSprint semaines = weeksPerSprint*5 jours)
+  const sprintRow = document.createElement('div');
+  sprintRow.style.display = 'flex';
+  const sprintSpan = weeksPerSprint * 5;
+  let sNum = firstSprint;
+  for (let n = 0; n < days.length; n += sprintSpan) {
+    const span = Math.min(sprintSpan, days.length - n);
+    const cell = document.createElement('div');
+    cell.className = 'hdr hdr-sprint';
+    cell.style.width = (span * COLW) + 'px';
+    cell.textContent = 'Sprint ' + sNum;
+    sprintRow.appendChild(cell);
+    sNum++;
+  }
+  headMain.appendChild(sprintRow);
+
+  // ligne semaine (S = numéro ISO de semaine)
+  const weekRow = document.createElement('div');
+  weekRow.style.display = 'flex';
+  idx = 0;
+  while (idx < days.length) {
+    let span = 0;
+    const wk = isoWeek(days[idx]);
+    while (idx + span < days.length && isoWeek(days[idx+span]) === wk) span++;
+    const cell = document.createElement('div');
+    cell.className = 'hdr hdr-week';
+    cell.style.width = (span * COLW) + 'px';
+    cell.textContent = 'S' + wk;
+    weekRow.appendChild(cell);
+    idx += span;
+  }
+  headMain.appendChild(weekRow);
+
+  headWrap.appendChild(headMain);
+  root.appendChild(headWrap);
+
+  // ── Lignes de version ──
+  const PHASE_H = 26, JALONS_H = 40, ROW_H = PHASE_H + JALONS_H;
+
+  versions.forEach((v, vi) => {
+    const row = document.createElement('div');
+    row.className = 'ver-row';
+    row.style.height = ROW_H + 'px';
+
+    const label = document.createElement('div');
+    label.className = 'ver-label';
+    label.style.height = ROW_H + 'px';
+    const vStart = businessDayOffset(start, v.startOffset);
+    const vEnd = businessDayOffset(start, v.startOffset + verDays - 1);
+    label.innerHTML = '<div class="v">' + v.label + '</div><div class="d">' + fmtDate(vStart) + ' → ' + fmtDate(vEnd) + '</div>';
+    row.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'ver-track' + (vi % 2 === 1 ? ' shade' : '');
+    track.style.width = totalW + 'px';
+    track.style.height = ROW_H + 'px';
+    track.style.flexShrink = '0';
+
+    const freezeDay = EVENTS.find(e => e.key === 'freeze').day;
+    const chargementEnd = Math.min(1, freezeDay);
+    const phases = [
+      { cls: 'chargement', label: 'Chargement de la version', from: 0, to: Math.max(chargementEnd, 1) },
+      { cls: 'dev', label: 'DEV', from: Math.max(chargementEnd, 1), to: freezeDay },
+      { cls: 'testiat', label: 'Test IAT', from: freezeDay, to: verDays - 1 },
+    ];
+    phases.forEach((p) => {
+      const bar = document.createElement('div');
+      bar.className = 'bar ' + p.cls;
+      const left = (v.startOffset + p.from) * COLW;
+      const width = Math.max((p.to - p.from) * COLW, 4);
+      bar.style.left = left + 'px';
+      bar.style.top = '3px';
+      bar.style.width = width + 'px';
+      // n'affiche le libellé que si la barre est assez large pour le contenir sans déborder
+      if (width >= p.label.length * 6 + 16) bar.textContent = p.label;
+      else { bar.title = p.label; bar.style.overflow = 'visible'; }
+      track.appendChild(bar);
+    });
+
+    // ligne jalons (sous les 3 barres de phase)
+    const jalonsTop = PHASE_H;
+    const jline = document.createElement('div');
+    jline.className = 'jalons-line';
+    jline.style.top = jalonsTop + 'px';
+    track.appendChild(jline);
+
+    const seenDays = {};
+    EVENTS.forEach(ev => {
+      const nudgeIdx = seenDays[ev.day] || 0;
+      seenDays[ev.day] = nudgeIdx + 1;
+      const dayDate = businessDayOffset(start, v.startOffset + ev.day);
+      const left = (v.startOffset + ev.day) * COLW + COLW / 2 + nudgeIdx * 12;
+      const marker = document.createElement('div');
+      marker.className = 'marker';
+      marker.style.background = ev.color;
+      marker.style.left = left + 'px';
+      marker.style.top = (jalonsTop + 8) + 'px';
+      marker.title = ev.label + ' — ' + WEEKDAY_FULL[ev.day % 5] + ' ' + fmtDate(dayDate);
+      track.appendChild(marker);
+      const lbl = document.createElement('div');
+      lbl.className = 'marker-label';
+      lbl.style.left = left + 'px';
+      lbl.style.top = (jalonsTop + 24) + 'px';
+      lbl.textContent = fmtDate(dayDate);
+      track.appendChild(lbl);
+    });
+
+    row.appendChild(track);
+    root.appendChild(row);
+  });
+
+  const legend = document.getElementById('legend');
+  legend.innerHTML =
+    '<div class="legend-item"><div class="dot square" style="background:var(--accent)"></div>Chargement de la version</div>' +
+    '<div class="legend-item"><div class="dot square" style="background:var(--navy)"></div>DEV</div>' +
+    '<div class="legend-item"><div class="dot square" style="background:var(--green)"></div>Test IAT</div>' +
+    EVENTS.map(ev => '<div class="legend-item"><div class="dot round" style="background:' + ev.color + '"></div>' + ev.label + '</div>').join('');
+}
+
+loadState();
+buildEventsForm();
+render();
+['startDate','firstVersion','nbVersions','offsetWeeks','weeksPerSprint','firstSprint'].forEach(id =>
+  document.getElementById(id).addEventListener('change', () => { render(); saveState(); }));
+document.getElementById('weeksPerVersion').addEventListener('change', () => { buildEventsForm(); render(); saveState(); });
+document.getElementById('resetBtn').addEventListener('click', resetState);
+</script>
+</body>
+</html>
