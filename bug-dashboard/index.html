@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug Dashboard — Agile Toolkit GFT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Secours : valeurs reprises si assets/theme.css ne charge pas (le <link> ci-dessous
+       est placé après ce bloc et le surcharge normalement quand il charge).
+       --navy, --accent, --green, --red, --border, --bg, --white, --text, --muted, --font,
+       --font-mono sont fournis par le thème partagé (assets/theme.css) et simplement
+       redéfinis ici en secours. --amber, --purple, --lightblue, --grey sont spécifiques à
+       cet outil (absents du thème partagé) et restent actifs quoi qu'il arrive. */
+    --navy:#0b2545;
+    --accent:#2f6fed;
+    --green:#1f9d68;
+    --amber:#e0a300;
+    --red:#d64545;
+    --purple:#7b5fe0;
+    --lightblue:#5a9cf8;
+    --grey:#8892a6;
+    --bg:#f4f6fa;
+    --white:#ffffff;
+    --border:#e3e8f0;
+    --text:#16243c;
+    --muted:#5a6b85;
+    --font:'Manrope',sans-serif;
+    --font-mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--font);
+    background:var(--bg);
+    color:var(--text);
+    padding:32px 40px 60px;
+  }
+  a.back{
+    display:inline-block;
+    font-size:12.5px;
+    color:var(--muted);
+    text-decoration:none;
+    margin-bottom:14px;
+  }
+  a.back:hover{color:var(--navy);}
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-bottom:22px;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:18px;
+  }
+  header .title-block h1{
+    font-size:22px;
+    margin:0 0 4px;
+    color:var(--navy);
+    font-weight:800;
+    letter-spacing:-0.3px;
+  }
+  header .title-block p{
+    margin:0;
+    color:var(--muted);
+    font-size:13.5px;
+  }
+  .header-fields{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .header-fields label{font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;}
+  .header-fields input{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:6px 8px;
+    background:#fff;
+    color:var(--navy);
+  }
+  .card{
+    background:var(--white);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px 22px 18px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-size:14.5px;
+    margin:0 0 2px;
+    color:var(--navy);
+    font-weight:700;
+  }
+  .card .card-sub{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:14px;
+  }
+  textarea#pasteArea{
+    width:100%;
+    min-height:120px;
+    border:1.5px dashed var(--border);
+    border-radius:10px;
+    padding:14px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text);
+    resize:vertical;
+    background:#fbfcfe;
+  }
+  textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
+  .paste-actions{display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap;}
+  button{
+    font-family:var(--font);
+    font-weight:700;
+    font-size:12.5px;
+    border:none;
+    border-radius:8px;
+    padding:9px 16px;
+    cursor:pointer;
+  }
+  button.primary{background:var(--navy); color:#fff;}
+  button.primary:hover{background:var(--accent);}
+  button.ghost{background:#fff; color:var(--muted); border:1px solid var(--border);}
+  button.ghost:hover{border-color:var(--navy); color:var(--navy);}
+  .status-msg{font-size:12px; color:var(--muted);}
+  .status-msg.ok{color:var(--green); font-weight:600;}
+  .status-msg.err{color:var(--red); font-weight:600;}
+
+  .empty-state{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:13.5px;
+  }
+  .hidden{display:none !important;}
+
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:18px;
+  }
+  .kpi{
+    background:var(--white);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi::before{content:""; position:absolute; left:0;top:0;bottom:0; width:4px; background:var(--accent);}
+  .kpi.green::before{background:var(--green);}
+  .kpi.amber::before{background:var(--amber);}
+  .kpi.red::before{background:var(--red);}
+  .kpi .label{font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:600; margin-bottom:8px;}
+  .kpi .value{font-size:30px; font-weight:800; color:var(--navy); font-family:var(--font-mono); line-height:1;}
+  .kpi .sub{font-size:12.5px; color:var(--muted); margin-top:6px;}
+
+  .grid-2{display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:18px;}
+  .grid-2.even{grid-template-columns:1fr 1fr;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border);}
+  th{color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.3px;}
+  td.num, th.num{text-align:right; font-family:var(--font-mono);}
+  .pct-bar-wrap{background:#eef1f6; border-radius:6px; height:8px; width:100%; overflow:hidden;}
+  .pct-bar{height:100%; border-radius:6px;}
+  input.pct-input{
+    width:56px; font-family:var(--font-mono); font-size:12.5px;
+    border:1px solid var(--border); border-radius:6px; padding:4px 6px; text-align:right;
+  }
+  input.pct-input:focus{outline:2px solid var(--accent);}
+
+  .hbar-row{display:grid; grid-template-columns:190px 1fr 42px; align-items:center; gap:10px; margin-bottom:10px;}
+  .hbar-label{font-size:12.5px; color:var(--text); font-weight:500;}
+  .hbar-track{background:#eef1f6; border-radius:5px; height:16px; overflow:hidden;}
+  .hbar-fill{height:100%; border-radius:5px;}
+  .hbar-count{font-size:12.5px; font-family:var(--font-mono); text-align:right; color:var(--muted);}
+
+  .donut-wrap{display:flex; align-items:center; gap:26px; justify-content:center; padding-top:6px; flex-wrap:wrap;}
+  .donut{width:170px; height:170px; border-radius:50%; position:relative; flex:none;}
+  .donut-hole{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:100px; height:100px; border-radius:50%; background:var(--white); display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .donut-hole .n{font-size:22px; font-weight:800; color:var(--navy); font-family:var(--font-mono);}
+  .donut-hole .l{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px;}
+  .donut-legend{display:flex; flex-direction:column; gap:9px;}
+  .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
+  .donut-legend-item .dot{width:10px; height:10px; border-radius:3px; flex:none;}
+  .donut-legend-item .val{margin-left:auto; font-family:var(--font-mono); color:var(--muted); padding-left:14px;}
+
+  .stack-row{display:grid; grid-template-columns:100px 1fr; align-items:center; gap:10px; margin-bottom:12px;}
+  .stack-label{font-size:12.5px; font-weight:600; color:var(--text);}
+  .stack-track{display:flex; height:22px; border-radius:5px; overflow:hidden; background:#eef1f6;}
+  .stack-seg{height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--font-mono); font-size:11px; font-weight:700; text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .stack-legend{display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border);}
+  .stack-legend-item{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);}
+  .stack-legend-item .dot{width:9px; height:9px; border-radius:2px;}
+
+  footer{margin-top:8px; font-size:11.5px; color:var(--muted); line-height:1.6;}
+</style>
+<!-- Placé après le <style> ci-dessus : si assets/theme.css charge, ses variables --navy,
+     --accent, --green, --red, --border, --bg, --white, --text, --muted, --font, --font-mono
+     surchargent le secours défini plus haut (même sélecteur :root, dernier gagne). Si le
+     fichier est introuvable (404), le navigateur n'applique simplement aucune règle de cette
+     feuille et le secours local reste actif — pas de onerror ici : theme.css importe une
+     police Google Fonts en tête de fichier, et un onerror="this.remove()" se déclencherait
+     (et retirerait toute la feuille, variables incluses) dès que ce seul import externe est
+     bloqué, même quand theme.css lui-même s'est chargé correctement. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+
+<a class="back" href="../index.html">← Agile Toolkit</a>
+
+<header>
+  <div class="title-block">
+    <h1>Bug Dashboard — État d'avancement stabilisation</h1>
+    <p>Colle un extrait Jira (POLC) et obtiens des graphiques consommables par un manager, avec pondération d'avancement par statut.</p>
+  </div>
+  <div class="header-fields">
+    <div>
+      <label>Date de référence</label>
+      <input type="date" id="refDateInput">
+    </div>
+    <div>
+      <label>Date cible / gel de code</label>
+      <input type="date" id="targetDateInput">
+    </div>
+  </div>
+</header>
+
+<div class="card">
+  <h2>1. Coller les données</h2>
+  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date.</div>
+  <textarea id="pasteArea" placeholder="Colle ton tableau Excel ici (Ctrl+V)…"></textarea>
+  <div class="paste-actions">
+    <button class="primary" id="analyzeBtn">Analyser</button>
+    <button class="ghost" id="clearBtn">Effacer</button>
+    <span class="status-msg" id="statusMsg"></span>
+  </div>
+</div>
+
+<div id="emptyState" class="card empty-state">
+  Colle tes données Jira ci-dessus puis clique sur « Analyser » pour générer le dashboard.
+</div>
+
+<div id="dashboard" class="hidden">
+
+  <div class="card">
+    <h2>2. Pondération statut → % d'avancement</h2>
+    <div class="card-sub">Valeurs proposées par défaut selon le cycle de vie standard, modifiables et mémorisées automatiquement pour vos prochains extraits.</div>
+    <table>
+      <thead><tr><th>Statut</th><th class="num">Tickets</th><th>% d'avancement</th><th>Aperçu</th></tr></thead>
+      <tbody id="pctTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>Répartition des bugs par statut</h2>
+      <div class="card-sub">Nombre de tickets — couleur = % d'avancement du statut</div>
+      <div id="statusChart"></div>
+    </div>
+    <div class="card">
+      <h2>Répartition par équipe</h2>
+      <div class="card-sub">Volume de tickets par team code</div>
+      <div class="donut-wrap">
+        <div class="donut" id="teamDonut"><div class="donut-hole"><div class="n" id="donutTotal">0</div><div class="l">tickets</div></div></div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2 even">
+    <div class="card">
+      <h2>Statuts par équipe</h2>
+      <div class="card-sub">Répartition empilée — visualise où se situe l'effort restant par squad</div>
+      <div id="stackedChart"></div>
+      <div class="stack-legend" id="stackLegend"></div>
+    </div>
+    <div class="card">
+      <h2>Avancement pondéré par équipe</h2>
+      <div class="card-sub">% moyen pondéré par le mix de statuts de chaque équipe</div>
+      <table>
+        <thead><tr><th>Équipe</th><th class="num">Tickets</th><th>Avancement</th><th class="num">%</th></tr></thead>
+        <tbody id="teamTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Avancement pondéré global = Σ(nb tickets du statut × poids du statut) / nb total de tickets.
+    « Bugs en dépassement » = tickets ayant une Due Date individuelle antérieure à la date de référence et non clôturés/déclinés — indicateur informatif, sans lien automatique avec le respect d'une date de gel de code.
+    Vos données collées et votre pondération sont conservées localement dans ce navigateur (aucun envoi serveur).
+  </footer>
+
+</div>
+
+<script>
+// ============ Column detection ============
+const COLUMN_CANDIDATES = {
+  key: ['key', 'clé', 'cle'],
+  priority: ['priority', 'priorité', 'priorite'],
+  status: ['status', 'statut'],
+  team: ['team code', 'équipe', 'equipe', 'team'],
+  dueDate: ["due date", "date d'échéance", 'date echeance', 'échéance', 'echeance'],
+};
+
+function normalize(s){
+  return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function findColumnIndex(headers, candidates){
+  const normHeaders = headers.map(normalize);
+  for(const cand of candidates){
+    const nc = normalize(cand);
+    const idx = normHeaders.findIndex(h => h === nc || h.includes(nc));
+    if(idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function parsePastedData(raw){
+  const lines = raw.replace(/\r/g,'').split('\n').filter(l => l.trim().length > 0);
+  if(lines.length < 2) return {headers:[], rows:[]};
+  const headers = lines[0].split('\t').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const cells = line.split('\t');
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = (cells[i]||'').trim());
+    return obj;
+  });
+  return {headers, rows};
+}
+
+function parseDMY(cell){
+  if(!cell) return null;
+  const m = cell.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if(!m) return null;
+  const [, d, mo, y] = m;
+  return new Date(Number(y), Number(mo)-1, Number(d));
+}
+
+// ============ Default pondération ============
+const DEFAULT_STATUS_PCT = {
+  'in analyze': 10,
+  'ready for development': 20,
+  'under review': 25,
+  'in progress': 30,
+  'code review': 65,
+  'code review - completed': 80,
+  'quality assurance testing': 90,
+  'dev done': 95,
+  'closed': 100,
+  'decline': 100,
+};
+
+const STORAGE_KEYS = {
+  raw: 'bugDashboard:rawPaste',
+  pctMap: 'bugDashboard:statusPctMap',
+  refDate: 'bugDashboard:refDate',
+  targetDate: 'bugDashboard:targetDate',
+};
+
+function loadPctMap(){
+  try{
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.pctMap) || '{}');
+    return stored;
+  }catch(e){ return {}; }
+}
+function savePctMap(map){
+  localStorage.setItem(STORAGE_KEYS.pctMap, JSON.stringify(map));
+}
+
+function pctForStatus(status, overrideMap){
+  const key = normalize(status);
+  if(overrideMap && overrideMap[key] !== undefined) return overrideMap[key];
+  if(DEFAULT_STATUS_PCT[key] !== undefined) return DEFAULT_STATUS_PCT[key];
+  return 50;
+}
+
+function colorForPct(p){ return p>=90?'var(--green)':p>=50?'var(--accent)':'var(--amber)'; }
+
+const PALETTE = ['#0b2545','#2f6fed','#1f9d68','#e0a300','#7b5fe0','#5a9cf8','#c85fd6','#d64545','#8892a6','#4f6d8f'];
+function colorForIndex(i){ return PALETTE[i % PALETTE.length]; }
+
+// ============ Aggregation ============
+function computeStats(rows, headers, cols, pctMap, refDate){
+  const total = rows.length;
+  const statusCounts = {};
+  const teamCounts = {};
+  const teamStatusMatrix = {};
+  let blockerCount = 0, blockerWeighted = 0;
+  let overdueCount = 0;
+  let doneCount = 0;
+  let weightedSum = 0;
+
+  const get = (r, idx) => (idx !== -1 ? (r[headers[idx]] || '') : '');
+
+  rows.forEach(r => {
+    const status = (get(r, cols.status) || 'Inconnu').trim();
+    const team = get(r, cols.team).trim();
+    const teamLabel = team || 'Non affecté';
+    const priority = get(r, cols.priority);
+    const dueRaw = get(r, cols.dueDate);
+
+    const pct = pctForStatus(status, pctMap);
+    weightedSum += pct;
+
+    statusCounts[status] = (statusCounts[status]||0) + 1;
+    teamCounts[teamLabel] = (teamCounts[teamLabel]||0) + 1;
+    if(!teamStatusMatrix[teamLabel]) teamStatusMatrix[teamLabel] = {};
+    teamStatusMatrix[teamLabel][status] = (teamStatusMatrix[teamLabel][status]||0) + 1;
+
+    if(normalize(priority).includes('block')){
+      blockerCount++;
+      blockerWeighted += pct;
+    }
+    if(normalize(status)==='closed' || normalize(status)==='decline') doneCount++;
+
+    const dueDate = parseDMY(dueRaw);
+    if(dueDate && refDate && dueDate < refDate && normalize(status)!=='closed' && normalize(status)!=='decline'){
+      overdueCount++;
+    }
+  });
+
+  return {
+    total,
+    globalPct: total ? weightedSum/total : 0,
+    statusCounts, teamCounts, teamStatusMatrix,
+    blockerCount,
+    blockerPct: blockerCount ? blockerWeighted/blockerCount : 0,
+    overdueCount, doneCount,
+  };
+}
+
+// ============ Rendering ============
+let currentPctMap = loadPctMap();
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+function init(){
+  const refInput = document.getElementById('refDateInput');
+  const targetInput = document.getElementById('targetDateInput');
+  refInput.value = localStorage.getItem(STORAGE_KEYS.refDate) || todayISO();
+  targetInput.value = localStorage.getItem(STORAGE_KEYS.targetDate) || '';
+  refInput.addEventListener('change', () => { localStorage.setItem(STORAGE_KEYS.refDate, refInput.value); if(document.getElementById('pasteArea').value.trim()) analyze(); });
+  targetInput.addEventListener('change', () => { localStorage.setItem(STORAGE_KEYS.targetDate, targetInput.value); });
+
+  const savedRaw = localStorage.getItem(STORAGE_KEYS.raw);
+  if(savedRaw){
+    document.getElementById('pasteArea').value = savedRaw;
+    analyze();
+  }
+
+  document.getElementById('analyzeBtn').addEventListener('click', analyze);
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('pasteArea').value = '';
+    localStorage.removeItem(STORAGE_KEYS.raw);
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+    setMsg('', '');
+  });
+}
+
+function setMsg(text, cls){
+  const el = document.getElementById('statusMsg');
+  el.textContent = text;
+  el.className = 'status-msg' + (cls ? ' '+cls : '');
+}
+
+function analyze(){
+  const raw = document.getElementById('pasteArea').value;
+  if(!raw.trim()){ setMsg('Colle des données avant d\'analyser.', 'err'); return; }
+
+  const {headers, rows} = parsePastedData(raw);
+  if(rows.length === 0){ setMsg('Aucune ligne détectée — vérifie que la 1ère ligne collée contient les en-têtes.', 'err'); return; }
+
+  const cols = {
+    status: findColumnIndex(headers, COLUMN_CANDIDATES.status),
+    team: findColumnIndex(headers, COLUMN_CANDIDATES.team),
+    priority: findColumnIndex(headers, COLUMN_CANDIDATES.priority),
+    dueDate: findColumnIndex(headers, COLUMN_CANDIDATES.dueDate),
+  };
+  if(cols.status === -1){ setMsg('Colonne "Status" introuvable dans les en-têtes collés.', 'err'); return; }
+
+  localStorage.setItem(STORAGE_KEYS.raw, raw);
+
+  const refDateVal = document.getElementById('refDateInput').value;
+  const refDate = refDateVal ? new Date(refDateVal + 'T00:00:00') : new Date();
+
+  const stats = computeStats(rows, headers, cols, currentPctMap, refDate);
+
+  renderPctTable(stats.statusCounts, () => { renderAll(rows, headers, cols, refDate); });
+  renderAll(rows, headers, cols, refDate);
+
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  setMsg(`${stats.total} tickets analysés.`, 'ok');
+}
+
+function renderPctTable(statusCounts, onChange){
+  const tbody = document.getElementById('pctTableBody');
+  const statuses = Object.keys(statusCounts);
+  tbody.innerHTML = statuses.map(status => {
+    const pct = pctForStatus(status, currentPctMap);
+    const key = normalize(status);
+    return `<tr>
+      <td>${status}</td>
+      <td class="num">${statusCounts[status]}</td>
+      <td><input type="number" min="0" max="100" class="pct-input" data-key="${key}" value="${pct}"></td>
+      <td><div class="pct-bar-wrap"><div class="pct-bar" id="pctbar-${key}" style="width:${pct}%;background:${colorForPct(pct)}"></div></div></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.pct-input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const key = inp.dataset.key;
+      let val = Number(inp.value);
+      if(isNaN(val)) val = 50;
+      val = Math.max(0, Math.min(100, val));
+      inp.value = val;
+      currentPctMap[key] = val;
+      savePctMap(currentPctMap);
+      const bar = document.getElementById('pctbar-'+key);
+      if(bar){ bar.style.width = val+'%'; bar.style.background = colorForPct(val); }
+      onChange();
+    });
+  });
+}
+
+function renderAll(rows, headers, cols, refDate){
+  const stats = computeStats(rows, headers, cols, currentPctMap, refDate);
+
+  // KPI
+  const kpis = [
+    {label:'Avancement pondéré global', value: stats.globalPct.toFixed(1)+'%', sub: stats.total+' tickets analysés', cls:'green'},
+    {label:'Tickets Closed / Decline', value: stats.doneCount+' / '+stats.total, sub: (stats.total ? (stats.doneCount/stats.total*100).toFixed(0) : 0)+'% du périmètre soldé', cls:''},
+    {label:'Blockers', value: stats.blockerCount, sub: 'Avancement moyen '+stats.blockerPct.toFixed(1)+'%', cls:'amber'},
+    {label:'Bugs en dépassement de due date', value: stats.overdueCount, sub: (stats.total ? (stats.overdueCount/stats.total*100).toFixed(0) : 0)+'% du périmètre — due date individuelle dépassée', cls:'amber'},
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi ${k.cls}">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Status bar chart
+  const statusEntries = Object.entries(stats.statusCounts);
+  const maxCount = Math.max(...statusEntries.map(([,c]) => c), 1);
+  document.getElementById('statusChart').innerHTML = statusEntries.map(([status,count]) => {
+    const pct = pctForStatus(status, currentPctMap);
+    return `<div class="hbar-row">
+      <div class="hbar-label">${status}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${(count/maxCount*100).toFixed(1)}%;background:${colorForPct(pct)}"></div></div>
+      <div class="hbar-count">${count}</div>
+    </div>`;
+  }).join('');
+
+  // Team donut
+  const teamEntries = Object.entries(stats.teamCounts);
+  document.getElementById('donutTotal').textContent = stats.total;
+  let acc = 0;
+  const gradParts = teamEntries.map(([team,count],i) => {
+    const start = stats.total ? acc/stats.total*100 : 0;
+    acc += count;
+    const end = stats.total ? acc/stats.total*100 : 0;
+    return `${colorForIndex(i)} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  });
+  document.getElementById('teamDonut').style.background = `conic-gradient(${gradParts.join(',')})`;
+  document.getElementById('donutLegend').innerHTML = teamEntries.map(([team,count],i) => `
+    <div class="donut-legend-item">
+      <div class="dot" style="background:${colorForIndex(i)}"></div>
+      <div>${team}</div>
+      <div class="val">${count} (${stats.total ? (count/stats.total*100).toFixed(0) : 0}%)</div>
+    </div>`).join('');
+
+  // Stacked bar team x status
+  const teams = Object.keys(stats.teamCounts);
+  const statuses = Object.keys(stats.statusCounts);
+  const rowMax = Math.max(...teams.map(t => stats.teamCounts[t]), 1);
+  document.getElementById('stackedChart').innerHTML = teams.map(tm => {
+    const segs = statuses.map((st,i) => {
+      const c = (stats.teamStatusMatrix[tm] && stats.teamStatusMatrix[tm][st]) || 0;
+      if(!c) return '';
+      const w = (c/rowMax*100).toFixed(2);
+      return `<div class="stack-seg" style="width:${w}%;background:${colorForIndex(i)}" title="${st}: ${c}">${c}</div>`;
+    }).join('');
+    return `<div class="stack-row"><div class="stack-label">${tm}</div><div class="stack-track">${segs}</div></div>`;
+  }).join('');
+  document.getElementById('stackLegend').innerHTML = statuses.map((st,i) => `
+    <div class="stack-legend-item"><div class="dot" style="background:${colorForIndex(i)}"></div>${st}</div>
+  `).join('');
+
+  // Team weighted table
+  const teamRows = teams.map(tm => {
+    let sum = 0;
+    const matrix = stats.teamStatusMatrix[tm] || {};
+    Object.entries(matrix).forEach(([st,c]) => { sum += c * pctForStatus(st, currentPctMap); });
+    const count = stats.teamCounts[tm];
+    const pct = count ? sum/count : 0;
+    return {team: tm, count, pct};
+  });
+  document.getElementById('teamTableBody').innerHTML = teamRows.map(t => `
+    <tr>
+      <td>${t.team}</td>
+      <td class="num">${t.count}</td>
+      <td><div class="pct-bar-wrap"><div class="pct-bar" style="width:${t.pct}%;background:${colorForPct(t.pct)}"></div></div></td>
+      <td class="num">${t.pct.toFixed(1)}%</td>
+    </tr>`).join('');
+}
+
+init();
+</script>
+
+</body>
+</html>
