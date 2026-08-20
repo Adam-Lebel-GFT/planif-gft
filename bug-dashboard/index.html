@@ -138,7 +138,7 @@
 
   .kpi-grid{
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
     gap:16px;
     margin-bottom:18px;
   }
@@ -232,7 +232,7 @@
 
 <div class="card">
   <h2>1. Coller les données</h2>
-  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date.</div>
+  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date, Fix Version.</div>
   <textarea id="pasteArea" placeholder="Colle ton tableau Excel ici (Ctrl+V)…"></textarea>
   <div class="paste-actions">
     <button class="primary" id="analyzeBtn">Analyser</button>
@@ -294,6 +294,7 @@
   <footer>
     Avancement pondéré global = Σ(nb tickets du statut × poids du statut) / nb total de tickets.
     « Bugs en dépassement » = tickets ayant une Due Date individuelle antérieure à la date de référence et non clôturés/déclinés — indicateur informatif, sans lien automatique avec le respect d'une date de gel de code.
+    « Avancement par Fix Version » = part des tickets ayant un champ Fix Version renseigné (non vide), considérés comme mergés.
     Vos données collées et votre pondération sont conservées localement dans ce navigateur (aucun envoi serveur).
   </footer>
 
@@ -307,6 +308,7 @@ const COLUMN_CANDIDATES = {
   status: ['status', 'statut'],
   team: ['team code', 'équipe', 'equipe', 'team'],
   dueDate: ["due date", "date d'échéance", 'date echeance', 'échéance', 'echeance'],
+  fixVersion: ['fix version/s', 'fix versions', 'fix version', 'fixversion', 'version corrigée', 'version corrigee'],
 };
 
 function normalize(s){
@@ -413,6 +415,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
   let blockerCount = 0, blockerWeighted = 0;
   let overdueCount = 0;
   let doneCount = 0;
+  let mergedCount = 0;
   let weightedSum = 0;
 
   const get = (r, idx) => (idx !== -1 ? (r[headers[idx]] || '') : '');
@@ -423,6 +426,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
     const teamLabel = team || 'Non affecté';
     const priority = get(r, cols.priority);
     const dueRaw = get(r, cols.dueDate);
+    const fixVersion = get(r, cols.fixVersion).trim();
 
     const pct = pctForStatus(status, pctMap);
     weightedSum += pct;
@@ -437,6 +441,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
       blockerWeighted += pct;
     }
     if(normalize(status)==='closed' || normalize(status)==='decline') doneCount++;
+    if(fixVersion !== '') mergedCount++;
 
     const dueDate = parseDMY(dueRaw);
     if(dueDate && refDate && dueDate < refDate && normalize(status)!=='closed' && normalize(status)!=='decline'){
@@ -450,7 +455,8 @@ function computeStats(rows, headers, cols, pctMap, refDate){
     statusCounts, teamCounts, teamStatusMatrix,
     blockerCount,
     blockerPct: blockerCount ? blockerWeighted/blockerCount : 0,
-    overdueCount, doneCount,
+    overdueCount, doneCount, mergedCount,
+    mergedPct: total ? mergedCount/total*100 : 0,
   };
 }
 
@@ -501,6 +507,7 @@ function analyze(){
     team: findColumnIndex(headers, COLUMN_CANDIDATES.team),
     priority: findColumnIndex(headers, COLUMN_CANDIDATES.priority),
     dueDate: findColumnIndex(headers, COLUMN_CANDIDATES.dueDate),
+    fixVersion: findColumnIndex(headers, COLUMN_CANDIDATES.fixVersion),
   };
   if(cols.status === -1){ setMsg('Colonne "Status" introuvable dans les en-têtes collés.', 'err'); return; }
 
@@ -554,6 +561,7 @@ function renderAll(rows, headers, cols, refDate){
   // KPI
   const kpis = [
     {label:'Avancement pondéré global', value: stats.globalPct.toFixed(1)+'%', sub: stats.total+' tickets analysés', cls:'green'},
+    {label:'Avancement par Fix Version', value: stats.mergedCount+' / '+stats.total, sub: stats.mergedPct.toFixed(0)+'% mergés (Fix Version renseignée)', cls:'green'},
     {label:'Tickets Closed / Decline', value: stats.doneCount+' / '+stats.total, sub: (stats.total ? (stats.doneCount/stats.total*100).toFixed(0) : 0)+'% du périmètre soldé', cls:''},
     {label:'Blockers', value: stats.blockerCount, sub: 'Avancement moyen '+stats.blockerPct.toFixed(1)+'%', cls:'amber'},
     {label:'Bugs en dépassement de due date', value: stats.overdueCount, sub: (stats.total ? (stats.overdueCount/stats.total*100).toFixed(0) : 0)+'% du périmètre — due date individuelle dépassée', cls:'amber'},
