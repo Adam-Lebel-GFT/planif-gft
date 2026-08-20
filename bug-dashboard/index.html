@@ -387,6 +387,23 @@ function colorForPct(p){ return p>=90?'var(--green)':p>=50?'var(--accent)':'var(
 const PALETTE = ['#0b2545','#2f6fed','#1f9d68','#e0a300','#7b5fe0','#5a9cf8','#c85fd6','#d64545','#8892a6','#4f6d8f'];
 function colorForIndex(i){ return PALETTE[i % PALETTE.length]; }
 
+// Ordre d'affichage des statuts dans tous les rapports : toujours croissant par
+// % d'avancement (pondération courante), pour que l'ordre reste logique même après
+// modification d'une pondération. Recalculé à chaque appel, jamais mis en cache.
+function sortedStatusKeys(statusCounts){
+  return Object.keys(statusCounts).sort((a, b) => pctForStatus(a, currentPctMap) - pctForStatus(b, currentPctMap));
+}
+
+// Couleur par statut, stable quel que soit l'ordre d'affichage courant (alphabétique,
+// indépendant du tri par %) — évite qu'un statut change de couleur simplement parce
+// qu'une pondération modifiée l'a fait changer de position dans sortedStatusKeys().
+function statusColorMap(statusCounts){
+  const keys = Object.keys(statusCounts).sort();
+  const map = {};
+  keys.forEach((k, i) => { map[k] = colorForIndex(i); });
+  return map;
+}
+
 // ============ Aggregation ============
 function computeStats(rows, headers, cols, pctMap, refDate){
   const total = rows.length;
@@ -504,7 +521,7 @@ function analyze(){
 
 function renderPctTable(statusCounts, onChange){
   const tbody = document.getElementById('pctTableBody');
-  const statuses = Object.keys(statusCounts);
+  const statuses = sortedStatusKeys(statusCounts);
   tbody.innerHTML = statuses.map(status => {
     const pct = pctForStatus(status, currentPctMap);
     const key = normalize(status);
@@ -522,11 +539,10 @@ function renderPctTable(statusCounts, onChange){
       let val = Number(inp.value);
       if(isNaN(val)) val = 50;
       val = Math.max(0, Math.min(100, val));
-      inp.value = val;
       currentPctMap[key] = val;
       savePctMap(currentPctMap);
-      const bar = document.getElementById('pctbar-'+key);
-      if(bar){ bar.style.width = val+'%'; bar.style.background = colorForPct(val); }
+      // Rebuild : la pondération modifiée peut changer l'ordre croissant des statuts.
+      renderPctTable(statusCounts, onChange);
       onChange();
     });
   });
@@ -550,7 +566,7 @@ function renderAll(rows, headers, cols, refDate){
     </div>`).join('');
 
   // Status bar chart
-  const statusEntries = Object.entries(stats.statusCounts);
+  const statusEntries = sortedStatusKeys(stats.statusCounts).map(s => [s, stats.statusCounts[s]]);
   const maxCount = Math.max(...statusEntries.map(([,c]) => c), 1);
   document.getElementById('statusChart').innerHTML = statusEntries.map(([status,count]) => {
     const pct = pctForStatus(status, currentPctMap);
@@ -581,19 +597,20 @@ function renderAll(rows, headers, cols, refDate){
 
   // Stacked bar team x status
   const teams = Object.keys(stats.teamCounts);
-  const statuses = Object.keys(stats.statusCounts);
+  const statuses = sortedStatusKeys(stats.statusCounts);
+  const statusColors = statusColorMap(stats.statusCounts);
   const rowMax = Math.max(...teams.map(t => stats.teamCounts[t]), 1);
   document.getElementById('stackedChart').innerHTML = teams.map(tm => {
-    const segs = statuses.map((st,i) => {
+    const segs = statuses.map((st) => {
       const c = (stats.teamStatusMatrix[tm] && stats.teamStatusMatrix[tm][st]) || 0;
       if(!c) return '';
       const w = (c/rowMax*100).toFixed(2);
-      return `<div class="stack-seg" style="width:${w}%;background:${colorForIndex(i)}" title="${st}: ${c}">${c}</div>`;
+      return `<div class="stack-seg" style="width:${w}%;background:${statusColors[st]}" title="${st}: ${c}">${c}</div>`;
     }).join('');
     return `<div class="stack-row"><div class="stack-label">${tm}</div><div class="stack-track">${segs}</div></div>`;
   }).join('');
-  document.getElementById('stackLegend').innerHTML = statuses.map((st,i) => `
-    <div class="stack-legend-item"><div class="dot" style="background:${colorForIndex(i)}"></div>${st}</div>
+  document.getElementById('stackLegend').innerHTML = statuses.map((st) => `
+    <div class="stack-legend-item"><div class="dot" style="background:${statusColors[st]}"></div>${st}</div>
   `).join('');
 
   // Team weighted table
