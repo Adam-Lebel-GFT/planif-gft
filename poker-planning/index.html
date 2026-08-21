@@ -354,6 +354,9 @@ button.person:hover { background: var(--bg); }
   flex: 1; font-size: 12px; color: var(--text); min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.sto-add { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; padding: 10px; border: 1.5px dashed var(--border); border-radius: 10px; }
+.sto-add-actions { display: flex; gap: 8px; }
+.sto-add-actions .tk-btn { flex: 1; }
 
 /* ── Lobby & Join ───────────────────────────────────────────── */
 .lobby { max-width: 680px; margin-inline: auto; padding-block: clamp(28px, 6vw, 56px) clamp(36px, 7vw, 64px); }
@@ -689,6 +692,15 @@ button.person:hover { background: var(--bg); }
               <span class="count" id="sto-count"></span>
             </div>
             <div class="srows" id="sto"></div>
+            <div class="sto-add" id="sto-add" hidden>
+              <input class="tk-input mono" id="sto-add-key" type="text" placeholder="CLÉ-000" autocomplete="off">
+              <input class="tk-input" id="sto-add-title" type="text" placeholder="Titre de la story…" autocomplete="off">
+              <div class="sto-add-actions">
+                <button class="tk-btn tk-btn--accent" type="button" data-act="add-s-confirm">Ajouter</button>
+                <button class="tk-btn tk-btn--ghost" type="button" data-act="add-s-cancel">Annuler</button>
+              </div>
+            </div>
+            <button class="tk-btn tk-btn--ghost add-story" type="button" data-act="add-s-toggle" id="btn-add-s-session">＋ Ajouter une story</button>
           </div>
         </aside>
 
@@ -1080,6 +1092,7 @@ function render() {
   $('tb-code').textContent = 'Salle · ' + S.code;
   $('tb-mode').textContent = 'Mode local · animateur';
   $('btn-finish').style.display = '';
+  $('btn-add-s-session').hidden = false;
   $('ft-note').textContent = 'Mode local — l\'animateur saisit les votes. Aucune connexion.';
   $('invite-zone').innerHTML = '';
 
@@ -1173,6 +1186,34 @@ function renderStoriesSide(stories, cur, clickable) {
       (clickable ? ' data-act="jump" data-i="' + i + '"' : ' disabled') + '>' +
       '<span class="k">' + esc(x.key) + '</span><span class="t">' + esc(x.title) + '</span>' + right + '</button>';
   }).join('');
+}
+
+/* ══════════════ F-bis. Ajout d'une story en session (local + host) ══════════════ */
+function toggleAddStory(show) {
+  var wrap = $('sto-add'), btn = $('btn-add-s-session');
+  if (!wrap || !btn) return;
+  wrap.hidden = !show;
+  btn.hidden = show;
+  if (show) {
+    $('sto-add-key').value = '';
+    $('sto-add-title').value = '';
+    $('sto-add-title').focus();
+  }
+}
+function addStorySession() {
+  if (ROLE !== 'local' && ROLE !== 'host') return;
+  var key = $('sto-add-key').value.trim();
+  var title = $('sto-add-title').value.trim();
+  if (!key && !title) { $('sto-add-title').focus(); return; }
+  var list = (ROLE === 'local') ? S.stories : LH.stories;
+  list.push({
+    id: 's' + list.length + '-' + Date.now().toString(36),
+    key: key || ('STORY-' + (list.length + 1)), title: title || key,
+    type: 'story', prio: '', desc: '', sp: null, rounds: 0
+  });
+  toggleAddStory(false);
+  if (ROLE === 'local') { render(); }
+  else { lhBroadcast(); lhSnap(); lhRender(); }
 }
 
 /* ══════════════ G. Récap (partagé) ══════════════ */
@@ -1383,6 +1424,7 @@ function lhRender() {
   $('tb-code').textContent = 'Salle · ' + LH.code;
   $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + nP + ' connecté' + (nP > 1 ? 's' : '');
   $('btn-finish').style.display = '';
+  $('btn-add-s-session').hidden = false;
   $('ft-note').textContent = 'Mode live — bêta. Tout transite en temps réel, rien n\'est stocké.';
 
   var link = buildLink(LH.code, LH.cfg);
@@ -1598,6 +1640,8 @@ function pRender() {
   $('tb-code').textContent = 'Salle · ' + LP.code;
   $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + esc(LP.name);
   $('btn-finish').style.display = 'none';
+  toggleAddStory(false);
+  $('btn-add-s-session').hidden = true;
   $('ft-note').textContent = 'Mode live — ton pseudo disparaît à la fermeture. Rien n\'est stocké.';
   $('invite-zone').innerHTML = '';
 
@@ -1868,6 +1912,9 @@ document.addEventListener('click', function (e) {
   if (act === 'revote')    { if (ROLE === 'host') lhRevote(); else if (ROLE === 'local') revote(); return; }
   if (act === 'validate')  { if (ROLE === 'host') lhValidate(t.dataset.v); else if (ROLE === 'local') validate(t.dataset.v); return; }
   if (act === 'jump')      { if (ROLE === 'host') lhJump(Number(t.dataset.i)); else if (ROLE === 'local') jumpTo(Number(t.dataset.i)); return; }
+  if (act === 'add-s-toggle')  { toggleAddStory(true); return; }
+  if (act === 'add-s-cancel')  { toggleAddStory(false); return; }
+  if (act === 'add-s-confirm') { addStorySession(); return; }
   if (act === 'finish')    { if (ROLE === 'host') lhFinish(); else if (ROLE === 'local') localRecap(); return; }
   /* Récap */
   if (act === 'resume')    { if (ROLE === 'host') lhResume(); else if (ROLE === 'local') { show('view-session'); render(); } return; }
@@ -1878,6 +1925,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key !== 'Enter' || !e.target) return;
   if (e.target.id === 'in-p') { e.preventDefault(); addParticipant(); }
   if (e.target.id === 'in-pseudo') { e.preventDefault(); joinSession(); }
+  if (e.target.id === 'sto-add-key' || e.target.id === 'sto-add-title') { e.preventDefault(); addStorySession(); }
 });
 
 /* ══════════════ K. Démarrage ══════════════ */
