@@ -16,6 +16,7 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+.hidden { display: none !important; }
 
 .hero { max-width: 1300px; margin: 0 auto; padding: 32px 32px 20px; }
 .eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -23,11 +24,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy); }
 .sub { margin-top: 8px; color: var(--muted); font-size: 13px; max-width: 720px; }
 
-.panel { max-width: 1300px; margin: 0 auto 24px; padding: 0 32px; }
+.panel { max-width: 1300px; margin: 0 auto 20px; padding: 0 32px; }
 .card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); padding: 18px 22px; }
 .card h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .3px; color: var(--navy); margin-bottom: 4px; text-transform: uppercase; }
 .card .hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
-.row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; align-items: flex-end; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); }
 .field input, .field select { font-family: var(--font); font-size: 12.5px; color: var(--text); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 6px 9px; background: var(--white); }
@@ -36,21 +37,57 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .field.w-num input { width: 70px; }
 .field.w-text input { width: 90px; }
 
-.events-grid { display: flex; flex-direction: column; gap: 7px; }
-.ev-row { display: flex; align-items: center; gap: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); }
-.ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
-.ev-label { flex: 1; font-size: 12px; font-weight: 600; min-width: 190px; }
-.ev-row select { font-family: var(--font); font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 8px; }
+/* ── Zoom ─────────────────────────────────────────────────── */
+.zoom-row { display: flex; align-items: center; gap: 10px; }
+.zoom-row label { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); }
+.zoom-row input[type=range] { width: 180px; }
+.zoom-val { font-family: var(--font-mono); font-size: 11px; color: var(--muted); min-width: 62px; }
 
+/* ── Listes de gestion (versions / phases / jalons) ─────────── */
+.mgmt-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.mgmt-empty { font-size: 12px; color: var(--muted); padding: 8px 2px; }
+.mgmt-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; }
+.mgmt-row.editing { background: #F7F9FC; }
+.mgmt-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 170px; }
+.mgmt-actions { display: flex; gap: 6px; margin-left: auto; }
+.v-label { font-weight: 700; font-size: 12.5px; color: var(--navy); }
+.v-dates { font-size: 10.5px; color: var(--muted); font-family: var(--font-mono); }
+.v-edit-label { font-family: var(--font); font-size: 12.5px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 8px; width: 110px; }
+.v-edit-start, .v-edit-end { font-family: var(--font-mono); font-size: 11.5px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
+.ph-label, .ms-label { font-family: var(--font); font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 8px; flex: 1; min-width: 140px; }
+.dp-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+.dp-group { display: inline-flex; gap: 5px; }
+.dp-group select { font-family: var(--font); font-size: 11.5px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 4px 6px; background: var(--white); }
+.ms-visible { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+
+.icon-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); color: var(--muted); cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.icon-btn.ok { border-color: var(--green); color: var(--green); }
+.add-btn { font-family: var(--font); font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--white); border: 1.5px dashed var(--accent); border-radius: var(--radius); padding: 7px 14px; cursor: pointer; }
+.add-btn:hover { background: #EAF1F8; }
+.ghost-btn { font-family: var(--font); font-size: 11.5px; font-weight: 700; color: var(--muted); background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 7px 14px; cursor: pointer; }
+.ghost-btn:hover { border-color: var(--muted); }
+
+/* ── Gantt ────────────────────────────────────────────────── */
 .gantt-wrap { max-width: 1300px; margin: 0 auto 60px; padding: 0 32px; }
 .gantt-card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); overflow: hidden; }
+.gantt-empty { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.move-hint { background: #FFF7E6; border-bottom: 1px solid #F0D28A; color: #7A5B00; font-size: 11.5px; padding: 8px 20px; font-weight: 600; }
 .gantt-scroll { overflow-x: auto; }
-.gantt { display: grid; }
+.gantt-inner { position: relative; }
 
 .hdr { position: sticky; top: 0; background: var(--white); z-index: 3; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); border-left: 1px solid var(--border); }
-.hdr-month { height: 26px; font-size: 10.5px; font-weight: 700; color: var(--white); background: var(--navy); letter-spacing: .6px; text-transform: uppercase; }
-.hdr-sprint { height: 22px; font-size: 10px; font-weight: 700; color: var(--navy); background: #E9F0F6; letter-spacing: .3px; text-transform: uppercase; border-top: 1px solid var(--border); }
-.hdr-week { height: 22px; font-size: 10px; font-weight: 700; color: var(--muted); background: var(--bg); border-top: 1px solid var(--border); }
+.hdr-month { height: 24px; font-size: 10.5px; font-weight: 700; color: var(--white); background: var(--navy); letter-spacing: .6px; text-transform: uppercase; }
+.hdr-sprint { height: 20px; font-size: 10px; font-weight: 700; color: var(--navy); background: #E9F0F6; letter-spacing: .3px; text-transform: uppercase; border-top: 1px solid var(--border); }
+.hdr-week { height: 20px; font-size: 10px; font-weight: 700; color: var(--muted); background: var(--bg); border-top: 1px solid var(--border); }
+.hdr-day { height: 28px; flex-direction: column; gap: 1px; border-top: 1px solid var(--border); background: var(--white); }
+.hdr-day .dow { font-size: 8px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
+.hdr-day .dnum { font-size: 11px; font-weight: 700; color: var(--navy); font-family: var(--font-mono); }
+.hdr-day.weekend { background: #F0F1F5; }
+.hdr-day.weekend .dnum { color: var(--muted); }
 .corner { position: sticky; left: 0; background: var(--white); z-index: 4; border-right: 1.5px solid var(--border); }
 
 .ver-row { display: flex; border-bottom: 1px solid var(--border); }
@@ -58,17 +95,23 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .ver-label .v { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; color: var(--navy); }
 .ver-label .d { font-size: 10px; color: var(--muted); }
 
-.ver-track { position: relative; background: repeating-linear-gradient(90deg, transparent, transparent 39px, #F0F1F3 39px, #F0F1F3 40px); }
+.ver-track { position: relative; }
 .ver-track.shade { background-color: #FAFBFD; }
+.ver-track.move-target { cursor: crosshair; outline: 2px dashed var(--accent); outline-offset: -2px; }
 
-.bar { position: absolute; height: 20px; border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; box-shadow: 0 1px 2px rgba(12,26,46,.15); }
-.bar.chargement { background: var(--accent); }
-.bar.dev { background: var(--navy); }
-.bar.testiat { background: var(--green); }
+.weekend-bands, .today-line-wrap { position: absolute; top: 0; bottom: 0; left: 0; pointer-events: none; z-index: 0; }
+.weekend-band { position: absolute; top: 0; bottom: 0; background: rgba(12,26,46,.035); }
+.today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); z-index: 6; }
+.today-line .tag { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; font-weight: 700; color: var(--red); white-space: nowrap; }
 
-.jalons-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #C7CDD6; }
-.marker { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); transform: translateX(-50%); cursor: default; }
-.marker-label { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; color: var(--muted); white-space: nowrap; }
+.bar { position: absolute; height: 20px; border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; box-shadow: 0 1px 2px rgba(12,26,46,.15); z-index: 1; }
+.jalons-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #C7CDD6; z-index: 1; }
+.marker { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); transform: translateX(-50%); cursor: pointer; z-index: 2; }
+.marker:hover { box-shadow: 0 0 0 1px rgba(12,26,46,.2), 0 0 0 4px rgba(12,68,124,.18); }
+.marker.overridden { box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--accent); }
+.marker-label { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; color: var(--muted); white-space: nowrap; z-index: 2; }
+.marker-reset { color: var(--accent); cursor: pointer; font-weight: 700; padding: 0 2px; }
+.marker-reset:hover { text-decoration: underline; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg); }
 .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--navy); font-weight: 600; }
@@ -91,62 +134,157 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 
 <div class="hero">
   <div class="eyebrow">Stabilisation · Cadence en train (chevauchement)</div>
-  <h1>Plan de livraisons de stabilité</h1>
-  <p class="sub">Une ligne par version, avec ses 3 phases (Chargement de la version, DEV, Test IAT) et ses 5 jalons. Les versions se chevauchent façon "train" : la version suivante démarre avant la fin de la précédente.</p>
+  <h1>Plan de livraisons de stabilisation</h1>
+  <p class="sub">Une ligne par version, avec ses phases et ses jalons configurables. Les versions se chevauchent façon "train" : la version suivante démarre avant la fin de la précédente.</p>
 </div>
 
 <div class="panel">
   <div class="card">
-    <h2>Paramètres</h2>
-    <div class="hint">Hypothèses par défaut ci-dessous — tout est ajustable, le Gantt se régénère automatiquement.</div>
+    <h2>Paramètres généraux</h2>
+    <div class="hint">Cadence des sprints et zoom du board — versions, phases et jalons se configurent dans les cartes ci-dessous.</div>
     <div class="row">
-      <div class="field w-date"><label>Début (lundi)</label><input type="date" id="startDate" value="2026-08-03"></div>
-      <div class="field w-text"><label>Première version</label><input type="text" id="firstVersion" value="3.9.0"></div>
-      <div class="field w-num"><label>Nb. de versions</label><input type="number" id="nbVersions" value="10" min="1" max="40"></div>
-      <div class="field w-num"><label>Durée version (sem.)</label><input type="number" id="weeksPerVersion" value="2" min="1" max="4"></div>
-      <div class="field w-num"><label>Décalage entre versions (sem.)</label><input type="number" id="offsetWeeks" value="1" min="1" max="4"></div>
-      <div class="field w-num"><label>Sem. par sprint</label><input type="number" id="weeksPerSprint" value="2" min="1" max="4"></div>
-      <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" value="34" min="1" max="200"></div>
+      <div class="field w-num"><label>Sem. par sprint</label><input type="number" id="weeksPerSprint" min="1" max="4"></div>
+      <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" min="1" max="200"></div>
+      <div class="field w-date"><label>Ce sprint débute le</label><input type="date" id="sprintAnchor"></div>
+      <div class="field w-num"><label>Durée version par défaut (sem.)</label><input type="number" id="defaultVersionWeeks" min="1" max="8"></div>
+      <div class="field w-num"><label>Décalage par défaut (sem.)</label><input type="number" id="defaultOffsetWeeks" min="1" max="8"></div>
+      <div class="zoom-row">
+        <label>Zoom</label>
+        <input type="range" id="zoomRange" min="16" max="72" step="2">
+        <span class="zoom-val" id="zoomVal"></span>
+      </div>
     </div>
-    <div class="events-grid" id="eventsConfig"></div>
-    <div class="row" style="margin-top:14px;margin-bottom:0">
-      <button id="resetBtn" type="button" style="font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--muted);background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 14px;cursor:pointer">Réinitialiser aux valeurs par défaut</button>
+    <div class="row" style="margin-top:2px;margin-bottom:0">
+      <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
       <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
     </div>
   </div>
 </div>
 
+<div class="panel">
+  <div class="card">
+    <h2>Versions</h2>
+    <div class="hint">Ajoutez, renommez ou retirez des versions — leurs dates pilotent directement les lignes du board.</div>
+    <div class="mgmt-list" id="versionsList"></div>
+    <div class="row" style="margin-bottom:0">
+      <div class="field w-text"><label>Nom suggéré</label><input type="text" id="nextVersionSeed"></div>
+      <button class="add-btn" id="addVersionBtn" type="button">+ Ajouter une version</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <h2>Phases</h2>
+    <div class="hint">Barres affichées sur chaque ligne du board. Début/fin exprimés en semaine + jour depuis le début de la version.</div>
+    <div class="mgmt-list" id="phasesList"></div>
+    <button class="add-btn" id="addPhaseBtn" type="button">+ Ajouter une phase</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <h2>Jalons</h2>
+    <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine, depuis le début de version — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
+    <div class="mgmt-list" id="milestonesList"></div>
+    <button class="add-btn" id="addMilestoneBtn" type="button">+ Ajouter un jalon</button>
+  </div>
+</div>
+
 <div class="gantt-wrap">
   <div class="gantt-card">
-    <div class="gantt-scroll"><div id="ganttRoot"></div></div>
-    <div class="legend" id="legend"></div>
-    <div class="legend-note">Maquette de préparation — phases, jalons et cadence de chevauchement restent à confirmer avec les squad leads avant diffusion.</div>
+    <div id="ganttEmpty" class="gantt-empty hidden">Aucune version à afficher — ajoutez-en une dans la carte « Versions » ci-dessus.</div>
+    <div id="ganttBody">
+      <div id="moveHint" class="move-hint hidden"></div>
+      <div class="gantt-scroll"><div id="ganttRoot" class="gantt-inner"></div></div>
+      <div class="legend" id="legend"></div>
+      <div class="legend-note">Maquette de préparation — phases, jalons et cadence de chevauchement restent à confirmer avec les squad leads avant diffusion. Barre rouge = date du jour.</div>
+    </div>
   </div>
 </div>
 
 <script>
-const WEEKDAY_FULL = ['lundi','mardi','mercredi','jeudi','vendredi'];
-const COLW = 40; // px par jour ouvré
-const STORAGE_KEY = 'gft-vaudoise-plan-livraisons-v1';
+// ════════════════════════════════════════════════════════════
+// Constantes & helpers
+// ════════════════════════════════════════════════════════════
+const WEEKDAY_SHORT = ['L','M','M','J','V','S','D'];
+const WEEKDAY_FULL  = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const STORAGE_KEY = 'gft-vaudoise-plan-livraisons-v2';
+const PALETTE = ['#0C447C','#1A7A42','#C0392B','#A6741B','#7B5FE0','#0C1A2E','#5A9CF8','#8892A6'];
+const PICKER_WEEKS = 6; // amplitude des sélecteurs "Semaine" pour phases/jalons
 
-const DEFAULT_EVENTS = [
-  { key:'freeze',  label:'Code freeze',                color:'var(--navy)',    day:5 },
-  { key:'gonogo',  label:'Go / No-go',                 color:'var(--accent)',  day:8 },
-  { key:'deploy',  label:'Déploiement sur la branche',  color:'var(--green)',   day:9 },
-  { key:'revert',  label:'Dernier revert possible',     color:'var(--red)',     day:9 },
-  { key:'nextbr',  label:'Branche suivante disponible', color:'var(--gold)',    day:9 },
-];
-const DEFAULT_FIELDS = {
-  startDate: '2026-08-03', firstVersion: '3.9.0', nbVersions: '10',
-  weeksPerVersion: '2', offsetWeeks: '1', weeksPerSprint: '2', firstSprint: '34',
-};
+function toISO(d) { const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
+function parseISO(s) { return new Date(s+'T00:00:00'); }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function dayDiff(a, b) { return Math.round((b - a) / 86400000); }
+function fmtDate(d) { return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
+function fmtMonth(d) { return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); }
+function isoWeek(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - day + 3);
+  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((dt - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function bumpVersion(ver, i) {
+  const parts = ver.split('.');
+  const last = parseInt(parts[parts.length - 1], 10);
+  parts[parts.length - 1] = (isNaN(last) ? 0 : last) + i;
+  return parts.join('.');
+}
 
-let EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
+let _uidCounter = 0;
+function uid(prefix) { _uidCounter++; return prefix + '_' + _uidCounter + '_' + Math.random().toString(36).slice(2,7); }
 
+// ════════════════════════════════════════════════════════════
+// État
+// ════════════════════════════════════════════════════════════
+function seedVersions() {
+  const start = parseISO('2026-08-03');
+  const versions = [];
+  for (let i = 0; i < 10; i++) {
+    const vs = addDays(start, i * 7);
+    const ve = addDays(vs, 14 - 1);
+    versions.push({ id: uid('v'), label: bumpVersion('3.9.0', i), start: toISO(vs), end: toISO(ve) });
+  }
+  return versions;
+}
+
+function defaultState() {
+  return {
+    sprintAnchor: '2026-08-03',
+    weeksPerSprint: 2,
+    firstSprint: 34,
+    zoom: 40,
+    defaultVersionWeeks: 2,
+    defaultOffsetWeeks: 1,
+    nextVersionSeed: '3.19.0',
+    versions: seedVersions(),
+    phases: [
+      { id: 'chargement', label: 'Chargement de la version', color: PALETTE[0], startDay: 0, endDay: 1 },
+      { id: 'dev',        label: 'DEV',                       color: PALETTE[5], startDay: 1, endDay: 5 },
+      { id: 'testiat',    label: 'Test IAT',                  color: PALETTE[1], startDay: 5, endDay: 9 },
+    ],
+    milestones: [
+      { id: 'freeze', label: 'Code freeze',                color: PALETTE[5], day: 5, visible: true },
+      { id: 'gonogo', label: 'Go / No-go',                 color: PALETTE[0], day: 8, visible: true },
+      { id: 'deploy', label: 'Déploiement sur la branche',  color: PALETTE[1], day: 9, visible: true },
+      { id: 'revert', label: 'Dernier revert possible',     color: PALETTE[2], day: 9, visible: true },
+      { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], day: 9, visible: true },
+    ],
+    overrides: {}, // { [versionId]: { [milestoneId]: dayOffset } }
+  };
+}
+
+let state = defaultState();
+let editingVersionId = null;
+let moveMode = null; // { versionId, milestoneId }
+
+// ════════════════════════════════════════════════════════════
+// Persistance
+// ════════════════════════════════════════════════════════════
 function saveState() {
-  const fields = {};
-  Object.keys(DEFAULT_FIELDS).forEach(id => { fields[id] = document.getElementById(id).value; });
-  const state = { fields, events: EVENTS.map(e => ({ key: e.key, day: e.day })) };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     const tag = document.getElementById('savedTag');
@@ -157,103 +295,266 @@ function saveState() {
 }
 
 function loadState() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { saved = null; }
-  if (!saved) return;
-  if (saved.fields) {
-    Object.keys(DEFAULT_FIELDS).forEach(id => {
-      if (saved.fields[id] !== undefined) document.getElementById(id).value = saved.fields[id];
-    });
-  }
-  if (Array.isArray(saved.events)) {
-    saved.events.forEach(se => {
-      const ev = EVENTS.find(e => e.key === se.key);
-      if (ev && typeof se.day === 'number') ev.day = se.day;
-    });
-  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return;
+    const base = defaultState();
+    state = Object.assign(base, saved);
+    state.versions = Array.isArray(saved.versions) ? saved.versions : base.versions;
+    state.phases = Array.isArray(saved.phases) && saved.phases.length ? saved.phases : base.phases;
+    state.milestones = Array.isArray(saved.milestones) && saved.milestones.length ? saved.milestones : base.milestones;
+    state.overrides = saved.overrides && typeof saved.overrides === 'object' ? saved.overrides : {};
+  } catch (e) { /* données corrompues — on repart des valeurs par défaut */ }
 }
 
 function resetState() {
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-  Object.keys(DEFAULT_FIELDS).forEach(id => { document.getElementById(id).value = DEFAULT_FIELDS[id]; });
-  EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
-  buildEventsForm();
-  render();
+  state = defaultState();
+  editingVersionId = null;
+  moveMode = null;
+  syncFieldsFromState();
+  commit();
 }
 
-function totalDays() { return Math.max(5, (+document.getElementById('weeksPerVersion').value || 2) * 5); }
-
-function buildEventsForm() {
-  const root = document.getElementById('eventsConfig');
-  root.innerHTML = '';
-  const nd = totalDays();
-  const labels = [];
-  for (let w = 0; w < nd / 5; w++) ['Lun','Mar','Mer','Jeu','Ven'].forEach(d => labels.push(d + ' S' + (w+1)));
-  EVENTS.forEach((ev, i) => {
-    if (ev.day > nd - 1) ev.day = nd - 1;
-    const row = document.createElement('div');
-    row.className = 'ev-row';
-    row.innerHTML = '<div class="ev-dot" style="background:' + ev.color + '"></div>' +
-      '<div class="ev-label">' + ev.label + '</div>' +
-      '<select data-i="' + i + '">' +
-      labels.map((w, wi) => '<option value="' + wi + '"' + (wi === ev.day ? ' selected' : '') + '>' + w + '</option>').join('') +
-      '</select>';
-    root.appendChild(row);
-  });
-  root.querySelectorAll('select').forEach(el => {
-    el.addEventListener('change', e => { EVENTS[+e.target.dataset.i].day = +e.target.value; render(); saveState(); });
-  });
+// ════════════════════════════════════════════════════════════
+// Sélecteur "Semaine + jour de la semaine" (phases / jalons)
+// ════════════════════════════════════════════════════════════
+function dayPickerMarkup(kind, id, dayVal) {
+  const week = Math.floor(dayVal / 7) + 1;
+  const dow = ((dayVal % 7) + 7) % 7;
+  let weekOpts = '';
+  for (let w = 1; w <= PICKER_WEEKS; w++) weekOpts += `<option value="${w}" ${w === week ? 'selected' : ''}>Semaine ${w}</option>`;
+  const dowOpts = WEEKDAY_FULL.map((n, i) => `<option value="${i}" ${i === dow ? 'selected' : ''}>${n}</option>`).join('');
+  return `<span class="dp-group" data-kind="${kind}" data-id="${id}">
+    <select class="dp-week">${weekOpts}</select>
+    <select class="dp-dow">${dowOpts}</select>
+  </span>`;
+}
+function readDayPicker(groupEl) {
+  const week = +groupEl.querySelector('.dp-week').value;
+  const dow = +groupEl.querySelector('.dp-dow').value;
+  return (week - 1) * 7 + dow;
 }
 
-function bumpVersion(ver, i) {
-  const parts = ver.split('.');
-  const last = parseInt(parts[parts.length - 1], 10);
-  parts[parts.length - 1] = (isNaN(last) ? 0 : last) + i;
-  return parts.join('.');
-}
-
-function businessDayOffset(monday, n) {
-  // n-ième jour ouvré après "monday" (0 = monday lui-même), en sautant les week-ends par blocs de 5
-  const d = new Date(monday);
-  d.setDate(monday.getDate() + n + Math.floor(n / 5) * 2);
-  return d;
-}
-function fmtDate(d) { return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
-function fmtMonth(d) { return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); }
-function isoWeek(d) {
-  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = (dt.getUTCDay() + 6) % 7;
-  dt.setUTCDate(dt.getUTCDate() - day + 3);
-  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
-  return 1 + Math.round(((dt - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
-}
-
-function render() {
-  const start = new Date(document.getElementById('startDate').value + 'T00:00:00');
-  const firstVersion = document.getElementById('firstVersion').value || '3.9.0';
-  const nb = Math.max(1, Math.min(40, +document.getElementById('nbVersions').value || 10));
-  const verDays = totalDays();
-  const offsetDays = Math.max(5, (+document.getElementById('offsetWeeks').value || 1) * 5);
-  const weeksPerSprint = Math.max(1, +document.getElementById('weeksPerSprint').value || 2);
-  const firstSprint = +document.getElementById('firstSprint').value || 1;
-
-  const versions = [];
-  for (let i = 0; i < nb; i++) {
-    versions.push({ label: bumpVersion(firstVersion, i), startOffset: i * offsetDays });
+// ════════════════════════════════════════════════════════════
+// Versions — ajout / édition / suppression
+// ════════════════════════════════════════════════════════════
+function addVersion() {
+  const last = state.versions[state.versions.length - 1];
+  let vs, label;
+  if (last) {
+    vs = addDays(parseISO(last.start), (state.defaultOffsetWeeks || 1) * 7);
+    label = bumpVersion(last.label, 1);
+  } else {
+    vs = parseISO(state.sprintAnchor);
+    label = state.nextVersionSeed || '1.0.0';
   }
-  const totalBusinessDays = versions[versions.length - 1].startOffset + verDays;
+  const ve = addDays(vs, (state.defaultVersionWeeks || 2) * 7 - 1);
+  state.versions.push({ id: uid('v'), label, start: toISO(vs), end: toISO(ve) });
+  state.nextVersionSeed = bumpVersion(label, 1);
+  commit();
+  const seedInput = document.getElementById('nextVersionSeed');
+  if (seedInput) seedInput.value = state.nextVersionSeed;
+}
+function deleteVersion(id) {
+  if (!confirm('Retirer cette version du plan ?')) return;
+  state.versions = state.versions.filter(v => v.id !== id);
+  delete state.overrides[id];
+  commit();
+}
+function saveVersionEdit(id) {
+  const row = document.querySelector(`#versionsList .mgmt-row.editing[data-id="${id}"]`);
+  if (!row) return;
+  const label = row.querySelector('.v-edit-label').value.trim();
+  let start = row.querySelector('.v-edit-start').value;
+  let end = row.querySelector('.v-edit-end').value;
+  if (!label || !start || !end) { alert('Merci de renseigner le nom et les deux dates.'); return; }
+  if (parseISO(end) < parseISO(start)) end = start;
+  const v = state.versions.find(x => x.id === id);
+  if (v) { v.label = label; v.start = start; v.end = end; }
+  editingVersionId = null;
+  commit();
+}
 
-  // liste de toutes les dates (jours ouvrés) de la timeline globale
+function renderVersionsList() {
+  const root = document.getElementById('versionsList');
+  if (!state.versions.length) {
+    root.innerHTML = `<div class="mgmt-empty">Aucune version — ajoutez-en une pour démarrer le board.</div>`;
+    return;
+  }
+  root.innerHTML = state.versions.map(v => {
+    if (editingVersionId === v.id) {
+      return `<div class="mgmt-row editing" data-id="${v.id}">
+        <input type="text" class="v-edit-label" value="${escapeHtml(v.label)}">
+        <input type="date" class="v-edit-start" value="${v.start}">
+        <input type="date" class="v-edit-end" value="${v.end}">
+        <div class="mgmt-actions">
+          <button class="icon-btn ok" data-action="save-version" data-id="${v.id}" title="Enregistrer">✓</button>
+          <button class="icon-btn" data-action="cancel-edit-version" data-id="${v.id}" title="Annuler">✕</button>
+        </div>
+      </div>`;
+    }
+    const days = dayDiff(parseISO(v.start), parseISO(v.end)) + 1;
+    return `<div class="mgmt-row" data-id="${v.id}">
+      <div class="mgmt-main">
+        <span class="v-label">${escapeHtml(v.label)}</span>
+        <span class="v-dates">${fmtDate(parseISO(v.start))} → ${fmtDate(parseISO(v.end))} · ${days} j</span>
+      </div>
+      <div class="mgmt-actions">
+        <button class="icon-btn" data-action="edit-version" data-id="${v.id}" title="Modifier">✎</button>
+        <button class="icon-btn danger" data-action="delete-version" data-id="${v.id}" title="Retirer">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// Phases — ajout / édition / suppression
+// ════════════════════════════════════════════════════════════
+function addPhase() {
+  const idx = state.phases.length;
+  state.phases.push({ id: uid('ph'), label: 'Nouvelle phase', color: PALETTE[idx % PALETTE.length], startDay: 0, endDay: 1 });
+  commit();
+}
+function deletePhase(id) {
+  if (!confirm('Retirer cette phase ?')) return;
+  state.phases = state.phases.filter(p => p.id !== id);
+  commit();
+}
+function renderPhasesList() {
+  const root = document.getElementById('phasesList');
+  if (!state.phases.length) {
+    root.innerHTML = `<div class="mgmt-empty">Aucune phase — ajoutez-en une pour l'afficher sur le board.</div>`;
+    return;
+  }
+  root.innerHTML = state.phases.map(p => `
+    <div class="mgmt-row" data-id="${p.id}">
+      <span class="swatch" style="background:${p.color}"></span>
+      <input type="text" class="ph-label" data-id="${p.id}" value="${escapeHtml(p.label)}">
+      <span class="dp-lbl">Début</span>${dayPickerMarkup('phase-start', p.id, p.startDay)}
+      <span class="dp-lbl">Fin</span>${dayPickerMarkup('phase-end', p.id, p.endDay)}
+      <div class="mgmt-actions">
+        <button class="icon-btn danger" data-action="delete-phase" data-id="${p.id}" title="Retirer">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// Jalons — ajout / édition / suppression
+// ════════════════════════════════════════════════════════════
+function addMilestone() {
+  const idx = state.milestones.length;
+  state.milestones.push({ id: uid('ms'), label: 'Nouveau jalon', color: PALETTE[idx % PALETTE.length], day: 0, visible: true });
+  commit();
+}
+function deleteMilestone(id) {
+  if (!confirm('Retirer ce jalon ?')) return;
+  state.milestones = state.milestones.filter(m => m.id !== id);
+  Object.keys(state.overrides).forEach(vid => { if (state.overrides[vid]) delete state.overrides[vid][id]; });
+  if (moveMode && moveMode.milestoneId === id) moveMode = null;
+  commit();
+}
+function renderMilestonesList() {
+  const root = document.getElementById('milestonesList');
+  if (!state.milestones.length) {
+    root.innerHTML = `<div class="mgmt-empty">Aucun jalon — ajoutez-en un pour l'afficher sur le board.</div>`;
+    return;
+  }
+  root.innerHTML = state.milestones.map(m => `
+    <div class="mgmt-row" data-id="${m.id}">
+      <input type="checkbox" class="ms-visible" data-id="${m.id}" ${m.visible ? 'checked' : ''} title="Afficher sur le board">
+      <span class="ev-dot" style="background:${m.color}"></span>
+      <input type="text" class="ms-label" data-id="${m.id}" value="${escapeHtml(m.label)}">
+      ${dayPickerMarkup('milestone', m.id, m.day)}
+      <div class="mgmt-actions">
+        <button class="icon-btn danger" data-action="delete-milestone" data-id="${m.id}" title="Retirer">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// Sprint : numérotation à partir d'une date d'ancrage
+// ════════════════════════════════════════════════════════════
+function sprintNumberFor(date) {
+  const anchor = parseISO(state.sprintAnchor);
+  const block = Math.max(1, state.weeksPerSprint) * 7;
+  const idx = Math.floor(dayDiff(anchor, date) / block);
+  return state.firstSprint + idx;
+}
+
+// ════════════════════════════════════════════════════════════
+// Timeline & rendu du Gantt
+// ════════════════════════════════════════════════════════════
+function computeTimeline() {
+  if (!state.versions.length) return null;
+  let minStart = state.versions[0].start, maxEnd = state.versions[0].end;
+  state.versions.forEach(v => { if (v.start < minStart) minStart = v.start; if (v.end > maxEnd) maxEnd = v.end; });
+  const start = parseISO(minStart), end = parseISO(maxEnd);
+  const total = dayDiff(start, end) + 1;
   const days = [];
-  for (let n = 0; n < totalBusinessDays; n++) days.push(businessDayOffset(start, n));
+  for (let i = 0; i < total; i++) days.push(addDays(start, i));
+  return { start, end, days };
+}
 
+function updateMoveHint() {
+  const hint = document.getElementById('moveHint');
+  if (moveMode) {
+    const v = state.versions.find(x => x.id === moveMode.versionId);
+    const m = state.milestones.find(x => x.id === moveMode.milestoneId);
+    hint.textContent = `Cliquez un jour sur la ligne « ${v ? v.label : ''} » pour y déplacer « ${m ? m.label : ''} » — touche Échap pour annuler.`;
+    hint.classList.remove('hidden');
+  } else {
+    hint.classList.add('hidden');
+  }
+}
+
+function renderLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML =
+    state.phases.map(p => `<div class="legend-item"><div class="dot square" style="background:${p.color}"></div>${escapeHtml(p.label)}</div>`).join('') +
+    state.milestones.filter(m => m.visible).map(m => `<div class="legend-item"><div class="dot round" style="background:${m.color}"></div>${escapeHtml(m.label)}</div>`).join('');
+}
+
+function renderGantt() {
   const root = document.getElementById('ganttRoot');
   root.innerHTML = '';
+  const timeline = computeTimeline();
+
+  if (!timeline) {
+    document.getElementById('ganttEmpty').classList.remove('hidden');
+    document.getElementById('ganttBody').classList.add('hidden');
+    return;
+  }
+  document.getElementById('ganttEmpty').classList.add('hidden');
+  document.getElementById('ganttBody').classList.remove('hidden');
+
+  const COLW = state.zoom;
+  const days = timeline.days;
   const totalW = days.length * COLW;
+
+  // ── Bandes week-end (sous tout le reste) ──
+  const bandWrap = document.createElement('div');
+  bandWrap.className = 'weekend-bands';
+  bandWrap.style.width = (190 + totalW) + 'px';
+  days.forEach((d, i) => {
+    const dow = (d.getDay() + 6) % 7;
+    if (dow >= 5) {
+      const band = document.createElement('div');
+      band.className = 'weekend-band';
+      band.style.left = (190 + i * COLW) + 'px';
+      band.style.width = COLW + 'px';
+      bandWrap.appendChild(band);
+    }
+  });
+  root.appendChild(bandWrap);
 
   // ── En-têtes ──
   const headWrap = document.createElement('div');
   headWrap.style.display = 'flex';
+  headWrap.style.position = 'relative';
+  headWrap.style.zIndex = '1';
 
   const cornerCol = document.createElement('div');
   cornerCol.className = 'corner';
@@ -281,19 +582,20 @@ function render() {
   }
   headMain.appendChild(monthRow);
 
-  // ligne sprint (groupes de weeksPerSprint semaines = weeksPerSprint*5 jours)
+  // ligne sprint (numérotation ancrée sur sprintAnchor)
   const sprintRow = document.createElement('div');
   sprintRow.style.display = 'flex';
-  const sprintSpan = weeksPerSprint * 5;
-  let sNum = firstSprint;
-  for (let n = 0; n < days.length; n += sprintSpan) {
-    const span = Math.min(sprintSpan, days.length - n);
+  idx = 0;
+  while (idx < days.length) {
+    const sn = sprintNumberFor(days[idx]);
+    let span = 0;
+    while (idx + span < days.length && sprintNumberFor(days[idx+span]) === sn) span++;
     const cell = document.createElement('div');
     cell.className = 'hdr hdr-sprint';
     cell.style.width = (span * COLW) + 'px';
-    cell.textContent = 'Sprint ' + sNum;
+    cell.textContent = 'Sprint ' + sn;
     sprintRow.appendChild(cell);
-    sNum++;
+    idx += span;
   }
   headMain.appendChild(sprintRow);
 
@@ -314,53 +616,68 @@ function render() {
   }
   headMain.appendChild(weekRow);
 
+  // ligne jour (jour de la semaine + quantième)
+  const dayRow = document.createElement('div');
+  dayRow.style.display = 'flex';
+  days.forEach(d => {
+    const dow = (d.getDay() + 6) % 7;
+    const cell = document.createElement('div');
+    cell.className = 'hdr hdr-day' + (dow >= 5 ? ' weekend' : '');
+    cell.style.width = COLW + 'px';
+    cell.innerHTML = `<span class="dow">${WEEKDAY_SHORT[dow]}</span><span class="dnum">${d.getDate()}</span>`;
+    dayRow.appendChild(cell);
+  });
+  headMain.appendChild(dayRow);
+
   headWrap.appendChild(headMain);
   root.appendChild(headWrap);
 
   // ── Lignes de version ──
   const PHASE_H = 26, JALONS_H = 40, ROW_H = PHASE_H + JALONS_H;
 
-  versions.forEach((v, vi) => {
+  state.versions.forEach((v, vi) => {
+    const vStart = parseISO(v.start), vEnd = parseISO(v.end);
+    const verDays = dayDiff(vStart, vEnd) + 1;
+    const startOffset = dayDiff(timeline.start, vStart);
+
     const row = document.createElement('div');
     row.className = 'ver-row';
     row.style.height = ROW_H + 'px';
+    row.style.position = 'relative';
+    row.style.zIndex = '1';
 
     const label = document.createElement('div');
     label.className = 'ver-label';
     label.style.height = ROW_H + 'px';
-    const vStart = businessDayOffset(start, v.startOffset);
-    const vEnd = businessDayOffset(start, v.startOffset + verDays - 1);
-    label.innerHTML = '<div class="v">' + v.label + '</div><div class="d">' + fmtDate(vStart) + ' → ' + fmtDate(vEnd) + '</div>';
+    label.innerHTML = '<div class="v">' + escapeHtml(v.label) + '</div><div class="d">' + fmtDate(vStart) + ' → ' + fmtDate(vEnd) + '</div>';
     row.appendChild(label);
 
     const track = document.createElement('div');
-    track.className = 'ver-track' + (vi % 2 === 1 ? ' shade' : '');
+    track.className = 'ver-track' + (vi % 2 === 1 ? ' shade' : '') + (moveMode && moveMode.versionId === v.id ? ' move-target' : '');
     track.style.width = totalW + 'px';
     track.style.height = ROW_H + 'px';
     track.style.flexShrink = '0';
+    track.dataset.versionId = v.id;
+    track.dataset.startOffset = startOffset;
+    track.dataset.verDays = verDays;
 
-    const freezeDay = EVENTS.find(e => e.key === 'freeze').day;
-    const chargementEnd = Math.min(1, freezeDay);
-    const phases = [
-      { cls: 'chargement', label: 'Chargement de la version', from: 0, to: Math.max(chargementEnd, 1) },
-      { cls: 'dev', label: 'DEV', from: Math.max(chargementEnd, 1), to: freezeDay },
-      { cls: 'testiat', label: 'Test IAT', from: freezeDay, to: verDays - 1 },
-    ];
-    phases.forEach((p) => {
+    state.phases.forEach(p => {
+      const from = Math.max(0, Math.min(p.startDay, verDays));
+      const to = Math.max(from, Math.min(p.endDay, verDays));
+      if (to <= from) return;
       const bar = document.createElement('div');
-      bar.className = 'bar ' + p.cls;
-      const left = (v.startOffset + p.from) * COLW;
-      const width = Math.max((p.to - p.from) * COLW, 4);
+      bar.className = 'bar';
+      const left = (startOffset + from) * COLW;
+      const width = Math.max((to - from) * COLW, 4);
       bar.style.left = left + 'px';
       bar.style.top = '3px';
       bar.style.width = width + 'px';
-      // n'affiche le libellé que si la barre est assez large pour le contenir sans déborder
+      bar.style.background = p.color;
       if (width >= p.label.length * 6 + 16) bar.textContent = p.label;
       else { bar.title = p.label; bar.style.overflow = 'visible'; }
       track.appendChild(bar);
     });
 
-    // ligne jalons (sous les 3 barres de phase)
     const jalonsTop = PHASE_H;
     const jline = document.createElement('div');
     jline.className = 'jalons-line';
@@ -368,23 +685,34 @@ function render() {
     track.appendChild(jline);
 
     const seenDays = {};
-    EVENTS.forEach(ev => {
-      const nudgeIdx = seenDays[ev.day] || 0;
-      seenDays[ev.day] = nudgeIdx + 1;
-      const dayDate = businessDayOffset(start, v.startOffset + ev.day);
-      const left = (v.startOffset + ev.day) * COLW + COLW / 2 + nudgeIdx * 12;
+    state.milestones.filter(m => m.visible).forEach(m => {
+      const override = state.overrides[v.id] ? state.overrides[v.id][m.id] : undefined;
+      const hasOverride = typeof override === 'number';
+      const day = Math.max(0, Math.min(hasOverride ? override : m.day, Math.max(verDays - 1, 0)));
+      const nudge = seenDays[day] || 0;
+      seenDays[day] = nudge + 1;
+      const dayDate = addDays(vStart, day);
+      const left = (startOffset + day) * COLW + COLW / 2 + nudge * 12;
+
       const marker = document.createElement('div');
-      marker.className = 'marker';
-      marker.style.background = ev.color;
+      marker.className = 'marker' + (hasOverride ? ' overridden' : '');
+      marker.style.background = m.color;
       marker.style.left = left + 'px';
       marker.style.top = (jalonsTop + 8) + 'px';
-      marker.title = ev.label + ' — ' + WEEKDAY_FULL[ev.day % 5] + ' ' + fmtDate(dayDate);
+      marker.title = m.label + ' — ' + WEEKDAY_FULL[(dayDate.getDay()+6)%7] + ' ' + fmtDate(dayDate) +
+        (hasOverride ? ' (déplacé sur cette version)' : ' — cliquez pour déplacer');
+      marker.dataset.versionId = v.id;
+      marker.dataset.milestoneId = m.id;
       track.appendChild(marker);
+
       const lbl = document.createElement('div');
       lbl.className = 'marker-label';
       lbl.style.left = left + 'px';
       lbl.style.top = (jalonsTop + 24) + 'px';
       lbl.textContent = fmtDate(dayDate);
+      if (hasOverride) {
+        lbl.innerHTML = fmtDate(dayDate) + ' <span class="marker-reset" data-version-id="' + v.id + '" data-milestone-id="' + m.id + '" title="Réinitialiser au jour par défaut">↺</span>';
+      }
       track.appendChild(lbl);
     });
 
@@ -392,20 +720,175 @@ function render() {
     root.appendChild(row);
   });
 
-  const legend = document.getElementById('legend');
-  legend.innerHTML =
-    '<div class="legend-item"><div class="dot square" style="background:var(--accent)"></div>Chargement de la version</div>' +
-    '<div class="legend-item"><div class="dot square" style="background:var(--navy)"></div>DEV</div>' +
-    '<div class="legend-item"><div class="dot square" style="background:var(--green)"></div>Test IAT</div>' +
-    EVENTS.map(ev => '<div class="legend-item"><div class="dot round" style="background:' + ev.color + '"></div>' + ev.label + '</div>').join('');
+  // ── Barre "aujourd'hui" ──
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (today >= timeline.start && today <= timeline.end) {
+    const offset = dayDiff(timeline.start, today);
+    const line = document.createElement('div');
+    line.className = 'today-line';
+    line.style.left = (190 + offset * COLW + COLW / 2) + 'px';
+    line.innerHTML = '<span class="tag">Aujourd\'hui</span>';
+    root.appendChild(line);
+  }
+
+  renderLegend();
+  updateMoveHint();
 }
 
+// ════════════════════════════════════════════════════════════
+// Rendu global & sauvegarde
+// ════════════════════════════════════════════════════════════
+function renderAll() {
+  renderVersionsList();
+  renderPhasesList();
+  renderMilestonesList();
+  renderGantt();
+}
+function commit() { saveState(); renderAll(); }
+
+function syncFieldsFromState() {
+  document.getElementById('weeksPerSprint').value = state.weeksPerSprint;
+  document.getElementById('firstSprint').value = state.firstSprint;
+  document.getElementById('sprintAnchor').value = state.sprintAnchor;
+  document.getElementById('defaultVersionWeeks').value = state.defaultVersionWeeks;
+  document.getElementById('defaultOffsetWeeks').value = state.defaultOffsetWeeks;
+  document.getElementById('nextVersionSeed').value = state.nextVersionSeed;
+  document.getElementById('zoomRange').value = state.zoom;
+  document.getElementById('zoomVal').textContent = state.zoom + ' px/jour';
+}
+
+// ════════════════════════════════════════════════════════════
+// Interactions — board (déplacement des jalons, barre du jour)
+// ════════════════════════════════════════════════════════════
+document.getElementById('ganttRoot').addEventListener('click', e => {
+  const resetBtn = e.target.closest('.marker-reset');
+  if (resetBtn) {
+    const { versionId, milestoneId } = resetBtn.dataset;
+    if (state.overrides[versionId]) delete state.overrides[versionId][milestoneId];
+    saveState();
+    renderGantt();
+    e.stopPropagation();
+    return;
+  }
+  const marker = e.target.closest('.marker');
+  if (marker) {
+    const versionId = marker.dataset.versionId, milestoneId = marker.dataset.milestoneId;
+    if (moveMode && moveMode.versionId === versionId && moveMode.milestoneId === milestoneId) {
+      moveMode = null;
+    } else {
+      moveMode = { versionId, milestoneId };
+    }
+    renderGantt();
+    e.stopPropagation();
+    return;
+  }
+  const track = e.target.closest('.ver-track');
+  if (track && moveMode && track.dataset.versionId === moveMode.versionId) {
+    const rect = track.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const COLW = state.zoom;
+    const startOffset = +track.dataset.startOffset;
+    const verDays = +track.dataset.verDays;
+    let relativeDay = Math.floor(x / COLW) - startOffset;
+    relativeDay = Math.max(0, Math.min(relativeDay, Math.max(verDays - 1, 0)));
+    if (!state.overrides[moveMode.versionId]) state.overrides[moveMode.versionId] = {};
+    state.overrides[moveMode.versionId][moveMode.milestoneId] = relativeDay;
+    moveMode = null;
+    saveState();
+    renderGantt();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && moveMode) { moveMode = null; renderGantt(); }
+});
+
+// ════════════════════════════════════════════════════════════
+// Interactions — listes de gestion (délégation d'événements)
+// ════════════════════════════════════════════════════════════
+document.getElementById('versionsList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id, action = btn.dataset.action;
+  if (action === 'edit-version') { editingVersionId = id; renderVersionsList(); }
+  else if (action === 'cancel-edit-version') { editingVersionId = null; renderVersionsList(); }
+  else if (action === 'save-version') { saveVersionEdit(id); }
+  else if (action === 'delete-version') { deleteVersion(id); }
+});
+
+document.getElementById('phasesList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'delete-phase') deletePhase(btn.dataset.id);
+});
+document.getElementById('phasesList').addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('.ph-label')) {
+    const p = state.phases.find(x => x.id === t.dataset.id);
+    if (p) { p.label = t.value.trim() || p.label; commit(); }
+    return;
+  }
+  const grp = t.closest('.dp-group');
+  if (!grp) return;
+  const day = readDayPicker(grp);
+  const p = state.phases.find(x => x.id === grp.dataset.id);
+  if (!p) return;
+  if (grp.dataset.kind === 'phase-start') { p.startDay = day; if (p.endDay < day) p.endDay = day; }
+  else if (grp.dataset.kind === 'phase-end') { p.endDay = day; if (p.startDay > day) p.startDay = day; }
+  commit();
+});
+
+document.getElementById('milestonesList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'delete-milestone') deleteMilestone(btn.dataset.id);
+});
+document.getElementById('milestonesList').addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('.ms-visible')) {
+    const m = state.milestones.find(x => x.id === t.dataset.id);
+    if (m) { m.visible = t.checked; commit(); }
+    return;
+  }
+  if (t.matches('.ms-label')) {
+    const m = state.milestones.find(x => x.id === t.dataset.id);
+    if (m) { m.label = t.value.trim() || m.label; commit(); }
+    return;
+  }
+  const grp = t.closest('.dp-group');
+  if (!grp) return;
+  const m = state.milestones.find(x => x.id === grp.dataset.id);
+  if (!m) return;
+  m.day = readDayPicker(grp);
+  commit();
+});
+
+// ════════════════════════════════════════════════════════════
+// Initialisation
+// ════════════════════════════════════════════════════════════
 loadState();
-buildEventsForm();
-render();
-['startDate','firstVersion','nbVersions','offsetWeeks','weeksPerSprint','firstSprint'].forEach(id =>
-  document.getElementById(id).addEventListener('change', () => { render(); saveState(); }));
-document.getElementById('weeksPerVersion').addEventListener('change', () => { buildEventsForm(); render(); saveState(); });
+syncFieldsFromState();
+renderAll();
+
+['weeksPerSprint','firstSprint','sprintAnchor','defaultVersionWeeks','defaultOffsetWeeks','nextVersionSeed'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    state.weeksPerSprint = +document.getElementById('weeksPerSprint').value || 2;
+    state.firstSprint = +document.getElementById('firstSprint').value || 1;
+    state.sprintAnchor = document.getElementById('sprintAnchor').value || state.sprintAnchor;
+    state.defaultVersionWeeks = +document.getElementById('defaultVersionWeeks').value || 2;
+    state.defaultOffsetWeeks = +document.getElementById('defaultOffsetWeeks').value || 1;
+    state.nextVersionSeed = document.getElementById('nextVersionSeed').value || state.nextVersionSeed;
+    saveState();
+    renderGantt();
+  });
+});
+document.getElementById('zoomRange').addEventListener('input', () => {
+  state.zoom = +document.getElementById('zoomRange').value;
+  document.getElementById('zoomVal').textContent = state.zoom + ' px/jour';
+  renderGantt();
+});
+document.getElementById('zoomRange').addEventListener('change', () => saveState());
+
+document.getElementById('addVersionBtn').addEventListener('click', addVersion);
+document.getElementById('addPhaseBtn').addEventListener('click', addPhase);
+document.getElementById('addMilestoneBtn').addEventListener('click', addMilestone);
 document.getElementById('resetBtn').addEventListener('click', resetState);
 </script>
 </body>
