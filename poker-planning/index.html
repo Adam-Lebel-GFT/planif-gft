@@ -107,6 +107,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 .tk-topbar__logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .tk-topbar__logo:hover { text-decoration: none; }
+.tk-topbar__logo.is-disabled { pointer-events: none; opacity: .45; cursor: default; }
 .tk-topbar__logo .sq { width: 11px; height: 11px; background: #0C447C; flex-shrink: 0; }
 .tk-topbar__logo .wm { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 16px; color: #FFFFFF; letter-spacing: -.4px; white-space: nowrap; }
 .tk-topbar__sep { width: 1px; height: 24px; background: rgba(255,255,255,.15); flex-shrink: 0; }
@@ -685,7 +686,7 @@ button.person:hover { background: var(--bg); }
   <!-- ════════ VUE 3 — SESSION ════════ -->
   <div id="view-session" hidden>
     <header class="tk-topbar">
-      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+      <a class="tk-topbar__logo" id="tb-logo" href="../" title="Retour au lanceur Agile Toolkit">
         <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
       </a>
       <span class="tk-topbar__sep" aria-hidden="true"></span>
@@ -753,7 +754,7 @@ button.person:hover { background: var(--bg); }
   <!-- ════════ VUE 4 — RÉCAP ════════ -->
   <div id="view-recap" hidden>
     <header class="tk-topbar">
-      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+      <a class="tk-topbar__logo" id="rc-logo" href="../" title="Retour au lanceur Agile Toolkit">
         <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
       </a>
       <span class="tk-topbar__sep" aria-hidden="true"></span>
@@ -826,6 +827,16 @@ var SEED_P = [];   // participants vides par défaut
 var SEED_S = [];   // stories vides par défaut (à saisir ou à importer depuis Jira)
 
 function $(id) { return document.getElementById(id); }
+/* Seul l'animateur (local/host) doit pouvoir quitter la session en cours
+   (lien "Agile Toolkit") ou la terminer pour tout le monde — un participant
+   invité par lien ne doit avoir accès ni à l'un ni à l'autre. */
+function setLogoEnabled(id, enabled) {
+  var el = $(id);
+  if (!el) return;
+  el.classList.toggle('is-disabled', !enabled);
+  if (enabled) { el.setAttribute('href', '../'); el.removeAttribute('aria-disabled'); el.removeAttribute('tabindex'); }
+  else { el.removeAttribute('href'); el.setAttribute('aria-disabled', 'true'); el.setAttribute('tabindex', '-1'); }
+}
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1242,6 +1253,7 @@ function render() {
   $('tb-code').textContent = 'Salle · ' + S.code;
   $('tb-mode').textContent = 'Mode local · animateur';
   $('btn-finish').style.display = '';
+  setLogoEnabled('tb-logo', true);
   $('btn-add-s-session').hidden = false;
   $('ft-note').textContent = 'Mode local — l\'animateur saisit les votes. Aucune connexion.';
   $('invite-zone').innerHTML = '';
@@ -1366,6 +1378,7 @@ var RECAP = null;
 function renderRecapData(d) {
   RECAP = d;
   CUR_SCALE = d.scale || 'sp';
+  setLogoEnabled('rc-logo', d.role !== 'peer');
   $('rc-tb-name').textContent = d.name;
   $('rc-tb-code').textContent = 'Salle · ' + d.code;
   var rows = d.stories.map(function (x) {
@@ -1578,6 +1591,7 @@ function lhRender() {
   $('tb-code').textContent = 'Salle · ' + LH.code;
   $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + nP + ' connecté' + (nP > 1 ? 's' : '');
   $('btn-finish').style.display = '';
+  setLogoEnabled('tb-logo', true);
   $('btn-add-s-session').hidden = false;
   $('ft-note').textContent = 'Mode live — bêta. Tout transite en temps réel, rien n\'est stocké.';
 
@@ -1795,6 +1809,7 @@ function pRender() {
   $('tb-code').textContent = 'Salle · ' + LP.code;
   $('tb-mode').innerHTML = '<span class="livebadge">Live</span> · ' + esc(LP.name);
   $('btn-finish').style.display = 'none';
+  setLogoEnabled('tb-logo', false);
   toggleAddStory(false);
   $('btn-add-s-session').hidden = true;
   $('ft-note').textContent = 'Mode live — ton pseudo disparaît à la fermeture. Rien n\'est stocké.';
