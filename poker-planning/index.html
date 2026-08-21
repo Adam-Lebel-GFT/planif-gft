@@ -304,6 +304,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .dist-row.off .pt { color: var(--muted); }
 .dist-row .n { width: 130px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
 .dist-note { margin-top: 12px; font-size: 11.5px; color: var(--muted); font-style: italic; }
+.dist-area svg.days-area { width: 100%; height: auto; display: block; overflow: visible; }
 
 /* ── Validation ─────────────────────────────────────────────── */
 .validate { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
@@ -931,6 +932,56 @@ function storyCardHTML(st, round, idx, total) {
     '<h1>' + esc(st.title) + '</h1>' + descHtml + '</article>';
 }
 
+/* Distribution des votes en jours : aire lissée (estimation de densité par
+   noyau gaussien) plutôt que la liste de barres utilisée pour les SP —
+   les valeurs y sont continues (0 à 15j, pas 0,5), une courbe se lit mieux
+   qu'une liste de valeurs quasi toutes distinctes. */
+function daysAreaChartSVG(counts) {
+  var keys = Object.keys(counts).map(Number).sort(function (a, b) { return a - b; });
+  if (!keys.length) return '<p class="dist-note">Aucun vote chiffré à représenter.</p>';
+  var W = 600, H = 140, PAD_L = 8, PAD_R = 8, PAD_T = 10, PAD_B = 24;
+  var innerW = W - PAD_L - PAD_R, innerH = H - PAD_T - PAD_B;
+  var bw = 1.1; // largeur de bande (jours) — plus haut = courbe plus lissée
+  var STEPS = 121; // pas de 0,125 jour sur [0,15]
+  var ys = [], maxY = 0;
+  for (var i = 0; i < STEPS; i++) {
+    var x = i * 15 / (STEPS - 1), y = 0;
+    for (var k = 0; k < keys.length; k++) {
+      var d = (x - keys[k]) / bw;
+      y += counts[keys[k]] * Math.exp(-0.5 * d * d);
+    }
+    ys.push(y);
+    if (y > maxY) maxY = y;
+  }
+  if (maxY <= 0) maxY = 1;
+  var pt = function (i) {
+    var x = i * 15 / (STEPS - 1);
+    return [(PAD_L + (x / 15) * innerW).toFixed(1), (PAD_T + innerH - (ys[i] / maxY) * innerH).toFixed(1)];
+  };
+  var linePath = 'M' + pt(0).join(',');
+  for (var i = 1; i < STEPS; i++) linePath += ' L' + pt(i).join(',');
+  var floorY = (PAD_T + innerH).toFixed(1);
+  var areaPath = linePath + ' L' + pt(STEPS - 1)[0] + ',' + floorY + ' L' + pt(0)[0] + ',' + floorY + ' Z';
+
+  var gridTicks = [0, 5, 10, 15].map(function (v) {
+    var px = (PAD_L + (v / 15) * innerW).toFixed(1);
+    return '<line x1="' + px + '" y1="' + PAD_T + '" x2="' + px + '" y2="' + floorY + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<text x="' + px + '" y="' + (H - 7) + '" font-size="10" fill="var(--muted)" text-anchor="middle">' + v + ' j</text>';
+  }).join('');
+  var dots = keys.map(function (k) {
+    var px = (PAD_L + (k / 15) * innerW).toFixed(1);
+    var c = counts[k];
+    return '<circle cx="' + px + '" cy="' + floorY + '" r="4" fill="var(--accent)" stroke="var(--white)" stroke-width="1.5">' +
+      '<title>' + fmt(k) + ' j — ' + c + ' vote' + (c > 1 ? 's' : '') + '</title></circle>';
+  }).join('');
+
+  return '<svg class="days-area" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Distribution lissée des votes en jours">' +
+    gridTicks +
+    '<path d="' + areaPath + '" fill="var(--accent)" fill-opacity=".15"/>' +
+    '<path d="' + linePath + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    dots + '</svg>';
+}
+
 function resultsHTML(allVals, round, withValidate, anim, footNote) {
   var stx = computeStats(allVals);
   var statsHtml =
@@ -940,26 +991,27 @@ function resultsHTML(allVals, round, withValidate, anim, footNote) {
       (stx.pct == null ? '—' : stx.pct + '%') + '</div><div class="l">Consensus</div></div>' +
     '<div class="stat"><div class="v">' + (stx.range || '—') + '</div><div class="l">Étendue</div></div>';
 
-  var maxAll = 0;
-  Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
-  // Deck fixe en SP (ordre Fibonacci) ; en jours, les votes sont continus donc on
-  // liste plutôt les valeurs distinctes réellement votées, triées numériquement.
-  var distKeys = (CUR_SCALE === 'days')
-    ? Object.keys(stx.allCounts).filter(function (v) { return isFinite(Number(v)); })
-        .sort(function (a, b) { return Number(a) - Number(b); })
-    : DECK.filter(function (v) { return stx.allCounts[v]; });
-  var distHtml = distKeys.map(function (v) {
-    var c = stx.allCounts[v];
-    var w = Math.max(8, Math.round(c / maxAll * 100));
-    var isNum = isFinite(Number(v));
-    var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
-    var cls = peak ? ' peak' : (isNum ? '' : ' off');
-    var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
-    var ptLabel = isNum ? (fmt(Number(v)) + (CUR_SCALE === 'days' ? ' j' : '')) : esc(v);
-    return '<div class="dist-row' + cls + '"><span class="pt">' + ptLabel + '</span>' +
-      '<div class="bar"><span style="width:' + w + '%"></span></div>' +
-      '<span class="n">' + lab + '</span></div>';
-  }).join('');
+  var distHtml, distWrapCls = 'dist';
+  if (CUR_SCALE === 'days') {
+    // Valeurs continues (0–15j, pas 0,5) : une aire lissée se lit mieux qu'une
+    // liste de barres où presque chaque vote serait sur sa propre ligne.
+    distHtml = daysAreaChartSVG(stx.counts);
+    distWrapCls = 'dist dist-area';
+  } else {
+    var maxAll = 0;
+    Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
+    distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
+      var c = stx.allCounts[v];
+      var w = Math.max(8, Math.round(c / maxAll * 100));
+      var isNum = isFinite(Number(v));
+      var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
+      var cls = peak ? ' peak' : (isNum ? '' : ' off');
+      var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
+      return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
+        '<div class="bar"><span style="width:' + w + '%"></span></div>' +
+        '<span class="n">' + lab + '</span></div>';
+    }).join('');
+  }
 
   var note = stx.nonNum > 0
     ? '<p class="dist-note">' + stx.nonNum + ' vote' + (stx.nonNum > 1 ? 's' : '') + ' « ? » ou « ☕ » — affiché' + (stx.nonNum > 1 ? 's' : '') + ', exclu' + (stx.nonNum > 1 ? 's' : '') + ' des statistiques.</p>'
@@ -993,7 +1045,7 @@ function resultsHTML(allVals, round, withValidate, anim, footNote) {
   return '<section class="results tk-card' + (anim ? ' rise' : '') + '" aria-label="Résultats du tour">' +
     '<div class="results-head"><h2>Résultats — Tour ' + round + '</h2>' + consensusBadge(stx) + '</div>' +
     '<div class="stats">' + statsHtml + '</div>' +
-    '<div class="dist">' + distHtml + '</div>' + note + validateHtml + '</section>';
+    '<div class="' + distWrapCls + '">' + distHtml + '</div>' + note + validateHtml + '</section>';
 }
 
 /* ══════════════ E. Lobby (animateur) ══════════════ */
