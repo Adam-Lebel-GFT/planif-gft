@@ -28,6 +28,14 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); padding: 18px 22px; }
 .card h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .3px; color: var(--navy); margin-bottom: 4px; text-transform: uppercase; }
 .card .hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card-head .card-titles { flex: 1; min-width: 0; }
+.collapse-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.collapse-btn:hover { border-color: var(--accent); color: var(--accent); }
+.collapse-btn .chev { display: inline-block; font-size: 10px; transition: transform .15s ease; }
+.collapse-btn.collapsed .chev { transform: rotate(-90deg); }
+.card-body { overflow: hidden; }
+.card-body.collapsed { display: none; }
 .row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; align-items: flex-end; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); }
@@ -140,54 +148,82 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 
 <div class="panel">
   <div class="card">
-    <h2>Paramètres généraux</h2>
-    <div class="hint">Cadence des sprints et zoom du board — versions, phases et jalons se configurent dans les cartes ci-dessous.</div>
-    <div class="row">
-      <div class="field w-num"><label>Sem. par sprint</label><input type="number" id="weeksPerSprint" min="1" max="4"></div>
-      <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" min="1" max="200"></div>
-      <div class="field w-date"><label>Ce sprint débute le</label><input type="date" id="sprintAnchor"></div>
-      <div class="field w-num"><label>Durée version par défaut (sem.)</label><input type="number" id="defaultVersionWeeks" min="1" max="8"></div>
-      <div class="field w-num"><label>Décalage par défaut (sem.)</label><input type="number" id="defaultOffsetWeeks" min="1" max="8"></div>
-      <div class="zoom-row">
-        <label>Zoom</label>
-        <input type="range" id="zoomRange" min="16" max="72" step="2">
-        <span class="zoom-val" id="zoomVal"></span>
+    <div class="card-head">
+      <div class="card-titles">
+        <h2>Paramètres généraux</h2>
+        <div class="hint">Cadence des sprints et zoom du board — versions, phases et jalons se configurent dans les cartes ci-dessous.</div>
+      </div>
+      <button class="collapse-btn" data-key="general" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
+    </div>
+    <div class="card-body" id="generalBody">
+      <div class="row">
+        <div class="field w-num"><label>Sem. par sprint</label><input type="number" id="weeksPerSprint" min="1" max="4"></div>
+        <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" min="1" max="200"></div>
+        <div class="field w-date"><label>Ce sprint débute le</label><input type="date" id="sprintAnchor"></div>
+        <div class="field w-num"><label>Durée version par défaut (sem.)</label><input type="number" id="defaultVersionWeeks" min="1" max="8"></div>
+        <div class="field w-num"><label>Décalage par défaut (sem.)</label><input type="number" id="defaultOffsetWeeks" min="1" max="8"></div>
+        <div class="zoom-row">
+          <label>Zoom</label>
+          <input type="range" id="zoomRange" min="16" max="72" step="2">
+          <span class="zoom-val" id="zoomVal"></span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:2px;margin-bottom:0">
+        <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
+        <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
       </div>
     </div>
-    <div class="row" style="margin-top:2px;margin-bottom:0">
-      <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
-      <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-titles">
+        <h2>Versions</h2>
+        <div class="hint">Ajoutez, renommez ou retirez des versions — leurs dates pilotent directement les lignes du board.</div>
+      </div>
+      <button class="collapse-btn" data-key="versions" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
+    </div>
+    <div class="card-body" id="versionsBody">
+      <div class="mgmt-list" id="versionsList"></div>
+      <div class="row" style="margin-bottom:0">
+        <div class="field w-text"><label>Nom suggéré</label><input type="text" id="nextVersionSeed"></div>
+        <button class="add-btn" id="addVersionBtn" type="button">+ Ajouter une version</button>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="panel">
   <div class="card">
-    <h2>Versions</h2>
-    <div class="hint">Ajoutez, renommez ou retirez des versions — leurs dates pilotent directement les lignes du board.</div>
-    <div class="mgmt-list" id="versionsList"></div>
-    <div class="row" style="margin-bottom:0">
-      <div class="field w-text"><label>Nom suggéré</label><input type="text" id="nextVersionSeed"></div>
-      <button class="add-btn" id="addVersionBtn" type="button">+ Ajouter une version</button>
+    <div class="card-head">
+      <div class="card-titles">
+        <h2>Phases</h2>
+        <div class="hint">Barres affichées sur chaque ligne du board. Début/fin exprimés en semaine + jour depuis le début de la version.</div>
+      </div>
+      <button class="collapse-btn" data-key="phases" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
+    </div>
+    <div class="card-body" id="phasesBody">
+      <div class="mgmt-list" id="phasesList"></div>
+      <button class="add-btn" id="addPhaseBtn" type="button">+ Ajouter une phase</button>
     </div>
   </div>
 </div>
 
 <div class="panel">
   <div class="card">
-    <h2>Phases</h2>
-    <div class="hint">Barres affichées sur chaque ligne du board. Début/fin exprimés en semaine + jour depuis le début de la version.</div>
-    <div class="mgmt-list" id="phasesList"></div>
-    <button class="add-btn" id="addPhaseBtn" type="button">+ Ajouter une phase</button>
-  </div>
-</div>
-
-<div class="panel">
-  <div class="card">
-    <h2>Jalons</h2>
-    <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine, depuis le début de version — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
-    <div class="mgmt-list" id="milestonesList"></div>
-    <button class="add-btn" id="addMilestoneBtn" type="button">+ Ajouter un jalon</button>
+    <div class="card-head">
+      <div class="card-titles">
+        <h2>Jalons</h2>
+        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine, depuis le début de version — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
+      </div>
+      <button class="collapse-btn" data-key="milestones" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
+    </div>
+    <div class="card-body" id="milestonesBody">
+      <div class="mgmt-list" id="milestonesList"></div>
+      <button class="add-btn" id="addMilestoneBtn" type="button">+ Ajouter un jalon</button>
+    </div>
   </div>
 </div>
 
@@ -274,6 +310,7 @@ function defaultState() {
       { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], day: 9, visible: true },
     ],
     overrides: {}, // { [versionId]: { [milestoneId]: dayOffset } }
+    uiCollapsed: { general: false, versions: false, phases: false, milestones: false },
   };
 }
 
@@ -315,6 +352,7 @@ function resetState() {
   editingVersionId = null;
   moveMode = null;
   syncFieldsFromState();
+  applyCollapse();
   commit();
 }
 
@@ -758,6 +796,25 @@ function syncFieldsFromState() {
 }
 
 // ════════════════════════════════════════════════════════════
+// Réduire / agrandir les cartes de paramètres
+// ════════════════════════════════════════════════════════════
+function applyCollapse() {
+  const uc = state.uiCollapsed || {};
+  Object.keys(uc).forEach(key => {
+    const body = document.getElementById(key + 'Body');
+    const btn = document.querySelector(`.collapse-btn[data-key="${key}"]`);
+    if (body) body.classList.toggle('collapsed', !!uc[key]);
+    if (btn) btn.classList.toggle('collapsed', !!uc[key]);
+  });
+}
+function toggleCollapse(key) {
+  if (!state.uiCollapsed) state.uiCollapsed = {};
+  state.uiCollapsed[key] = !state.uiCollapsed[key];
+  saveState();
+  applyCollapse();
+}
+
+// ════════════════════════════════════════════════════════════
 // Interactions — board (déplacement des jalons, barre du jour)
 // ════════════════════════════════════════════════════════════
 document.getElementById('ganttRoot').addEventListener('click', e => {
@@ -866,6 +923,10 @@ document.getElementById('milestonesList').addEventListener('change', e => {
 loadState();
 syncFieldsFromState();
 renderAll();
+applyCollapse();
+document.querySelectorAll('.collapse-btn').forEach(btn => {
+  btn.addEventListener('click', () => toggleCollapse(btn.dataset.key));
+});
 
 ['weeksPerSprint','firstSprint','sprintAnchor','defaultVersionWeeks','defaultOffsetWeeks','nextVersionSeed'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
