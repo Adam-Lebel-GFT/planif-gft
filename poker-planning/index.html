@@ -1120,6 +1120,13 @@ function lobbyErr(msg) {
   el.textContent = msg || '';
   el.hidden = !msg;
 }
+// Recopie l'état de vote « en cours » (votes / phase / round) dans la story
+// courante, pour qu'il survive à une navigation vers une autre story et
+// retour. `who` = S (local) ou LH (hôte live) — même forme pour les deux.
+function pinVotesToStory(who) {
+  var st = who.stories[who.cur];
+  if (st) { st.votes = who.votes; st.phase = who.phase; st.round = who.round; }
+}
 function readStories() {
   syncLobbyStories();
   return lobby.stories
@@ -1127,7 +1134,7 @@ function readStories() {
     .map(function (s, i) {
       return { id: 's' + i, key: s.key || ('STORY-' + (i + 1)), title: s.title || s.key,
                type: s.type || 'story', prio: s.prio || '', desc: s.desc || '',
-               sp: null, rounds: 0 };
+               sp: null, rounds: 0, votes: {}, phase: 'vote', round: 1 };
     });
 }
 function launch() {
@@ -1145,7 +1152,7 @@ function launch() {
     code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
     participants: lobby.participants.map(function (n, i) { return { id: 'p' + i, name: n }; }),
     stories: stories, scale: lobbyScale,
-    cur: 0, round: 1, phase: 'vote', votes: {}, activeP: null
+    cur: 0, round: stories[0].round, phase: stories[0].phase, votes: stories[0].votes, activeP: null
   };
   S.activeP = S.participants[0].id;
   ROLE = 'local';
@@ -1168,6 +1175,7 @@ function pickCard(v) {
   if (!S || S.phase !== 'vote' || !S.activeP) return;
   S.votes[S.activeP] = v;
   S.activeP = nextUnvoted();
+  pinVotesToStory(S);
   render();
 }
 function selectParticipant(pid) {
@@ -1179,6 +1187,7 @@ function reveal() {
   if (!S || S.phase !== 'vote' || Object.keys(S.votes).length === 0) return;
   S.phase = 'revealed';
   justRevealed = true;
+  pinVotesToStory(S);
   render();
 }
 function revote() {
@@ -1187,6 +1196,7 @@ function revote() {
   S.votes = {};
   S.phase = 'vote';
   S.activeP = S.participants[0].id;
+  pinVotesToStory(S);
   render();
 }
 function validate(v) {
@@ -1202,11 +1212,12 @@ function validate(v) {
   jumpTo(next);
 }
 function jumpTo(idx) {
+  var st = S.stories[idx];
   S.cur = idx;
-  S.round = 1;
-  S.votes = {};
-  S.phase = 'vote';
-  S.activeP = S.participants[0].id;
+  S.votes = st.votes || {};
+  S.phase = st.phase || 'vote';
+  S.round = st.round || 1;
+  S.activeP = (S.phase === 'vote') ? nextUnvoted() : null;
   show('view-session');
   render();
 }
@@ -1339,7 +1350,8 @@ function addStorySession() {
   list.push({
     id: 's' + list.length + '-' + Date.now().toString(36),
     key: key || ('STORY-' + (list.length + 1)), title: title || key,
-    type: 'story', prio: '', desc: '', sp: null, rounds: 0
+    type: 'story', prio: '', desc: '', sp: null, rounds: 0,
+    votes: {}, phase: 'vote', round: 1
   });
   toggleAddStory(false);
   if (ROLE === 'local') { render(); }
@@ -1416,8 +1428,8 @@ function launchLive() {
     name: name,
     code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
     stories: stories, scale: lobbyScale,
-    cur: 0, round: 1, phase: 'vote',
-    votes: {},          // pid -> { v, name }
+    cur: 0, round: stories[0].round, phase: stories[0].phase,
+    votes: stories[0].votes, // pid -> { v, name }
     peers: {},          // pid -> { name }
     ready: false, err: null, chan: null, client: null
   };
@@ -1467,6 +1479,7 @@ function lhOnVote(p) {
   if (!LH || LH.phase !== 'vote') return;
   if (!p.pid || !isValidVote(LH.scale, p.value)) return;
   LH.votes[p.pid] = { v: String(p.value), name: String(p.name || '?').slice(0, 24) };
+  pinVotesToStory(LH);
   lhBroadcast();
   lhSnap();
   lhRender();
@@ -1502,11 +1515,13 @@ function lhReveal() {
   if (!LH || LH.phase !== 'vote' || Object.keys(LH.votes).length === 0) return;
   LH.phase = 'revealed';
   justRevealed = true;
+  pinVotesToStory(LH);
   lhBroadcast(); lhSnap(); lhRender();
 }
 function lhRevote() {
   if (!LH || LH.phase !== 'revealed') return;
   LH.round += 1; LH.votes = {}; LH.phase = 'vote';
+  pinVotesToStory(LH);
   lhBroadcast(); lhSnap(); lhRender();
 }
 function lhValidate(v) {
@@ -1523,7 +1538,11 @@ function lhValidate(v) {
 }
 function lhJump(idx) {
   if (!LH) return;
-  LH.cur = idx; LH.round = 1; LH.votes = {}; LH.phase = 'vote';
+  var st = LH.stories[idx];
+  LH.cur = idx;
+  LH.votes = st.votes || {};
+  LH.phase = st.phase || 'vote';
+  LH.round = st.round || 1;
   lhBroadcast(); lhSnap();
   show('view-session');
   lhRender();
