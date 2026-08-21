@@ -251,6 +251,24 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .pcard[disabled]:hover { transform: none; border-color: var(--border); }
 .pcard.sel[disabled] { opacity: 1; transform: none; }
 
+.days-picker { display: flex; flex-direction: column; gap: 16px; padding: 8px 4px 4px; max-width: 420px; }
+.days-track { display: flex; align-items: center; gap: 12px; }
+.dt-end { font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.days-track input[type=range] {
+  flex: 1; appearance: none; -webkit-appearance: none; height: 6px; border-radius: 999px;
+  background: var(--border); outline: none; cursor: pointer;
+}
+.days-track input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); border: 3px solid var(--white); box-shadow: var(--shadow-hover); cursor: pointer;
+}
+.days-track input[type=range]::-moz-range-thumb {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--accent); border: 3px solid var(--white);
+  box-shadow: var(--shadow-hover); cursor: pointer;
+}
+.days-track input[type=range][disabled] { opacity: .4; cursor: not-allowed; }
+.days-readout { font-family: var(--font-mono); font-size: 22px; font-weight: 800; color: var(--navy); text-align: center; }
+
 /* ── Ligne révélation ───────────────────────────────────────── */
 .reveal-row {
   margin-top: clamp(18px, 3vw, 26px);
@@ -286,6 +304,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .dist-row.off .pt { color: var(--muted); }
 .dist-row .n { width: 130px; font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
 .dist-note { margin-top: 12px; font-size: 11.5px; color: var(--muted); font-style: italic; }
+.dist-area svg.days-area { width: 100%; height: auto; display: block; overflow: visible; }
 
 /* ── Validation ─────────────────────────────────────────────── */
 .validate { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
@@ -578,6 +597,24 @@ button.person:hover { background: var(--bg); }
           </div>
 
           <div class="fgroup">
+            <p class="flabel">Échelle d'estimation</p>
+            <div class="mode-pick">
+              <button class="mcard on" type="button" id="mc-sp" data-act="scale-sp">
+                <span class="mt"><span class="ml">
+                  <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                  Story Points</span></span>
+                <span class="md">Cartes Fibonacci classiques — 1, 2, 3, 5, 8, 13, 21…</span>
+              </button>
+              <button class="mcard" type="button" id="mc-days" data-act="scale-days">
+                <span class="mt"><span class="ml">
+                  <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>
+                  Jours</span></span>
+                <span class="md">Curseur de 0 à 15 jours, par demi-journée.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="fgroup">
             <p class="flabel">Nom de la session <span class="req" aria-hidden="true">*</span></p>
             <input class="tk-input" id="in-name" type="text" value="Nouvelle session" required autocomplete="off">
           </div>
@@ -745,8 +782,44 @@ button.person:hover { background: var(--bg); }
 
 /* ══════════════ A. Constantes & utilitaires ══════════════ */
 var DECK = ['1', '2', '3', '5', '8', '13', '21', '?', '☕'];
-var NUM  = { '1':1, '2':1, '3':1, '5':1, '8':1, '13':1, '21':1 };
 var SB   = (typeof supabase !== 'undefined' && supabase && supabase.createClient) ? supabase : (window.supabase || null);
+
+/* ── Échelle d'estimation : 'sp' (cartes Fibonacci) ou 'days' (curseur 0–15j) ── */
+var lobbyScale = 'sp';
+var CUR_SCALE = 'sp';      // échelle de la session affichée à l'écran (mise à jour à chaque rendu)
+var pendingDaysVote = 7.5; // dernière position du curseur — conservée entre deux rendus
+function setScale(s) {
+  lobbyScale = s;
+  $('mc-sp').classList.toggle('on', s === 'sp');
+  $('mc-days').classList.toggle('on', s === 'days');
+}
+function unitLabel(s) { return (s || CUR_SCALE) === 'days' ? 'j' : 'SP'; }
+function isValidVote(scale, v) {
+  if (scale === 'days') { var n = Number(v); return isFinite(n) && n >= 0 && n <= 15; }
+  return DECK.indexOf(String(v)) !== -1;
+}
+function daysReadout(v) { return fmt(v) + ' jour' + (Number(v) === 1 ? '' : 's'); }
+function deckHTML(on, selected) {
+  if (CUR_SCALE === 'days') {
+    var dv = (selected != null) ? Number(selected) : pendingDaysVote;
+    pendingDaysVote = dv;
+    return '<p class="sr-only">Estimation en jours</p><div class="days-picker">' +
+      '<div class="days-track"><span class="dt-end">0 j</span>' +
+      '<input type="range" id="days-slider" min="0" max="15" step="0.5" value="' + dv + '"' + (on ? '' : ' disabled') + ' aria-label="Estimation en jours">' +
+      '<span class="dt-end">15 j</span></div>' +
+      '<div class="days-readout" id="days-val">' + daysReadout(dv) + '</div>' +
+      '<button type="button" class="tk-btn tk-btn--accent" data-act="pick-days"' + (on ? '' : ' disabled') + '>' +
+      (selected != null ? 'Modifier mon vote' : 'Enregistrer ce vote') + '</button>' +
+      '</div>';
+  }
+  return '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
+    DECK.map(function (v) {
+      var sp = (v === '?' || v === '☕') ? ' special' : '';
+      var sel = (selected != null && String(selected) === v) ? ' sel' : '';
+      return '<button type="button" class="pcard' + sp + sel + '" data-act="pick" data-v="' + esc(v) + '"' +
+        (on ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
+    }).join('') + '</div>';
+}
 
 var SEED_P = [];   // participants vides par défaut
 var SEED_S = [];   // stories vides par défaut (à saisir ou à importer depuis Jira)
@@ -765,6 +838,7 @@ function fmt(n) {
   if (n === Math.round(n)) return String(n);
   return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
 }
+function miniVal(v) { return isFinite(Number(v)) ? esc(fmt(Number(v))) : esc(v); }
 function show(id) {
   ['view-lobby', 'view-join', 'view-session', 'view-recap'].forEach(function (v) { $(v).hidden = (v !== id); });
   window.scrollTo(0, 0);
@@ -813,7 +887,10 @@ var EMBED = (function () {
 /* ══════════════ C. Statistiques (partagées) ══════════════ */
 function computeStats(allVals) {
   var all = allVals.slice();
-  var nums = all.filter(function (v) { return NUM[v]; }).map(Number).sort(function (a, b) { return a - b; });
+  // Numérique = vrai pour toute valeur chiffrée (deck SP fixe ou curseur jours en continu),
+  // seuls « ? » et « ☕ » (mode SP) restent hors statistiques.
+  var nums = all.filter(function (v) { return v !== '?' && v !== '☕' && v !== '' && v != null && isFinite(Number(v)); })
+    .map(Number).sort(function (a, b) { return a - b; });
   var n = nums.length;
   var mean = null, med = null, pct = null, range = null, maxC = 0;
   var counts = {};
@@ -847,12 +924,62 @@ function storyCardHTML(st, round, idx, total) {
   else if (st.prio) chips += '<span class="chip">Priorité ' + esc(st.prio) + '</span>';
   if (total != null) chips += '<span class="chip">Story ' + (idx + 1) + ' / ' + total + '</span>';
   chips += '<span class="chip">Tour ' + round + '</span>';
-  if (st.sp != null) chips += '<span class="chip chip--done">✓ Estimée · ' + fmt(st.sp) + ' SP</span>';
+  if (st.sp != null) chips += '<span class="chip chip--done">✓ Estimée · ' + fmt(st.sp) + ' ' + unitLabel() + '</span>';
   var descHtml = st.desc
     ? '<p class="desc">' + st.desc + '</p>'
     : '<p class="desc empty">Aucune description fournie.</p>';
   return '<article class="story tk-card"><div class="chips">' + chips + '</div>' +
     '<h1>' + esc(st.title) + '</h1>' + descHtml + '</article>';
+}
+
+/* Distribution des votes en jours : aire lissée (estimation de densité par
+   noyau gaussien) plutôt que la liste de barres utilisée pour les SP —
+   les valeurs y sont continues (0 à 15j, pas 0,5), une courbe se lit mieux
+   qu'une liste de valeurs quasi toutes distinctes. */
+function daysAreaChartSVG(counts) {
+  var keys = Object.keys(counts).map(Number).sort(function (a, b) { return a - b; });
+  if (!keys.length) return '<p class="dist-note">Aucun vote chiffré à représenter.</p>';
+  var W = 600, H = 140, PAD_L = 8, PAD_R = 8, PAD_T = 10, PAD_B = 24;
+  var innerW = W - PAD_L - PAD_R, innerH = H - PAD_T - PAD_B;
+  var bw = 1.1; // largeur de bande (jours) — plus haut = courbe plus lissée
+  var STEPS = 121; // pas de 0,125 jour sur [0,15]
+  var ys = [], maxY = 0;
+  for (var i = 0; i < STEPS; i++) {
+    var x = i * 15 / (STEPS - 1), y = 0;
+    for (var k = 0; k < keys.length; k++) {
+      var d = (x - keys[k]) / bw;
+      y += counts[keys[k]] * Math.exp(-0.5 * d * d);
+    }
+    ys.push(y);
+    if (y > maxY) maxY = y;
+  }
+  if (maxY <= 0) maxY = 1;
+  var pt = function (i) {
+    var x = i * 15 / (STEPS - 1);
+    return [(PAD_L + (x / 15) * innerW).toFixed(1), (PAD_T + innerH - (ys[i] / maxY) * innerH).toFixed(1)];
+  };
+  var linePath = 'M' + pt(0).join(',');
+  for (var i = 1; i < STEPS; i++) linePath += ' L' + pt(i).join(',');
+  var floorY = (PAD_T + innerH).toFixed(1);
+  var areaPath = linePath + ' L' + pt(STEPS - 1)[0] + ',' + floorY + ' L' + pt(0)[0] + ',' + floorY + ' Z';
+
+  var gridTicks = [0, 5, 10, 15].map(function (v) {
+    var px = (PAD_L + (v / 15) * innerW).toFixed(1);
+    return '<line x1="' + px + '" y1="' + PAD_T + '" x2="' + px + '" y2="' + floorY + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<text x="' + px + '" y="' + (H - 7) + '" font-size="10" fill="var(--muted)" text-anchor="middle">' + v + ' j</text>';
+  }).join('');
+  var dots = keys.map(function (k) {
+    var px = (PAD_L + (k / 15) * innerW).toFixed(1);
+    var c = counts[k];
+    return '<circle cx="' + px + '" cy="' + floorY + '" r="4" fill="var(--accent)" stroke="var(--white)" stroke-width="1.5">' +
+      '<title>' + fmt(k) + ' j — ' + c + ' vote' + (c > 1 ? 's' : '') + '</title></circle>';
+  }).join('');
+
+  return '<svg class="days-area" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Distribution lissée des votes en jours">' +
+    gridTicks +
+    '<path d="' + areaPath + '" fill="var(--accent)" fill-opacity=".15"/>' +
+    '<path d="' + linePath + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    dots + '</svg>';
 }
 
 function resultsHTML(allVals, round, withValidate, anim, footNote) {
@@ -864,19 +991,27 @@ function resultsHTML(allVals, round, withValidate, anim, footNote) {
       (stx.pct == null ? '—' : stx.pct + '%') + '</div><div class="l">Consensus</div></div>' +
     '<div class="stat"><div class="v">' + (stx.range || '—') + '</div><div class="l">Étendue</div></div>';
 
-  var maxAll = 0;
-  Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
-  var distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
-    var c = stx.allCounts[v];
-    var w = Math.max(8, Math.round(c / maxAll * 100));
-    var isNum = !!NUM[v];
-    var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
-    var cls = peak ? ' peak' : (isNum ? '' : ' off');
-    var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
-    return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
-      '<div class="bar"><span style="width:' + w + '%"></span></div>' +
-      '<span class="n">' + lab + '</span></div>';
-  }).join('');
+  var distHtml, distWrapCls = 'dist';
+  if (CUR_SCALE === 'days') {
+    // Valeurs continues (0–15j, pas 0,5) : une aire lissée se lit mieux qu'une
+    // liste de barres où presque chaque vote serait sur sa propre ligne.
+    distHtml = daysAreaChartSVG(stx.counts);
+    distWrapCls = 'dist dist-area';
+  } else {
+    var maxAll = 0;
+    Object.keys(stx.allCounts).forEach(function (k) { if (stx.allCounts[k] > maxAll) maxAll = stx.allCounts[k]; });
+    distHtml = DECK.filter(function (v) { return stx.allCounts[v]; }).map(function (v) {
+      var c = stx.allCounts[v];
+      var w = Math.max(8, Math.round(c / maxAll * 100));
+      var isNum = isFinite(Number(v));
+      var peak = isNum && stx.counts[Number(v)] === stx.maxC && stx.maxC > 0;
+      var cls = peak ? ' peak' : (isNum ? '' : ' off');
+      var lab = c + ' vote' + (c > 1 ? 's' : '') + (isNum ? '' : ' · hors stats');
+      return '<div class="dist-row' + cls + '"><span class="pt">' + esc(v) + '</span>' +
+        '<div class="bar"><span style="width:' + w + '%"></span></div>' +
+        '<span class="n">' + lab + '</span></div>';
+    }).join('');
+  }
 
   var note = stx.nonNum > 0
     ? '<p class="dist-note">' + stx.nonNum + ' vote' + (stx.nonNum > 1 ? 's' : '') + ' « ? » ou « ☕ » — affiché' + (stx.nonNum > 1 ? 's' : '') + ', exclu' + (stx.nonNum > 1 ? 's' : '') + ' des statistiques.</p>'
@@ -910,7 +1045,7 @@ function resultsHTML(allVals, round, withValidate, anim, footNote) {
   return '<section class="results tk-card' + (anim ? ' rise' : '') + '" aria-label="Résultats du tour">' +
     '<div class="results-head"><h2>Résultats — Tour ' + round + '</h2>' + consensusBadge(stx) + '</div>' +
     '<div class="stats">' + statsHtml + '</div>' +
-    '<div class="dist">' + distHtml + '</div>' + note + validateHtml + '</section>';
+    '<div class="' + distWrapCls + '">' + distHtml + '</div>' + note + validateHtml + '</section>';
 }
 
 /* ══════════════ E. Lobby (animateur) ══════════════ */
@@ -1009,7 +1144,7 @@ function launch() {
     name: name,
     code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
     participants: lobby.participants.map(function (n, i) { return { id: 'p' + i, name: n }; }),
-    stories: stories,
+    stories: stories, scale: lobbyScale,
     cur: 0, round: 1, phase: 'vote', votes: {}, activeP: null
   };
   S.activeP = S.participants[0].id;
@@ -1076,12 +1211,13 @@ function jumpTo(idx) {
   render();
 }
 function localRecap() {
-  renderRecapData({ name: S.name, code: S.code, stories: S.stories, role: 'local' });
+  renderRecapData({ name: S.name, code: S.code, stories: S.stories, role: 'local', scale: S.scale });
   show('view-recap');
 }
 
 function render() {
   if (!S) return;
+  CUR_SCALE = S.scale || 'sp';
   var st = S.stories[S.cur];
   var total = S.participants.length;
   var voted = Object.keys(S.votes).length;
@@ -1105,7 +1241,7 @@ function render() {
       $('turn-zone').innerHTML =
         '<div class="turn"><span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
         '<div class="txt"><p class="who">Au tour de <b>' + esc(p.name) + '</b></p>' +
-        '<p class="sub">Clique une carte pour enregistrer son vote · ' + idx + ' sur ' + total + '</p></div></div>';
+        '<p class="sub">' + (CUR_SCALE === 'days' ? 'Règle le curseur puis valide' : 'Clique une carte') + ' pour enregistrer son vote · ' + idx + ' sur ' + total + '</p></div></div>';
     } else {
       $('turn-zone').innerHTML =
         '<div class="turn allset"><span class="avatar" aria-hidden="true">✓</span>' +
@@ -1117,18 +1253,12 @@ function render() {
   }
 
   var deckOn = (S.phase === 'vote' && S.activeP);
-  $('deck-zone').innerHTML =
-    '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
-    DECK.map(function (v) {
-      var sp = (v === '?' || v === '☕') ? ' special' : '';
-      return '<button type="button" class="pcard' + sp + '" data-act="pick" data-v="' + esc(v) + '"' +
-        (deckOn ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
-    }).join('') + '</div>';
+  $('deck-zone').innerHTML = deckHTML(deckOn);
 
   if (S.phase === 'vote') {
     var waiting = S.participants.filter(function (x) { return !(x.id in S.votes); }).map(function (x) { return x.name; });
     var hint;
-    if (voted === 0) hint = 'Aucun vote pour l\'instant — sélectionne un participant et une carte.';
+    if (voted === 0) hint = 'Aucun vote pour l\'instant — sélectionne un participant et ' + (CUR_SCALE === 'days' ? 'règle le curseur' : 'une carte') + '.';
     else if (waiting.length === 0) hint = '<b>' + voted + '</b> votes sur <b>' + total + '</b> — l\'équipe a voté.';
     else {
       var names = waiting.slice(0, 2).map(esc).join(', ') + (waiting.length > 2 ? ' +' + (waiting.length - 2) : '');
@@ -1165,7 +1295,7 @@ function render() {
         '<span class="nm">' + esc(p.name) + '</span>' + right + '</button>';
     }
     var card = hasVote
-      ? '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(S.votes[p.id]) + '</span>'
+      ? '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + miniVal(S.votes[p.id]) + '</span>'
       : '<span class="mini none" title="N\'a pas voté">—</span>';
     return '<div class="person">' +
       '<span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
@@ -1180,7 +1310,7 @@ function renderStoriesSide(stories, cur, clickable) {
   $('sto-count').textContent = estimated + ' / ' + stories.length + ' estimées';
   $('sto').innerHTML = stories.map(function (x, i) {
     var right = (x.sp != null)
-      ? '<span class="tk-badge tk-badge--ok">' + fmt(x.sp) + ' SP</span>'
+      ? '<span class="tk-badge tk-badge--ok">' + fmt(x.sp) + ' ' + unitLabel() + '</span>'
       : '<span class="tk-badge tk-badge--muted">—</span>';
     return '<button type="button" class="srow' + (i === cur ? ' cur' : '') + '"' +
       (clickable ? ' data-act="jump" data-i="' + i + '"' : ' disabled') + '>' +
@@ -1220,11 +1350,12 @@ function addStorySession() {
 var RECAP = null;
 function renderRecapData(d) {
   RECAP = d;
+  CUR_SCALE = d.scale || 'sp';
   $('rc-tb-name').textContent = d.name;
   $('rc-tb-code').textContent = 'Salle · ' + d.code;
   var rows = d.stories.map(function (x) {
     return '<tr><td class="k">' + esc(x.key) + '</td><td>' + esc(x.title) + '</td>' +
-      '<td class="sp">' + (x.sp != null ? fmt(x.sp) + ' SP' : '—') + '</td>' +
+      '<td class="sp">' + (x.sp != null ? fmt(x.sp) + ' ' + unitLabel() : '—') + '</td>' +
       '<td class="r">' + (x.rounds ? x.rounds + ' tour' + (x.rounds > 1 ? 's' : '') : '—') + '</td></tr>';
   }).join('');
   var totalSP = d.stories.reduce(function (a, x) { return a + (x.sp || 0); }, 0);
@@ -1246,14 +1377,14 @@ function renderRecapData(d) {
     (allDone ? '<span class="tk-badge tk-badge--ok tk-badge--dot">Session terminée</span>'
              : '<span class="tk-badge tk-badge--warn tk-badge--dot">Estimation partielle</span>') +
     '</div>' +
-    '<table><thead><tr><th>Clé</th><th>Story</th><th>SP</th><th>Tours</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="total">Total engagé <b>' + fmt(totalSP) + ' SP</b></div>' +
+    '<table><thead><tr><th>Clé</th><th>Story</th><th>' + unitLabel() + '</th><th>Tours</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="total">Total engagé <b>' + fmt(totalSP) + ' ' + unitLabel() + '</b></div>' +
     '<div class="recap-actions">' + actions + '</div>';
 }
 function exportCSV() {
   if (!RECAP) return;
   var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
-  var lines = [['Clé', 'Story', 'Story points', 'Tours'].map(q).join(';')];
+  var lines = [['Clé', 'Story', (RECAP.scale === 'days' ? 'Jours' : 'Story points'), 'Tours'].map(q).join(';')];
   RECAP.stories.forEach(function (x) {
     lines.push([x.key, x.title, x.sp != null ? fmt(x.sp) : '', x.rounds || ''].map(q).join(';'));
   });
@@ -1284,7 +1415,7 @@ function launchLive() {
     cfg: cfg,
     name: name,
     code: 'PK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
-    stories: stories,
+    stories: stories, scale: lobbyScale,
     cur: 0, round: 1, phase: 'vote',
     votes: {},          // pid -> { v, name }
     peers: {},          // pid -> { name }
@@ -1334,7 +1465,7 @@ function lhOnPresence() {
 
 function lhOnVote(p) {
   if (!LH || LH.phase !== 'vote') return;
-  if (!p.pid || DECK.indexOf(String(p.value)) === -1) return;
+  if (!p.pid || !isValidVote(LH.scale, p.value)) return;
   LH.votes[p.pid] = { v: String(p.value), name: String(p.name || '?').slice(0, 24) };
   lhBroadcast();
   lhSnap();
@@ -1344,13 +1475,13 @@ function lhOnVote(p) {
 function lhPayload() {
   var st = LH.stories[LH.cur];
   return {
-    v: 1, name: LH.name, code: LH.code, phase: LH.phase, round: LH.round,
+    v: 1, name: LH.name, code: LH.code, scale: LH.scale, phase: LH.phase, round: LH.round,
     story: { key: st.key, title: st.title, desc: st.desc, type: st.type, prio: st.prio, sp: st.sp, idx: LH.cur, total: LH.stories.length },
     stories: LH.stories.map(function (x) { return { key: x.key, title: x.title, sp: x.sp }; }),
     votedIds: Object.keys(LH.votes),
     reveal: (LH.phase === 'revealed') ? { votes: LH.votes } : null,
     recap: (LH.phase === 'recap')
-      ? { name: LH.name, code: LH.code, stories: LH.stories.map(function (x) { return { key: x.key, title: x.title, sp: x.sp, rounds: x.rounds }; }) }
+      ? { name: LH.name, code: LH.code, scale: LH.scale, stories: LH.stories.map(function (x) { return { key: x.key, title: x.title, sp: x.sp, rounds: x.rounds }; }) }
       : null
   };
 }
@@ -1362,7 +1493,7 @@ function lhBroadcast() {
 function lhSnap() {
   if (!LH) return;
   ssSet('pk-snap', JSON.stringify({
-    t: Date.now(), name: LH.name, code: LH.code, stories: LH.stories,
+    t: Date.now(), name: LH.name, code: LH.code, stories: LH.stories, scale: LH.scale,
     cur: LH.cur, round: LH.round, phase: LH.phase === 'recap' ? 'recap' : LH.phase, votes: LH.votes
   }));
 }
@@ -1401,7 +1532,7 @@ function lhFinish() {
   if (!LH) return;
   LH.phase = 'recap';
   lhBroadcast(); lhSnap();
-  renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host' });
+  renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host', scale: LH.scale });
   show('view-recap');
 }
 function lhResume() {
@@ -1413,6 +1544,7 @@ function lhResume() {
 
 function lhRender() {
   if (!LH) return;
+  CUR_SCALE = LH.scale || 'sp';
   var st = LH.stories[LH.cur];
   var peerIds = Object.keys(LH.peers);
   var nP = peerIds.length;
@@ -1504,7 +1636,7 @@ function lhRender() {
     var label = esc(nm) + (online ? '' : ' <span class="you">(parti)</span>');
     var right;
     if (LH.phase === 'revealed' && LH.votes[k]) {
-      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(LH.votes[k].v) + '</span>';
+      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + miniVal(LH.votes[k].v) + '</span>';
     } else if (LH.phase === 'revealed') {
       right = '<span class="mini none" title="N\'a pas voté">—</span>';
     } else {
@@ -1540,7 +1672,7 @@ function resumeLive() {
   var cfg = EMBED || loadCfg();
   if (!snap || !validCfg(cfg) || !SB) return;
   LH = {
-    cfg: cfg, name: snap.name, code: snap.code, stories: snap.stories,
+    cfg: cfg, name: snap.name, code: snap.code, stories: snap.stories, scale: snap.scale || 'sp',
     cur: snap.cur || 0, round: snap.round || 1,
     phase: snap.phase === 'recap' ? 'recap' : snap.phase,
     votes: snap.votes || {}, peers: {}, ready: false, err: null, chan: null, client: null
@@ -1548,7 +1680,7 @@ function resumeLive() {
   ROLE = 'host';
   connectHost();
   if (LH.phase === 'recap') {
-    renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host' });
+    renderRecapData({ name: LH.name, code: LH.code, stories: LH.stories, role: 'host', scale: LH.scale });
     show('view-recap');
   } else {
     show('view-session');
@@ -1607,7 +1739,7 @@ function pOnState(p) {
   if (p.phase === 'revealed' && LP.prevPhase !== 'revealed') justRevealed = true;
   LP.prevPhase = p.phase;
   if (p.phase === 'recap' && p.recap) {
-    renderRecapData({ name: p.recap.name, code: p.recap.code, stories: p.recap.stories, role: 'peer' });
+    renderRecapData({ name: p.recap.name, code: p.recap.code, stories: p.recap.stories, role: 'peer', scale: p.recap.scale });
     show('view-recap');
     return;
   }
@@ -1633,6 +1765,7 @@ function pPick(v) {
 function pRender() {
   if (!LP) return;
   var st = LP.state;
+  CUR_SCALE = (st && st.scale) || 'sp';
   var anim = justRevealed;
   justRevealed = false;
 
@@ -1670,24 +1803,17 @@ function pRender() {
   if (st.phase === 'vote') {
     $('turn-zone').innerHTML = hostAlert + (votedMe
       ? '<div class="turn allset"><span class="avatar" aria-hidden="true">✓</span><div class="txt">' +
-        '<p class="who">Ton vote est enregistré' + (LP.myVote ? ' : <b>' + esc(LP.myVote) + '</b>' : '') + '</p>' +
-        '<p class="sub">Modifiable jusqu\'à la révélation — clique une autre carte pour changer.</p></div></div>'
+        '<p class="who">Ton vote est enregistré' + (LP.myVote != null ? ' : <b>' + esc(CUR_SCALE === 'days' ? daysReadout(LP.myVote) : LP.myVote) + '</b>' : '') + '</p>' +
+        '<p class="sub">Modifiable jusqu\'à la révélation — ' + (CUR_SCALE === 'days' ? 'change le curseur et revalide' : 'clique une autre carte') + ' pour changer.</p></div></div>'
       : '<div class="turn"><span class="avatar" aria-hidden="true">' + esc(initials(LP.name)) + '</span><div class="txt">' +
         '<p class="who">À toi de voter, <b>' + esc(LP.name) + '</b></p>' +
-        '<p class="sub">Choisis ta carte — elle reste cachée jusqu\'à la révélation.</p></div></div>');
+        '<p class="sub">' + (CUR_SCALE === 'days' ? 'Choisis ton estimation' : 'Choisis ta carte') + ' — elle reste cachée jusqu\'à la révélation.</p></div></div>');
   } else {
     $('turn-zone').innerHTML = hostAlert;
   }
 
   var deckOn = (st.phase === 'vote' && LP.ready && LP.hostOn);
-  $('deck-zone').innerHTML =
-    '<p class="sr-only">Cartes d\'estimation</p><div class="deck">' +
-    DECK.map(function (v) {
-      var sp = (v === '?' || v === '☕') ? ' special' : '';
-      var sel = (LP.myVote === v) ? ' sel' : '';
-      return '<button type="button" class="pcard' + sp + sel + '" data-act="pick" data-v="' + esc(v) + '"' +
-        (deckOn ? '' : ' disabled') + ' aria-label="Carte ' + esc(v) + '">' + esc(v) + '</button>';
-    }).join('') + '</div>';
+  $('deck-zone').innerHTML = deckHTML(deckOn, LP.myVote);
 
   var nVoted = (st.votedIds || []).length;
   if (st.phase === 'vote') {
@@ -1719,7 +1845,7 @@ function pRender() {
     var nm = esc(m.name || '?') + (me ? ' <span class="you">(toi)</span>' : '');
     var right;
     if (st.phase === 'revealed' && st.reveal && st.reveal.votes[k]) {
-      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + esc(st.reveal.votes[k].v) + '</span>';
+      right = '<span class="mini face' + (anim ? ' flip' : '') + '"' + (anim ? ' style="animation-delay:' + (i * 70) + 'ms"' : '') + '>' + miniVal(st.reveal.votes[k].v) + '</span>';
     } else if (st.phase === 'revealed') {
       right = '<span class="mini none">—</span>';
     } else {
@@ -1892,6 +2018,8 @@ document.addEventListener('click', function (e) {
   /* Lobby */
   if (act === 'mode-local'){ setMode('local'); return; }
   if (act === 'mode-live') { setMode('live'); return; }
+  if (act === 'scale-sp')  { setScale('sp'); return; }
+  if (act === 'scale-days'){ setScale('days'); return; }
   if (act === 'add-p')     { addParticipant(); return; }
   if (act === 'rm-p')      { syncLobbyStories(); lobby.participants.splice(Number(t.dataset.i), 1); renderLobby(); return; }
   if (act === 'add-s')     { syncLobbyStories(); lobby.stories.push({ key: '', title: '', type: 'story', prio: '', desc: '' }); renderLobby(); return; }
@@ -1907,6 +2035,12 @@ document.addEventListener('click', function (e) {
     return;
   }
   if (act === 'pick')      { if (ROLE === 'peer') pPick(t.dataset.v); else if (ROLE === 'local') pickCard(t.dataset.v); return; }
+  if (act === 'pick-days') {
+    var slider = $('days-slider');
+    var v = slider ? slider.value : String(pendingDaysVote);
+    if (ROLE === 'peer') pPick(v); else if (ROLE === 'local') pickCard(v);
+    return;
+  }
   if (act === 'sel-p')     { if (ROLE === 'local') selectParticipant(t.dataset.id); return; }
   if (act === 'reveal')    { if (ROLE === 'host') lhReveal(); else if (ROLE === 'local') reveal(); return; }
   if (act === 'revote')    { if (ROLE === 'host') lhRevote(); else if (ROLE === 'local') revote(); return; }
@@ -1926,6 +2060,12 @@ document.addEventListener('keydown', function (e) {
   if (e.target.id === 'in-p') { e.preventDefault(); addParticipant(); }
   if (e.target.id === 'in-pseudo') { e.preventDefault(); joinSession(); }
   if (e.target.id === 'sto-add-key' || e.target.id === 'sto-add-title') { e.preventDefault(); addStorySession(); }
+});
+document.addEventListener('input', function (e) {
+  if (!e.target || e.target.id !== 'days-slider') return;
+  pendingDaysVote = Number(e.target.value);
+  var out = $('days-val');
+  if (out) out.textContent = daysReadout(pendingDaysVote);
 });
 
 /* ══════════════ K. Démarrage ══════════════ */
