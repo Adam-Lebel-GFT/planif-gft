@@ -657,7 +657,7 @@ button.person:hover { background: var(--bg); }
   <!-- ════════ VUE 2 — REJOINDRE (participant) ════════ -->
   <div id="view-join" hidden>
     <header class="tk-topbar">
-      <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+      <a class="tk-topbar__logo" id="jn-logo" href="../" title="Retour au lanceur Agile Toolkit">
         <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
       </a>
       <span class="tk-topbar__sep" aria-hidden="true"></span>
@@ -2047,11 +2047,14 @@ function qrSvg(text, px) {
 
 /* ══════════════ J. Routeur d'événements ══════════════ */
 document.addEventListener('click', function (e) {
-  /* Verrou dur, indépendant du CSS/des attributs : un participant (rôle
-     peer) ne doit jamais pouvoir suivre le lien "Agile Toolkit", que ce
-     soit dans la session ou dans le récap. */
-  var logoEl = e.target.closest('#tb-logo, #rc-logo');
-  if (logoEl && ((logoEl.id === 'tb-logo' && ROLE === 'peer') ||
+  /* Verrou dur, indépendant du CSS/des attributs : quelqu'un qui arrive ou
+     participe via un lien d'invitation ne doit jamais pouvoir suivre le
+     lien "Agile Toolkit" — ni sur l'écran "Rejoindre", ni dans la session,
+     ni dans le récap. Seul l'animateur (celui qui a démarré la session) y
+     a droit. */
+  var logoEl = e.target.closest('#jn-logo, #tb-logo, #rc-logo');
+  if (logoEl && ((logoEl.id === 'jn-logo' && !!ROOMQ) ||
+                 (logoEl.id === 'tb-logo' && ROLE === 'peer') ||
                  (logoEl.id === 'rc-logo' && RECAP && RECAP.role === 'peer'))) {
     e.preventDefault(); e.stopPropagation(); return;
   }
@@ -2118,6 +2121,11 @@ function boot() {
   var q = new URLSearchParams(location.search);
   ROOMQ = String(q.get('room') || '').toUpperCase();
   HCFG = parseHashCfg(location.hash) || EMBED;
+
+  /* Quiconque arrive via un lien d'invitation (?room=…) n'est jamais
+     l'animateur qui a démarré la session : le lien "Agile Toolkit" reste
+     désactivé dès l'écran "Rejoindre", avant même la saisie du pseudo. */
+  if (ROOMQ) setLogoEnabled('jn-logo', false);
 
   if (ROOMQ && HCFG) {
     $('join-code').textContent = ROOMQ;
