@@ -2047,6 +2047,14 @@ function qrSvg(text, px) {
 
 /* ══════════════ J. Routeur d'événements ══════════════ */
 document.addEventListener('click', function (e) {
+  /* Verrou dur, indépendant du CSS/des attributs : un participant (rôle
+     peer) ne doit jamais pouvoir suivre le lien "Agile Toolkit", que ce
+     soit dans la session ou dans le récap. */
+  var logoEl = e.target.closest('#tb-logo, #rc-logo');
+  if (logoEl && ((logoEl.id === 'tb-logo' && ROLE === 'peer') ||
+                 (logoEl.id === 'rc-logo' && RECAP && RECAP.role === 'peer'))) {
+    e.preventDefault(); e.stopPropagation(); return;
+  }
   var t = e.target.closest('[data-act]');
   if (!t) return;
   var act = t.dataset.act;
