@@ -17,14 +17,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; }
 
-.topbar { background: var(--navy); height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 32px; }
-.logo { display: flex; align-items: center; gap: 8px; }
-.logo .sq { width: 10px; height: 10px; background: var(--accent); flex-shrink: 0; }
-.logo .wm { font-weight: 800; font-size: 17px; color: var(--white); letter-spacing: -.4px; }
-.sep { width: 1px; height: 22px; background: rgba(255,255,255,.15); }
-.client { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.5); letter-spacing: .5px; text-transform: uppercase; }
-.tag { margin-left: auto; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,.35); text-transform: uppercase; }
-
 .hero { max-width: 1300px; margin: 0 auto; padding: 32px 32px 20px; }
 .eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
@@ -88,12 +80,14 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 </head>
 <body>
 
-<div class="topbar">
-  <div class="logo"><div class="sq"></div><div class="wm">GFT</div></div>
-  <div class="sep"></div>
-  <div class="client">La Vaudoise · PRJ297</div>
-  <div class="tag">Plan de livraisons — Maquette</div>
-</div>
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Plan de livraisons</span>
+  <span class="tk-topbar__version">BETA</span>
+</header>
 
 <div class="hero">
   <div class="eyebrow">Stabilisation · Cadence en train (chevauchement)</div>

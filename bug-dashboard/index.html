@@ -36,17 +36,12 @@
     font-family:var(--font);
     background:var(--bg);
     color:var(--text);
+  }
+  main{
+    display:block;
     padding:32px 40px 60px;
   }
-  a.back{
-    display:inline-block;
-    font-size:12.5px;
-    color:var(--muted);
-    text-decoration:none;
-    margin-bottom:14px;
-  }
-  a.back:hover{color:var(--navy);}
-  header{
+  .dash-hero{
     display:flex;
     justify-content:space-between;
     align-items:flex-end;
@@ -56,14 +51,14 @@
     border-bottom:2px solid var(--navy);
     padding-bottom:18px;
   }
-  header .title-block h1{
+  .dash-hero .title-block h1{
     font-size:22px;
     margin:0 0 4px;
     color:var(--navy);
     font-weight:800;
     letter-spacing:-0.3px;
   }
-  header .title-block p{
+  .dash-hero .title-block p{
     margin:0;
     color:var(--muted);
     font-size:13.5px;
@@ -211,9 +206,17 @@
 </head>
 <body>
 
-<a class="back" href="../index.html">← Agile Toolkit</a>
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Bug Dashboard</span>
+</header>
 
-<header>
+<main>
+
+<div class="dash-hero">
   <div class="title-block">
     <h1>Bug Dashboard — État d'avancement stabilisation</h1>
     <p>Colle un extrait Jira (POLC) et obtiens des graphiques consommables par un manager, avec pondération d'avancement par statut.</p>
@@ -228,7 +231,7 @@
       <input type="date" id="targetDateInput">
     </div>
   </div>
-</header>
+</div>
 
 <div class="card">
   <h2>1. Coller les données</h2>
@@ -299,6 +302,8 @@
   </footer>
 
 </div>
+
+</main>
 
 <script>
 // ============ Column detection ============
