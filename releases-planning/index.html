@@ -107,8 +107,9 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .ver-track.move-target { cursor: crosshair; outline: 2px dashed var(--accent); outline-offset: -2px; }
 .ver-track.editing-phases { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.weekend-bands, .today-line-wrap { position: absolute; top: 0; bottom: 0; left: 0; pointer-events: none; z-index: 0; }
+.weekend-bands, .today-line-wrap, .halfday-lines { position: absolute; top: 0; bottom: 0; left: 0; pointer-events: none; z-index: 0; }
 .weekend-band { position: absolute; top: 0; bottom: 0; background: rgba(12,26,46,.035); }
+.halfday-line { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(12,26,46,.09); }
 .today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); z-index: 6; }
 .today-line .tag { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 8px; font-weight: 700; color: var(--red); white-space: nowrap; }
 
@@ -133,7 +134,8 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .pep-label { font-size: 11.5px; font-weight: 700; color: var(--navy); white-space: nowrap; }
 .pep-field { display: flex; flex-direction: column; gap: 2px; font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
 .pep-field input { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; margin-top: 2px; }
-.pep-field input:disabled { background: var(--bg); color: var(--muted); }
+.pep-field input:disabled, .pep-field select:disabled { background: var(--bg); color: var(--muted); }
+.pep-field select { font-family: var(--font); font-size: 10.5px; border: 1px solid var(--border); border-radius: 5px; padding: 2px 3px; margin-top: 2px; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg); }
 .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--navy); font-weight: 600; }
@@ -177,7 +179,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
         <div class="field w-num"><label>Décalage entre versions par défaut (sem.)</label><input type="number" id="defaultOffsetWeeks" min="1" max="8"></div>
         <div class="zoom-row">
           <label>Zoom</label>
-          <input type="range" id="zoomRange" min="16" max="72" step="2">
+          <input type="range" id="zoomRange" min="24" max="96" step="2">
           <span class="zoom-val" id="zoomVal"></span>
         </div>
       </div>
@@ -194,7 +196,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Étapes</h2>
-        <div class="hint">Le gabarit de phases utilisé pour créer une nouvelle version, dans l'ordre — chaque étape a une durée par défaut (en jours). Ajoutez, renommez, réordonnez ou retirez des étapes comme pour les jalons ci-dessous. Les versions déjà créées ne sont pas affectées : modifiez-les directement sur le board (icône ✎).</div>
+        <div class="hint">Le gabarit de phases utilisé pour créer une nouvelle version, dans l'ordre — chaque étape a une durée par défaut, à la demi-journée près (ex. 0,5 j, 1,5 j). Ajoutez, renommez, réordonnez ou retirez des étapes comme pour les jalons ci-dessous. Les versions déjà créées ne sont pas affectées : modifiez-les directement sur le board (icône ✎).</div>
       </div>
       <button class="collapse-btn" data-key="phases" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -228,7 +230,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Jalons</h2>
-        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine, depuis le début de version — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
+        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine + matin/après-midi, depuis le début de version (un jalon d'après-midi apparaît dans la seconde moitié de la journée) — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
       </div>
       <button class="collapse-btn" data-key="milestones" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -248,7 +250,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
         <div class="pep-head">
           <strong id="pepTitle"></strong>
           <button class="ghost-btn" id="pepClose" type="button">Terminer l'édition</button>
-          <div class="pep-hint">Ajustez les dates ci-dessous, ou faites glisser les poignées sur les barres de la ligne (bord bleu) — la date de début/fin de la version est la somme des 3 phases.</div>
+          <div class="pep-hint">Ajustez les dates et matin/après-midi ci-dessous, ou faites glisser les poignées sur les barres de la ligne (bord bleu) — la date de début/fin de la version est la somme des étapes.</div>
         </div>
         <div class="pep-phases" id="pepPhases"></div>
       </div>
@@ -276,6 +278,12 @@ const PHASE_COLORS = ['var(--accent)', 'var(--navy)', 'var(--green)'];
 const PHASE_H = 26, JALONS_H = 40, ROW_H = PHASE_H + JALONS_H;
 function phaseLabel(p, i) { return p.label || PHASE_NAMES[i] || ('Étape ' + (i + 1)); }
 function phaseColor(p, i) { return p.color || PHASE_COLORS[i] || PALETTE[i % PALETTE.length]; }
+// Repli pour les phases/versions persistées avant la granularité demi-journée :
+// une phase sans startHalf/endHalf occupait toute sa (ou ses) journée(s).
+function pStartHalf(p) { return p.startHalf || 0; }
+function pEndHalf(p) { return (typeof p.endHalf === 'number') ? p.endHalf : 1; }
+function vStartHalf(v) { return v.startHalf || 0; }
+function vEndHalf(v) { return (typeof v.endHalf === 'number') ? v.endHalf : 1; }
 function defaultPhaseDefs() {
   return [
     { id: uid('pd'), label: 'Chargement de la version', color: 'var(--accent)', days: 1 },
@@ -288,6 +296,21 @@ function toISO(d) { const y = d.getFullYear(), m = String(d.getMonth()+1).padSta
 function parseISO(s) { return new Date(s+'T00:00:00'); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
 function dayDiff(a, b) { return Math.round((b - a) / 86400000); }
+
+// ── Demi-journées : 0 = matin (AM), 1 = après-midi (PM) ─────────────────
+const HALF_LABELS = ['Matin', 'Après-midi'];
+// nombre de demi-journées de (d1,h1) à (d2,h2), signé
+function halfDiff(d1, h1, d2, h2) { return dayDiff(d1, d2) * 2 + (h2 - h1); }
+// avance (d,h) de n demi-journées (n peut être négatif)
+function addHalves(d, h, n) {
+  const t = h + n;
+  const dShift = Math.floor(t / 2);
+  const nh = ((t % 2) + 2) % 2;
+  return { date: addDays(d, dShift), half: nh };
+}
+function halfOptsMarkup(sel, cls) {
+  return `<select class="${cls}"><option value="0" ${sel === 0 ? 'selected' : ''}>${HALF_LABELS[0]}</option><option value="1" ${sel === 1 ? 'selected' : ''}>${HALF_LABELS[1]}</option></select>`;
+}
 function fmtDate(d) { return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
 function fmtMonth(d) { return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); }
 function isoWeek(d) {
@@ -317,42 +340,57 @@ function uid(prefix) { _uidCounter++; return prefix + '_' + _uidCounter + '_' + 
 // Versions & phases — une version = la somme de N étapes contiguës,
 // définies par le gabarit state.phaseDefs (ordre, label, couleur, durée).
 // ════════════════════════════════════════════════════════════
+// Une étape dure def.days jours (pouvant être .5) = Math.round(def.days*2)
+// demi-journées ; les phases s'enchaînent sans trou, à la demi-journée près.
 function buildPhasesFromDefs(startDate, defs) {
-  const list = (defs && defs.length) ? defs : [{ label: 'Étape', color: PALETTE[0], days: 1 }];
-  let cursor = startDate;
+  const list = (defs && defs.length) ? defs : [{ label: 'Étape', color: PALETTE[0], days: 0.5 }];
+  let curDate = startDate, curHalf = 0;
   return list.map(def => {
-    const s = cursor;
-    const e = addDays(s, Math.max(1, def.days) - 1);
-    cursor = addDays(e, 1);
-    return { start: toISO(s), end: toISO(e), label: def.label, color: def.color };
+    const durHalves = Math.max(1, Math.round((def.days || 0.5) * 2));
+    const startD = curDate, startH = curHalf;
+    const endPt = addHalves(curDate, curHalf, durHalves - 1); // dernière demi-journée occupée (incluse)
+    const nextPt = addHalves(curDate, curHalf, durHalves);    // début de l'étape suivante
+    curDate = nextPt.date; curHalf = nextPt.half;
+    return { start: toISO(startD), startHalf: startH, end: toISO(endPt.date), endHalf: endPt.half, label: def.label, color: def.color };
   });
 }
 function makeVersion(label, startDate, defs) {
   const phases = buildPhasesFromDefs(startDate, defs);
-  return { id: uid('v'), label, phases, start: phases[0].start, end: phases[phases.length - 1].end };
+  const last = phases[phases.length - 1];
+  return { id: uid('v'), label, phases, start: phases[0].start, startHalf: phases[0].startHalf, end: last.end, endHalf: last.endHalf };
 }
 // boundary : 0 = début de la 1ère étape (= début version), N = fin de la
 // dernière étape (= fin version), b (0<b<N) = fin étape b-1 / début étape b.
-function setPhaseBoundary(v, boundary, newDate) {
+// newDate/newHalf pointe la demi-journée visée (half 0 = matin, 1 = après-midi).
+function setPhaseBoundary(v, boundary, newDate, newHalf) {
   const p = v.phases;
   const n = p.length;
   if (boundary <= 0) {
-    const d = clampDate(newDate, null, parseISO(p[0].end));
-    p[0].start = toISO(d);
+    // le début ne peut pas dépasser la fin de sa propre étape
+    const endD = parseISO(p[0].end), endH = pEndHalf(p[0]);
+    const ok = halfDiff(newDate, newHalf, endD, endH) >= 0;
+    const chosen = ok ? { date: newDate, half: newHalf } : { date: endD, half: endH };
+    p[0].start = toISO(chosen.date); p[0].startHalf = chosen.half;
   } else if (boundary >= n) {
-    const d = clampDate(newDate, parseISO(p[n - 1].start), null);
-    p[n - 1].end = toISO(d);
+    const startD = parseISO(p[n - 1].start), startH = pStartHalf(p[n - 1]);
+    const ok = halfDiff(startD, startH, newDate, newHalf) >= 0;
+    const chosen = ok ? { date: newDate, half: newHalf } : { date: startD, half: startH };
+    p[n - 1].end = toISO(chosen.date); p[n - 1].endHalf = chosen.half;
   } else {
     const i = boundary - 1;
-    const min = parseISO(p[i].start);
-    let max = addDays(parseISO(p[i + 1].end), -1);
-    if (max < min) max = min;
-    const d = clampDate(newDate, min, max);
-    p[i].end = toISO(d);
-    p[i + 1].start = toISO(addDays(d, 1));
+    const minD = parseISO(p[i].start), minH = pStartHalf(p[i]);
+    // la borne max laisse au moins une demi-journée à l'étape suivante
+    const nextEnd = addHalves(parseISO(p[i + 1].end), pEndHalf(p[i + 1]), -1);
+    let chosen = { date: newDate, half: newHalf };
+    if (halfDiff(minD, minH, chosen.date, chosen.half) < 0) chosen = { date: minD, half: minH };
+    if (halfDiff(chosen.date, chosen.half, nextEnd.date, nextEnd.half) < 0) chosen = nextEnd;
+    p[i].end = toISO(chosen.date); p[i].endHalf = chosen.half;
+    const nextStart = addHalves(chosen.date, chosen.half, 1);
+    p[i + 1].start = toISO(nextStart.date); p[i + 1].startHalf = nextStart.half;
   }
-  v.start = p[0].start;
-  v.end = p[p.length - 1].end;
+  v.start = p[0].start; v.startHalf = pStartHalf(p[0]);
+  const last = p[p.length - 1];
+  v.end = last.end; v.endHalf = pEndHalf(last);
 }
 function seedVersions(defs) {
   const start = parseISO('2026-08-03');
@@ -372,19 +410,19 @@ function defaultState() {
     sprintAnchor: '2026-08-03',
     weeksPerSprint: 2,
     firstSprint: 34,
-    zoom: 40,
+    zoom: 56,
     defaultOffsetWeeks: 1,
     phaseDefs,
     nextVersionSeed: '3.19.0',
     versions: seedVersions(phaseDefs),
     milestones: [
-      { id: 'freeze', label: 'Code freeze',                color: PALETTE[5], day: 5, visible: true },
-      { id: 'gonogo', label: 'Go / No-go',                 color: PALETTE[0], day: 8, visible: true },
-      { id: 'deploy', label: 'Déploiement sur la branche',  color: PALETTE[1], day: 9, visible: true },
-      { id: 'revert', label: 'Dernier revert possible',     color: PALETTE[2], day: 9, visible: true },
-      { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], day: 9, visible: true },
+      { id: 'freeze', label: 'Code freeze',                color: PALETTE[5], day: 5, half: 1, visible: true },
+      { id: 'gonogo', label: 'Go / No-go',                 color: PALETTE[0], day: 8, half: 0, visible: true },
+      { id: 'deploy', label: 'Déploiement sur la branche',  color: PALETTE[1], day: 9, half: 0, visible: true },
+      { id: 'revert', label: 'Dernier revert possible',     color: PALETTE[2], day: 9, half: 1, visible: true },
+      { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], day: 9, half: 1, visible: true },
     ],
-    overrides: {}, // { [versionId]: { [milestoneId]: dayOffset } }
+    overrides: {}, // { [versionId]: { [milestoneId]: {day, half} } } — un nombre nu = ancien format (half 0 implicite)
     uiCollapsed: { general: false, phases: false, versions: false, milestones: false },
   };
 }
@@ -466,7 +504,7 @@ function resetState() {
 // ════════════════════════════════════════════════════════════
 // Sélecteur "Semaine + jour de la semaine" (jalons)
 // ════════════════════════════════════════════════════════════
-function dayPickerMarkup(kind, id, dayVal) {
+function dayPickerMarkup(kind, id, dayVal, halfVal) {
   const week = Math.floor(dayVal / 7) + 1;
   const dow = ((dayVal % 7) + 7) % 7;
   let weekOpts = '';
@@ -475,12 +513,14 @@ function dayPickerMarkup(kind, id, dayVal) {
   return `<span class="dp-group" data-kind="${kind}" data-id="${id}">
     <select class="dp-week">${weekOpts}</select>
     <select class="dp-dow">${dowOpts}</select>
+    ${halfOptsMarkup(halfVal || 0, 'dp-half')}
   </span>`;
 }
 function readDayPicker(groupEl) {
   const week = +groupEl.querySelector('.dp-week').value;
   const dow = +groupEl.querySelector('.dp-dow').value;
-  return (week - 1) * 7 + dow;
+  const half = +groupEl.querySelector('.dp-half').value;
+  return { day: (week - 1) * 7 + dow, half };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -550,7 +590,7 @@ function renderPhaseDefsList() {
       <span class="ev-dot" style="background:${d.color}"></span>
       <input type="text" class="ms-label pd-label" data-id="${d.id}" value="${escapeHtml(d.label)}">
       <span class="dp-lbl">Durée (j)</span>
-      <input type="number" class="pd-days" data-id="${d.id}" min="1" max="60" value="${d.days}">
+      <input type="number" class="pd-days" data-id="${d.id}" min="0.5" max="60" step="0.5" value="${d.days}">
       <div class="mgmt-actions">
         <button class="icon-btn" data-action="move-phasedef-up" data-id="${d.id}" title="Monter" aria-label="Monter" ${i === 0 ? 'disabled' : ''}>↑</button>
         <button class="icon-btn" data-action="move-phasedef-down" data-id="${d.id}" title="Descendre" aria-label="Descendre" ${i === state.phaseDefs.length - 1 ? 'disabled' : ''}>↓</button>
@@ -564,7 +604,7 @@ function renderPhaseDefsList() {
 // ════════════════════════════════════════════════════════════
 function addMilestone() {
   const idx = state.milestones.length;
-  state.milestones.push({ id: uid('ms'), label: 'Nouveau jalon', color: PALETTE[idx % PALETTE.length], day: 0, visible: true });
+  state.milestones.push({ id: uid('ms'), label: 'Nouveau jalon', color: PALETTE[idx % PALETTE.length], day: 0, half: 0, visible: true });
   commit();
 }
 function deleteMilestone(id) {
@@ -585,7 +625,7 @@ function renderMilestonesList() {
       <input type="checkbox" class="ms-visible" data-id="${m.id}" ${m.visible ? 'checked' : ''} title="Afficher sur le board">
       <span class="ev-dot" style="background:${m.color}"></span>
       <input type="text" class="ms-label" data-id="${m.id}" value="${escapeHtml(m.label)}">
-      ${dayPickerMarkup('milestone', m.id, m.day)}
+      ${dayPickerMarkup('milestone', m.id, m.day, m.half)}
       <div class="mgmt-actions">
         <button class="icon-btn danger" data-action="delete-milestone" data-id="${m.id}" title="Retirer">🗑</button>
       </div>
@@ -637,11 +677,22 @@ function renderPhaseEditPanel() {
   document.getElementById('pepPhases').innerHTML = v.phases.map((p, i) => {
     const startBoundary = i;
     const endBoundary = i + 1;
+    const dis = i > 0 ? 'disabled' : '';
+    const halfSelect = (boundary, half, disabled) =>
+      `<select class="pep-half" data-boundary="${boundary}" ${disabled} style="margin-top:2px">` +
+      `<option value="0" ${half === 0 ? 'selected' : ''}>${HALF_LABELS[0]}</option>` +
+      `<option value="1" ${half === 1 ? 'selected' : ''}>${HALF_LABELS[1]}</option></select>`;
     return `<div class="pep-phase">
       <span class="swatch" style="background:${phaseColor(p, i)}"></span>
       <span class="pep-label">${escapeHtml(phaseLabel(p, i))}</span>
-      <label class="pep-field">Début<input type="date" class="pep-date" data-boundary="${startBoundary}" value="${p.start}" ${i > 0 ? 'disabled' : ''}></label>
-      <label class="pep-field">Fin<input type="date" class="pep-date" data-boundary="${endBoundary}" value="${p.end}"></label>
+      <label class="pep-field">Début
+        <input type="date" class="pep-date" data-boundary="${startBoundary}" value="${p.start}" ${dis}>
+        ${halfSelect(startBoundary, pStartHalf(p), dis)}
+      </label>
+      <label class="pep-field">Fin
+        <input type="date" class="pep-date" data-boundary="${endBoundary}" value="${p.end}">
+        ${halfSelect(endBoundary, pEndHalf(p), '')}
+      </label>
     </div>`;
   }).join('');
 }
@@ -667,6 +718,7 @@ function renderGantt() {
   document.getElementById('ganttBody').classList.remove('hidden');
 
   const COLW = state.zoom;
+  const HALFW = COLW / 2;
   const days = timeline.days;
   const totalW = days.length * COLW;
 
@@ -685,6 +737,18 @@ function renderGantt() {
     }
   });
   root.appendChild(bandWrap);
+
+  // ── Traits de séparation matin / après-midi (repère visuel demi-journée) ──
+  const halfWrap = document.createElement('div');
+  halfWrap.className = 'halfday-lines';
+  halfWrap.style.width = (190 + totalW) + 'px';
+  days.forEach((d, i) => {
+    const line = document.createElement('div');
+    line.className = 'halfday-line';
+    line.style.left = (190 + i * COLW + HALFW) + 'px';
+    halfWrap.appendChild(line);
+  });
+  root.appendChild(halfWrap);
 
   // ── En-têtes ──
   const headWrap = document.createElement('div');
@@ -771,9 +835,12 @@ function renderGantt() {
   // ── Lignes de version ──
   state.versions.forEach((v, vi) => {
     const vStart = parseISO(v.start), vEnd = parseISO(v.end);
-    const verDays = dayDiff(vStart, vEnd) + 1;
-    const startOffset = dayDiff(timeline.start, vStart);
+    const vSH = vStartHalf(v), vEH = vEndHalf(v);
+    const verHalves = dayDiff(vStart, vEnd) * 2 + vEH - vSH + 1; // demi-journées couvertes par la version
+    const startOffset = dayDiff(timeline.start, vStart); // en jours entiers (aligné sur les colonnes du header)
     const isEditing = editingVersionId === v.id;
+    // position en px d'une demi-journée (jour relatif à vStart, half) depuis le bord gauche du track
+    const xOf = (relDay, half) => (startOffset + relDay) * COLW + half * HALFW;
 
     const row = document.createElement('div');
     row.className = 'ver-row';
@@ -800,15 +867,16 @@ function renderGantt() {
     track.style.flexShrink = '0';
     track.dataset.versionId = v.id;
     track.dataset.startOffset = startOffset;
-    track.dataset.verDays = verDays;
+    track.dataset.verHalves = verHalves;
 
     v.phases.forEach((p, i) => {
-      const from = dayDiff(vStart, parseISO(p.start));
-      const to = dayDiff(vStart, parseISO(p.end)) + 1;
+      const fromDay = dayDiff(vStart, parseISO(p.start));
+      const toDay = dayDiff(vStart, parseISO(p.end));
+      const left = xOf(fromDay, pStartHalf(p));
+      const right = xOf(toDay, pEndHalf(p)) + HALFW; // la demi-journée de fin est incluse
       const bar = document.createElement('div');
       bar.className = 'bar';
-      const left = (startOffset + from) * COLW;
-      const width = Math.max((to - from) * COLW, 4);
+      const width = Math.max(right - left, 4);
       bar.style.left = left + 'px';
       bar.style.top = '3px';
       bar.style.width = width + 'px';
@@ -820,11 +888,15 @@ function renderGantt() {
     });
 
     if (isEditing) {
-      const boundaries = [0].concat(v.phases.map(p => dayDiff(vStart, parseISO(p.end)) + 1));
-      boundaries.forEach((dayOffset, bIdx) => {
+      // boundary 0 = début v ; boundary k (1..N) = fin de phase k-1 + 1 demi-journée (= début phase k, ou fin de version pour k=N)
+      const boundaryPts = [{ date: vStart, half: vSH }].concat(
+        v.phases.map(p => addHalves(parseISO(p.end), pEndHalf(p), 1))
+      );
+      boundaryPts.forEach((pt, bIdx) => {
+        const relDay = dayDiff(vStart, pt.date);
         const handle = document.createElement('div');
         handle.className = 'phase-handle';
-        handle.style.left = ((startOffset + dayOffset) * COLW) + 'px';
+        handle.style.left = xOf(relDay, pt.half) + 'px';
         handle.style.height = PHASE_H + 'px';
         handle.dataset.versionId = v.id;
         handle.dataset.boundary = bIdx;
@@ -838,22 +910,29 @@ function renderGantt() {
     jline.style.top = jalonsTop + 'px';
     track.appendChild(jline);
 
-    const seenDays = {};
+    const seenHalves = {};
     state.milestones.filter(m => m.visible).forEach(m => {
-      const override = state.overrides[v.id] ? state.overrides[v.id][m.id] : undefined;
-      const hasOverride = typeof override === 'number';
-      const day = Math.max(0, Math.min(hasOverride ? override : m.day, Math.max(verDays - 1, 0)));
-      const nudge = seenDays[day] || 0;
-      seenDays[day] = nudge + 1;
+      const rawOverride = state.overrides[v.id] ? state.overrides[v.id][m.id] : undefined;
+      const hasOverride = rawOverride != null;
+      // compat : un ancien override était un nombre nu (jour, half AM implicite)
+      const ov = typeof rawOverride === 'number' ? { day: rawOverride, half: 0 } : rawOverride;
+      const day0 = hasOverride ? ov.day : m.day;
+      const half0 = hasOverride ? (ov.half || 0) : (m.half || 0);
+      let halfIdx = day0 * 2 + half0;
+      halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
+      const day = Math.floor(halfIdx / 2), half = halfIdx % 2;
+      const key = day + '_' + half;
+      const nudge = seenHalves[key] || 0;
+      seenHalves[key] = nudge + 1;
       const dayDate = addDays(vStart, day);
-      const left = (startOffset + day) * COLW + COLW / 2 + nudge * 12;
+      const left = xOf(day, half) + HALFW / 2 + nudge * 12;
 
       const marker = document.createElement('div');
       marker.className = 'marker' + (hasOverride ? ' overridden' : '');
       marker.style.background = m.color;
       marker.style.left = left + 'px';
       marker.style.top = (jalonsTop + 8) + 'px';
-      marker.title = m.label + ' — ' + WEEKDAY_FULL[(dayDate.getDay()+6)%7] + ' ' + fmtDate(dayDate) +
+      marker.title = m.label + ' — ' + WEEKDAY_FULL[(dayDate.getDay()+6)%7] + ' ' + fmtDate(dayDate) + ' (' + HALF_LABELS[half] + ')' +
         (hasOverride ? ' (déplacé sur cette version)' : ' — cliquez pour déplacer');
       marker.dataset.versionId = v.id;
       marker.dataset.milestoneId = m.id;
@@ -863,9 +942,10 @@ function renderGantt() {
       lbl.className = 'marker-label';
       lbl.style.left = left + 'px';
       lbl.style.top = (jalonsTop + 24) + 'px';
-      lbl.textContent = fmtDate(dayDate);
+      const dateTxt = fmtDate(dayDate) + (half ? ' PM' : ' AM');
+      lbl.textContent = dateTxt;
       if (hasOverride) {
-        lbl.innerHTML = fmtDate(dayDate) + ' <span class="marker-reset" data-version-id="' + v.id + '" data-milestone-id="' + m.id + '" title="Réinitialiser au jour par défaut">↺</span>';
+        lbl.innerHTML = dateTxt + ' <span class="marker-reset" data-version-id="' + v.id + '" data-milestone-id="' + m.id + '" title="Réinitialiser au jour par défaut">↺</span>';
       }
       track.appendChild(lbl);
     });
@@ -976,11 +1056,13 @@ document.getElementById('ganttRoot').addEventListener('click', e => {
     const x = e.clientX - rect.left;
     const COLW = state.zoom;
     const startOffset = +track.dataset.startOffset;
-    const verDays = +track.dataset.verDays;
-    let relativeDay = Math.floor(x / COLW) - startOffset;
-    relativeDay = Math.max(0, Math.min(relativeDay, Math.max(verDays - 1, 0)));
+    const verHalves = +track.dataset.verHalves;
+    const dayIdx = Math.floor(x / COLW);
+    const half = (x - dayIdx * COLW) < COLW / 2 ? 0 : 1; // moitié gauche = matin, droite = après-midi
+    let halfIdx = (dayIdx - startOffset) * 2 + half;
+    halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
     if (!state.overrides[moveMode.versionId]) state.overrides[moveMode.versionId] = {};
-    state.overrides[moveMode.versionId][moveMode.milestoneId] = relativeDay;
+    state.overrides[moveMode.versionId][moveMode.milestoneId] = { day: Math.floor(halfIdx / 2), half: halfIdx % 2 };
     moveMode = null;
     saveState();
     renderGantt();
@@ -990,6 +1072,14 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && moveMode) { moveMode = null; renderGantt(); }
 });
 
+// boundary -> point (date, half) qu'il représente dans un tableau de phases donné
+function boundaryPoint(phases, b) {
+  const n = phases.length;
+  if (b <= 0) return { date: parseISO(phases[0].start), half: pStartHalf(phases[0]) };
+  const src = phases[Math.min(b, n) - 1];
+  return { date: parseISO(src.end), half: pEndHalf(src) };
+}
+
 // ── Redimensionnement des phases (poignées, uniquement sur la version en édition) ──
 document.addEventListener('mousedown', e => {
   const handle = e.target.closest('.phase-handle');
@@ -997,11 +1087,13 @@ document.addEventListener('mousedown', e => {
   const v = state.versions.find(x => x.id === handle.dataset.versionId);
   if (!v) return;
   e.preventDefault();
+  const boundary = +handle.dataset.boundary;
   phaseDrag = {
     versionId: handle.dataset.versionId,
-    boundary: +handle.dataset.boundary,
+    boundary,
     startX: e.clientX,
     orig: JSON.parse(JSON.stringify(v.phases)),
+    origPoint: boundaryPoint(v.phases, boundary),
   };
   document.body.style.cursor = 'ew-resize';
 });
@@ -1010,17 +1102,13 @@ document.addEventListener('mousemove', e => {
   const v = state.versions.find(x => x.id === phaseDrag.versionId);
   if (!v) return;
   const deltaPx = e.clientX - phaseDrag.startX;
-  const deltaDays = Math.round(deltaPx / state.zoom);
+  const deltaHalves = Math.round(deltaPx / (state.zoom / 2));
   const origPhases = phaseDrag.orig;
-  let origDate;
-  if (phaseDrag.boundary === 0) origDate = parseISO(origPhases[0].start);
-  else if (phaseDrag.boundary === 1) origDate = parseISO(origPhases[0].end);
-  else if (phaseDrag.boundary === 2) origDate = parseISO(origPhases[1].end);
-  else origDate = parseISO(origPhases[2].end);
+  const pt = addHalves(phaseDrag.origPoint.date, phaseDrag.origPoint.half, deltaHalves);
   // repart toujours de l'état d'origine pour que le glissement reste une fonction
   // pure du delta total (évite toute dérive/arrondi cumulé entre deux mousemove)
   v.phases = JSON.parse(JSON.stringify(origPhases));
-  setPhaseBoundary(v, phaseDrag.boundary, addDays(origDate, deltaDays));
+  setPhaseBoundary(v, phaseDrag.boundary, pt.date, pt.half);
   renderGantt();
   renderPhaseEditPanel();
 });
@@ -1036,10 +1124,14 @@ document.addEventListener('mouseup', () => {
 // ════════════════════════════════════════════════════════════
 document.getElementById('pepPhases').addEventListener('change', e => {
   const t = e.target;
-  if (!t.matches('.pep-date') || t.disabled) return;
+  if (!(t.matches('.pep-date') || t.matches('.pep-half')) || t.disabled) return;
   const v = state.versions.find(x => x.id === editingVersionId);
   if (!v) return;
-  setPhaseBoundary(v, +t.dataset.boundary, parseISO(t.value));
+  const field = t.closest('.pep-field');
+  const boundary = +t.dataset.boundary;
+  const dateInput = field.querySelector('.pep-date');
+  const halfSelect = field.querySelector('.pep-half');
+  setPhaseBoundary(v, boundary, parseISO(dateInput.value), +halfSelect.value);
   saveState();
   renderGantt();
   renderPhaseEditPanel();
@@ -1066,7 +1158,7 @@ document.getElementById('phaseDefsList').addEventListener('change', e => {
   const d = state.phaseDefs.find(x => x.id === t.dataset.id);
   if (!d) return;
   if (t.matches('.pd-label')) { d.label = t.value.trim() || d.label; commit(); }
-  else if (t.matches('.pd-days')) { d.days = Math.max(1, +t.value || 1); commit(); }
+  else if (t.matches('.pd-days')) { d.days = Math.max(0.5, Math.round((+t.value || 0.5) * 2) / 2); commit(); }
 });
 
 // ════════════════════════════════════════════════════════════
@@ -1092,7 +1184,8 @@ document.getElementById('milestonesList').addEventListener('change', e => {
   if (!grp) return;
   const m = state.milestones.find(x => x.id === grp.dataset.id);
   if (!m) return;
-  m.day = readDayPicker(grp);
+  const res = readDayPicker(grp);
+  m.day = res.day; m.half = res.half;
   commit();
 });
 
