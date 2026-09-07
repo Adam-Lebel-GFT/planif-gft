@@ -285,7 +285,16 @@ const PHASE_NAMES = ['Chargement de la version', 'DEV', 'Test IAT'];
 const PHASE_COLORS = ['var(--accent)', 'var(--navy)', 'var(--green)'];
 const PHASE_H = 26, JALONS_H = 40, ROW_H = PHASE_H + JALONS_H;
 function phaseLabel(p, i) { return p.label || PHASE_NAMES[i] || ('Étape ' + (i + 1)); }
-function phaseColor(p, i) { return p.color || PHASE_COLORS[i] || PALETTE[i % PALETTE.length]; }
+function phaseColor(p, i) {
+  // La couleur suit en direct l'étape de gabarit dont cette phase est issue,
+  // tant que cette étape existe encore (id stable via p.defId) — contrairement
+  // à la durée/aux dates, qui restent propres à chaque version une fois créée.
+  if (p.defId) {
+    const def = state.phaseDefs.find(d => d.id === p.defId);
+    if (def) return def.color;
+  }
+  return p.color || PHASE_COLORS[i] || PALETTE[i % PALETTE.length];
+}
 // Repli pour les phases/versions persistées avant la granularité demi-journée :
 // une phase sans startHalf/endHalf occupait toute sa (ou ses) journée(s).
 function pStartHalf(p) { return p.startHalf || 0; }
@@ -366,7 +375,11 @@ function buildPhasesFromDefs(startDate, defs) {
     const endPt = addHalves(curDate, curHalf, durHalves - 1); // dernière demi-journée occupée (incluse)
     const nextPt = addHalves(curDate, curHalf, durHalves);    // début de l'étape suivante
     curDate = nextPt.date; curHalf = nextPt.half;
-    return { start: toISO(startD), startHalf: startH, end: toISO(endPt.date), endHalf: endPt.half, label: def.label, color: def.color };
+    // defId relie la phase à son étape de gabarit d'origine : phaseColor()
+    // suit alors la couleur COURANTE de cette étape (même sur une version déjà
+    // créée), alors que durée/dates/label restent figées à la création (comme
+    // pour tout le reste du gabarit — voir le hint de la carte « Étapes »).
+    return { start: toISO(startD), startHalf: startH, end: toISO(endPt.date), endHalf: endPt.half, label: def.label, color: def.color, defId: def.id };
   });
 }
 function makeVersion(label, startDate, defs) {
