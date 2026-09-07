@@ -54,10 +54,18 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 /* ── Liste de gestion (jalons) ────────────────────────────── */
 .mgmt-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
 .mgmt-empty { font-size: 12px; color: var(--muted); padding: 8px 2px; }
-.mgmt-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; }
+.mgmt-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; transition: opacity .12s ease; }
+.mgmt-row.dragging { opacity: .35; }
+.mgmt-row.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .mgmt-actions { display: flex; gap: 6px; margin-left: auto; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--white); box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
+.drag-handle { cursor: grab; color: var(--muted); font-size: 13px; line-height: 1; flex-shrink: 0; user-select: none; padding: 2px; }
+.drag-handle:active { cursor: grabbing; }
+.color-input { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; padding: 0; border: none; border-radius: 50%; cursor: pointer; flex-shrink: 0; background: none; }
+.color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.color-input::-webkit-color-swatch { border: 2px solid var(--white); border-radius: 50%; box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
+.color-input::-moz-color-swatch { border: 2px solid var(--white); border-radius: 50%; box-shadow: 0 0 0 1px rgba(12,26,46,.2); }
 .ms-label { font-family: var(--font); font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 8px; flex: 1; min-width: 140px; }
 .pd-days { font-family: var(--font-mono); font-size: 11.5px; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 5px 6px; width: 56px; }
 .dp-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
@@ -196,7 +204,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Étapes</h2>
-        <div class="hint">Le gabarit de phases utilisé pour créer une nouvelle version, dans l'ordre — chaque étape a une durée par défaut, à la demi-journée près (ex. 0,5 j, 1,5 j). Ajoutez, renommez, réordonnez ou retirez des étapes comme pour les jalons ci-dessous. Les versions déjà créées ne sont pas affectées : modifiez-les directement sur le board (icône ✎).</div>
+        <div class="hint">Le gabarit de phases utilisé pour créer une nouvelle version, dans l'ordre — chaque étape a une couleur, une durée par défaut à la demi-journée près (ex. 0,5 j, 1,5 j) et se réordonne en glissant la poignée ⠿ (ou ↑/↓). Les versions déjà créées ne sont pas affectées par un changement d'ordre ou de durée : modifiez-les directement sur le board (icône ✎).</div>
       </div>
       <button class="collapse-btn" data-key="phases" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -230,7 +238,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Jalons</h2>
-        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de semaine réel + matin/après-midi (ex. « Semaine 1, Mercredi » = le premier mercredi après le début de chaque version, quel que soit son jour de démarrage) — un jalon d'après-midi apparaît dans la seconde moitié de la journée. Cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
+        <div class="hint">Cochez pour afficher un jalon sur le board, choisissez sa couleur, et réordonnez la liste en glissant la poignée ⠿ (ou ↑/↓). Semaine + jour de semaine réel + matin/après-midi (ex. « Semaine 1, Mercredi » = le premier mercredi après le début de chaque version, quel que soit son jour de démarrage) — un jalon d'après-midi apparaît dans la seconde moitié de la journée. Cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
       </div>
       <button class="collapse-btn" data-key="milestones" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -286,10 +294,17 @@ function vStartHalf(v) { return v.startHalf || 0; }
 function vEndHalf(v) { return (typeof v.endHalf === 'number') ? v.endHalf : 1; }
 function defaultPhaseDefs() {
   return [
-    { id: uid('pd'), label: 'Chargement de la version', color: 'var(--accent)', days: 1 },
-    { id: uid('pd'), label: 'Dev',                       color: 'var(--navy)',  days: 7 },
-    { id: uid('pd'), label: 'Test IAT',                  color: 'var(--green)', days: 7 },
+    { id: uid('pd'), label: 'Chargement de la version', color: PALETTE[0], days: 1 },
+    { id: uid('pd'), label: 'Dev',                       color: PALETTE[5], days: 7 },
+    { id: uid('pd'), label: 'Test IAT',                  color: PALETTE[1], days: 7 },
   ];
+}
+// <input type="color"> exige un hex #RRGGBB — les anciennes valeurs (var(--x))
+// sont mappées vers leur équivalent hex pour rester sélectionnables telles quelles.
+const CSS_VAR_HEX = { 'var(--accent)': '#0C447C', 'var(--navy)': '#0C1A2E', 'var(--green)': '#1A7A42' };
+function toHexColor(c) {
+  if (CSS_VAR_HEX[c]) return CSS_VAR_HEX[c];
+  return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : PALETTE[0];
 }
 
 function toISO(d) { const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
@@ -606,7 +621,8 @@ function renderPhaseDefsList() {
   }
   root.innerHTML = state.phaseDefs.map((d, i) => `
     <div class="mgmt-row" data-id="${d.id}">
-      <span class="ev-dot" style="background:${d.color}"></span>
+      <span class="drag-handle" draggable="true" title="Glisser pour réordonner" aria-hidden="true">⠿</span>
+      <input type="color" class="color-input pd-color" data-id="${d.id}" value="${toHexColor(d.color)}" title="Couleur">
       <input type="text" class="ms-label pd-label" data-id="${d.id}" value="${escapeHtml(d.label)}">
       <span class="dp-lbl">Durée (j)</span>
       <input type="number" class="pd-days" data-id="${d.id}" min="0.5" max="60" step="0.5" value="${d.days}">
@@ -633,19 +649,29 @@ function deleteMilestone(id) {
   if (moveMode && moveMode.milestoneId === id) moveMode = null;
   commit();
 }
+function moveMilestone(id, dir) {
+  const i = state.milestones.findIndex(m => m.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= state.milestones.length) return;
+  const tmp = state.milestones[i]; state.milestones[i] = state.milestones[j]; state.milestones[j] = tmp;
+  commit();
+}
 function renderMilestonesList() {
   const root = document.getElementById('milestonesList');
   if (!state.milestones.length) {
     root.innerHTML = `<div class="mgmt-empty">Aucun jalon — ajoutez-en un pour l'afficher sur le board.</div>`;
     return;
   }
-  root.innerHTML = state.milestones.map(m => `
+  root.innerHTML = state.milestones.map((m, i) => `
     <div class="mgmt-row" data-id="${m.id}">
+      <span class="drag-handle" draggable="true" title="Glisser pour réordonner" aria-hidden="true">⠿</span>
       <input type="checkbox" class="ms-visible" data-id="${m.id}" ${m.visible ? 'checked' : ''} title="Afficher sur le board">
-      <span class="ev-dot" style="background:${m.color}"></span>
+      <input type="color" class="color-input ms-color" data-id="${m.id}" value="${toHexColor(m.color)}" title="Couleur">
       <input type="text" class="ms-label" data-id="${m.id}" value="${escapeHtml(m.label)}">
       ${dayPickerMarkup('milestone', m.id, m.week, m.dow, m.half)}
       <div class="mgmt-actions">
+        <button class="icon-btn" data-action="move-milestone-up" data-id="${m.id}" title="Monter" aria-label="Monter" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icon-btn" data-action="move-milestone-down" data-id="${m.id}" title="Descendre" aria-label="Descendre" ${i === state.milestones.length - 1 ? 'disabled' : ''}>↓</button>
         <button class="icon-btn danger" data-action="delete-milestone" data-id="${m.id}" title="Retirer">🗑</button>
       </div>
     </div>`).join('');
@@ -1182,6 +1208,19 @@ document.getElementById('phaseDefsList').addEventListener('change', e => {
   if (!d) return;
   if (t.matches('.pd-label')) { d.label = t.value.trim() || d.label; commit(); }
   else if (t.matches('.pd-days')) { d.days = Math.max(0.5, Math.round((+t.value || 0.5) * 2) / 2); commit(); }
+  else if (t.matches('.pd-color')) { d.color = t.value; commit(); } // valeur finale : re-render complet (repositionne le picker fermé)
+});
+// Couleur : appliquée en direct sur le board pendant qu'on glisse dans le
+// sélecteur (événement "input"), sans reconstruire la liste — un commit()
+// complet ici fermerait le picker natif du navigateur en plein choix.
+document.getElementById('phaseDefsList').addEventListener('input', e => {
+  const t = e.target;
+  if (!t.matches('.pd-color')) return;
+  const d = state.phaseDefs.find(x => x.id === t.dataset.id);
+  if (!d) return;
+  d.color = t.value;
+  saveState();
+  renderGantt();
 });
 
 // ════════════════════════════════════════════════════════════
@@ -1189,7 +1228,11 @@ document.getElementById('phaseDefsList').addEventListener('change', e => {
 // ════════════════════════════════════════════════════════════
 document.getElementById('milestonesList').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
-  if (btn && btn.dataset.action === 'delete-milestone') deleteMilestone(btn.dataset.id);
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.action === 'delete-milestone') deleteMilestone(id);
+  else if (btn.dataset.action === 'move-milestone-up') moveMilestone(id, -1);
+  else if (btn.dataset.action === 'move-milestone-down') moveMilestone(id, 1);
 });
 document.getElementById('milestonesList').addEventListener('change', e => {
   const t = e.target;
@@ -1203,6 +1246,11 @@ document.getElementById('milestonesList').addEventListener('change', e => {
     if (m) { m.label = t.value.trim() || m.label; commit(); }
     return;
   }
+  if (t.matches('.ms-color')) {
+    const m = state.milestones.find(x => x.id === t.dataset.id);
+    if (m) { m.color = t.value; commit(); }
+    return;
+  }
   const grp = t.closest('.dp-group');
   if (!grp) return;
   const m = state.milestones.find(x => x.id === grp.dataset.id);
@@ -1211,6 +1259,64 @@ document.getElementById('milestonesList').addEventListener('change', e => {
   m.week = res.week; m.dow = res.dow; m.half = res.half;
   commit();
 });
+document.getElementById('milestonesList').addEventListener('input', e => {
+  const t = e.target;
+  if (!t.matches('.ms-color')) return;
+  const m = state.milestones.find(x => x.id === t.dataset.id);
+  if (!m) return;
+  m.color = t.value;
+  saveState();
+  renderGantt();
+});
+
+// ════════════════════════════════════════════════════════════
+// Réordonnancement par glisser-déposer (étapes et jalons) — le tableau
+// n'est réordonné qu'à la dépose (drop), jamais pendant le survol : seul
+// un repère visuel (contour en pointillés) indique la position de dépose.
+// ════════════════════════════════════════════════════════════
+let dragState = null; // { containerId, id }
+function attachDnD(containerId, getArray) {
+  const root = document.getElementById(containerId);
+  const clearDragOver = () => root.querySelectorAll('.mgmt-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+  root.addEventListener('dragstart', e => {
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) { e.preventDefault(); return; }
+    const row = handle.closest('.mgmt-row');
+    if (!row) return;
+    dragState = { containerId, id: row.dataset.id };
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', row.dataset.id); } catch (err) {}
+    row.classList.add('dragging');
+  });
+  root.addEventListener('dragover', e => {
+    if (!dragState || dragState.containerId !== containerId) return;
+    e.preventDefault();
+    const row = e.target.closest('.mgmt-row');
+    clearDragOver();
+    if (row && row.dataset.id !== dragState.id) row.classList.add('drag-over');
+  });
+  root.addEventListener('drop', e => {
+    if (!dragState || dragState.containerId !== containerId) return;
+    e.preventDefault();
+    const row = e.target.closest('.mgmt-row');
+    clearDragOver();
+    const draggedId = dragState.id;
+    dragState = null;
+    if (!row || row.dataset.id === draggedId) return;
+    const arr = getArray();
+    const from = arr.findIndex(x => x.id === draggedId);
+    const to = arr.findIndex(x => x.id === row.dataset.id);
+    if (from < 0 || to < 0) return;
+    const [item] = arr.splice(from, 1);
+    arr.splice(to, 0, item);
+    commit();
+  });
+  root.addEventListener('dragend', () => {
+    root.querySelectorAll('.mgmt-row.dragging').forEach(r => r.classList.remove('dragging'));
+    clearDragOver();
+    dragState = null;
+  });
+}
 
 // ════════════════════════════════════════════════════════════
 // Initialisation
@@ -1245,6 +1351,8 @@ document.getElementById('addVersionBtn').addEventListener('click', addVersion);
 document.getElementById('addPhaseDefBtn').addEventListener('click', addPhaseDef);
 document.getElementById('addMilestoneBtn').addEventListener('click', addMilestone);
 document.getElementById('resetBtn').addEventListener('click', resetState);
+attachDnD('phaseDefsList', () => state.phaseDefs);
+attachDnD('milestonesList', () => state.milestones);
 </script>
 </body>
 </html>
