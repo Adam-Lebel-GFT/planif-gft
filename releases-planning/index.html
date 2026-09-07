@@ -230,7 +230,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Jalons</h2>
-        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de la semaine + matin/après-midi, depuis le début de version (un jalon d'après-midi apparaît dans la seconde moitié de la journée) — cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
+        <div class="hint">Cochez pour afficher un jalon sur le board. Semaine + jour de semaine réel + matin/après-midi (ex. « Semaine 1, Mercredi » = le premier mercredi après le début de chaque version, quel que soit son jour de démarrage) — un jalon d'après-midi apparaît dans la seconde moitié de la journée. Cliquez ensuite un jeton sur le board pour le déplacer sur une version précise (l'icône ↺ sous un jeton déplacé annule le déplacement).</div>
       </div>
       <button class="collapse-btn" data-key="milestones" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -416,11 +416,11 @@ function defaultState() {
     nextVersionSeed: '3.19.0',
     versions: seedVersions(phaseDefs),
     milestones: [
-      { id: 'freeze', label: 'Code freeze',                color: PALETTE[5], day: 5, half: 1, visible: true },
-      { id: 'gonogo', label: 'Go / No-go',                 color: PALETTE[0], day: 8, half: 0, visible: true },
-      { id: 'deploy', label: 'Déploiement sur la branche',  color: PALETTE[1], day: 9, half: 0, visible: true },
-      { id: 'revert', label: 'Dernier revert possible',     color: PALETTE[2], day: 9, half: 1, visible: true },
-      { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], day: 9, half: 1, visible: true },
+      { id: 'freeze', label: 'Code freeze',                color: PALETTE[5], week: 1, dow: 5, half: 1, visible: true },
+      { id: 'gonogo', label: 'Go / No-go',                 color: PALETTE[0], week: 2, dow: 1, half: 0, visible: true },
+      { id: 'deploy', label: 'Déploiement sur la branche',  color: PALETTE[1], week: 2, dow: 2, half: 0, visible: true },
+      { id: 'revert', label: 'Dernier revert possible',     color: PALETTE[2], week: 2, dow: 2, half: 1, visible: true },
+      { id: 'nextbr', label: 'Branche suivante disponible', color: PALETTE[3], week: 2, dow: 2, half: 1, visible: true },
     ],
     overrides: {}, // { [versionId]: { [milestoneId]: {day, half} } } — un nombre nu = ancien format (half 0 implicite)
     uiCollapsed: { general: false, phases: false, versions: false, milestones: false },
@@ -456,6 +456,17 @@ function loadState() {
     state.versions = Array.isArray(saved.versions) && saved.versions.length ? saved.versions : base.versions;
     state.milestones = Array.isArray(saved.milestones) && saved.milestones.length ? saved.milestones : base.milestones;
     state.overrides = saved.overrides && typeof saved.overrides === 'object' ? saved.overrides : {};
+    // Migration : un jalon enregistré avant l'introduction du "vrai" jour de
+    // semaine (semaine+dow résolus par version selon son jour de départ réel)
+    // n'avait qu'un offset brut .day depuis le début de version — reconverti
+    // ici en {week, dow} pour continuer d'afficher exactement le même jour
+    // sur les versions qui démarrent un lundi, et corriger celles qui non.
+    state.milestones.forEach(m => {
+      if (typeof m.week !== 'number' || typeof m.dow !== 'number') {
+        const wd = dayToWeekDow(typeof m.day === 'number' ? m.day : 0);
+        m.week = wd.week; m.dow = wd.dow;
+      }
+    });
     // Migration : anciennes données (avant le gabarit d'étapes state.phaseDefs)
     // stockaient 3 durées par défaut fixes — on les reprend telles quelles pour
     // ne pas changer le gabarit sous les pieds de qui l'avait déjà personnalisé.
@@ -503,10 +514,14 @@ function resetState() {
 
 // ════════════════════════════════════════════════════════════
 // Sélecteur "Semaine + jour de la semaine" (jalons)
+// La semaine/le jour sélectionnés désignent un VRAI jour de calendrier
+// (ex. "Semaine 1, Mercredi" = le premier mercredi après le début de la
+// version) — l'offset en jours depuis le début de version est donc
+// recalculé par version dans renderGantt() à partir du jour de semaine
+// réel où elle démarre (weekdayOffset ci-dessous), pas figé à la saisie.
 // ════════════════════════════════════════════════════════════
-function dayPickerMarkup(kind, id, dayVal, halfVal) {
-  const week = Math.floor(dayVal / 7) + 1;
-  const dow = ((dayVal % 7) + 7) % 7;
+function weekdayOffset(vStart) { return (vStart.getDay() + 6) % 7; } // 0 = lundi
+function dayPickerMarkup(kind, id, week, dow, halfVal) {
   let weekOpts = '';
   for (let w = 1; w <= PICKER_WEEKS; w++) weekOpts += `<option value="${w}" ${w === week ? 'selected' : ''}>Semaine ${w}</option>`;
   const dowOpts = WEEKDAY_FULL.map((n, i) => `<option value="${i}" ${i === dow ? 'selected' : ''}>${n}</option>`).join('');
@@ -520,8 +535,12 @@ function readDayPicker(groupEl) {
   const week = +groupEl.querySelector('.dp-week').value;
   const dow = +groupEl.querySelector('.dp-dow').value;
   const half = +groupEl.querySelector('.dp-half').value;
-  return { day: (week - 1) * 7 + dow, half };
+  return { week, dow, half };
 }
+// Convertit un ancien offset brut "day" (jours depuis le début de version,
+// avant l'introduction de la semaine/jour-réel) en {week, dow} — utilisé à
+// la migration ainsi que pour les valeurs par défaut historiques.
+function dayToWeekDow(day) { return { week: Math.floor(day / 7) + 1, dow: ((day % 7) + 7) % 7 }; }
 
 // ════════════════════════════════════════════════════════════
 // Versions — ajout / édition / suppression (édition sur le board)
@@ -604,7 +623,7 @@ function renderPhaseDefsList() {
 // ════════════════════════════════════════════════════════════
 function addMilestone() {
   const idx = state.milestones.length;
-  state.milestones.push({ id: uid('ms'), label: 'Nouveau jalon', color: PALETTE[idx % PALETTE.length], day: 0, half: 0, visible: true });
+  state.milestones.push({ id: uid('ms'), label: 'Nouveau jalon', color: PALETTE[idx % PALETTE.length], week: 1, dow: 0, half: 0, visible: true });
   commit();
 }
 function deleteMilestone(id) {
@@ -625,7 +644,7 @@ function renderMilestonesList() {
       <input type="checkbox" class="ms-visible" data-id="${m.id}" ${m.visible ? 'checked' : ''} title="Afficher sur le board">
       <span class="ev-dot" style="background:${m.color}"></span>
       <input type="text" class="ms-label" data-id="${m.id}" value="${escapeHtml(m.label)}">
-      ${dayPickerMarkup('milestone', m.id, m.day, m.half)}
+      ${dayPickerMarkup('milestone', m.id, m.week, m.dow, m.half)}
       <div class="mgmt-actions">
         <button class="icon-btn danger" data-action="delete-milestone" data-id="${m.id}" title="Retirer">🗑</button>
       </div>
@@ -910,13 +929,17 @@ function renderGantt() {
     jline.style.top = jalonsTop + 'px';
     track.appendChild(jline);
 
+    const startDow = weekdayOffset(vStart); // jour de semaine réel (0=lundi) où DÉMARRE cette version
     const seenHalves = {};
     state.milestones.filter(m => m.visible).forEach(m => {
       const rawOverride = state.overrides[v.id] ? state.overrides[v.id][m.id] : undefined;
       const hasOverride = rawOverride != null;
       // compat : un ancien override était un nombre nu (jour, half AM implicite)
       const ov = typeof rawOverride === 'number' ? { day: rawOverride, half: 0 } : rawOverride;
-      const day0 = hasOverride ? ov.day : m.day;
+      // un override est déjà un jour choisi sur CETTE version (clic direct sur
+      // le board) : offset brut. Le jalon par défaut, lui, vise un vrai jour de
+      // semaine — on résout son offset ici selon le jour de départ réel de v.
+      const day0 = hasOverride ? ov.day : (m.week - 1) * 7 + ((m.dow - startDow + 7) % 7);
       const half0 = hasOverride ? (ov.half || 0) : (m.half || 0);
       let halfIdx = day0 * 2 + half0;
       halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
@@ -1185,7 +1208,7 @@ document.getElementById('milestonesList').addEventListener('change', e => {
   const m = state.milestones.find(x => x.id === grp.dataset.id);
   if (!m) return;
   const res = readDayPicker(grp);
-  m.day = res.day; m.half = res.half;
+  m.week = res.week; m.dow = res.dow; m.half = res.half;
   commit();
 });
 
