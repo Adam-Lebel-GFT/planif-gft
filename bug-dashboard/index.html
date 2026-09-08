@@ -168,6 +168,29 @@
   }
   input.pct-input:focus{outline:2px solid var(--accent);}
 
+  .color-picker-wrap{position:relative; display:inline-block;}
+  .color-swatch{width:24px; height:24px; border-radius:6px; border:1.5px solid var(--border); cursor:pointer; padding:0;}
+  .color-swatch:hover{border-color:var(--navy);}
+  .color-popover{position:absolute; top:calc(100% + 6px); left:0; z-index:60; background:var(--white); border:1px solid var(--border); border-radius:10px; padding:10px; box-shadow:0 10px 28px rgba(11,37,69,.2);}
+  .color-popover.hidden{display:none;}
+  .color-grid{display:grid; grid-template-columns:repeat(4,22px); gap:6px;}
+  .color-swatch-option{width:22px; height:22px; border-radius:6px; border:1.5px solid rgba(0,0,0,.08); cursor:pointer; padding:0;}
+  .color-swatch-option:hover{outline:2px solid var(--accent); outline-offset:1px;}
+  .color-reset{width:100%; margin-top:8px; font-size:11px; padding:5px 6px; background:#fff; border:1px solid var(--border); border-radius:6px; color:var(--muted); cursor:pointer; font-weight:600;}
+  .color-reset:hover{border-color:var(--navy); color:var(--navy);}
+
+  .card-head-row{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  .card-head-row .card-sub{margin-bottom:0;}
+  .collapse-btn{
+    display:inline-flex; align-items:center; gap:6px; flex:none; white-space:nowrap;
+    background:#fff; color:var(--muted); border:1px solid var(--border); border-radius:8px;
+    padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .collapse-btn:hover{border-color:var(--navy); color:var(--navy);}
+  .collapse-chevron{display:inline-block; font-size:11px; transition:transform .15s ease;}
+  .collapse-btn.is-collapsed .collapse-chevron{transform:rotate(-90deg);}
+  #pctCardBody{margin-top:14px;}
+
   .hbar-row{display:grid; grid-template-columns:190px 1fr 42px; align-items:center; gap:10px; margin-bottom:10px;}
   .hbar-label{font-size:12.5px; color:var(--text); font-weight:500;}
   .hbar-track{background:#eef1f6; border-radius:5px; height:16px; overflow:hidden;}
@@ -282,12 +305,21 @@
 <div id="dashboard" class="hidden">
 
   <div class="card">
-    <h2>2. Pondération statut → % d'avancement</h2>
-    <div class="card-sub">Valeurs proposées par défaut selon le cycle de vie standard, modifiables et mémorisées automatiquement pour vos prochains extraits.</div>
-    <table>
-      <thead><tr><th>Statut</th><th class="num">Tickets</th><th>% d'avancement</th><th>Aperçu</th></tr></thead>
-      <tbody id="pctTableBody"></tbody>
-    </table>
+    <div class="card-head-row">
+      <div>
+        <h2>2. Pondération statut → % d'avancement</h2>
+        <div class="card-sub">Valeurs proposées par défaut selon le cycle de vie standard, modifiables et mémorisées automatiquement pour vos prochains extraits.</div>
+      </div>
+      <button type="button" class="collapse-btn" id="pctCollapseBtn" aria-expanded="true" aria-controls="pctCardBody">
+        <span class="collapse-chevron">▾</span><span class="collapse-label">Réduire</span>
+      </button>
+    </div>
+    <div id="pctCardBody">
+      <table>
+        <thead><tr><th>Statut</th><th class="num">Tickets</th><th>% d'avancement</th><th>Aperçu</th><th>Couleur</th></tr></thead>
+        <tbody id="pctTableBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="kpi-grid" id="kpiGrid"></div>
@@ -422,9 +454,19 @@ const DEFAULT_STATUS_PCT = {
 const STORAGE_KEYS = {
   raw: 'bugDashboard:rawPaste',
   pctMap: 'bugDashboard:statusPctMap',
+  colorMap: 'bugDashboard:statusColorMap',
+  pctCollapsed: 'bugDashboard:pctSectionCollapsed',
   refDate: 'bugDashboard:refDate',
   targetDate: 'bugDashboard:targetDate',
 };
+
+// Palette proposée dans le sélecteur de couleur par statut (16 teintes distinctes,
+// assez saturées pour rester lisibles en texte blanc sur les segments empilés).
+const STATUS_COLOR_SWATCHES = [
+  '#0b2545','#2f6fed','#38bdf8','#14b8a6','#1f9d68','#65a30d',
+  '#e0a300','#f97316','#d64545','#e11d48','#ec4899','#c026d3',
+  '#7b5fe0','#6366f1','#4f6d8f','#8892a6',
+];
 
 // Même instance Jira que les autres outils du toolkit (sprint-planning) : permet de
 // rouvrir directement un ticket depuis le drill-down.
@@ -442,6 +484,15 @@ function loadPctMap(){
 }
 function savePctMap(map){
   localStorage.setItem(STORAGE_KEYS.pctMap, JSON.stringify(map));
+}
+
+function loadColorMap(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.colorMap) || '{}');
+  }catch(e){ return {}; }
+}
+function saveColorMap(map){
+  localStorage.setItem(STORAGE_KEYS.colorMap, JSON.stringify(map));
 }
 
 function pctForStatus(status, overrideMap){
@@ -466,10 +517,17 @@ function sortedStatusKeys(statusCounts){
 // Couleur par statut, stable quel que soit l'ordre d'affichage courant (alphabétique,
 // indépendant du tri par %) — évite qu'un statut change de couleur simplement parce
 // qu'une pondération modifiée l'a fait changer de position dans sortedStatusKeys().
+// Une couleur choisie manuellement (currentColorMap) prend toujours le pas sur
+// l'attribution automatique par palette.
 function statusColorMap(statusCounts){
   const keys = Object.keys(statusCounts).sort();
   const map = {};
-  keys.forEach((k, i) => { map[k] = colorForIndex(i); });
+  let autoIdx = 0;
+  keys.forEach((k) => {
+    const override = currentColorMap[normalize(k)];
+    if(override){ map[k] = override; }
+    else{ map[k] = colorForIndex(autoIdx); autoIdx++; }
+  });
   return map;
 }
 
@@ -535,6 +593,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
 
 // ============ Rendering ============
 let currentPctMap = loadPctMap();
+let currentColorMap = loadColorMap();
 // Dernier jeu de données analysé — permet au drill-down de retrouver les lignes brutes
 // derrière n'importe quelle section du dashboard (statut, équipe, KPI...).
 let lastDataset = null;
@@ -688,6 +747,34 @@ function init(){
       setDdCopyFeedback('Copie impossible');
     }
   });
+
+  // Sélecteur de couleur par statut : un clic hors du picker referme les popovers ouverts.
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.color-picker-wrap')){
+      document.querySelectorAll('.color-popover').forEach(p => p.classList.add('hidden'));
+    }
+  });
+
+  initPctCollapse();
+}
+
+function initPctCollapse(){
+  const btn = document.getElementById('pctCollapseBtn');
+  const body = document.getElementById('pctCardBody');
+  const collapsed = localStorage.getItem(STORAGE_KEYS.pctCollapsed) === '1';
+  setPctCollapsed(collapsed, body, btn);
+  btn.addEventListener('click', () => {
+    const next = !body.classList.contains('hidden');
+    setPctCollapsed(next, body, btn);
+    localStorage.setItem(STORAGE_KEYS.pctCollapsed, next ? '1' : '0');
+  });
+}
+
+function setPctCollapsed(collapsed, body, btn){
+  body.classList.toggle('hidden', collapsed);
+  btn.classList.toggle('is-collapsed', collapsed);
+  btn.setAttribute('aria-expanded', String(!collapsed));
+  btn.querySelector('.collapse-label').textContent = collapsed ? 'Afficher' : 'Réduire';
 }
 
 function setMsg(text, cls){
@@ -733,14 +820,27 @@ function analyze(){
 function renderPctTable(statusCounts, onChange){
   const tbody = document.getElementById('pctTableBody');
   const statuses = sortedStatusKeys(statusCounts);
+  const colors = statusColorMap(statusCounts);
   tbody.innerHTML = statuses.map(status => {
     const pct = pctForStatus(status, currentPctMap);
     const key = normalize(status);
+    const swatchColor = colors[status] || '#8892a6';
     return `<tr>
       <td><span class="dd-link" data-dd="status" data-status="${escHtml(status)}">${escHtml(status)}</span></td>
       <td class="num"><span class="dd-link" data-dd="status" data-status="${escHtml(status)}">${statusCounts[status]}</span></td>
       <td><input type="number" min="0" max="100" class="pct-input" data-key="${key}" value="${pct}"></td>
       <td><div class="pct-bar-wrap"><div class="pct-bar" id="pctbar-${key}" style="width:${pct}%;background:${colorForPct(pct)}"></div></div></td>
+      <td>
+        <div class="color-picker-wrap">
+          <button type="button" class="color-swatch" data-color-btn="${key}" style="background:${swatchColor}" title="Choisir une couleur pour ce statut" aria-label="Couleur pour ${escHtml(status)}"></button>
+          <div class="color-popover hidden" data-color-popover="${key}">
+            <div class="color-grid">
+              ${STATUS_COLOR_SWATCHES.map(c => `<button type="button" class="color-swatch-option" data-color-pick="${key}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}
+            </div>
+            <button type="button" class="color-reset" data-color-reset="${key}">Réinitialiser (auto)</button>
+          </div>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 
@@ -753,6 +853,32 @@ function renderPctTable(statusCounts, onChange){
       currentPctMap[key] = val;
       savePctMap(currentPctMap);
       // Rebuild : la pondération modifiée peut changer l'ordre croissant des statuts.
+      renderPctTable(statusCounts, onChange);
+      onChange();
+    });
+  });
+
+  tbody.querySelectorAll('[data-color-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.colorBtn;
+      const pop = tbody.querySelector(`[data-color-popover="${CSS.escape(key)}"]`);
+      const wasHidden = pop.classList.contains('hidden');
+      tbody.querySelectorAll('.color-popover').forEach(p => p.classList.add('hidden'));
+      if(wasHidden) pop.classList.remove('hidden');
+    });
+  });
+  tbody.querySelectorAll('[data-color-pick]').forEach(sw => {
+    sw.addEventListener('click', () => {
+      currentColorMap[sw.dataset.colorPick] = sw.dataset.color;
+      saveColorMap(currentColorMap);
+      renderPctTable(statusCounts, onChange);
+      onChange();
+    });
+  });
+  tbody.querySelectorAll('[data-color-reset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete currentColorMap[btn.dataset.colorReset];
+      saveColorMap(currentColorMap);
       renderPctTable(statusCounts, onChange);
       onChange();
     });
