@@ -22,7 +22,7 @@ peut le relancer sans dupliquer les données).
 
 Comme il n'y a pas d'adresse e-mail réelle (voir l'analyse fonctionnelle,
 §7), les comptes utilisent en interne une adresse technique invisible
-(`nom.utilisateur@planif-gft.local`). Il faut donc désactiver la
+(`nom.utilisateur@planif-gft.io`). Il faut donc désactiver la
 confirmation par e-mail, sans quoi un compte fraîchement créé resterait
 bloqué en attente d'un e-mail qui n'arrivera jamais. C'est un réglage
 d'authentification, pas un réglage de base de données : le connecteur
@@ -47,7 +47,7 @@ choisi.
 
 1. Tableau de bord Supabase → **Authentication** → **Users** → **Add
    user** :
-   - Email : `votrenom@planif-gft.local` (remplacez `votrenom` par le nom
+   - Email : `votrenom@planif-gft.io` (remplacez `votrenom` par le nom
      d'utilisateur souhaité)
    - Password : le mot de passe que vous voulez utiliser
    - Cochez **Auto Confirm User**

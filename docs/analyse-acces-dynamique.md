@@ -91,7 +91,7 @@ projet" donne accès à `sprint-planning`. Rien n'est codé en dur.
 **Authentification : Supabase**, réutilise le projet déjà en place pour
 `poker-planning`. Comme il n'y a pas d'e-mail réel, chaque nom
 d'utilisateur est associé en interne (invisible pour la personne) à une
-adresse technique `nom.utilisateur@planif-gft.local`, uniquement pour
+adresse technique `nom.utilisateur@planif-gft.io`, uniquement pour
 satisfaire l'exigence technique de Supabase Auth.
 
 **Sécurité des données** : le site n'a pas de serveur — le navigateur
