@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administration — Agile Toolkit</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  .adm-topbar__user { display: flex; align-items: center; gap: 10px; }
+  .adm-topbar__name { font-size: 12.5px; color: rgba(255,255,255,.75); }
+
+  .adm-main { padding-block: clamp(24px, 4vw, 40px); }
+  .adm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .adm-head h1 { font-size: clamp(22px, 3vw, 28px); font-weight: 800; letter-spacing: -.5px; color: var(--navy); }
+
+  .adm-tabs { display: flex; gap: 6px; border-bottom: 1.5px solid var(--border); margin-bottom: 22px; }
+  .adm-tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--muted);
+    border: none; background: none; cursor: pointer; border-bottom: 2.5px solid transparent;
+    margin-bottom: -1.5px; font-family: var(--font);
+  }
+  .adm-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+  .adm-panel { display: none; }
+  .adm-panel.is-active { display: block; }
+
+  .adm-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  table.adm-table { width: 100%; border-collapse: collapse; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); overflow: hidden; }
+  .adm-table th, .adm-table td { text-align: left; padding: 11px 14px; font-size: 13.5px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .adm-table th { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+  .adm-table tr:last-child td { border-bottom: none; }
+  .adm-table-wrap { overflow-x: auto; border-radius: var(--radius-2); }
+
+  .chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--bg); color: var(--navy); border: 1px solid var(--border); margin: 2px 4px 2px 0; }
+  .chip--accent { background: #EAF1F8; color: var(--accent); border-color: rgba(12,68,124,.18); }
+
+  .adm-input, .adm-select {
+    width: 100%; padding: 9px 11px; font-family: var(--font); font-size: 13.5px;
+    border: 1.5px solid var(--border); border-radius: var(--radius); color: var(--text); background: var(--white);
+  }
+  .adm-input:focus, .adm-select:focus { outline: none; border-color: var(--accent); }
+  .adm-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .adm-field label { font-size: 12px; font-weight: 700; color: var(--navy); }
+  .adm-hint { font-size: 11.5px; color: var(--muted); }
+
+  .adm-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 14px; }
+  .adm-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .adm-check input { width: 15px; height: 15px; accent-color: var(--accent); }
+
+  .adm-card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .adm-card h3 { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 14px; }
+
+  .adm-row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .adm-row-actions button { font-size: 11.5px; }
+
+  .adm-msg { font-size: 12.5px; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 12px; display: none; }
+  .adm-msg.is-error { display: block; background: var(--red-bg); color: var(--red); }
+  .adm-msg.is-ok { display: block; background: var(--green-bg); color: var(--green); }
+
+  .adm-newpass { display: flex; gap: 8px; align-items: center; }
+  .adm-newpass input { font-family: var(--font-mono); letter-spacing: .5px; }
+
+  #gate-screen, #denied-screen { min-height: 60vh; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }
+  #app-screen { display: none; }
+</style>
+</head>
+<body class="tk">
+
+  <header class="tk-topbar">
+    <a class="tk-topbar__logo" href="../">
+      <span class="sq" style="width:11px;height:11px;background:#0C447C;flex-shrink:0;"></span>
+      <span class="wm">Agile Toolkit</span>
+    </a>
+    <span class="tk-topbar__sep"></span>
+    <span class="tk-topbar__tool">Administration</span>
+    <div class="tk-topbar__actions adm-topbar__user" id="topbar-user" style="display:none;">
+      <span class="adm-topbar__name" id="topbar-username"></span>
+      <button class="tk-btn tk-btn--on-dark" id="btn-logout" type="button">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="tk-container">
+
+    <div id="gate-screen">
+      <p style="color:var(--muted);font-size:13px;">Vérification de la session…</p>
+    </div>
+
+    <div id="denied-screen" style="display:none;">
+      <div class="adm-card" style="max-width:420px;text-align:center;">
+        <h3>Accès non autorisé</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+          Votre compte n'a pas le rôle "Administration". Retournez à l'accueil.
+        </p>
+        <a class="tk-btn tk-btn--accent" href="../">Retour à l'accueil</a>
+      </div>
+    </div>
+
+    <div id="app-screen" class="adm-main">
+      <div class="adm-head">
+        <h1>Administration des accès</h1>
+      </div>
+
+      <nav class="adm-tabs">
+        <button class="adm-tab is-active" data-tab="roles" type="button">Rôles</button>
+        <button class="adm-tab" data-tab="utilisateurs" type="button">Utilisateurs</button>
+        <button class="adm-tab" data-tab="journal" type="button">Journal de connexion</button>
+      </nav>
+
+      <!-- ── Rôles ─────────────────────────────────────────── -->
+      <section class="adm-panel is-active" id="panel-roles">
+        <div class="adm-msg" id="roles-msg"></div>
+
+        <div class="adm-card">
+          <h3 id="role-form-title">Nouveau rôle</h3>
+          <form id="role-form">
+            <input type="hidden" id="role-id">
+            <div class="adm-field">
+              <label for="role-nom">Nom du rôle</label>
+              <input class="adm-input" id="role-nom" required maxlength="60" placeholder="ex. Chef de projet">
+            </div>
+            <div class="adm-field">
+              <label for="role-desc">Description (optionnel)</label>
+              <input class="adm-input" id="role-desc" maxlength="200">
+            </div>
+            <div class="adm-field">
+              <label>Outils accessibles</label>
+              <div class="adm-check-grid" id="role-outils-grid"></div>
+            </div>
+            <div class="adm-row-actions">
+              <button class="tk-btn tk-btn--accent" type="submit">Enregistrer</button>
+              <button class="tk-btn tk-btn--ghost" type="button" id="role-form-cancel" style="display:none;">Annuler la modification</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="adm-toolbar">
+          <strong style="font-size:13px;">Rôles existants</strong>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead><tr><th>Nom</th><th>Outils</th><th></th></tr></thead>
+            <tbody id="roles-tbody"><tr><td colspan="3" style="color:var(--muted);">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Utilisateurs ──────────────────────────────────── -->
+      <section class="adm-panel" id="panel-utilisateurs">
+        <div class="adm-msg" id="users-msg"></div>
+
+        <div class="adm-card">
+          <h3>Nouveau compte utilisateur</h3>
+          <form id="user-form">
+            <div class="adm-field">
+              <label for="user-nom">Nom d'utilisateur</label>
+              <input class="adm-input" id="user-nom" required placeholder="ex. jchevalier" pattern="[a-z0-9._-]{3,32}">
+              <span class="adm-hint">Minuscules, chiffres, points, tirets — 3 à 32 caractères. Pas d'adresse e-mail.</span>
+            </div>
+            <div class="adm-field">
+              <label for="user-pass">Mot de passe temporaire</label>
+              <div class="adm-newpass">
+                <input class="adm-input" id="user-pass" required minlength="8">
+                <button class="tk-btn tk-btn--ghost" type="button" id="user-pass-regen">Régénérer</button>
+              </div>
+              <span class="adm-hint">Proposé automatiquement. L'utilisateur devra le remplacer dès sa première connexion.</span>
+            </div>
+            <div class="adm-field">
+              <label>Rôles</label>
+              <div class="adm-check-grid" id="user-roles-grid"></div>
+            </div>
+            <button class="tk-btn tk-btn--accent" type="submit">Créer le compte</button>
+          </form>
+        </div>
+
+        <div class="adm-card" id="user-roles-editor" style="display:none;">
+          <h3 id="user-roles-editor-title">Rôles du compte</h3>
+          <form id="user-roles-form">
+            <input type="hidden" id="user-roles-edit-id">
+            <div class="adm-check-grid" id="user-roles-edit-grid"></div>
+            <div class="adm-row-actions" style="margin-top:14px;">
+              <button class="tk-btn tk-btn--accent" type="submit">Enregistrer</button>
+              <button class="tk-btn tk-btn--ghost" type="button" id="user-roles-cancel">Annuler</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="adm-toolbar">
+          <strong style="font-size:13px;">Comptes existants</strong>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead><tr><th>Utilisateur</th><th>Rôles</th><th>Statut</th><th>Dernière connexion</th><th></th></tr></thead>
+            <tbody id="users-tbody"><tr><td colspan="5" style="color:var(--muted);">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+
+        <p class="adm-hint" style="margin-top:14px;">
+          Réinitialiser le mot de passe d'un compte existant se fait depuis le tableau de bord
+          Supabase (Authentication → Users), avec l'anon key utilisée ici, ce n'est pas possible
+          de le faire depuis cet écran — voir <code>acces/README.md</code>. Vous pouvez en revanche
+          forcer la demande d'un nouveau mot de passe à la prochaine connexion.
+        </p>
+      </section>
+
+      <!-- ── Journal de connexion ──────────────────────────── -->
+      <section class="adm-panel" id="panel-journal">
+        <div class="adm-toolbar">
+          <input class="adm-input" id="journal-filtre" placeholder="Filtrer par nom d'utilisateur…" style="max-width:280px;">
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead><tr><th>Utilisateur</th><th>Date de connexion</th></tr></thead>
+            <tbody id="journal-tbody"><tr><td colspan="2" style="color:var(--muted);">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+        <div style="text-align:center;margin-top:14px;">
+          <button class="tk-btn tk-btn--ghost" id="journal-plus" type="button">Charger plus</button>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="auth.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.PlanifAuth;
+  var client = A.getClient();
+  var state = { roles: [], journalOffset: 0, journalPageSize: 50 };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }); }
+    catch (e) { return iso; }
+  }
+  function showMsg(elId, text, ok) {
+    var el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = 'adm-msg ' + (ok ? 'is-ok' : 'is-error');
+  }
+  function clearMsg(elId) {
+    var el = document.getElementById(elId);
+    el.className = 'adm-msg';
+  }
+
+  function buildOutilsGrid(container, checkedSlugs) {
+    container.innerHTML = A.OUTILS.map(function (o) {
+      var checked = checkedSlugs && checkedSlugs.indexOf(o.slug) !== -1;
+      return '<label class="adm-check"><input type="checkbox" value="' + esc(o.slug) + '"' +
+        (checked ? ' checked' : '') + '> ' + esc(o.label) + '</label>';
+    }).join('');
+  }
+  function checkedValues(container) {
+    return Array.prototype.slice.call(container.querySelectorAll('input[type=checkbox]:checked')).map(function (c) { return c.value; });
+  }
+
+  /* ── Onglets ────────────────────────────────────────────── */
+  document.querySelectorAll('.adm-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.adm-tab').forEach(function (b) { b.classList.remove('is-active'); });
+      document.querySelectorAll('.adm-panel').forEach(function (p) { p.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('is-active');
+    });
+  });
+
+  /* ── Rôles ──────────────────────────────────────────────── */
+  var roleForm = document.getElementById('role-form');
+  var roleOutilsGrid = document.getElementById('role-outils-grid');
+  buildOutilsGrid(roleOutilsGrid, []);
+
+  async function chargerRoles() {
+    var rolesRes = await client.from('roles').select('id, nom, description').order('nom');
+    if (rolesRes.error) { showMsg('roles-msg', rolesRes.error.message, false); return; }
+    var outilsRes = await client.from('role_outils').select('role_id, outil');
+    if (outilsRes.error) { showMsg('roles-msg', outilsRes.error.message, false); return; }
+
+    var outilsParRole = {};
+    (outilsRes.data || []).forEach(function (r) {
+      (outilsParRole[r.role_id] = outilsParRole[r.role_id] || []).push(r.outil);
+    });
+
+    state.roles = (rolesRes.data || []).map(function (r) {
+      return { id: r.id, nom: r.nom, description: r.description, outils: outilsParRole[r.id] || [] };
+    });
+
+    var tbody = document.getElementById('roles-tbody');
+    if (!state.roles.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);">Aucun rôle pour l\'instant.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.roles.map(function (r) {
+      var labelBySlug = {};
+      A.OUTILS.forEach(function (o) { labelBySlug[o.slug] = o.label; });
+      var chips = r.outils.map(function (s) {
+        return '<span class="chip' + (s === 'admin' ? ' chip--accent' : '') + '">' + esc(labelBySlug[s] || s) + '</span>';
+      }).join('') || '<span style="color:var(--muted);font-size:12px;">Aucun</span>';
+      return '<tr data-id="' + r.id + '">' +
+        '<td><strong>' + esc(r.nom) + '</strong>' + (r.description ? '<div class="adm-hint">' + esc(r.description) + '</div>' : '') + '</td>' +
+        '<td>' + chips + '</td>' +
+        '<td><div class="adm-row-actions">' +
+          '<button class="tk-btn tk-btn--ghost btn-role-edit" type="button">Modifier</button>' +
+          '<button class="tk-btn tk-btn--ghost btn-role-del" type="button">Supprimer</button>' +
+        '</div></td></tr>';
+    }).join('');
+
+    tbody.querySelectorAll('.btn-role-edit').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.closest('tr').dataset.id;
+        var role = state.roles.filter(function (r) { return String(r.id) === id; })[0];
+        if (!role) return;
+        document.getElementById('role-id').value = role.id;
+        document.getElementById('role-nom').value = role.nom;
+        document.getElementById('role-desc').value = role.description || '';
+        buildOutilsGrid(roleOutilsGrid, role.outils);
+        document.getElementById('role-form-title').textContent = 'Modifier « ' + role.nom + ' »';
+        document.getElementById('role-form-cancel').style.display = '';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+    tbody.querySelectorAll('.btn-role-del').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var id = btn.closest('tr').dataset.id;
+        var role = state.roles.filter(function (r) { return String(r.id) === id; })[0];
+        if (!role) return;
+        if (!confirm('Supprimer le rôle « ' + role.nom + ' » ? Les comptes qui l\'utilisent perdront les accès qu\'il donnait.')) return;
+        var res = await client.from('roles').delete().eq('id', id);
+        if (res.error) { showMsg('roles-msg', res.error.message, false); return; }
+        showMsg('roles-msg', 'Rôle supprimé.', true);
+        chargerRoles(); chargerUtilisateurs();
+      });
+    });
+  }
+
+  document.getElementById('role-form-cancel').addEventListener('click', function () {
+    roleForm.reset();
+    document.getElementById('role-id').value = '';
+    buildOutilsGrid(roleOutilsGrid, []);
+    document.getElementById('role-form-title').textContent = 'Nouveau rôle';
+    this.style.display = 'none';
+  });
+
+  roleForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    clearMsg('roles-msg');
+    var id = document.getElementById('role-id').value;
+    var nom = document.getElementById('role-nom').value.trim();
+    var description = document.getElementById('role-desc').value.trim() || null;
+    var outils = checkedValues(roleOutilsGrid);
+    if (!nom) return;
+
+    var res;
+    if (id) {
+      res = await client.from('roles').update({ nom: nom, description: description }).eq('id', id);
+    } else {
+      res = await client.from('roles').insert({ nom: nom, description: description }).select('id').single();
+    }
+    if (res.error) { showMsg('roles-msg', res.error.message, false); return; }
+    var roleId = id || res.data.id;
+
+    // Recalcule la liste des outils du rôle (supprime puis ré-insère —
+    // suffisant vu le volume, pas besoin d'un diff plus fin).
+    var delRes = await client.from('role_outils').delete().eq('role_id', roleId);
+    if (delRes.error) { showMsg('roles-msg', delRes.error.message, false); return; }
+    if (outils.length) {
+      var insRes = await client.from('role_outils').insert(outils.map(function (o) { return { role_id: roleId, outil: o }; }));
+      if (insRes.error) { showMsg('roles-msg', insRes.error.message, false); return; }
+    }
+
+    showMsg('roles-msg', 'Rôle enregistré.', true);
+    roleForm.reset();
+    document.getElementById('role-id').value = '';
+    buildOutilsGrid(roleOutilsGrid, []);
+    document.getElementById('role-form-title').textContent = 'Nouveau rôle';
+    document.getElementById('role-form-cancel').style.display = 'none';
+    chargerRoles();
+  });
+
+  /* ── Utilisateurs ───────────────────────────────────────── */
+  var userForm = document.getElementById('user-form');
+  var userRolesGrid = document.getElementById('user-roles-grid');
+  document.getElementById('user-pass').value = A.genererMotDePasseTemporaire();
+  document.getElementById('user-pass-regen').addEventListener('click', function () {
+    document.getElementById('user-pass').value = A.genererMotDePasseTemporaire();
+  });
+
+  function refreshUserRolesGrid() {
+    userRolesGrid.innerHTML = state.roles.map(function (r) {
+      return '<label class="adm-check"><input type="checkbox" value="' + r.id + '"> ' + esc(r.nom) + '</label>';
+    }).join('') || '<span class="adm-hint">Créez d\'abord un rôle dans l\'onglet « Rôles ».</span>';
+  }
+
+  async function chargerUtilisateurs() {
+    var profilsRes = await client.from('profils').select('id, nom_utilisateur, actif, doit_changer_mot_de_passe').order('nom_utilisateur');
+    if (profilsRes.error) { showMsg('users-msg', profilsRes.error.message, false); return; }
+    var urRes = await client.from('utilisateur_roles').select('utilisateur_id, role_id');
+    if (urRes.error) { showMsg('users-msg', urRes.error.message, false); return; }
+    var connRes = await client.from('connexions').select('utilisateur_id, date_heure').order('date_heure', { ascending: false });
+    if (connRes.error) { showMsg('users-msg', connRes.error.message, false); return; }
+
+    var rolesById = {};
+    state.roles.forEach(function (r) { rolesById[r.id] = r.nom; });
+    var rolesParUser = {};
+    (urRes.data || []).forEach(function (r) { (rolesParUser[r.utilisateur_id] = rolesParUser[r.utilisateur_id] || []).push(r.role_id); });
+    var derniereParUser = {};
+    (connRes.data || []).forEach(function (c) { if (!derniereParUser[c.utilisateur_id]) derniereParUser[c.utilisateur_id] = c.date_heure; });
+
+    var tbody = document.getElementById('users-tbody');
+    var profils = profilsRes.data || [];
+    if (!profils.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);">Aucun compte pour l\'instant.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = profils.map(function (u) {
+      var roleIds = rolesParUser[u.id] || [];
+      var chips = roleIds.map(function (rid) { return '<span class="chip">' + esc(rolesById[rid] || '?') + '</span>'; }).join('') ||
+        '<span style="color:var(--muted);font-size:12px;">Aucun</span>';
+      var statutChip = u.actif ? '<span class="tk-badge tk-badge--ok tk-badge--dot">Actif</span>' : '<span class="tk-badge tk-badge--alert">Désactivé</span>';
+      if (u.doit_changer_mot_de_passe) statutChip += ' <span class="tk-badge tk-badge--muted">MDP à changer</span>';
+      var derniere = derniereParUser[u.id] ? fmtDate(derniereParUser[u.id]) : '<span style="color:var(--muted);">Jamais</span>';
+      return '<tr data-id="' + u.id + '">' +
+        '<td><strong>' + esc(u.nom_utilisateur) + '</strong></td>' +
+        '<td>' + chips + '</td>' +
+        '<td>' + statutChip + '</td>' +
+        '<td>' + derniere + '</td>' +
+        '<td><div class="adm-row-actions">' +
+          '<button class="tk-btn tk-btn--ghost btn-user-roles" type="button">Rôles…</button>' +
+          '<button class="tk-btn tk-btn--ghost btn-user-toggle" type="button">' + (u.actif ? 'Désactiver' : 'Activer') + '</button>' +
+          '<button class="tk-btn tk-btn--ghost btn-user-forcepass" type="button">Forcer nouveau MDP</button>' +
+        '</div></td></tr>';
+    }).join('');
+
+    tbody.querySelectorAll('.btn-user-toggle').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var id = btn.closest('tr').dataset.id;
+        var u = profils.filter(function (p) { return p.id === id; })[0];
+        var res = await client.from('profils').update({ actif: !u.actif }).eq('id', id);
+        if (res.error) { showMsg('users-msg', res.error.message, false); return; }
+        showMsg('users-msg', 'Statut mis à jour.', true);
+        chargerUtilisateurs();
+      });
+    });
+    tbody.querySelectorAll('.btn-user-forcepass').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var id = btn.closest('tr').dataset.id;
+        var res = await client.from('profils').update({ doit_changer_mot_de_passe: true }).eq('id', id);
+        if (res.error) { showMsg('users-msg', res.error.message, false); return; }
+        showMsg('users-msg', 'Un nouveau mot de passe sera demandé à la prochaine connexion.', true);
+        chargerUtilisateurs();
+      });
+    });
+    tbody.querySelectorAll('.btn-user-roles').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.closest('tr').dataset.id;
+        var nom = profils.filter(function (p) { return p.id === id; })[0].nom_utilisateur;
+        var current = rolesParUser[id] || [];
+        document.getElementById('user-roles-edit-id').value = id;
+        document.getElementById('user-roles-editor-title').textContent = 'Rôles de « ' + nom + ' »';
+        var grid = document.getElementById('user-roles-edit-grid');
+        grid.innerHTML = state.roles.map(function (r) {
+          var checked = current.indexOf(r.id) !== -1;
+          return '<label class="adm-check"><input type="checkbox" value="' + r.id + '"' + (checked ? ' checked' : '') + '> ' + esc(r.nom) + '</label>';
+        }).join('') || '<span class="adm-hint">Créez d\'abord un rôle dans l\'onglet « Rôles ».</span>';
+        document.getElementById('user-roles-editor').style.display = 'block';
+        document.getElementById('user-roles-editor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  }
+
+  document.getElementById('user-roles-cancel').addEventListener('click', function () {
+    document.getElementById('user-roles-editor').style.display = 'none';
+  });
+
+  document.getElementById('user-roles-form').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    clearMsg('users-msg');
+    var id = document.getElementById('user-roles-edit-id').value;
+    var roleIds = checkedValues(document.getElementById('user-roles-edit-grid'));
+    var delRes = await client.from('utilisateur_roles').delete().eq('utilisateur_id', id);
+    if (delRes.error) { showMsg('users-msg', delRes.error.message, false); return; }
+    if (roleIds.length) {
+      var insRes = await client.from('utilisateur_roles').insert(roleIds.map(function (rid) { return { utilisateur_id: id, role_id: rid }; }));
+      if (insRes.error) { showMsg('users-msg', insRes.error.message, false); return; }
+    }
+    showMsg('users-msg', 'Rôles mis à jour.', true);
+    document.getElementById('user-roles-editor').style.display = 'none';
+    chargerUtilisateurs();
+  });
+
+  userForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    clearMsg('users-msg');
+    var nom = A.normaliserNomUtilisateur(document.getElementById('user-nom').value);
+    var pass = document.getElementById('user-pass').value;
+    var roleIds = checkedValues(userRolesGrid);
+
+    if (!A.nomUtilisateurValide(nom)) { showMsg('users-msg', "Nom d'utilisateur invalide (minuscules/chiffres/points/tirets, 3 à 32 caractères).", false); return; }
+    if (pass.length < 8) { showMsg('users-msg', 'Le mot de passe doit faire au moins 8 caractères.', false); return; }
+
+    // Client jetable : la création (signUp) ne doit jamais remplacer
+    // la session de l'administrateur actuellement connecté sur le
+    // client principal.
+    var clientJetable = supabase.createClient(window.ACCES_CONFIG.url, window.ACCES_CONFIG.key, { auth: { persistSession: false, autoRefreshToken: false } });
+    var signUpRes = await clientJetable.auth.signUp({ email: A.emailInterne(nom), password: pass });
+    if (signUpRes.error) { showMsg('users-msg', signUpRes.error.message, false); return; }
+    var newId = signUpRes.data.user && signUpRes.data.user.id;
+    if (!newId) { showMsg('users-msg', "Compte non créé (confirmation d'e-mail probablement encore active côté Supabase — voir acces/README.md).", false); return; }
+
+    var profilRes = await client.from('profils').insert({ id: newId, nom_utilisateur: nom, actif: true, doit_changer_mot_de_passe: true });
+    if (profilRes.error) { showMsg('users-msg', profilRes.error.message, false); return; }
+
+    if (roleIds.length) {
+      var urInsRes = await client.from('utilisateur_roles').insert(roleIds.map(function (rid) { return { utilisateur_id: newId, role_id: rid }; }));
+      if (urInsRes.error) { showMsg('users-msg', urInsRes.error.message, false); return; }
+    }
+
+    showMsg('users-msg', 'Compte « ' + nom + ' » créé. Mot de passe temporaire à transmettre : ' + pass, true);
+    document.getElementById('user-nom').value = '';
+    document.getElementById('user-pass').value = A.genererMotDePasseTemporaire();
+    userRolesGrid.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });
+    chargerUtilisateurs();
+  });
+
+  /* ── Journal ────────────────────────────────────────────── */
+  async function chargerJournal(reset) {
+    if (reset) state.journalOffset = 0;
+    var q = client.from('connexions').select('date_heure, profils!inner(nom_utilisateur)').order('date_heure', { ascending: false })
+      .range(state.journalOffset, state.journalOffset + state.journalPageSize - 1);
+    var filtre = document.getElementById('journal-filtre').value.trim();
+    if (filtre) q = q.ilike('profils.nom_utilisateur', '%' + filtre + '%');
+    var res = await q;
+    var tbody = document.getElementById('journal-tbody');
+    if (res.error) { tbody.innerHTML = '<tr><td colspan="2" style="color:var(--red);">' + esc(res.error.message) + '</td></tr>'; return; }
+    var rows = (res.data || []).map(function (c) {
+      return '<tr><td>' + esc(c.profils.nom_utilisateur) + '</td><td>' + fmtDate(c.date_heure) + '</td></tr>';
+    }).join('');
+    if (reset || state.journalOffset === 0) tbody.innerHTML = rows || '<tr><td colspan="2" style="color:var(--muted);">Aucune connexion enregistrée.</td></tr>';
+    else tbody.innerHTML += rows;
+    state.journalOffset += state.journalPageSize;
+  }
+  document.getElementById('journal-plus').addEventListener('click', function () { chargerJournal(false); });
+  document.getElementById('journal-filtre').addEventListener('input', function () {
+    clearTimeout(this._t);
+    this._t = setTimeout(function () { chargerJournal(true); }, 300);
+  });
+
+  /* ── Amorçage de la page ────────────────────────────────── */
+  document.getElementById('btn-logout').addEventListener('click', async function () {
+    await A.seDeconnecter();
+    location.href = '../';
+  });
+
+  (async function init() {
+    var session = await A.getSession();
+    if (!session) { location.href = '../'; return; }
+    var profil = await A.monProfil();
+    if (!profil || !profil.actif || profil.doit_changer_mot_de_passe) { location.href = '../'; return; }
+    var outils = await A.mesOutils();
+    if (outils.indexOf('admin') === -1) {
+      document.getElementById('gate-screen').style.display = 'none';
+      document.getElementById('denied-screen').style.display = 'flex';
+      return;
+    }
+
+    document.getElementById('topbar-username').textContent = profil.nom_utilisateur;
+    document.getElementById('topbar-user').style.display = '';
+    document.getElementById('gate-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+
+    await chargerRoles();
+    refreshUserRolesGrid();
+    await chargerUtilisateurs();
+    await chargerJournal(true);
+  })();
+})();
+</script>
+</body>
+</html>
