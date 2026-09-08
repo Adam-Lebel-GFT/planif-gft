@@ -7,23 +7,27 @@ rôles, comptes utilisateurs et journal de connexion. Voir
 Il s'appuie sur le projet Supabase déjà utilisé par `poker-planning`
 (même URL/clé, voir `acces/config.js`).
 
-## 1. Exécuter le schéma SQL
+## 1. Exécuter le schéma SQL — ✅ déjà fait
 
-Dans le tableau de bord Supabase du projet → **SQL Editor** → coller le
-contenu de `acces/schema.sql` → **Run**.
+Le schéma a été appliqué directement au projet Supabase (`lyahaxyexgjxpezemwhv`)
+via le connecteur Supabase de Claude. Les tables (`roles`, `role_outils`,
+`profils`, `utilisateur_roles`, `connexions`), la sécurité (Row Level
+Security, durcie suite aux advisors : fonctions non appelables par
+`anon`) et le rôle **Admin** par défaut sont en place. `acces/schema.sql`
+reflète exactement cet état — il reste utile si vous deviez un jour
+recréer ce schéma sur un autre projet Supabase (il est idempotent, on
+peut le relancer sans dupliquer les données).
 
-Le script est idempotent (peut être relancé sans dupliquer les données).
-Il crée les tables (`roles`, `role_outils`, `profils`, `utilisateur_roles`,
-`connexions`), la sécurité (Row Level Security) et un rôle **Admin** par
-défaut avec accès à tous les outils.
-
-## 2. Désactiver la confirmation par e-mail
+## 2. Désactiver la confirmation par e-mail — à faire à la main
 
 Comme il n'y a pas d'adresse e-mail réelle (voir l'analyse fonctionnelle,
 §7), les comptes utilisent en interne une adresse technique invisible
 (`nom.utilisateur@planif-gft.local`). Il faut donc désactiver la
 confirmation par e-mail, sans quoi un compte fraîchement créé resterait
-bloqué en attente d'un e-mail qui n'arrivera jamais :
+bloqué en attente d'un e-mail qui n'arrivera jamais. C'est un réglage
+d'authentification, pas un réglage de base de données : le connecteur
+Supabase de Claude ne l'expose pas, il se fait uniquement depuis le
+tableau de bord :
 
 Tableau de bord Supabase → **Authentication** → **Sign In / Providers** →
 **Email** → désactiver **Confirm email**.
@@ -32,8 +36,14 @@ Tableau de bord Supabase → **Authentication** → **Sign In / Providers** →
 
 Le premier compte ne peut pas être créé depuis l'écran "Utilisateurs" de
 l'application, puisque cet écran est lui-même réservé aux administrateurs
-(en créer un nécessite déjà d'en être un). Il se crée donc une seule fois,
-à la main :
+(en créer un nécessite déjà d'en être un). La création du compte
+Supabase Auth lui-même (étape 1 ci-dessous) doit se faire depuis le
+tableau de bord — le connecteur ne l'expose pas non plus, et c'est
+volontaire : créer un utilisateur Auth par SQL brut est fragile
+(plusieurs tables internes à faire concorder). En revanche, une fois ce
+compte créé, Claude peut faire l'étape 2 (le relier au rôle "Admin")
+directement via le connecteur — donnez simplement le nom d'utilisateur
+choisi.
 
 1. Tableau de bord Supabase → **Authentication** → **Users** → **Add
    user** :
@@ -41,13 +51,11 @@ l'application, puisque cet écran est lui-même réservé aux administrateurs
      d'utilisateur souhaité)
    - Password : le mot de passe que vous voulez utiliser
    - Cochez **Auto Confirm User**
-   - Notez l'**UUID** du compte créé (colonne `UID`, visible dans la liste
-     après création).
-2. Toujours dans le **SQL Editor**, exécutez (en remplaçant `<uuid>` et
-   `votrenom`) :
+2. Dites à Claude le nom d'utilisateur choisi — il retrouve le compte et
+   exécute pour vous :
    ```sql
    insert into public.profils (id, nom_utilisateur, actif, doit_changer_mot_de_passe)
-   values ('<uuid>', 'votrenom', true, false);
+   values ('<uuid trouvé via auth.users>', 'votrenom', true, false);
 
    insert into public.utilisateur_roles (utilisateur_id, role_id)
    select '<uuid>', id from public.roles where nom = 'Admin';

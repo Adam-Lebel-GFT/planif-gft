@@ -51,6 +51,7 @@ create table if not exists public.utilisateur_roles (
   role_id        bigint not null references public.roles(id) on delete cascade,
   primary key (utilisateur_id, role_id)
 );
+create index if not exists utilisateur_roles_role_id_idx on public.utilisateur_roles (role_id);
 
 -- ── Journal de connexion ──────────────────────────────────────────
 create table if not exists public.connexions (
@@ -94,6 +95,11 @@ as $$
       and ro.outil = 'admin'
   );
 $$;
+-- Supabase accorde EXECUTE à anon + authenticated par défaut sur toute
+-- nouvelle fonction (ALTER DEFAULT PRIVILEGES du projet) : cette
+-- fonction n'a pas besoin d'être appelable sans être connecté.
+revoke execute on function public.est_admin() from anon;
+grant execute on function public.est_admin() to authenticated;
 
 -- Rôles / outils des rôles : gestion réservée à l'admin (écran
 -- "Rôles"). Un utilisateur standard n'a pas besoin de lire ces tables
@@ -110,7 +116,7 @@ create policy "profils_admin_all" on public.profils
   for all using (public.est_admin()) with check (public.est_admin());
 
 create policy "profils_self_select" on public.profils
-  for select using (auth.uid() = id);
+  for select using ((select auth.uid()) = id);
 
 -- Rôles attribués aux utilisateurs : réservé à l'admin (écran
 -- "Utilisateurs").
@@ -120,7 +126,7 @@ create policy "utilisateur_roles_admin_all" on public.utilisateur_roles
 -- Journal de connexion : chacun peut ajouter SA propre ligne (login),
 -- seul l'admin peut le consulter (écran "Journal de connexion").
 create policy "connexions_self_insert" on public.connexions
-  for insert with check (auth.uid() = utilisateur_id);
+  for insert with check ((select auth.uid()) = utilisateur_id);
 
 create policy "connexions_admin_select" on public.connexions
   for select using (public.est_admin());
@@ -143,6 +149,7 @@ as $$
   where ur.utilisateur_id = auth.uid()
     and p.actif = true;
 $$;
+revoke execute on function public.mes_outils() from anon;
 grant execute on function public.mes_outils() to authenticated;
 
 -- Fonction appelée une fois le nouveau mot de passe créé, à la
@@ -160,6 +167,7 @@ as $$
   set doit_changer_mot_de_passe = false
   where id = auth.uid();
 $$;
+revoke execute on function public.marquer_mot_de_passe_change() from anon;
 grant execute on function public.marquer_mot_de_passe_change() to authenticated;
 
 -- ── Rôle "Admin" par défaut ────────────────────────────────────────
