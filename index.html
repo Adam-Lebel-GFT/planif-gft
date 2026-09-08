@@ -112,6 +112,31 @@
   font-size: 12px; color: var(--muted);
 }
 .lnk-footer .mono { font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; font-size: 10px; }
+
+/* ── Barre : tag + zone utilisateur ─────────────────────── */
+.lnk-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.lnk-topbar-user { display: none; align-items: center; gap: 10px; }
+.lnk-topbar-user .name { font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,.6); }
+
+/* ── Écrans d'accès (login / changement de mot de passe) ──── */
+.acc-screen { min-height: 70vh; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }
+.acc-card {
+  width: 100%; max-width: 380px; background: var(--white);
+  border: 1.5px solid var(--border); border-radius: var(--radius-2);
+  padding: 30px 28px; box-shadow: var(--shadow);
+}
+.acc-card h2 { font-size: 19px; font-weight: 800; color: var(--navy); letter-spacing: -.3px; margin-bottom: 6px; }
+.acc-card .acc-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; line-height: 1.5; }
+.acc-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.acc-field label { font-size: 12px; font-weight: 700; color: var(--navy); }
+.acc-input {
+  padding: 10px 12px; font-family: var(--font); font-size: 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius); color: var(--text);
+}
+.acc-input:focus { outline: none; border-color: var(--accent); }
+.acc-msg { font-size: 12.5px; padding: 8px 11px; border-radius: var(--radius); margin-bottom: 14px; display: none; }
+.acc-msg.is-error { display: block; background: var(--red-bg); color: var(--red); }
+.acc-msg.is-ok { display: block; background: var(--green-bg); color: var(--green); }
 </style>
 </head>
 <body class="tk">
@@ -121,10 +146,55 @@
       <span class="sq" aria-hidden="true"></span>
       <span class="wm">Agile Toolkit</span>
     </a>
-    <span class="tag">Plateforme&nbsp;d'outils</span>
+    <div class="lnk-topbar-right">
+      <span class="tag">Plateforme&nbsp;d'outils</span>
+      <div class="lnk-topbar-user" id="topbar-user">
+        <a class="tk-btn tk-btn--on-dark" id="link-admin" href="acces/admin.html" style="display:none;">Administration</a>
+        <span class="name" id="topbar-username"></span>
+        <button class="tk-btn tk-btn--on-dark" id="btn-logout" type="button">Déconnexion</button>
+      </div>
+    </div>
   </header>
 
-  <main class="tk-container">
+  <div id="gate-screen" class="acc-screen">
+    <p style="color:var(--muted);font-size:13px;">Vérification de la session…</p>
+  </div>
+
+  <div id="login-screen" class="acc-screen" style="display:none;">
+    <form id="login-form" class="acc-card">
+      <h2>Connexion</h2>
+      <p class="acc-sub">Accès réservé — saisissez les identifiants qui vous ont été transmis.</p>
+      <div class="acc-field">
+        <label for="login-user">Nom d'utilisateur</label>
+        <input id="login-user" class="acc-input" autocomplete="username" required>
+      </div>
+      <div class="acc-field">
+        <label for="login-pass">Mot de passe</label>
+        <input id="login-pass" type="password" class="acc-input" autocomplete="current-password" required>
+      </div>
+      <div class="acc-msg" id="login-msg"></div>
+      <button class="tk-btn tk-btn--accent" type="submit" style="width:100%;">Se connecter</button>
+    </form>
+  </div>
+
+  <div id="password-screen" class="acc-screen" style="display:none;">
+    <form id="password-form" class="acc-card">
+      <h2>Créer votre mot de passe</h2>
+      <p class="acc-sub">Première connexion : remplacez le mot de passe temporaire par le vôtre.</p>
+      <div class="acc-field">
+        <label for="pw-new">Nouveau mot de passe</label>
+        <input id="pw-new" type="password" class="acc-input" minlength="8" required autocomplete="new-password">
+      </div>
+      <div class="acc-field">
+        <label for="pw-confirm">Confirmer le mot de passe</label>
+        <input id="pw-confirm" type="password" class="acc-input" minlength="8" required autocomplete="new-password">
+      </div>
+      <div class="acc-msg" id="password-msg"></div>
+      <button class="tk-btn tk-btn--accent" type="submit" style="width:100%;">Valider</button>
+    </form>
+  </div>
+
+  <main class="tk-container" id="app-main" style="display:none;">
 
     <section class="hero">
       <span class="tk-eyebrow">Suite&nbsp;agile</span>
@@ -138,7 +208,7 @@
     <section class="tools" aria-label="Outils disponibles">
 
       <!-- Outil 1 : Sprint Planning (disponible) -->
-      <a class="tool tk-card tk-card--hover is-available" href="./sprint-planning/">
+      <a class="tool tk-card tk-card--hover is-available" href="./sprint-planning/" data-outil="sprint-planning">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">📊</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
@@ -152,7 +222,7 @@
       </a>
 
       <!-- Outil 2 : Poker Planning (maquette) -->
-      <a class="tool tk-card tk-card--hover is-preview" href="./poker-planning/">
+      <a class="tool tk-card tk-card--hover is-preview" href="./poker-planning/" data-outil="poker-planning">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">🃏</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">BETA</span>
@@ -166,7 +236,7 @@
       </a>
 
       <!-- Outil 3 : Analyse de capacité (disponible) -->
-      <a class="tool tk-card tk-card--hover is-available" href="./analyse-capacite/">
+      <a class="tool tk-card tk-card--hover is-available" href="./analyse-capacite/" data-outil="analyse-capacite">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">📈</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
@@ -180,7 +250,7 @@
       </a>
 
       <!-- Outil 4 : Whiteboard (disponible) -->
-      <a class="tool tk-card tk-card--hover is-available" href="./whiteboard/">
+      <a class="tool tk-card tk-card--hover is-available" href="./whiteboard/" data-outil="whiteboard">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">✏️</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
@@ -195,7 +265,7 @@
       </a>
 
       <!-- Outil 5 : Plan de livraisons (maquette) -->
-      <a class="tool tk-card tk-card--hover is-preview" href="./releases-planning/">
+      <a class="tool tk-card tk-card--hover is-preview" href="./releases-planning/" data-outil="releases-planning">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">🚆</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">BETA</span>
@@ -209,7 +279,7 @@
       </a>
 
       <!-- Outil 6 : Bug Dashboard (disponible) -->
-      <a class="tool tk-card tk-card--hover is-available" href="./bug-dashboard/">
+      <a class="tool tk-card tk-card--hover is-available" href="./bug-dashboard/" data-outil="bug-dashboard">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">🐞</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
@@ -240,5 +310,92 @@
 
   </main>
 
+<script src="acces/config.js"></script>
+<script src="acces/supabase.js"></script>
+<script src="acces/auth.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.PlanifAuth;
+
+  function show(id) { document.getElementById(id).style.display = ''; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+  function showMsg(elId, text) {
+    var el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = 'acc-msg is-error';
+  }
+  function clearMsg(elId) {
+    document.getElementById(elId).className = 'acc-msg';
+  }
+
+  function afficherApp(profil, outils) {
+    hide('gate-screen'); hide('login-screen'); hide('password-screen');
+    document.querySelectorAll('.tool[data-outil]').forEach(function (a) {
+      a.style.display = outils.indexOf(a.getAttribute('data-outil')) === -1 ? 'none' : '';
+    });
+    if (outils.indexOf('admin') !== -1) show('link-admin');
+    document.getElementById('topbar-username').textContent = profil.nom_utilisateur;
+    document.getElementById('topbar-user').style.display = 'flex';
+    show('app-main');
+  }
+
+  // logConnexion : une ligne au journal ne doit être ajoutée qu'à une
+  // vraie connexion (formulaire de login, ou fin du changement de mot
+  // de passe forcé) — pas à chaque simple rechargement de page avec
+  // une session encore active.
+  async function apresConnexion(logConnexion) {
+    var profil = await A.monProfil();
+    if (!profil || !profil.actif) {
+      await A.seDeconnecter();
+      hide('password-screen'); hide('gate-screen'); show('login-screen');
+      showMsg('login-msg', 'Ce compte est désactivé ou introuvable. Contactez votre administrateur.');
+      return;
+    }
+    if (profil.doit_changer_mot_de_passe) {
+      hide('gate-screen'); hide('login-screen'); show('password-screen');
+      return;
+    }
+    if (logConnexion) await A.enregistrerConnexion();
+    var outils = await A.mesOutils();
+    afficherApp(profil, outils);
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    clearMsg('login-msg');
+    var user = document.getElementById('login-user').value;
+    var pass = document.getElementById('login-pass').value;
+    var res = await A.seConnecter(user, pass);
+    if (res.error) { showMsg('login-msg', 'Nom d\'utilisateur ou mot de passe incorrect.'); return; }
+    await apresConnexion(true);
+  });
+
+  document.getElementById('password-form').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    clearMsg('password-msg');
+    var p1 = document.getElementById('pw-new').value;
+    var p2 = document.getElementById('pw-confirm').value;
+    if (p1 !== p2) { showMsg('password-msg', 'Les deux mots de passe ne correspondent pas.'); return; }
+    if (p1.length < 8) { showMsg('password-msg', 'Le mot de passe doit faire au moins 8 caractères.'); return; }
+    try {
+      await A.changerMotDePasse(p1);
+      await A.marquerMotDePasseChange();
+    } catch (e) { showMsg('password-msg', e.message || 'Erreur lors du changement de mot de passe.'); return; }
+    await apresConnexion(true);
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', async function () {
+    await A.seDeconnecter();
+    location.reload();
+  });
+
+  (async function init() {
+    var session = await A.getSession();
+    if (!session) { hide('gate-screen'); show('login-screen'); return; }
+    await apresConnexion(false);
+  })();
+})();
+</script>
 </body>
 </html>
