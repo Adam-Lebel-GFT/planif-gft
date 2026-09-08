@@ -192,6 +192,37 @@
   .stack-legend-item{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);}
   .stack-legend-item .dot{width:9px; height:9px; border-radius:2px;}
 
+  /* ===== Drill-down : chaque section cliquable retrouve ses tickets ===== */
+  [data-dd]{cursor:pointer;}
+  .dd-link{cursor:pointer;}
+  .dd-link:hover{color:var(--accent); text-decoration:underline;}
+  .hbar-row[data-dd]{border-radius:6px; padding:2px 4px; margin:0 -4px 8px;}
+  .hbar-row[data-dd]:hover{background:#eef4ff;}
+  .hbar-row[data-dd]:hover .hbar-label{color:var(--accent);}
+  .donut-legend-item[data-dd]{border-radius:6px; padding:3px 5px; margin:0 -5px;}
+  .donut-legend-item[data-dd]:hover{background:#eef4ff;}
+  .stack-seg[data-dd]:hover{filter:brightness(1.12); box-shadow:inset 0 0 0 2px rgba(255,255,255,.65);}
+  tr[data-dd]:hover{background:#eef4ff;}
+  .kpi[data-dd]{transition:box-shadow .15s ease, transform .15s ease;}
+  .kpi[data-dd]:hover{box-shadow:0 4px 14px rgba(11,37,69,.14); transform:translateY(-1px);}
+  .kpi[data-dd] .value::after{content:"→"; margin-left:8px; font-size:15px; color:var(--muted); opacity:0; transition:opacity .15s ease;}
+  .kpi[data-dd]:hover .value::after{opacity:1;}
+
+  .dd-overlay{position:fixed; inset:0; background:rgba(11,37,69,.45); display:flex; align-items:flex-start; justify-content:center; padding:60px 20px; z-index:1000;}
+  .dd-overlay.hidden{display:none;}
+  .dd-panel{background:var(--white); border-radius:14px; width:100%; max-width:780px; max-height:calc(100vh - 100px); display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(11,37,69,.3);}
+  .dd-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:18px 22px; border-bottom:1px solid var(--border);}
+  .dd-head h3{margin:0 0 3px; font-size:15.5px; color:var(--navy); font-weight:800;}
+  .dd-sub{font-size:12px; color:var(--muted);}
+  .dd-actions{display:flex; gap:8px; flex:none;}
+  .dd-body{padding:14px 22px 20px; overflow-y:auto;}
+  .dd-body table{font-size:12.5px;}
+  td.dd-key{font-family:var(--font-mono); font-weight:700;}
+  td.dd-key a{color:var(--accent); text-decoration:none;}
+  td.dd-key a:hover{text-decoration:underline;}
+  td.dd-key span{color:var(--muted); font-weight:500;}
+  body.dd-open{overflow:hidden;}
+
   footer{margin-top:8px; font-size:11.5px; color:var(--muted); line-height:1.6;}
 </style>
 <!-- Placé après le <style> ci-dessus : si assets/theme.css charge, ses variables --navy,
@@ -298,9 +329,32 @@
     Avancement pondéré global = Σ(nb tickets du statut × poids du statut) / nb total de tickets.
     « Bugs en dépassement » = tickets ayant une Due Date individuelle antérieure à la date de référence et non clôturés/déclinés — indicateur informatif, sans lien automatique avec le respect d'une date de gel de code.
     « Avancement par Fix Version » = part des tickets ayant un champ Fix Version renseigné (non vide), considérés comme mergés.
+    Cliquez sur un statut, une équipe, un segment du graphique empilé ou un indicateur pour retrouver le détail des tickets correspondants (clé, statut, équipe, priorité…) et les rouvrir directement dans Jira.
     Vos données collées et votre pondération sont conservées localement dans ce navigateur (aucun envoi serveur).
   </footer>
 
+</div>
+
+<div id="drillModal" class="dd-overlay hidden" aria-hidden="true">
+  <div class="dd-panel" role="dialog" aria-modal="true" aria-labelledby="ddTitle">
+    <div class="dd-head">
+      <div>
+        <h3 id="ddTitle">Tickets</h3>
+        <div class="dd-sub" id="ddSub"></div>
+      </div>
+      <div class="dd-actions">
+        <button class="ghost" id="ddCopyBtn">Copier les clés</button>
+        <button class="ghost" id="ddCloseBtn">Fermer ✕</button>
+      </div>
+    </div>
+    <div class="dd-body">
+      <table id="ddTable">
+        <thead><tr><th>Clé</th><th>Statut</th><th>Équipe</th><th>Priorité</th><th>Due Date</th><th>Fix Version</th></tr></thead>
+        <tbody id="ddTableBody"></tbody>
+      </table>
+      <div id="ddEmpty" class="empty-state hidden">Aucun ticket ne correspond à cette sélection.</div>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -372,6 +426,14 @@ const STORAGE_KEYS = {
   targetDate: 'bugDashboard:targetDate',
 };
 
+// Même instance Jira que les autres outils du toolkit (sprint-planning) : permet de
+// rouvrir directement un ticket depuis le drill-down.
+const JIRA_BASE_URL = 'https://vaudoise.atlassian.net/browse/';
+
+function escHtml(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function loadPctMap(){
   try{
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.pctMap) || '{}');
@@ -411,6 +473,22 @@ function statusColorMap(statusCounts){
   return map;
 }
 
+// ============ Row helpers (partagés entre l'agrégation et le drill-down) ============
+function cellAt(row, headers, idx){ return idx !== -1 ? (row[headers[idx]] || '') : ''; }
+function rowKey(row, headers, cols){ return cellAt(row, headers, cols.key).trim(); }
+function rowStatus(row, headers, cols){ return (cellAt(row, headers, cols.status) || 'Inconnu').trim(); }
+function rowTeam(row, headers, cols){ const t = cellAt(row, headers, cols.team).trim(); return t || 'Non affecté'; }
+function rowPriority(row, headers, cols){ return cellAt(row, headers, cols.priority).trim(); }
+function rowDueRaw(row, headers, cols){ return cellAt(row, headers, cols.dueDate).trim(); }
+function rowFixVersion(row, headers, cols){ return cellAt(row, headers, cols.fixVersion).trim(); }
+function rowIsBlocker(row, headers, cols){ return normalize(rowPriority(row, headers, cols)).includes('block'); }
+function rowIsDone(row, headers, cols){ const n = normalize(rowStatus(row, headers, cols)); return n==='closed' || n==='decline'; }
+function rowIsMerged(row, headers, cols){ return rowFixVersion(row, headers, cols) !== ''; }
+function rowIsOverdue(row, headers, cols, refDate){
+  const dueDate = parseDMY(rowDueRaw(row, headers, cols));
+  return !!(dueDate && refDate && dueDate < refDate && !rowIsDone(row, headers, cols));
+}
+
 // ============ Aggregation ============
 function computeStats(rows, headers, cols, pctMap, refDate){
   const total = rows.length;
@@ -423,15 +501,9 @@ function computeStats(rows, headers, cols, pctMap, refDate){
   let mergedCount = 0;
   let weightedSum = 0;
 
-  const get = (r, idx) => (idx !== -1 ? (r[headers[idx]] || '') : '');
-
   rows.forEach(r => {
-    const status = (get(r, cols.status) || 'Inconnu').trim();
-    const team = get(r, cols.team).trim();
-    const teamLabel = team || 'Non affecté';
-    const priority = get(r, cols.priority);
-    const dueRaw = get(r, cols.dueDate);
-    const fixVersion = get(r, cols.fixVersion).trim();
+    const status = rowStatus(r, headers, cols);
+    const teamLabel = rowTeam(r, headers, cols);
 
     const pct = pctForStatus(status, pctMap);
     weightedSum += pct;
@@ -441,17 +513,13 @@ function computeStats(rows, headers, cols, pctMap, refDate){
     if(!teamStatusMatrix[teamLabel]) teamStatusMatrix[teamLabel] = {};
     teamStatusMatrix[teamLabel][status] = (teamStatusMatrix[teamLabel][status]||0) + 1;
 
-    if(normalize(priority).includes('block')){
+    if(rowIsBlocker(r, headers, cols)){
       blockerCount++;
       blockerWeighted += pct;
     }
-    if(normalize(status)==='closed' || normalize(status)==='decline') doneCount++;
-    if(fixVersion !== '') mergedCount++;
-
-    const dueDate = parseDMY(dueRaw);
-    if(dueDate && refDate && dueDate < refDate && normalize(status)!=='closed' && normalize(status)!=='decline'){
-      overdueCount++;
-    }
+    if(rowIsDone(r, headers, cols)) doneCount++;
+    if(rowIsMerged(r, headers, cols)) mergedCount++;
+    if(rowIsOverdue(r, headers, cols, refDate)) overdueCount++;
   });
 
   return {
@@ -467,8 +535,109 @@ function computeStats(rows, headers, cols, pctMap, refDate){
 
 // ============ Rendering ============
 let currentPctMap = loadPctMap();
+// Dernier jeu de données analysé — permet au drill-down de retrouver les lignes brutes
+// derrière n'importe quelle section du dashboard (statut, équipe, KPI...).
+let lastDataset = null;
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+// ============ Drill-down ============
+function jiraLink(key){ return JIRA_BASE_URL + encodeURIComponent(key); }
+
+function drillDownRows(kind, params){
+  if(!lastDataset) return [];
+  const {rows, headers, cols, refDate} = lastDataset;
+  switch(kind){
+    case 'status': return rows.filter(r => rowStatus(r, headers, cols) === params.status);
+    case 'team': return rows.filter(r => rowTeam(r, headers, cols) === params.team);
+    case 'team-status': return rows.filter(r => rowTeam(r, headers, cols) === params.team && rowStatus(r, headers, cols) === params.status);
+    case 'blockers': return rows.filter(r => rowIsBlocker(r, headers, cols));
+    case 'overdue': return rows.filter(r => rowIsOverdue(r, headers, cols, refDate));
+    case 'done': return rows.filter(r => rowIsDone(r, headers, cols));
+    case 'merged': return rows.filter(r => rowIsMerged(r, headers, cols));
+    case 'all': return rows.slice();
+    default: return [];
+  }
+}
+
+function setDdCopyFeedback(text){
+  const btn = document.getElementById('ddCopyBtn');
+  const original = btn.dataset.label || btn.textContent;
+  btn.dataset.label = original;
+  btn.textContent = text;
+  setTimeout(() => { btn.textContent = btn.dataset.label; }, 1400);
+}
+
+function openDrillDown(kind, params, title, subtitle){
+  if(!lastDataset) return;
+  const {headers, cols} = lastDataset;
+  const matches = drillDownRows(kind, params);
+  const hasKey = cols.key !== -1;
+
+  document.getElementById('ddTitle').textContent = title;
+  document.getElementById('ddSub').textContent = subtitle + ' — ' + matches.length + (matches.length > 1 ? ' tickets' : ' ticket');
+
+  document.getElementById('ddTableBody').innerHTML = matches.map(r => {
+    const key = rowKey(r, headers, cols);
+    const keyCell = hasKey && key
+      ? `<a href="${escHtml(jiraLink(key))}" target="_blank" rel="noopener">${escHtml(key)}</a>`
+      : `<span>—</span>`;
+    return `<tr>
+      <td class="dd-key">${keyCell}</td>
+      <td>${escHtml(rowStatus(r, headers, cols))}</td>
+      <td>${escHtml(rowTeam(r, headers, cols))}</td>
+      <td>${escHtml(rowPriority(r, headers, cols) || '—')}</td>
+      <td>${escHtml(rowDueRaw(r, headers, cols) || '—')}</td>
+      <td>${escHtml(rowFixVersion(r, headers, cols) || '—')}</td>
+    </tr>`;
+  }).join('');
+
+  const isEmpty = matches.length === 0;
+  document.getElementById('ddEmpty').classList.toggle('hidden', !isEmpty);
+  document.getElementById('ddTable').classList.toggle('hidden', isEmpty);
+
+  const keys = matches.map(r => rowKey(r, headers, cols)).filter(Boolean);
+  const copyBtn = document.getElementById('ddCopyBtn');
+  copyBtn.dataset.keys = keys.join(', ');
+  copyBtn.disabled = !hasKey || keys.length === 0;
+
+  const overlay = document.getElementById('drillModal');
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('dd-open');
+}
+
+function closeDrillDown(){
+  const overlay = document.getElementById('drillModal');
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('dd-open');
+}
+
+const DRILL_LABELS = {
+  blockers: {title:'Tickets — Blockers', sub:'Priorité contenant « Blocker »'},
+  overdue: {title:'Tickets — en dépassement de due date', sub:'Due date individuelle dépassée, non clôturés/déclinés'},
+  done: {title:'Tickets — Closed / Decline', sub:'Statut Closed ou Decline'},
+  merged: {title:'Tickets — Fix Version renseignée', sub:'Fix Version non vide (considérés mergés)'},
+  all: {title:'Tous les tickets', sub:'Ensemble du périmètre analysé'},
+};
+
+function handleDrillClick(el){
+  const kind = el.dataset.dd;
+  if(kind === 'status'){
+    const status = el.dataset.status;
+    openDrillDown('status', {status}, 'Tickets — statut', `Statut : ${status}`);
+  } else if(kind === 'team'){
+    const team = el.dataset.team;
+    openDrillDown('team', {team}, 'Tickets — équipe', `Équipe : ${team}`);
+  } else if(kind === 'team-status'){
+    const {team, status} = el.dataset;
+    openDrillDown('team-status', {team, status}, 'Tickets — équipe × statut', `Équipe : ${team} · Statut : ${status}`);
+  } else if(DRILL_LABELS[kind]){
+    const {title, sub} = DRILL_LABELS[kind];
+    openDrillDown(kind, {}, title, sub);
+  }
+}
 
 function init(){
   const refInput = document.getElementById('refDateInput');
@@ -491,6 +660,33 @@ function init(){
     document.getElementById('dashboard').classList.add('hidden');
     document.getElementById('emptyState').classList.remove('hidden');
     setMsg('', '');
+    lastDataset = null;
+    closeDrillDown();
+  });
+
+  // Drill-down : délégation sur le document (le contenu des sections est reconstruit à
+  // chaque analyse/tri, un binding par élément serait perdu à chaque re-rendu).
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-dd]');
+    if(el) handleDrillClick(el);
+  });
+  document.getElementById('drillModal').addEventListener('click', (e) => {
+    if(e.target.id === 'drillModal') closeDrillDown();
+  });
+  document.getElementById('ddCloseBtn').addEventListener('click', closeDrillDown);
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && !document.getElementById('drillModal').classList.contains('hidden')) closeDrillDown();
+  });
+  document.getElementById('ddCopyBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('ddCopyBtn');
+    const keys = btn.dataset.keys || '';
+    if(!keys) return;
+    try{
+      await navigator.clipboard.writeText(keys);
+      setDdCopyFeedback('Copié ✓');
+    }catch(e){
+      setDdCopyFeedback('Copie impossible');
+    }
   });
 }
 
@@ -508,6 +704,7 @@ function analyze(){
   if(rows.length === 0){ setMsg('Aucune ligne détectée — vérifie que la 1ère ligne collée contient les en-têtes.', 'err'); return; }
 
   const cols = {
+    key: findColumnIndex(headers, COLUMN_CANDIDATES.key),
     status: findColumnIndex(headers, COLUMN_CANDIDATES.status),
     team: findColumnIndex(headers, COLUMN_CANDIDATES.team),
     priority: findColumnIndex(headers, COLUMN_CANDIDATES.priority),
@@ -520,6 +717,8 @@ function analyze(){
 
   const refDateVal = document.getElementById('refDateInput').value;
   const refDate = refDateVal ? new Date(refDateVal + 'T00:00:00') : new Date();
+
+  lastDataset = {rows, headers, cols, refDate};
 
   const stats = computeStats(rows, headers, cols, currentPctMap, refDate);
 
@@ -538,8 +737,8 @@ function renderPctTable(statusCounts, onChange){
     const pct = pctForStatus(status, currentPctMap);
     const key = normalize(status);
     return `<tr>
-      <td>${status}</td>
-      <td class="num">${statusCounts[status]}</td>
+      <td><span class="dd-link" data-dd="status" data-status="${escHtml(status)}">${escHtml(status)}</span></td>
+      <td class="num"><span class="dd-link" data-dd="status" data-status="${escHtml(status)}">${statusCounts[status]}</span></td>
       <td><input type="number" min="0" max="100" class="pct-input" data-key="${key}" value="${pct}"></td>
       <td><div class="pct-bar-wrap"><div class="pct-bar" id="pctbar-${key}" style="width:${pct}%;background:${colorForPct(pct)}"></div></div></td>
     </tr>`;
@@ -565,14 +764,14 @@ function renderAll(rows, headers, cols, refDate){
 
   // KPI
   const kpis = [
-    {label:'Avancement pondéré global', value: stats.globalPct.toFixed(1)+'%', sub: stats.total+' tickets analysés', cls:'green'},
-    {label:'Avancement par Fix Version', value: stats.mergedCount+' / '+stats.total, sub: stats.mergedPct.toFixed(0)+'% mergés (Fix Version renseignée)', cls:'green'},
-    {label:'Tickets Closed / Decline', value: stats.doneCount+' / '+stats.total, sub: (stats.total ? (stats.doneCount/stats.total*100).toFixed(0) : 0)+'% du périmètre soldé', cls:''},
-    {label:'Blockers', value: stats.blockerCount, sub: 'Avancement moyen '+stats.blockerPct.toFixed(1)+'%', cls:'amber'},
-    {label:'Bugs en dépassement de due date', value: stats.overdueCount, sub: (stats.total ? (stats.overdueCount/stats.total*100).toFixed(0) : 0)+'% du périmètre — due date individuelle dépassée', cls:'amber'},
+    {label:'Avancement pondéré global', value: stats.globalPct.toFixed(1)+'%', sub: stats.total+' tickets analysés', cls:'green', dd:'all'},
+    {label:'Avancement par Fix Version', value: stats.mergedCount+' / '+stats.total, sub: stats.mergedPct.toFixed(0)+'% mergés (Fix Version renseignée)', cls:'green', dd:'merged'},
+    {label:'Tickets Closed / Decline', value: stats.doneCount+' / '+stats.total, sub: (stats.total ? (stats.doneCount/stats.total*100).toFixed(0) : 0)+'% du périmètre soldé', cls:'', dd:'done'},
+    {label:'Blockers', value: stats.blockerCount, sub: 'Avancement moyen '+stats.blockerPct.toFixed(1)+'%', cls:'amber', dd:'blockers'},
+    {label:'Bugs en dépassement de due date', value: stats.overdueCount, sub: (stats.total ? (stats.overdueCount/stats.total*100).toFixed(0) : 0)+'% du périmètre — due date individuelle dépassée', cls:'amber', dd:'overdue'},
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
-    <div class="kpi ${k.cls}">
+    <div class="kpi ${k.cls}" ${k.dd ? `data-dd="${k.dd}"` : ''}>
       <div class="label">${k.label}</div>
       <div class="value">${k.value}</div>
       <div class="sub">${k.sub}</div>
@@ -583,8 +782,8 @@ function renderAll(rows, headers, cols, refDate){
   const maxCount = Math.max(...statusEntries.map(([,c]) => c), 1);
   document.getElementById('statusChart').innerHTML = statusEntries.map(([status,count]) => {
     const pct = pctForStatus(status, currentPctMap);
-    return `<div class="hbar-row">
-      <div class="hbar-label">${status}</div>
+    return `<div class="hbar-row" data-dd="status" data-status="${escHtml(status)}">
+      <div class="hbar-label">${escHtml(status)}</div>
       <div class="hbar-track"><div class="hbar-fill" style="width:${(count/maxCount*100).toFixed(1)}%;background:${colorForPct(pct)}"></div></div>
       <div class="hbar-count">${count}</div>
     </div>`;
@@ -602,9 +801,9 @@ function renderAll(rows, headers, cols, refDate){
   });
   document.getElementById('teamDonut').style.background = `conic-gradient(${gradParts.join(',')})`;
   document.getElementById('donutLegend').innerHTML = teamEntries.map(([team,count],i) => `
-    <div class="donut-legend-item">
+    <div class="donut-legend-item" data-dd="team" data-team="${escHtml(team)}">
       <div class="dot" style="background:${colorForIndex(i)}"></div>
-      <div>${team}</div>
+      <div>${escHtml(team)}</div>
       <div class="val">${count} (${stats.total ? (count/stats.total*100).toFixed(0) : 0}%)</div>
     </div>`).join('');
 
@@ -618,12 +817,12 @@ function renderAll(rows, headers, cols, refDate){
       const c = (stats.teamStatusMatrix[tm] && stats.teamStatusMatrix[tm][st]) || 0;
       if(!c) return '';
       const w = (c/rowMax*100).toFixed(2);
-      return `<div class="stack-seg" style="width:${w}%;background:${statusColors[st]}" title="${st}: ${c}">${c}</div>`;
+      return `<div class="stack-seg" data-dd="team-status" data-team="${escHtml(tm)}" data-status="${escHtml(st)}" style="width:${w}%;background:${statusColors[st]}" title="${escHtml(st)}: ${c}">${c}</div>`;
     }).join('');
-    return `<div class="stack-row"><div class="stack-label">${tm}</div><div class="stack-track">${segs}</div></div>`;
+    return `<div class="stack-row"><div class="stack-label dd-link" data-dd="team" data-team="${escHtml(tm)}">${escHtml(tm)}</div><div class="stack-track">${segs}</div></div>`;
   }).join('');
   document.getElementById('stackLegend').innerHTML = statuses.map((st) => `
-    <div class="stack-legend-item"><div class="dot" style="background:${statusColors[st]}"></div>${st}</div>
+    <div class="stack-legend-item"><div class="dot" style="background:${statusColors[st]}"></div>${escHtml(st)}</div>
   `).join('');
 
   // Team weighted table
@@ -636,8 +835,8 @@ function renderAll(rows, headers, cols, refDate){
     return {team: tm, count, pct};
   });
   document.getElementById('teamTableBody').innerHTML = teamRows.map(t => `
-    <tr>
-      <td>${t.team}</td>
+    <tr data-dd="team" data-team="${escHtml(t.team)}">
+      <td>${escHtml(t.team)}</td>
       <td class="num">${t.count}</td>
       <td><div class="pct-bar-wrap"><div class="pct-bar" style="width:${t.pct}%;background:${colorForPct(t.pct)}"></div></div></td>
       <td class="num">${t.pct.toFixed(1)}%</td>
