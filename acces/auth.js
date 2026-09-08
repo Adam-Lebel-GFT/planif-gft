@@ -49,7 +49,7 @@
     return /^[a-z0-9._-]{3,32}$/.test(nom);
   }
   function emailInterne(nomUtilisateur) {
-    return normaliserNomUtilisateur(nomUtilisateur) + '@' + (CFG.domaine || 'planif-gft.local');
+    return normaliserNomUtilisateur(nomUtilisateur) + '@' + (CFG.domaine || 'planif-gft.io');
   }
 
   async function getSession() {
