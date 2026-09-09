@@ -273,13 +273,13 @@
       order: function (keys) { return keys.slice().sort(function (a, b) { return a === '(vide)' ? 1 : b === '(vide)' ? -1 : a.localeCompare(b); }); }
     },
     version: {
-      label: 'Version', keyOf: function (t) { return t.version || (t.versionState === 'deployed' ? 'Déjà déployée' : 'Sans version'); },
+      label: 'Version', keyOf: function (t) { return t.version || 'Sans version'; },
       order: function (keys, cfg, tickets) {
         var deployByLabel = {};
         tickets.forEach(function (t) { if (t.version) deployByLabel[t.version] = t.versionDeploy ? +t.versionDeploy : 0; });
         return keys.slice().sort(function (a, b) {
-          var sa = a === 'Sans version' ? 2 : a === 'Déjà déployée' ? -1 : 0;
-          var sb = b === 'Sans version' ? 2 : b === 'Déjà déployée' ? -1 : 0;
+          var sa = a === 'Sans version' ? 2 : 0;
+          var sb = b === 'Sans version' ? 2 : 0;
           if (sa !== sb) return sa - sb;
           return (deployByLabel[a] || 0) - (deployByLabel[b] || 0) || a.localeCompare(b);
         });

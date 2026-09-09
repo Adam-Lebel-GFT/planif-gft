@@ -73,7 +73,7 @@
     } else {
       var keys = C.DIMS[dim].order(allKeys, cfg, tickets);
       keys.forEach(function (k, i) { map[k] = CATEGORICAL[i % CATEGORICAL.length]; });
-      if (dim === 'version') { map['Sans version'] = NEUTRAL; map['Déjà déployée'] = STATUS.serious; }
+      if (dim === 'version') map['Sans version'] = NEUTRAL;
     }
     return map;
   }
