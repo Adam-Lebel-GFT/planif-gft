@@ -22,7 +22,7 @@ create table if not exists public.roles (
 );
 
 -- Catalogue des outils : sprint-planning, poker-planning,
--- analyse-capacite, whiteboard, releases-planning, bug-dashboard,
+-- analyse-capacite, whiteboard, releases-planning, bug-dashboard, bug-dashboard-v2,
 -- + 'admin' (accès aux 3 écrans d'administration eux-mêmes).
 -- Le slug est une chaîne libre (pas de table de référence séparée) :
 -- ajouter un outil = ajouter son slug ici depuis l'écran "Rôles",
@@ -186,7 +186,7 @@ select r.id, o.outil
 from public.roles r
 cross join (values
   ('sprint-planning'), ('poker-planning'), ('analyse-capacite'),
-  ('whiteboard'), ('releases-planning'), ('bug-dashboard'), ('admin')
+  ('whiteboard'), ('releases-planning'), ('bug-dashboard'), ('bug-dashboard-v2'), ('admin')
 ) as o(outil)
 where r.nom = 'Admin'
 on conflict do nothing;
