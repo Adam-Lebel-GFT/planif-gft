@@ -194,7 +194,7 @@
         return '<tr data-status="' + esc(s.key) + '"><td>' + esc(s.label) + (s.missing ? ' <em class="cfg-muted">(absent)</em>' : '') + '</td><td class="num">' + (s.count || 0) + '</td>' +
           '<td><input type="number" min="0" max="100" class="cfg-input num" value="' + C.pctForStatus(s.key, cfg) + '" data-pct="' + esc(s.key) + '"></td>' +
           '<td><input type="checkbox" data-done="' + esc(s.key) + '" ' + (done ? 'checked' : '') + '></td>' +
-          '<td><details class="cfg-color"><summary><span class="dot" style="background:' + (cfg.statuses.colors[s.key] || P.CATEGORICAL[i % 8]) + '"></span></summary>' + swatchPicker(cfg.statuses.colors[s.key] || '', 'data-status-color="' + esc(s.key) + '"') + '</details></td></tr>';
+          '<td><details class="cfg-color"><summary title="Choisir la couleur"><span class="dot" style="background:' + (cfg.statuses.colors[s.key] || P.CATEGORICAL[i % 8]) + '"></span>' + (cfg.statuses.colors[s.key] ? '' : 'auto') + '</summary>' + swatchPicker(cfg.statuses.colors[s.key] || '', 'data-status-color="' + esc(s.key) + '"') + '</details></td></tr>';
       }).join('') + '</tbody></table>';
     } else if (drawerTab === 'cards') {
       h += '<p class="cfg-help">Chaque carte du cube croise deux dimensions (ou une seule) avec une mesure et un style de graphique. Réordonnez avec ↑/↓, décochez pour masquer. Le style se change aussi directement sur la carte.</p>';
