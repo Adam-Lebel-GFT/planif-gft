@@ -117,8 +117,79 @@
     var m = h.match(/^custom field \((.+)\)$/i);
     return m ? m[1].trim() : h;
   }
+  // ── Copie depuis le navigateur de tickets Jira (page HTML) ───────────
+  // Chaque ticket s'étale sur plusieurs lignes : « Bug<TAB>POLC-1<TAB>Prio<TAB>SP<TAB>Assignee<TAB>Status<TAB> »,
+  // puis le résumé, une ligne vide, la ligne équipe/dates/sprints/épopée, la ligne des
+  // labels (séparés par des espaces, « None » si aucun), puis « [temps]<TAB>Target date
+  // <TAB>Fix Version/s<TAB>Dernier changement<TAB>Résolution ». Les cellules vides en début
+  // de ligne sont parfois omises : on lit les lignes de dates par motif et la dernière
+  // ligne par la droite.
+  var NAV_RECORD = /^([A-Za-zÀ-ÿ][\w À-ÿ-]*)\t([A-Z][A-Z0-9]+-\d+)\t/;
+  var D_ONLY = /^\d{2}\.\d{2}\.\d{4}$/, D_TIME = /^\d{2}\.\d{2}\.\d{4} \d{1,2}:\d{2}$/;
+  function isJiraNavigator(text) {
+    if (/^T\tKey\tP\t/m.test(text)) return true;
+    var recs = text.split('\n').filter(function (l) { return NAV_RECORD.test(l); });
+    if (recs.length < 2) return false;
+    // un vrai TSV a le même nombre de tabulations sur l'en-tête et les lignes ; ici non
+    var head = (text.split('\n')[0].match(/\t/g) || []).length, first = (recs[0].match(/\t/g) || []).length;
+    return head !== first;
+  }
+  function parseJiraNavigator(raw) {
+    var lines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
+    var blocks = [], cur = null;
+    lines.forEach(function (l) {
+      if (NAV_RECORD.test(l)) { cur = [l]; blocks.push(cur); }
+      else if (cur) cur.push(l);
+    });
+    var headers = ['Issue Type', 'Issue key', 'Priority', 'Story Points', 'Assignee', 'Status', 'Summary', 'Team code', 'Due Date', 'Created', 'Updated', 'Sprint', 'Labels', 'Time Spent', 'Target date', 'Fix Version/s', 'Last Time Status Changed', 'Resolution'];
+    var rows = blocks.map(function (b) {
+      var r = {}; headers.forEach(function (h) { r[h] = ''; });
+      var first = b[0].split('\t');
+      r['Issue Type'] = first[0].trim(); r['Issue key'] = first[1].trim(); r['Priority'] = (first[2] || '').trim();
+      r['Story Points'] = (first[3] || '').trim(); r['Assignee'] = (first[4] || '').trim(); r['Status'] = (first[5] || '').trim();
+      var i = 1, summary = [];
+      while (i < b.length && b[i].trim() !== '' && b[i].indexOf('\t') === -1) { summary.push(b[i].trim()); i++; }
+      r['Summary'] = summary.join(' ');
+      while (i < b.length && b[i].trim() === '') i++;
+      if (i < b.length) {
+        var cells = b[i].split('\t').map(function (c) { return c.trim(); });
+        var dates = cells.filter(function (c) { return D_ONLY.test(c); });
+        var firstNonEmpty = cells.find(function (c) { return c !== ''; }) || '';
+        if (firstNonEmpty && !D_ONLY.test(firstNonEmpty) && !/^Sprint /.test(firstNonEmpty)) r['Team code'] = firstNonEmpty;
+        if (dates.length >= 3) { r['Due Date'] = dates[0]; r['Created'] = dates[1]; r['Updated'] = dates[2]; }
+        else if (dates.length === 2) { r['Created'] = dates[0]; r['Updated'] = dates[1]; }
+        else if (dates.length === 1) { r['Created'] = dates[0]; }
+        r['Sprint'] = cells.filter(function (c) { return /^Sprint /.test(c); }).join(', ');
+        i++;
+      }
+      while (i < b.length && b[i].trim() === '') i++;
+      if (i < b.length && b[i].indexOf('\t') === -1 && !D_ONLY.test(b[i].trim().split(' ')[0])) {
+        var lab = b[i].trim(); r['Labels'] = lab === 'None' ? '' : lab.split(/\s+/).join(', '); i++;
+      }
+      var last = null;
+      for (var j = b.length - 1; j >= i; j--) { if (b[j].indexOf('\t') !== -1 || D_ONLY.test(b[j].trim())) { last = b[j]; break; } }
+      if (last) {
+        var c = last.split('\t').map(function (x) { return x.trim(); });
+        var ti = -1; c.forEach(function (x, k) { if (D_TIME.test(x)) ti = k; });
+        if (ti !== -1) {
+          r['Last Time Status Changed'] = c[ti];
+          r['Resolution'] = (c[ti + 1] || '').replace(/^Unresolved$/i, '');
+          var tgt = -1; for (var k = ti - 1; k >= 0; k--) { if (D_ONLY.test(c[k])) { tgt = k; break; } }
+          if (tgt !== -1) { r['Target date'] = c[tgt]; r['Fix Version/s'] = c.slice(tgt + 1, ti).filter(Boolean).join(', '); if (tgt > 0) r['Time Spent'] = c[tgt - 1]; }
+        } else {
+          var only = c.filter(function (x) { return D_ONLY.test(x); });
+          if (only.length) r['Target date'] = only[only.length - 1];
+        }
+      }
+      return r;
+    });
+    return { headers: headers, rows: rows };
+  }
+
   function parsePastedData(raw) {
-    var lines = parseTSV(fixMojibake(String(raw || '')));
+    var text = fixMojibake(String(raw || ''));
+    if (isJiraNavigator(text)) { var nav = parseJiraNavigator(text); if (nav.rows.length) return nav; }
+    var lines = parseTSV(text);
     if (lines.length < 2) return { headers: [], rows: [] };
     var rawHeaders = lines[0].map(cleanHeader);
     var headers = [], slots = {};
@@ -400,7 +471,7 @@
     COLUMN_CANDIDATES: COLUMN_CANDIDATES, PRJ301_LABEL: PRJ301_LABEL,
     DEFAULT_STATUS_PCT: DEFAULT_STATUS_PCT, PRIORITY_ORDER_DEFAULT: PRIORITY_ORDER_DEFAULT,
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
-    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay,
+    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
     DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };
