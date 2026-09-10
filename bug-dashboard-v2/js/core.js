@@ -61,8 +61,34 @@
   // ── Parsing du collage (TSV Excel/Jira) ────────────────────────────
   // Gère les cellules entre guillemets contenant des tabulations ou des
   // retours à la ligne (résumés multi-lignes copiés depuis Excel).
-  function parseTSV(raw) {
+  // Répare un texte UTF-8 lu comme Latin-1 (« Ã© » → « é ») — typique d'un CSV
+  // Jira ouvert dans Excel puis copié. Appliqué seulement si ça réduit les
+  // séquences suspectes.
+  function fixMojibake(text) {
+    if (!/Ã.|Î£|â€/.test(text)) return text;
+    try {
+      var fixed = decodeURIComponent(escape(text));
+      var before = (text.match(/Ã/g) || []).length, after = (fixed.match(/Ã/g) || []).length;
+      return after < before ? fixed : text;
+    } catch (e) { return text; }
+  }
+
+  // Détecte le séparateur (tabulation = collage Excel ; virgule ou point-virgule = CSV).
+  function detectDelimiter(text) {
+    var first = text.split('\n')[0] || '';
+    var best = '\t', bestN = 0;
+    ['\t', ',', ';'].forEach(function (d) {
+      var n = parseDelimited(first, d)[0]; n = n ? n.length : 0;
+      if (n > bestN) { bestN = n; best = d; }
+    });
+    return best;
+  }
+
+  function parseTSV(raw) { return parseDelimited(raw, null); }
+
+  function parseDelimited(raw, delim) {
     var text = String(raw || '').replace(/\r\n?/g, '\n');
+    if (!delim) delim = detectDelimiter(text);
     var rows = [], row = [], cell = '', inQuotes = false;
     for (var i = 0; i < text.length; i++) {
       var ch = text[i];
@@ -73,7 +99,7 @@
         } else cell += ch;
       } else if (ch === '"' && cell === '') {
         inQuotes = true;
-      } else if (ch === '\t') {
+      } else if (ch === delim) {
         row.push(cell); cell = '';
       } else if (ch === '\n') {
         row.push(cell); rows.push(row); row = []; cell = '';
@@ -83,13 +109,26 @@
     return rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ''; }); });
   }
 
+  // En-têtes Jira : « Custom field (Team code) » → « Team code » ; les colonnes
+  // répétées (Labels, Sprint, Fix Version/s…) sont fusionnées en une seule,
+  // valeurs jointes par « , ».
+  function cleanHeader(h) {
+    h = String(h == null ? '' : h).trim().replace(/^\ufeff/, '');
+    var m = h.match(/^custom field \((.+)\)$/i);
+    return m ? m[1].trim() : h;
+  }
   function parsePastedData(raw) {
-    var lines = parseTSV(raw);
+    var lines = parseTSV(fixMojibake(String(raw || '')));
     if (lines.length < 2) return { headers: [], rows: [] };
-    var headers = lines[0].map(function (h) { return String(h).trim(); });
+    var rawHeaders = lines[0].map(cleanHeader);
+    var headers = [], slots = {};
+    rawHeaders.forEach(function (h, i) { if (!slots[h]) { slots[h] = []; headers.push(h); } slots[h].push(i); });
     var rows = lines.slice(1).map(function (cells) {
       var obj = {};
-      headers.forEach(function (h, i) { obj[h] = String(cells[i] == null ? '' : cells[i]).trim(); });
+      headers.forEach(function (h) {
+        var vals = slots[h].map(function (i) { return String(cells[i] == null ? '' : cells[i]).trim(); }).filter(function (v) { return v !== ''; });
+        obj[h] = vals.join(', ');
+      });
       return obj;
     });
     return { headers: headers, rows: rows };
@@ -361,7 +400,7 @@
     COLUMN_CANDIDATES: COLUMN_CANDIDATES, PRJ301_LABEL: PRJ301_LABEL,
     DEFAULT_STATUS_PCT: DEFAULT_STATUS_PCT, PRIORITY_ORDER_DEFAULT: PRIORITY_ORDER_DEFAULT,
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
-    parseDate: parseDate, toISO: toISO, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay,
+    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
     DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };
