@@ -41,6 +41,7 @@
     }
     S.hasPlan = plan.versions.length > 0;
     APP.available.train = true;
+    document.dispatchEvent(new CustomEvent('bdv2:plan', { detail: plan }));
   }
 
   // Versions triées par jalon de référence (le train).

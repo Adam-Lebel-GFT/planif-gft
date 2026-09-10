@@ -189,9 +189,24 @@
     return Object.keys(map).sort(function (a, b) { if (a === 'none') return 1; if (b === 'none') return -1; return a.localeCompare(b); }).map(function (td) { return map[td]; });
   }
   function tdLabel(td, withYear) { if (td === 'none') return 'Sans Target date'; var d = new Date(td + 'T00:00:00'); return withYear ? C.fmtDate(d) : C.fmtDate(d).slice(0, 5); }
-  function versionLabel(v, withYear) {
+  // Numéro d'une version (Target date) : 1) photo épinglée dont la date du nom
+  // est cette Target date ; 2) version du plan publié dont le jalon de
+  // référence tombe ce jour ; 3) photo (même non épinglée) nommée avec cette
+  // date et un numéro.
+  function planNumFor(td) {
+    if (!root.BDV2Plan || td === 'none') return '';
+    var hit = root.BDV2Plan.orderedVersions(CFG.get()).filter(function (x) { return C.toISO(x.at) === td; })[0];
+    return hit ? (versionNum({ nom: hit.v.label }) || hit.v.label) : '';
+  }
+  function versionNumFor(v) {
     var off = v.official != null ? H.items[v.official] : null;
     var num = off && v.officialMatch ? versionNum(off) : '';
+    if (!num) num = planNumFor(v.td);
+    if (!num) v.photos.slice().reverse().some(function (k) { var it = H.items[k]; if (C.toISO(bizDate(it)) === v.td) num = versionNum(it); return !!num; });
+    return num;
+  }
+  function versionLabel(v, withYear) {
+    var num = versionNumFor(v);
     return (num ? num + ' · ' : '') + tdLabel(v.td, withYear);
   }
   function officialIdx() { return versionsIndex().filter(function (v) { return v.official != null; }).map(function (v) { return v.official; }); }
@@ -348,6 +363,7 @@
     var cur = H.items.filter(function (i) { return i.hash === H.currentHash; }).pop();
     if (cur) { S.analysisId = cur.id || null; document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: cur, isNew: false } })); }
   });
+  document.addEventListener('bdv2:plan', function () { if (H.items.length) refresh(); });
   document.addEventListener('bdv2:archived', async function (e) {
     if (e.detail && e.detail.meta) return;
     H.currentHash = S.raw ? await sha256(S.raw + '|' + C.toISO(S.refDate)) : null;
