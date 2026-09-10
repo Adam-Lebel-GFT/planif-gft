@@ -257,7 +257,10 @@ body.dd-open{overflow:hidden;}
 .cfg-input.num{width:64px; font-family:var(--font-mono); text-align:right;}
 .cfg-select{border:1px solid var(--border); border-radius:6px; padding:5px 6px; font-family:var(--font); font-size:12px; background:#fff; max-width:170px;}
 .cfg-check{font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
-.cfg-color summary{list-style:none; cursor:pointer; font-size:14px;}
+.cfg-color summary{list-style:none; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:6px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
+.cfg-color summary:hover{border-color:var(--navy);}
+.cfg-color summary .dot{display:inline-block; width:14px; height:14px; border-radius:4px; border:1.5px solid rgba(0,0,0,.08); flex:none;}
+.cfg-color summary::after{content:'▾'; font-size:10px; color:var(--muted);}
 .cfg-color summary::-webkit-details-marker{display:none;}
 .cfg-color{position:relative;}
 .cfg-color[open] .sw-row{position:absolute; right:0; top:100%; z-index:5; background:#fff; border:1px solid var(--border); border-radius:10px; padding:8px; box-shadow:0 10px 28px rgba(12,26,46,.2); display:grid; grid-template-columns:repeat(8,20px); gap:5px; width:max-content;}
