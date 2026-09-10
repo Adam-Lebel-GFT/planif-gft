@@ -44,19 +44,24 @@ Deux listes, deux écrans d'administration :
 
 - Pas d'auto-inscription : l'administrateur crée chaque compte
   (gestion manuelle, pour démarrer).
-- **Pas d'adresse e-mail** : l'identifiant est un nom d'utilisateur
-  choisi par l'administrateur.
+- **Identifiant = adresse e-mail GFT** (`@gft.com`) de la personne,
+  saisie par l'administrateur à la création. *(Révision : la version
+  initiale prévoyait un nom d'utilisateur sans e-mail, avec une adresse
+  technique inventée en coulisse ; Supabase Auth refusait cette adresse
+  fictive à la création de compte, quel que soit le domaine choisi —
+  voir §7. Utiliser la vraie adresse est plus simple et robuste ; aucun
+  e-mail n'est envoyé pour autant, voir §7.)*
 - À la création, un **mot de passe temporaire est proposé
   automatiquement** (généré aléatoirement, différent à chaque compte —
   pas de mot de passe par défaut partagé, pour éviter qu'un compte non
   encore utilisé soit accessible à n'importe qui connaissant le
   pattern). L'administrateur peut le remplacer avant de valider.
-- **Première connexion** : l'utilisateur saisit son nom d'utilisateur +
+- **Première connexion** : l'utilisateur saisit son adresse e-mail GFT +
   le mot de passe temporaire → redirection automatique et obligatoire
   vers un écran "Créer votre mot de passe" avant tout accès à l'outil.
 - **Mot de passe oublié / compte bloqué** : pas de flux automatique par
-  e-mail (puisqu'il n'y en a pas). L'administrateur régénère l'accès
-  manuellement (voir §7, limite technique).
+  e-mail (aucun e-mail n'est jamais envoyé). L'administrateur régénère
+  l'accès manuellement (voir §7, limite technique).
 - Un compte peut être **désactivé** sans être supprimé : l'accès est
   coupé immédiatement, sans toucher au mot de passe.
 
@@ -72,12 +77,12 @@ Deux listes, deux écrans d'administration :
 
 ## 6. Écrans
 
-1. **Connexion** — nom d'utilisateur + mot de passe (porte d'entrée
-   unique du site).
+1. **Connexion** — e-mail GFT + mot de passe (porte d'entrée unique du
+   site).
 2. **Créer votre mot de passe** — forcé à la première connexion.
 3. **Rôles** *(admin)* — liste des rôles, création/édition avec cases à
    cocher des outils.
-4. **Utilisateurs** *(admin)* — liste des comptes, création (nom +
+4. **Utilisateurs** *(admin)* — liste des comptes, création (e-mail +
    mot de passe proposé + rôles cochés), activer/désactiver, forcer un
    nouveau mot de passe à la prochaine connexion.
 5. **Journal de connexion** *(admin)* — utilisateur + date, filtrable.
@@ -89,10 +94,16 @@ projet" donne accès à `sprint-planning`. Rien n'est codé en dur.
 ## 7. Choix techniques et limites
 
 **Authentification : Supabase**, réutilise le projet déjà en place pour
-`poker-planning`. Comme il n'y a pas d'e-mail réel, chaque nom
-d'utilisateur est associé en interne (invisible pour la personne) à une
-adresse technique `nom.utilisateur@planif-gft.io`, uniquement pour
-satisfaire l'exigence technique de Supabase Auth.
+`poker-planning`. L'identifiant de connexion est directement l'adresse
+e-mail GFT (`@gft.com`) de la personne, saisie par l'administrateur à
+la création du compte — aucun e-mail n'est envoyé pour autant (le
+fournisseur "Confirm email" reste désactivé, il n'y a pas de flux de
+réinitialisation par e-mail). Une première version utilisait un nom
+d'utilisateur associé à une adresse technique inventée en coulisse
+plutôt que la vraie adresse ; Supabase Auth refusait cette adresse
+fictive à la création de compte (endpoint `/signup`), quel que soit le
+domaine choisi — utiliser la vraie adresse est plus simple et évite ce
+problème durablement.
 
 **Sécurité des données** : le site n'a pas de serveur — le navigateur
 parle directement à Supabase avec une clé publique. Toute la logique de

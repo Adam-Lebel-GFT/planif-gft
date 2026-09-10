@@ -155,9 +155,9 @@
           <h3>Nouveau compte utilisateur</h3>
           <form id="user-form">
             <div class="adm-field">
-              <label for="user-nom">Nom d'utilisateur</label>
-              <input class="adm-input" id="user-nom" required placeholder="ex. jchevalier" pattern="[a-z0-9._-]{3,32}">
-              <span class="adm-hint">Minuscules, chiffres, points, tirets — 3 à 32 caractères. Pas d'adresse e-mail.</span>
+              <label for="user-nom">E-mail GFT</label>
+              <input class="adm-input" id="user-nom" type="email" required placeholder="ex. jchevalier@gft.com" pattern="[a-zA-Z0-9._%+-]+@gft\.com">
+              <span class="adm-hint">L'adresse e-mail GFT de la personne — c'est ce qu'elle retapera pour se connecter.</span>
             </div>
             <div class="adm-field">
               <label for="user-pass">Mot de passe temporaire</label>
@@ -501,23 +501,23 @@
   userForm.addEventListener('submit', async function (ev) {
     ev.preventDefault();
     clearMsg('users-msg');
-    var nom = A.normaliserNomUtilisateur(document.getElementById('user-nom').value);
+    var email = A.normaliserEmail(document.getElementById('user-nom').value);
     var pass = document.getElementById('user-pass').value;
     var roleIds = checkedValues(userRolesGrid);
 
-    if (!A.nomUtilisateurValide(nom)) { showMsg('users-msg', "Nom d'utilisateur invalide (minuscules/chiffres/points/tirets, 3 à 32 caractères).", false); return; }
+    if (!A.emailValide(email)) { showMsg('users-msg', 'Adresse invalide — doit être une adresse @gft.com.', false); return; }
     if (pass.length < 8) { showMsg('users-msg', 'Le mot de passe doit faire au moins 8 caractères.', false); return; }
 
     // Client jetable : la création (signUp) ne doit jamais remplacer
     // la session de l'administrateur actuellement connecté sur le
     // client principal.
     var clientJetable = supabase.createClient(window.ACCES_CONFIG.url, window.ACCES_CONFIG.key, { auth: { persistSession: false, autoRefreshToken: false } });
-    var signUpRes = await clientJetable.auth.signUp({ email: A.emailInterne(nom), password: pass });
+    var signUpRes = await clientJetable.auth.signUp({ email: email, password: pass });
     if (signUpRes.error) { showMsg('users-msg', signUpRes.error.message, false); return; }
     var newId = signUpRes.data.user && signUpRes.data.user.id;
     if (!newId) { showMsg('users-msg', "Compte non créé (confirmation d'e-mail probablement encore active côté Supabase — voir acces/README.md).", false); return; }
 
-    var profilRes = await client.from('profils').insert({ id: newId, nom_utilisateur: nom, actif: true, doit_changer_mot_de_passe: true });
+    var profilRes = await client.from('profils').insert({ id: newId, nom_utilisateur: A.nomAffichage(email), actif: true, doit_changer_mot_de_passe: true });
     if (profilRes.error) { showMsg('users-msg', profilRes.error.message, false); return; }
 
     if (roleIds.length) {
@@ -525,7 +525,7 @@
       if (urInsRes.error) { showMsg('users-msg', urInsRes.error.message, false); return; }
     }
 
-    showMsg('users-msg', 'Compte « ' + nom + ' » créé. Mot de passe temporaire à transmettre : ' + pass, true);
+    showMsg('users-msg', 'Compte « ' + email + ' » créé. Mot de passe temporaire à transmettre : ' + pass, true);
     document.getElementById('user-nom').value = '';
     document.getElementById('user-pass').value = A.genererMotDePasseTemporaire();
     userRolesGrid.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });

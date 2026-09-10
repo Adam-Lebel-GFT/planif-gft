@@ -7,6 +7,11 @@ rôles, comptes utilisateurs et journal de connexion. Voir
 Il s'appuie sur le projet Supabase déjà utilisé par `poker-planning`
 (même URL/clé, voir `acces/config.js`).
 
+**Connexion = adresse e-mail GFT (`@gft.com`) + mot de passe.** Pas de
+nom d'utilisateur ni de domaine technique inventé : l'admin saisit la
+vraie adresse de la personne à la création du compte, et c'est ce
+qu'elle retape pour se connecter.
+
 ## 1. Exécuter le schéma SQL — ✅ déjà fait
 
 Le schéma a été appliqué directement au projet Supabase (`lyahaxyexgjxpezemwhv`)
@@ -20,50 +25,60 @@ peut le relancer sans dupliquer les données).
 
 ## 2. Désactiver la confirmation par e-mail — à faire à la main
 
-Comme il n'y a pas d'adresse e-mail réelle (voir l'analyse fonctionnelle,
-§7), les comptes utilisent en interne une adresse technique invisible
-(`nom.utilisateur@planif-gft.io`). Il faut donc désactiver la
-confirmation par e-mail, sans quoi un compte fraîchement créé resterait
-bloqué en attente d'un e-mail qui n'arrivera jamais. C'est un réglage
-d'authentification, pas un réglage de base de données : le connecteur
-Supabase de Claude ne l'expose pas, il se fait uniquement depuis le
-tableau de bord :
+Même si l'adresse e-mail utilisée est réelle, aucun e-mail de
+confirmation ne doit partir (pas de vraie boîte suivie derrière). C'est
+un réglage d'authentification, pas un réglage de base de données : le
+connecteur Supabase de Claude ne l'expose pas, il se fait uniquement
+depuis le tableau de bord :
 
 Tableau de bord Supabase → **Authentication** → **Sign In / Providers** →
 **Email** → désactiver **Confirm email**.
+
+### Pièges déjà rencontrés sur ce projet
+
+- **"Email logins are disabled"** à la connexion → le fournisseur
+  **Email** lui-même était désactivé (interrupteur séparé de "Confirm
+  email", tout en haut du même panneau). Vérifiez qu'il est activé.
+- **"Example and test domains are currently not supported"** → on est
+  passé par une adresse technique inventée au tout début (nom
+  d'utilisateur + domaine fictif) ; Supabase Auth la refusait
+  systématiquement à la création (endpoint `/signup`), quel que soit le
+  domaine choisi. D'où le choix final : la vraie adresse `@gft.com` de
+  la personne, plus simple et qui ne pose plus ce problème.
+- **"email rate limit exceeded"** à la création d'un compte → le
+  service d'e-mail intégré par défaut de Supabase a un quota très bas
+  (souvent 2/heure), même quand aucun e-mail n'est réellement envoyé.
+  En cas de blocage : attendre que le quota se réinitialise, créer le
+  compte depuis le tableau de bord (Authentication → Users → Add user,
+  voir étape 3, qui n'est pas soumis à ce quota), ou configurer un SMTP
+  personnalisé (Authentication → Settings → SMTP Settings) pour lever
+  la limite définitivement.
 
 ## 3. Créer le tout premier compte administrateur
 
 Le premier compte ne peut pas être créé depuis l'écran "Utilisateurs" de
 l'application, puisque cet écran est lui-même réservé aux administrateurs
-(en créer un nécessite déjà d'en être un). La création du compte
-Supabase Auth lui-même (étape 1 ci-dessous) doit se faire depuis le
-tableau de bord — le connecteur ne l'expose pas non plus, et c'est
-volontaire : créer un utilisateur Auth par SQL brut est fragile
-(plusieurs tables internes à faire concorder). En revanche, une fois ce
-compte créé, Claude peut faire l'étape 2 (le relier au rôle "Admin")
-directement via le connecteur — donnez simplement le nom d'utilisateur
-choisi.
+(en créer un nécessite déjà d'en être un). Il se crée donc une seule fois,
+à la main :
 
 1. Tableau de bord Supabase → **Authentication** → **Users** → **Add
    user** :
-   - Email : `votrenom@planif-gft.io` (remplacez `votrenom` par le nom
-     d'utilisateur souhaité)
+   - Email : votre adresse `@gft.com`
    - Password : le mot de passe que vous voulez utiliser
    - Cochez **Auto Confirm User**
-2. Dites à Claude le nom d'utilisateur choisi — il retrouve le compte et
+2. Dites à Claude l'adresse choisie — il retrouve le compte et
    exécute pour vous :
    ```sql
    insert into public.profils (id, nom_utilisateur, actif, doit_changer_mot_de_passe)
-   values ('<uuid trouvé via auth.users>', 'votrenom', true, false);
+   values ('<uuid trouvé via auth.users>', '<partie avant @, ex. jdupont>', true, false);
 
    insert into public.utilisateur_roles (utilisateur_id, role_id)
    select '<uuid>', id from public.roles where nom = 'Admin';
    ```
-3. Ouvrez le site, connectez-vous avec `votrenom` / le mot de passe choisi
-   à l'étape 1. Vous avez maintenant accès à **Administration** et pouvez
-   créer les comptes du chef de projet et du directeur de programme
-   directement depuis l'écran "Utilisateurs".
+3. Ouvrez le site, connectez-vous avec votre adresse `@gft.com` / le mot
+   de passe choisi à l'étape 1. Vous avez maintenant accès à
+   **Administration** et pouvez créer les comptes du chef de projet et
+   du directeur de programme directement depuis l'écran "Utilisateurs".
 
 ## Ce que l'écran admin peut faire — et ses limites
 
@@ -72,7 +87,7 @@ avec une clé publique ("anon key"), jamais avec la clé secrète
 ("service role"). Deux conséquences à connaître :
 
 - **Créer un compte** fonctionne entièrement depuis l'écran
-  "Utilisateurs" (nom d'utilisateur + mot de passe temporaire proposé
+  "Utilisateurs" (adresse e-mail GFT + mot de passe temporaire proposé
   automatiquement + rôles).
 - **Réinitialiser le mot de passe d'un compte existant** (mot de passe
   oublié, compte bloqué) n'est **pas** possible depuis l'écran admin —
