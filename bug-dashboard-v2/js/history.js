@@ -45,7 +45,7 @@
   }
   function compactTickets(tickets) {
     return tickets.map(function (t) {
-      return { k: t.key, s: t.summary ? t.summary.slice(0, 120) : '', st: t.status, r: t.resolution, tm: t.team, p: t.priority, o: t.origin, v: t.version, vs: t.versionState, fx: t.fixVersion, td: t.targetDate ? C.toISO(t.targetDate) : '', d: t.isDone ? 1 : 0, pc: t.pct, lb: t.labels };
+      return { k: t.key, s: t.summary ? t.summary.slice(0, 120) : '', st: t.status, r: t.resolution, tm: t.team, p: t.priority, o: t.origin, v: t.version, vs: t.versionState, fx: t.fixVersion, td: t.targetDate ? C.toISO(t.targetDate) : '', d: t.isDone ? 1 : 0, pc: t.pct, lb: t.labels, a: t.assignee || '', du: t.dueDate ? C.toISO(t.dueDate) : '', cr: t.created ? C.toISO(t.created) : '', ty: t.type || '' };
     });
   }
   // Reconstruit des objets ticket exploitables par le drill-down à partir d'un snapshot.
@@ -53,7 +53,7 @@
     var cfg = CFG.get();
     return (list || []).map(function (c) {
       var pk = C.normalize(c.p || '');
-      return { key: c.k, summary: c.s, status: c.st, statusKey: C.normalize(c.st), resolution: c.r, team: c.tm, teamLabel: (cfg.teams.alias && cfg.teams.alias[c.tm]) || c.tm, priority: c.p, priorityKey: pk, priorityLabel: (cfg.priorities.groups && cfg.priorities.groups[pk]) || c.p, origin: c.o, isPrj301: c.o === 'PRJ301', version: c.v, versionState: c.vs, fixVersion: c.fx, hasFix: !!c.fx, targetDate: c.td ? new Date(c.td + 'T00:00:00') : null, targetRaw: c.td, dueDate: null, dueRaw: '', created: null, type: '', assignee: '', versionDeploy: null, isDone: !!c.d, pct: c.pc, labels: c.lb || '' };
+      return { key: c.k, summary: c.s, status: c.st, statusKey: C.normalize(c.st), resolution: c.r, team: c.tm, teamLabel: (cfg.teams.alias && cfg.teams.alias[c.tm]) || c.tm, priority: c.p, priorityKey: pk, priorityLabel: (cfg.priorities.groups && cfg.priorities.groups[pk]) || c.p, origin: c.o, isPrj301: c.o === 'PRJ301', version: c.v, versionState: c.vs, fixVersion: c.fx, hasFix: !!c.fx, targetDate: c.td ? new Date(c.td + 'T00:00:00') : null, targetRaw: c.td, dueDate: c.du ? new Date(c.du + 'T00:00:00') : null, dueRaw: c.du || '', created: c.cr ? new Date(c.cr + 'T00:00:00') : null, type: c.ty || '', assignee: c.a || '', versionDeploy: null, isDone: !!c.d, pct: c.pc, labels: c.lb || '' };
     });
   }
 
