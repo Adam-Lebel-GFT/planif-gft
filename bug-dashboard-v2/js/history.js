@@ -14,7 +14,7 @@
   var S = APP.state;
   var LOCAL_KEY = 'bdv2:history', LOCAL_MAX = 30;
   var H = { items: [], source: null, currentHash: null, compare: [] };
-  var ui = { metric: 'global', team: '' };
+  var ui = { metric: 'global', team: '', series: null };
 
   async function sha256(text) {
     try {
@@ -135,29 +135,60 @@
 
   // ── Section Évolution ──────────────────────────────────────────────
   APP.hooks.render.push(renderHistory);
+
+  // Date « métier » d'une analyse : celle écrite dans son nom (2026-09-11 ou
+  // 11.09.2026), sinon la date de référence utilisée, sinon la date de création.
+  function bizDate(i) {
+    var m = (i.nom || '').match(/(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    m = (i.nom || '').match(/(\d{2})\.(\d{2})\.(\d{4})/); if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    if (i.resume && i.resume.refDate) return new Date(i.resume.refDate + 'T00:00:00');
+    return new Date(i.at);
+  }
+  function versionNum(i) { var m = (i.nom || '').match(/\d+(?:\.\d+)+/); return m ? m[0].split('.').map(Number) : null; }
+  function cmpOfficial(a, b) {
+    var d = bizDate(a) - bizDate(b); if (d) return d;
+    var va = versionNum(a), vb = versionNum(b);
+    if (va && vb) { for (var k = 0; k < Math.max(va.length, vb.length); k++) { var x = (va[k] || 0) - (vb[k] || 0); if (x) return x; } }
+    return new Date(a.at) - new Date(b.at);
+  }
+  // Index réels dans H.items, triés : officielles par date métier croissante, travail par date de création décroissante.
+  function officialIdx() { return H.items.map(function (i, k) { return k; }).filter(function (k) { return H.items[k].epingle; }).sort(function (a, b) { return cmpOfficial(H.items[a], H.items[b]); }); }
+  function workIdx() { return H.items.map(function (i, k) { return k; }).filter(function (k) { return !H.items[k].epingle; }).reverse(); }
+  function seriesItems() {
+    var off = officialIdx();
+    var useOff = ui.series === 'official' || (ui.series !== 'all' && off.length >= 2);
+    return useOff ? { items: off.map(function (k) { return H.items[k]; }), official: true } : { items: H.items.slice(), official: false };
+  }
+
   function renderHistory() {
     var hasData = S.tickets.length > 0;
     var rootEl = $(hasData ? 'historyRoot' : 'emptyHistoryRoot'); if (!rootEl) return;
     var other = $(hasData ? 'emptyHistoryRoot' : 'historyRoot'); if (other) other.innerHTML = '';
     var items = H.items;
     if (!items.length) { rootEl.innerHTML = hasData ? '<div class="card"><h2>Évolution</h2><div class="sub">Le journal est vide : chaque clic sur « Analyser » avec de nouvelles données ajoute un point. Revenez après la prochaine analyse.</div></div>' : ''; return; }
-    var labels = items.map(function (i) { return shortWhen(i.at); });
-    var colorsC = P.CATEGORICAL;
+    var ser = seriesItems();
+    var labels = ser.items.map(function (i) { var d = bizDate(i); return ser.official ? (String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0')) : shortWhen(i.at); });
     var h = '';
-    // 1. global
     var metricOpts = [['global', 'Global (ouverts, terminés, blockers, retards)'], ['progress', 'Avancement pondéré (%)'], ['versions', 'Stock à livrer par version'], ['teams', 'Tickets ouverts par équipe'], ['origin', 'Origine PRJ301 / Interne']];
-    h += '<div class="card"><div class="card-head"><div><h2>Évolution des analyses — ' + items.length + ' point' + (items.length > 1 ? 's' : '') + '</h2><div class="sub">Un point par analyse journalisée (' + (H.source === 'supabase' ? 'journal partagé' : 'journal local de ce navigateur') + '). Survolez un point pour la valeur, cliquez pour ouvrir cette analyse dans le comparateur.</div></div>' +
-      '<div class="card-tools"><select class="dim-select" id="histMetric">' + metricOpts.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div></div><div class="chart-body" id="histChart">' + chartFor(ui.metric, items, labels) + '</div></div>';
-    // 2. journal + comparateur
-    h += '<div class="card"><div class="card-head"><div><h2>Journal des analyses</h2><div class="sub">Cochez deux analyses pour les comparer (tickets apparus, disparus, changements de statut, d\'équipe ou de version, stock par version).</div></div></div>' +
-      '<ul class="hist-list" style="margin-top:12px">' + items.slice().reverse().map(function (i, idx) {
-        var real = items.length - 1 - idx;
-        var checked = H.compare.indexOf(real) !== -1;
-        return '<li class="hist-item' + (i.hash === H.currentHash ? ' is-current' : '') + '"><input type="checkbox" data-cmp="' + real + '" ' + (checked ? 'checked' : '') + ' title="Comparer"><span class="when">' + fmtWhen(i.at) + '</span><span class="name">' + esc(i.nom || 'Analyse n°' + (real + 1)) + (i.epingle ? ' 📌' : '') + (i.hash === H.currentHash ? ' <span class="tk-badge tk-badge--preview">courante</span>' : '') + '</span><span class="meta">' + i.nb + ' tickets · ' + (i.resume.kpis ? i.resume.kpis.open + ' ouverts · ' + i.resume.kpis.progress + '%' : '') + (i.byName ? ' · ' + esc(i.byName) : '') + '</span>' +
-          '<button type="button" class="ghost small" data-hist-open="' + real + '" ' + (i.tickets && i.tickets.length ? '' : 'disabled title="Tickets non conservés"') + '>' + (S.archived && S.archived.index === real ? 'Ouverte' : 'Ouvrir') + '</button><button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="Épingler">' + (i.epingle ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
-      }).join('') + '</ul><div id="histCompare">' + compareHtml(items) + '</div></div>';
+    var off = officialIdx();
+    h += '<div class="card"><div class="card-head"><div><h2>Évolution — ' + (ser.official ? 'versions officielles (' + ser.items.length + ')' : 'toutes les analyses (' + ser.items.length + ')') + '</h2><div class="sub">' + (ser.official ? 'Un point par version officielle, dans l\'ordre de leur date. ' : 'Un point par analyse journalisée. ') + (H.source === 'supabase' ? 'Journal partagé.' : 'Journal local de ce navigateur.') + '</div></div>' +
+      '<div class="card-tools"><select class="dim-select" id="histSeries"><option value="official"' + (ser.official ? ' selected' : '') + '' + (off.length < 2 ? ' disabled' : '') + '>Versions officielles</option><option value="all"' + (!ser.official ? ' selected' : '') + '>Toutes les analyses</option></select><select class="dim-select" id="histMetric">' + metricOpts.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div></div><div class="chart-body" id="histChart">' + chartFor(ui.metric, ser.items, labels) + '</div></div>';
+
+    var row = function (real, official) {
+      var i = items[real], checked = H.compare.indexOf(real) !== -1, cur = i.hash === H.currentHash, d = bizDate(i);
+      return '<li class="hist-item' + (cur ? ' is-current' : '') + '"><input type="checkbox" data-cmp="' + real + '" ' + (checked ? 'checked' : '') + ' title="Comparer"><span class="when" title="Journalisée le ' + fmtWhen(i.at) + '">' + (official ? C.fmtDate(d) : fmtWhen(i.at)) + '</span><span class="name">' + esc(i.nom || 'Analyse n°' + (real + 1)) + (cur ? ' <span class="tk-badge tk-badge--preview">courante</span>' : '') + '</span><span class="meta">' + i.nb + ' tickets · ' + (i.resume.kpis ? i.resume.kpis.open + ' ouverts · ' + i.resume.kpis.progress + '%' : '') + (i.byName ? ' · ' + esc(i.byName) : '') + '</span>' +
+        '<button type="button" class="ghost small" data-hist-open="' + real + '" ' + (i.tickets && i.tickets.length ? '' : 'disabled title="Tickets non conservés"') + '>' + (S.archived && S.archived.index === real ? 'Ouverte' : 'Ouvrir') + '</button>' +
+        '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="' + (official ? 'Retirer des versions officielles' : 'Marquer comme version officielle') + '">' + (official ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
+    };
+    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Analyses épinglées, classées par la date indiquée dans leur nom (ex. « 3.9.7 OFFICIEL (2026-09-11) »), sinon par date de référence. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div></div>' +
+      (off.length ? '<ul class="hist-list" style="margin-top:12px">' + off.map(function (k) { return row(k, true); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune version officielle : épinglez (📍) une analyse pour la faire apparaître ici.</p>') + '</div>';
+    var work = workIdx();
+    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + work.length + '</span></h2><div class="sub">Toutes les autres analyses journalisées, de la plus récente à la plus ancienne.</div></div></div>' +
+      (work.length ? '<ul class="hist-list" style="margin-top:12px">' + work.map(function (k) { return row(k, false); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune analyse de travail.</p>') +
+      '<div id="histCompare">' + compareHtml(items) + '</div></div>';
     rootEl.innerHTML = h;
-    $('histMetric').addEventListener('change', function () { ui.metric = this.value; $('histChart').innerHTML = chartFor(ui.metric, items, labels); });
+    $('histMetric').addEventListener('change', function () { ui.metric = this.value; var sr = seriesItems(); $('histChart').innerHTML = chartFor(ui.metric, sr.items, sr.items.map(function (i) { var d = bizDate(i); return sr.official ? (String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0')) : shortWhen(i.at); })); });
+    $('histSeries').addEventListener('change', function () { ui.series = this.value; renderHistory(); });
   }
 
   function chartFor(metric, items, labels) {
