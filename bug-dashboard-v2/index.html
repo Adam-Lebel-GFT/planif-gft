@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug Dashboard v2 — Agile Toolkit GFT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<!-- Placé après app.css : les variables :root de theme.css surchargent le secours local. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Bug Dashboard</span>
+  <span class="tk-topbar__version">V2</span>
+  <div class="tk-topbar__actions">
+    <span class="tk-topbar__user" id="topbarUser"></span>
+    <button type="button" class="tk-btn tk-btn--on-dark" id="cfgBtn">⚙ Configurer</button>
+  </div>
+</header>
+
+<main>
+
+<div class="hero">
+  <div>
+    <h1>Bug Dashboard v2 — Radar de stabilisation</h1>
+    <p>Collez un extrait Jira : le radar projette chaque ticket sur le train de livraison (Target date → version), croise équipes, statuts, priorités et origine, journalise chaque analyse pour suivre l'évolution, et rédige une synthèse pour la direction.</p>
+    <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
+  </div>
+  <div class="hero-fields">
+    <div><label for="refDateInput">Date de référence</label><input type="date" id="refDateInput"></div>
+    <div><label for="viewSelect">Vue</label><select id="viewSelect"></select></div>
+    <div><label>&nbsp;</label><button type="button" class="ghost" id="saveViewBtn" title="Fige les cartes actuellement visibles dans la vue sélectionnée">Enregistrer la vue</button></div>
+    <div><label>&nbsp;</label><button type="button" class="ghost" id="printBtn">Imprimer / PDF</button></div>
+  </div>
+</div>
+
+<div class="card paste-card">
+  <div class="card-head">
+    <div>
+      <h2>1. Données</h2>
+      <div class="sub">Sélectionnez les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis collez ici. Colonnes reconnues : Key, Summary, Status, Resolution, Priority, Team code, Target date, Fix Version, Labels, Assignee, Created, Due date.</div>
+    </div>
+    <button type="button" class="collapse-btn" data-target="pasteBody"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
+  </div>
+  <div id="pasteBody">
+    <textarea id="pasteArea" placeholder="Collez votre tableau Excel ici (Ctrl+V)…"></textarea>
+    <div class="paste-actions">
+      <button class="primary" id="analyzeBtn">Analyser</button>
+      <input type="text" id="analysisName" placeholder="Nom de l'analyse (optionnel) — ex. Point hebdo 12/09">
+      <button class="ghost" id="clearBtn">Effacer</button>
+      <span class="status-msg" id="statusMsg"></span>
+    </div>
+    <div class="col-chips" id="colChips"></div>
+  </div>
+</div>
+
+<div id="emptyState" class="card empty">Collez vos données Jira ci-dessus puis cliquez sur « Analyser » pour générer le radar — ou ouvrez une analyse du journal ci-dessous.</div>
+<div id="emptyHistoryRoot"></div>
+
+<div id="dashboard" class="hidden">
+
+  <div id="archiveBanner" class="archive-banner hidden"></div>
+
+  <div class="filterbar" id="filterbar">
+    <div class="filter-group"><span class="filter-label">Origine</span><div class="seg" id="fOrigin"></div></div>
+    <div class="filter-group hidden" id="fVersionGroup"><span class="filter-label">Version</span><div class="seg" id="fVersion"></div></div>
+    <div class="filter-group"><span class="filter-label">Équipes</span><div id="fTeams" class="filter-group"></div></div>
+    <span class="filter-summary" id="filterSummary"></span>
+    <button type="button" class="ghost small filter-reset" id="filterReset">Réinitialiser</button>
+  </div>
+
+  <section id="sec-kpis">
+    <div class="section-title"><h3>Bandeau exécutif</h3><span class="line"></span></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+  </section>
+
+  <section id="sec-alerts">
+    <div class="card">
+      <div class="card-head">
+        <div><h2>Alertes <span class="tk-badge tk-badge--alert" id="alertsCount"></span></h2><div class="sub">Détectées automatiquement selon les seuils configurés — cliquez pour voir les tickets.</div></div>
+        <button type="button" class="collapse-btn" data-target="alertsList"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
+      </div>
+      <div class="alerts" id="alertsList" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="sec-ai" class="hidden">
+    <div class="card ai-card" id="aiCard"></div>
+  </section>
+
+  <section id="sec-train" class="hidden">
+    <div class="section-title"><h3>Train de livraison</h3><span class="line"></span></div>
+    <div class="card" id="trainCard"></div>
+  </section>
+
+  <section id="sec-cube">
+    <div class="section-title"><h3>Cube multidimensionnel</h3><span class="line"></span><span class="filter-summary">Style de chaque carte modifiable à la volée · dimensions et mesures configurables</span></div>
+    <div class="cube-grid" id="cubeGrid"></div>
+  </section>
+
+  <section id="sec-history" class="hidden">
+    <div class="section-title"><h3>Évolution</h3><span class="line"></span></div>
+    <div id="historyRoot"></div>
+  </section>
+
+  <footer>
+    Tout est compté en <b>nombre de tickets</b> (les bugs n'ont pas de points). L'avancement pondéré est un indicateur secondaire : Σ(poids du statut) / nb tickets, poids configurables.
+    « PRJ301 » = étiquette <code>SourceProject_PRJ301</code> dans Labels (tests fournis par le projet de test) ; les autres sont nos bugs internes.
+    « Target date dépassée » = tickets non terminés dont la Target date est antérieure à la date de référence.
+    Cliquez sur n'importe quel chiffre, barre, cellule ou alerte pour retrouver les tickets (avec leur résolution) et les rouvrir dans Jira.
+    Données collées et préférences d'affichage conservées dans ce navigateur ; configuration et journal partagés via Supabase quand vous êtes connecté.
+  </footer>
+
+</div>
+
+<!-- Drill-down -->
+<div id="ddOverlay" class="dd-overlay" aria-hidden="true">
+  <div class="dd-panel" role="dialog" aria-modal="true" aria-labelledby="ddTitle">
+    <div class="dd-head">
+      <div><h3 id="ddTitle">Tickets</h3><div class="dd-sub" id="ddSub"></div></div>
+      <div class="dd-actions">
+        <button type="button" class="ghost small" id="ddCopy">Copier les clés</button>
+        <button type="button" class="ghost small" id="ddJql" title="Copie « key in (…) » à coller dans la recherche Jira">Copier la JQL</button>
+        <button type="button" class="ghost small" id="ddCsv">Exporter CSV</button>
+        <button type="button" class="ghost small" id="ddClose">Fermer ✕</button>
+      </div>
+    </div>
+    <div class="dd-tabs" id="ddTabs"></div>
+    <div class="dd-body">
+      <table id="ddTable"><thead id="ddThead"></thead><tbody id="ddTbody"></tbody></table>
+      <div id="ddEmpty" class="empty hidden">Aucun ticket dans cette sélection.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tiroir de configuration -->
+<div id="cfgBackdrop" class="cfg-backdrop"></div>
+<aside id="cfgDrawer" class="cfg-drawer" aria-label="Configuration">
+  <div class="cfg-head"><h3>Configuration</h3><button type="button" class="ghost small" id="cfgClose">Fermer ✕</button></div>
+  <div class="cfg-tabs" id="cfgTabs"></div>
+  <div class="cfg-body" id="cfgBody"></div>
+</aside>
+
+</main>
+
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
+<script src="js/core.js"></script>
+<script src="js/palette.js"></script>
+<script src="js/config.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/drill.js"></script>
+<script src="js/app.js"></script>
+<script src="js/plan.js"></script>
+<script src="js/history.js"></script>
+<script src="js/ai.js"></script>
+</body>
+</html>

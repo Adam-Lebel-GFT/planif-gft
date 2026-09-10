@@ -215,6 +215,32 @@
   .stack-legend-item{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);}
   .stack-legend-item .dot{width:9px; height:9px; border-radius:2px;}
 
+  .kpi.purple::before{background:var(--purple);}
+  .kpi.lightblue::before{background:var(--lightblue);}
+
+  .origin-split-bar{display:flex; height:22px; border-radius:6px; overflow:hidden; background:#eef1f6; margin:2px 0 16px;}
+  .origin-split-seg{height:100%; cursor:pointer; transition:filter .15s ease;}
+  .origin-split-seg:hover{filter:brightness(1.08);}
+  .origin-split-prj301{background:var(--purple);}
+  .origin-split-internal{background:var(--lightblue);}
+
+  .origin-filter{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);}
+  .origin-filter-label{font-size:12px; color:var(--muted); font-weight:600;}
+  .segmented{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  .segmented-btn{background:#fff; color:var(--muted); border:none; border-right:1px solid var(--border); padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;}
+  .segmented-btn:last-child{border-right:none;}
+  .segmented-btn:hover:not(:disabled){background:#f3f7ff; color:var(--navy);}
+  .segmented-btn.is-active{background:var(--navy); color:#fff;}
+  .segmented-btn:disabled{opacity:.45; cursor:not-allowed;}
+
+  .vstack-wrap{display:flex; align-items:flex-end; gap:20px; padding-top:6px; overflow-x:auto;}
+  .vstack-col{display:flex; flex-direction:column; align-items:center; gap:8px; flex:none;}
+  .vstack-total{font-size:11px; font-family:var(--font-mono); color:var(--muted);}
+  .vstack-track{position:relative; width:48px; height:200px; background:#eef1f6; border-radius:6px; overflow:hidden;}
+  .vstack-fill{position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column-reverse; overflow:hidden;}
+  .vstack-seg{width:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:700; text-shadow:0 1px 1px rgba(0,0,0,.25);}
+  .vstack-label{font-size:12px; font-weight:600; color:var(--text); text-align:center; max-width:76px; word-break:break-word;}
+
   /* ===== Drill-down : chaque section cliquable retrouve ses tickets ===== */
   [data-dd]{cursor:pointer;}
   .dd-link{cursor:pointer;}
@@ -225,6 +251,8 @@
   .donut-legend-item[data-dd]{border-radius:6px; padding:3px 5px; margin:0 -5px;}
   .donut-legend-item[data-dd]:hover{background:#eef4ff;}
   .stack-seg[data-dd]:hover{filter:brightness(1.12); box-shadow:inset 0 0 0 2px rgba(255,255,255,.65);}
+  .vstack-seg[data-dd]:hover{filter:brightness(1.12); box-shadow:inset 0 0 0 2px rgba(255,255,255,.65);}
+  .vstack-label[data-dd]:hover{color:var(--accent);}
   tr[data-dd]:hover{background:#eef4ff;}
   .kpi[data-dd]{transition:box-shadow .15s ease, transform .15s ease;}
   .kpi[data-dd]:hover{box-shadow:0 4px 14px rgba(11,37,69,.14); transform:translateY(-1px);}
@@ -289,7 +317,7 @@
 
 <div class="card">
   <h2>1. Coller les données</h2>
-  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date, Fix Version.</div>
+  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date, Fix Version, Labels.</div>
   <textarea id="pasteArea" placeholder="Colle ton tableau Excel ici (Ctrl+V)…"></textarea>
   <div class="paste-actions">
     <button class="primary" id="analyzeBtn">Analyser</button>
@@ -303,6 +331,30 @@
 </div>
 
 <div id="dashboard" class="hidden">
+
+  <div class="card">
+    <h2>Origine des tickets — PRJ301 (tests) vs internes</h2>
+    <div class="card-sub">Un ticket est classé <strong>PRJ301</strong> si son champ Labels contient l'étiquette <code>SourceProject_PRJ301</code> (tests fournis par leur équipe, à livrer dans cette version) ; les autres sont nos <strong>bugs internes</strong>.</div>
+
+    <div id="originMissingLabels" class="empty-state hidden">Colonne "Labels" / "Étiquettes" introuvable dans les données collées — ajoute-la à ta sélection Excel pour activer cette analyse (en-tête recherché : Labels, Étiquettes, Tags).</div>
+
+    <div id="originStatsBlock">
+      <div class="origin-split-bar" id="originSplitBar">
+        <div class="origin-split-seg origin-split-prj301" id="originSegPrj301" data-dd="prj301"></div>
+        <div class="origin-split-seg origin-split-internal" id="originSegInternal" data-dd="internal"></div>
+      </div>
+      <div class="kpi-grid" id="originKpis"></div>
+    </div>
+
+    <div class="origin-filter" id="originFilter">
+      <span class="origin-filter-label">Filtrer tout le dashboard :</span>
+      <div class="segmented" role="tablist" aria-label="Filtrer par origine">
+        <button type="button" class="segmented-btn is-active" data-origin="all">Tous</button>
+        <button type="button" class="segmented-btn" data-origin="prj301">PRJ301</button>
+        <button type="button" class="segmented-btn" data-origin="internal">Interne</button>
+      </div>
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-head-row">
@@ -357,12 +409,20 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>Priorités par équipe</h2>
+    <div class="card-sub">Graphique empilé vertical — répartition des priorités pour chaque équipe (hauteur totale = volume de tickets de l'équipe)</div>
+    <div class="vstack-wrap" id="teamPriorityChart"></div>
+    <div class="stack-legend" id="teamPriorityLegend"></div>
+  </div>
+
   <footer>
     Avancement pondéré global = Σ(nb tickets du statut × poids du statut) / nb total de tickets.
     « Bugs en dépassement » = tickets ayant une Due Date individuelle antérieure à la date de référence et non clôturés/déclinés — indicateur informatif, sans lien automatique avec le respect d'une date de gel de code.
     « Avancement par Fix Version » = part des tickets ayant un champ Fix Version renseigné (non vide), considérés comme mergés.
-    Cliquez sur un statut, une équipe, un segment du graphique empilé ou un indicateur pour retrouver le détail des tickets correspondants (clé, statut, équipe, priorité…) et les rouvrir directement dans Jira.
-    Vos données collées et votre pondération sont conservées localement dans ce navigateur (aucun envoi serveur).
+    « PRJ301 » = tickets dont le champ Labels contient l'étiquette SourceProject_PRJ301 ; le filtre d'origine en haut de page s'applique à tout le dashboard (KPIs, graphiques, tableaux), sauf au bloc "Origine des tickets" lui-même qui reste toujours calculé sur l'ensemble des tickets.
+    Cliquez sur un statut, une équipe, une priorité, un segment de graphique ou un indicateur pour retrouver le détail des tickets correspondants (clé, statut, équipe, priorité…) et les rouvrir directement dans Jira.
+    Vos données collées, votre pondération et vos couleurs sont conservées localement dans ce navigateur (aucun envoi serveur).
   </footer>
 
 </div>
@@ -381,7 +441,7 @@
     </div>
     <div class="dd-body">
       <table id="ddTable">
-        <thead><tr><th>Clé</th><th>Statut</th><th>Équipe</th><th>Priorité</th><th>Due Date</th><th>Fix Version</th></tr></thead>
+        <thead><tr><th>Clé</th><th>Statut</th><th>Équipe</th><th>Priorité</th><th>Due Date</th><th>Fix Version</th><th>Labels</th></tr></thead>
         <tbody id="ddTableBody"></tbody>
       </table>
       <div id="ddEmpty" class="empty-state hidden">Aucun ticket ne correspond à cette sélection.</div>
@@ -400,7 +460,12 @@ const COLUMN_CANDIDATES = {
   team: ['team code', 'équipe', 'equipe', 'team'],
   dueDate: ["due date", "date d'échéance", 'date echeance', 'échéance', 'echeance'],
   fixVersion: ['fix version/s', 'fix versions', 'fix version', 'fixversion', 'version corrigée', 'version corrigee'],
+  labels: ['labels', 'étiquettes', 'etiquettes', 'label', 'tags'],
 };
+
+// Étiquette qui marque un ticket comme provenant du projet de test PRJ301 (recherchée en
+// sous-chaîne dans le champ Labels, peu importe les autres étiquettes présentes sur le ticket).
+const PRJ301_LABEL = 'sourceproject_prj301';
 
 function normalize(s){
   return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -456,6 +521,7 @@ const STORAGE_KEYS = {
   pctMap: 'bugDashboard:statusPctMap',
   colorMap: 'bugDashboard:statusColorMap',
   pctCollapsed: 'bugDashboard:pctSectionCollapsed',
+  originFilter: 'bugDashboard:originFilter',
   refDate: 'bugDashboard:refDate',
   targetDate: 'bugDashboard:targetDate',
 };
@@ -531,6 +597,40 @@ function statusColorMap(statusCounts){
   return map;
 }
 
+// Ordre de sévérité reconnu pour les deux jeux de priorités Jira les plus courants
+// (Blocker…Trivial et Highest…Lowest). Une priorité non reconnue est triée après,
+// par ordre alphabétique — le graphique reste lisible même avec un schéma personnalisé.
+const PRIORITY_ORDER = ['blocker','critical','highest','high','major','medium','minor','low','lowest','trivial'];
+function sortedPriorityKeys(priorityCounts){
+  return Object.keys(priorityCounts).sort((a, b) => {
+    const ia = PRIORITY_ORDER.indexOf(normalize(a));
+    const ib = PRIORITY_ORDER.indexOf(normalize(b));
+    if(ia !== -1 && ib !== -1) return ia - ib;
+    if(ia !== -1) return -1;
+    if(ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+// Couleurs par défaut alignées sur la sémantique usuelle de sévérité ; toute priorité hors
+// de cette liste (schéma personnalisé) reçoit une couleur de la palette générale.
+const DEFAULT_PRIORITY_COLORS = {
+  'blocker':'#d64545', 'critical':'#e11d48', 'highest':'#d64545',
+  'high':'#f97316', 'major':'#f97316', 'medium':'#e0a300',
+  'minor':'#2f6fed', 'low':'#5a9cf8', 'lowest':'#8892a6', 'trivial':'#8892a6',
+};
+function priorityColorMap(priorityCounts){
+  const keys = sortedPriorityKeys(priorityCounts);
+  const map = {};
+  let autoIdx = 0;
+  keys.forEach((k) => {
+    const preset = DEFAULT_PRIORITY_COLORS[normalize(k)];
+    if(preset){ map[k] = preset; }
+    else{ map[k] = colorForIndex(autoIdx); autoIdx++; }
+  });
+  return map;
+}
+
 // ============ Row helpers (partagés entre l'agrégation et le drill-down) ============
 function cellAt(row, headers, idx){ return idx !== -1 ? (row[headers[idx]] || '') : ''; }
 function rowKey(row, headers, cols){ return cellAt(row, headers, cols.key).trim(); }
@@ -539,7 +639,10 @@ function rowTeam(row, headers, cols){ const t = cellAt(row, headers, cols.team).
 function rowPriority(row, headers, cols){ return cellAt(row, headers, cols.priority).trim(); }
 function rowDueRaw(row, headers, cols){ return cellAt(row, headers, cols.dueDate).trim(); }
 function rowFixVersion(row, headers, cols){ return cellAt(row, headers, cols.fixVersion).trim(); }
+function rowLabels(row, headers, cols){ return cellAt(row, headers, cols.labels).trim(); }
+function priorityLabelOf(row, headers, cols){ return rowPriority(row, headers, cols) || 'Non défini'; }
 function rowIsBlocker(row, headers, cols){ return normalize(rowPriority(row, headers, cols)).includes('block'); }
+function rowIsPrj301(row, headers, cols){ return normalize(rowLabels(row, headers, cols)).includes(PRJ301_LABEL); }
 function rowIsDone(row, headers, cols){ const n = normalize(rowStatus(row, headers, cols)); return n==='closed' || n==='decline'; }
 function rowIsMerged(row, headers, cols){ return rowFixVersion(row, headers, cols) !== ''; }
 function rowIsOverdue(row, headers, cols, refDate){
@@ -553,6 +656,8 @@ function computeStats(rows, headers, cols, pctMap, refDate){
   const statusCounts = {};
   const teamCounts = {};
   const teamStatusMatrix = {};
+  const priorityCounts = {};
+  const teamPriorityMatrix = {};
   let blockerCount = 0, blockerWeighted = 0;
   let overdueCount = 0;
   let doneCount = 0;
@@ -562,6 +667,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
   rows.forEach(r => {
     const status = rowStatus(r, headers, cols);
     const teamLabel = rowTeam(r, headers, cols);
+    const priorityLabel = priorityLabelOf(r, headers, cols);
 
     const pct = pctForStatus(status, pctMap);
     weightedSum += pct;
@@ -570,6 +676,10 @@ function computeStats(rows, headers, cols, pctMap, refDate){
     teamCounts[teamLabel] = (teamCounts[teamLabel]||0) + 1;
     if(!teamStatusMatrix[teamLabel]) teamStatusMatrix[teamLabel] = {};
     teamStatusMatrix[teamLabel][status] = (teamStatusMatrix[teamLabel][status]||0) + 1;
+
+    priorityCounts[priorityLabel] = (priorityCounts[priorityLabel]||0) + 1;
+    if(!teamPriorityMatrix[teamLabel]) teamPriorityMatrix[teamLabel] = {};
+    teamPriorityMatrix[teamLabel][priorityLabel] = (teamPriorityMatrix[teamLabel][priorityLabel]||0) + 1;
 
     if(rowIsBlocker(r, headers, cols)){
       blockerCount++;
@@ -583,7 +693,7 @@ function computeStats(rows, headers, cols, pctMap, refDate){
   return {
     total,
     globalPct: total ? weightedSum/total : 0,
-    statusCounts, teamCounts, teamStatusMatrix,
+    statusCounts, teamCounts, teamStatusMatrix, priorityCounts, teamPriorityMatrix,
     blockerCount,
     blockerPct: blockerCount ? blockerWeighted/blockerCount : 0,
     overdueCount, doneCount, mergedCount,
@@ -594,22 +704,42 @@ function computeStats(rows, headers, cols, pctMap, refDate){
 // ============ Rendering ============
 let currentPctMap = loadPctMap();
 let currentColorMap = loadColorMap();
-// Dernier jeu de données analysé — permet au drill-down de retrouver les lignes brutes
-// derrière n'importe quelle section du dashboard (statut, équipe, KPI...).
+// Dernier jeu de données analysé (complet, non filtré) — permet au drill-down de retrouver
+// les lignes brutes derrière n'importe quelle section du dashboard (statut, équipe, KPI...).
 let lastDataset = null;
+// Filtre d'origine actif ('all' | 'prj301' | 'internal'), appliqué à tout le dashboard sauf
+// au bloc "Origine des tickets" lui-même (toujours calculé sur l'ensemble des tickets).
+let originFilter = localStorage.getItem(STORAGE_KEYS.originFilter) || 'all';
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+// Lignes actuellement affichées par le dashboard (après application du filtre d'origine).
+function visibleRows(){
+  if(!lastDataset) return [];
+  const {rows, headers, cols} = lastDataset;
+  if(originFilter === 'prj301') return rows.filter(r => rowIsPrj301(r, headers, cols));
+  if(originFilter === 'internal') return rows.filter(r => !rowIsPrj301(r, headers, cols));
+  return rows;
+}
 
 // ============ Drill-down ============
 function jiraLink(key){ return JIRA_BASE_URL + encodeURIComponent(key); }
 
 function drillDownRows(kind, params){
   if(!lastDataset) return [];
-  const {rows, headers, cols, refDate} = lastDataset;
+  const {headers, cols, refDate} = lastDataset;
+  // L'origine (PRJ301/Interne) se lit toujours sur l'ensemble des tickets, indépendamment
+  // du filtre actif — cohérent avec le bloc "Origine des tickets" qui l'affiche.
+  if(kind === 'prj301') return lastDataset.rows.filter(r => rowIsPrj301(r, headers, cols));
+  if(kind === 'internal') return lastDataset.rows.filter(r => !rowIsPrj301(r, headers, cols));
+
+  const rows = visibleRows();
   switch(kind){
     case 'status': return rows.filter(r => rowStatus(r, headers, cols) === params.status);
     case 'team': return rows.filter(r => rowTeam(r, headers, cols) === params.team);
     case 'team-status': return rows.filter(r => rowTeam(r, headers, cols) === params.team && rowStatus(r, headers, cols) === params.status);
+    case 'priority': return rows.filter(r => priorityLabelOf(r, headers, cols) === params.priority);
+    case 'team-priority': return rows.filter(r => rowTeam(r, headers, cols) === params.team && priorityLabelOf(r, headers, cols) === params.priority);
     case 'blockers': return rows.filter(r => rowIsBlocker(r, headers, cols));
     case 'overdue': return rows.filter(r => rowIsOverdue(r, headers, cols, refDate));
     case 'done': return rows.filter(r => rowIsDone(r, headers, cols));
@@ -648,6 +778,7 @@ function openDrillDown(kind, params, title, subtitle){
       <td>${escHtml(rowPriority(r, headers, cols) || '—')}</td>
       <td>${escHtml(rowDueRaw(r, headers, cols) || '—')}</td>
       <td>${escHtml(rowFixVersion(r, headers, cols) || '—')}</td>
+      <td>${escHtml(rowLabels(r, headers, cols) || '—')}</td>
     </tr>`;
   }).join('');
 
@@ -679,6 +810,8 @@ const DRILL_LABELS = {
   done: {title:'Tickets — Closed / Decline', sub:'Statut Closed ou Decline'},
   merged: {title:'Tickets — Fix Version renseignée', sub:'Fix Version non vide (considérés mergés)'},
   all: {title:'Tous les tickets', sub:'Ensemble du périmètre analysé'},
+  prj301: {title:'Tickets — Origine PRJ301', sub:'Étiquette contenant SourceProject_PRJ301'},
+  internal: {title:'Tickets — Bugs internes', sub:'Sans étiquette SourceProject_PRJ301'},
 };
 
 function handleDrillClick(el){
@@ -692,6 +825,12 @@ function handleDrillClick(el){
   } else if(kind === 'team-status'){
     const {team, status} = el.dataset;
     openDrillDown('team-status', {team, status}, 'Tickets — équipe × statut', `Équipe : ${team} · Statut : ${status}`);
+  } else if(kind === 'priority'){
+    const priority = el.dataset.priority;
+    openDrillDown('priority', {priority}, 'Tickets — priorité', `Priorité : ${priority}`);
+  } else if(kind === 'team-priority'){
+    const {team, priority} = el.dataset;
+    openDrillDown('team-priority', {team, priority}, 'Tickets — équipe × priorité', `Équipe : ${team} · Priorité : ${priority}`);
   } else if(DRILL_LABELS[kind]){
     const {title, sub} = DRILL_LABELS[kind];
     openDrillDown(kind, {}, title, sub);
@@ -755,7 +894,25 @@ function init(){
     }
   });
 
+  // Filtre d'origine (Tous / PRJ301 / Interne) : élément statique du HTML (pas reconstruit
+  // à chaque rendu), un binding direct au chargement suffit.
+  document.querySelectorAll('#originFilter .segmented-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      originFilter = btn.dataset.origin;
+      localStorage.setItem(STORAGE_KEYS.originFilter, originFilter);
+      syncOriginFilterButtons();
+      refreshFilteredViews();
+    });
+  });
+  syncOriginFilterButtons();
+
   initPctCollapse();
+}
+
+function syncOriginFilterButtons(){
+  document.querySelectorAll('#originFilter .segmented-btn').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.origin === originFilter);
+  });
 }
 
 function initPctCollapse(){
@@ -797,8 +954,16 @@ function analyze(){
     priority: findColumnIndex(headers, COLUMN_CANDIDATES.priority),
     dueDate: findColumnIndex(headers, COLUMN_CANDIDATES.dueDate),
     fixVersion: findColumnIndex(headers, COLUMN_CANDIDATES.fixVersion),
+    labels: findColumnIndex(headers, COLUMN_CANDIDATES.labels),
   };
   if(cols.status === -1){ setMsg('Colonne "Status" introuvable dans les en-têtes collés.', 'err'); return; }
+
+  // Sans colonne Labels, le filtre PRJ301/Interne ne peut rien distinguer — repli sur
+  // "Tous" pour éviter un dashboard filtré silencieusement à vide.
+  if(cols.labels === -1 && originFilter !== 'all'){
+    originFilter = 'all';
+    localStorage.setItem(STORAGE_KEYS.originFilter, originFilter);
+  }
 
   localStorage.setItem(STORAGE_KEYS.raw, raw);
 
@@ -807,17 +972,68 @@ function analyze(){
 
   lastDataset = {rows, headers, cols, refDate};
 
-  const stats = computeStats(rows, headers, cols, currentPctMap, refDate);
-
-  renderPctTable(stats.statusCounts, () => { renderAll(rows, headers, cols, refDate); });
-  renderAll(rows, headers, cols, refDate);
+  syncOriginFilterButtons();
+  renderOriginSection();
+  refreshFilteredViews();
 
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
-  setMsg(`${stats.total} tickets analysés.`, 'ok');
+  setMsg(`${rows.length} tickets analysés.`, 'ok');
 }
 
-function renderPctTable(statusCounts, onChange){
+// Recalcule et redessine tout ce qui dépend du filtre d'origine (tableau de pondération,
+// KPIs, graphiques, tableaux) — appelé après l'analyse initiale, un changement de
+// pondération/couleur, ou un changement du filtre Tous/PRJ301/Interne.
+function refreshFilteredViews(){
+  if(!lastDataset) return;
+  const {headers, cols, refDate} = lastDataset;
+  const rows = visibleRows();
+  const stats = computeStats(rows, headers, cols, currentPctMap, refDate);
+  renderPctTable(stats.statusCounts);
+  renderAll(rows, headers, cols, refDate);
+}
+
+// Bloc "Origine des tickets" : toujours calculé sur l'ensemble des tickets de l'extrait,
+// indépendamment du filtre actif (c'est lui qui explique/pilote ce filtre).
+function renderOriginSection(){
+  if(!lastDataset) return;
+  const {rows, headers, cols} = lastDataset;
+  const hasLabels = cols.labels !== -1;
+
+  document.getElementById('originMissingLabels').classList.toggle('hidden', hasLabels);
+  document.getElementById('originStatsBlock').classList.toggle('hidden', !hasLabels);
+  document.querySelectorAll('#originFilter .segmented-btn[data-origin="prj301"], #originFilter .segmented-btn[data-origin="internal"]').forEach(b => {
+    b.disabled = !hasLabels;
+    b.title = hasLabels ? '' : 'Colonne Labels/Étiquettes introuvable dans les données collées';
+  });
+  if(!hasLabels) return;
+
+  const total = rows.length;
+  const prj301Count = rows.filter(r => rowIsPrj301(r, headers, cols)).length;
+  const internalCount = total - prj301Count;
+  const prj301Pct = total ? prj301Count/total*100 : 0;
+  const internalPct = total ? internalCount/total*100 : 0;
+
+  const segPrj301 = document.getElementById('originSegPrj301');
+  const segInternal = document.getElementById('originSegInternal');
+  segPrj301.style.width = prj301Pct + '%';
+  segInternal.style.width = internalPct + '%';
+  segPrj301.title = `PRJ301 : ${prj301Count} (${prj301Pct.toFixed(0)}%)`;
+  segInternal.title = `Interne : ${internalCount} (${internalPct.toFixed(0)}%)`;
+
+  const tiles = [
+    {label:'Tickets PRJ301 (tests)', value: prj301Count+' / '+total, sub: prj301Pct.toFixed(0)+'% du périmètre — étiquette SourceProject_PRJ301', cls:'purple', dd:'prj301'},
+    {label:'Bugs internes', value: internalCount+' / '+total, sub: internalPct.toFixed(0)+'% du périmètre — sans cette étiquette', cls:'lightblue', dd:'internal'},
+  ];
+  document.getElementById('originKpis').innerHTML = tiles.map(k => `
+    <div class="kpi ${k.cls}" data-dd="${k.dd}">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join('');
+}
+
+function renderPctTable(statusCounts){
   const tbody = document.getElementById('pctTableBody');
   const statuses = sortedStatusKeys(statusCounts);
   const colors = statusColorMap(statusCounts);
@@ -852,9 +1068,9 @@ function renderPctTable(statusCounts, onChange){
       val = Math.max(0, Math.min(100, val));
       currentPctMap[key] = val;
       savePctMap(currentPctMap);
-      // Rebuild : la pondération modifiée peut changer l'ordre croissant des statuts.
-      renderPctTable(statusCounts, onChange);
-      onChange();
+      // Rebuild complet : la pondération modifiée peut changer l'ordre croissant des
+      // statuts partout (tableau, graphiques) et l'avancement pondéré affiché.
+      refreshFilteredViews();
     });
   });
 
@@ -871,16 +1087,14 @@ function renderPctTable(statusCounts, onChange){
     sw.addEventListener('click', () => {
       currentColorMap[sw.dataset.colorPick] = sw.dataset.color;
       saveColorMap(currentColorMap);
-      renderPctTable(statusCounts, onChange);
-      onChange();
+      refreshFilteredViews();
     });
   });
   tbody.querySelectorAll('[data-color-reset]').forEach(btn => {
     btn.addEventListener('click', () => {
       delete currentColorMap[btn.dataset.colorReset];
       saveColorMap(currentColorMap);
-      renderPctTable(statusCounts, onChange);
-      onChange();
+      refreshFilteredViews();
     });
   });
 }
@@ -967,6 +1181,29 @@ function renderAll(rows, headers, cols, refDate){
       <td><div class="pct-bar-wrap"><div class="pct-bar" style="width:${t.pct}%;background:${colorForPct(t.pct)}"></div></div></td>
       <td class="num">${t.pct.toFixed(1)}%</td>
     </tr>`).join('');
+
+  // Priorités par équipe — graphique empilé vertical (une colonne par équipe, segments
+  // de priorité empilés ; hauteur totale de colonne proportionnelle au volume de l'équipe).
+  const priorities = sortedPriorityKeys(stats.priorityCounts);
+  const priorityColors = priorityColorMap(stats.priorityCounts);
+  document.getElementById('teamPriorityChart').innerHTML = teams.map(tm => {
+    const teamTotal = stats.teamCounts[tm];
+    const fillPct = (teamTotal/rowMax*100).toFixed(2);
+    const segs = priorities.map((pr) => {
+      const c = (stats.teamPriorityMatrix[tm] && stats.teamPriorityMatrix[tm][pr]) || 0;
+      if(!c) return '';
+      const segPct = (c/teamTotal*100).toFixed(2);
+      return `<div class="vstack-seg" data-dd="team-priority" data-team="${escHtml(tm)}" data-priority="${escHtml(pr)}" style="height:${segPct}%;background:${priorityColors[pr]}" title="${escHtml(pr)}: ${c}">${c}</div>`;
+    }).join('');
+    return `<div class="vstack-col">
+      <div class="vstack-total">${teamTotal}</div>
+      <div class="vstack-track"><div class="vstack-fill" style="height:${fillPct}%">${segs}</div></div>
+      <div class="vstack-label dd-link" data-dd="team" data-team="${escHtml(tm)}">${escHtml(tm)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('teamPriorityLegend').innerHTML = priorities.map((pr) => `
+    <div class="stack-legend-item"><div class="dot" style="background:${priorityColors[pr]}"></div>${escHtml(pr)}</div>
+  `).join('');
 }
 
 init();

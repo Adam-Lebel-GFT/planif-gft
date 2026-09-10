@@ -194,6 +194,8 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
       <div class="row" style="margin-top:2px;margin-bottom:0">
         <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
         <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
+        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard v2 les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard v2</button>
+        <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
       </div>
     </div>
   </div>
@@ -269,6 +271,9 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
   </div>
 </div>
 
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════
 // Constantes & helpers
@@ -463,7 +468,65 @@ let phaseDrag = null; // { versionId, boundary, startX, orig }
 // ════════════════════════════════════════════════════════════
 // Persistance
 // ════════════════════════════════════════════════════════════
+// ── Plan résolu (partage avec le Bug Dashboard v2) ─────────────────────
+// Reproduit la résolution des jalons de renderGantt() (semaine + jour de
+// semaine réel + demi-journée, surcharges par version) et produit, pour
+// chaque version, des dates ISO exploitables sans connaître ce fichier :
+//   { id, label, start, end, ordre, jalons: { freeze:'2026-09-11', deploy:… } }
+const PLAN_PUBLIE_KEY = 'planif:plan-publie';
+function resolvedPlan() {
+  return state.versions.map((v, vi) => {
+    const vStart = parseISO(v.start), vEnd = parseISO(v.end);
+    const vSH = vStartHalf(v), vEH = vEndHalf(v);
+    const verHalves = dayDiff(vStart, vEnd) * 2 + vEH - vSH + 1;
+    const startDow = weekdayOffset(vStart);
+    const jalons = {};
+    state.milestones.forEach(m => {
+      const rawOverride = state.overrides[v.id] ? state.overrides[v.id][m.id] : undefined;
+      const hasOverride = rawOverride != null;
+      const ov = typeof rawOverride === 'number' ? { day: rawOverride, half: 0 } : rawOverride;
+      const day0 = hasOverride ? ov.day : (m.week - 1) * 7 + ((m.dow - startDow + 7) % 7);
+      const half0 = hasOverride ? (ov.half || 0) : (m.half || 0);
+      let halfIdx = day0 * 2 + half0;
+      halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
+      jalons[m.id] = toISO(addDays(vStart, Math.floor(halfIdx / 2)));
+    });
+    return { id: v.id, label: v.label, start: v.start, end: v.end, ordre: vi, jalons };
+  });
+}
+function writePlanSnapshot() {
+  try { localStorage.setItem(PLAN_PUBLIE_KEY, JSON.stringify({ versions: resolvedPlan(), maj: new Date().toISOString() })); } catch (e) {}
+}
+async function publishPlan() {
+  const tag = document.getElementById('publishTag');
+  const A = window.PlanifAuth;
+  writePlanSnapshot();
+  if (!A) { tag.textContent = 'Module d\'accès introuvable — plan enregistré localement seulement.'; return; }
+  let session = null;
+  try { session = await A.getSession(); } catch (e) {}
+  if (!session) { tag.textContent = 'Connectez-vous depuis le lanceur pour publier le plan à tous — enregistré localement pour ce navigateur.'; return; }
+  tag.textContent = 'Publication…';
+  try {
+    const client = A.getClient();
+    const rows = resolvedPlan().map(v => ({ id: v.id, label: v.label, debut: v.start, fin: v.end, jalons: v.jalons, ordre: v.ordre, publie_par: session.user.id, publie_le: new Date().toISOString() }));
+    const ids = rows.map(r => r.id);
+    if (rows.length) {
+      const up = await client.from('plan_versions').upsert(rows);
+      if (up.error) throw up.error;
+    }
+    // retire les versions supprimées du plan
+    const all = await client.from('plan_versions').select('id');
+    if (all.error) throw all.error;
+    const stale = (all.data || []).map(r => r.id).filter(id => ids.indexOf(id) === -1);
+    if (stale.length) { const del = await client.from('plan_versions').delete().in('id', stale); if (del.error) throw del.error; }
+    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard v2.';
+  } catch (e) {
+    tag.textContent = 'Publication refusée : ' + (e.message || e);
+  }
+}
+
 function saveState() {
+  writePlanSnapshot();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     const tag = document.getElementById('savedTag');
@@ -1364,6 +1427,8 @@ document.getElementById('addVersionBtn').addEventListener('click', addVersion);
 document.getElementById('addPhaseDefBtn').addEventListener('click', addPhaseDef);
 document.getElementById('addMilestoneBtn').addEventListener('click', addMilestone);
 document.getElementById('resetBtn').addEventListener('click', resetState);
+document.getElementById('publishBtn').addEventListener('click', publishPlan);
+writePlanSnapshot();
 attachDnD('phaseDefsList', () => state.phaseDefs);
 attachDnD('milestonesList', () => state.milestones);
 </script>
