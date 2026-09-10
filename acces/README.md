@@ -22,7 +22,7 @@ peut le relancer sans dupliquer les données).
 
 Comme il n'y a pas d'adresse e-mail réelle (voir l'analyse fonctionnelle,
 §7), les comptes utilisent en interne une adresse technique invisible
-(`nom.utilisateur@planif-gft.io`). Il faut donc désactiver la
+(`planif-gft+nom.utilisateur@gft.com`). Il faut donc désactiver la
 confirmation par e-mail, sans quoi un compte fraîchement créé resterait
 bloqué en attente d'un e-mail qui n'arrivera jamais. C'est un réglage
 d'authentification, pas un réglage de base de données : le connecteur
@@ -31,6 +31,31 @@ tableau de bord :
 
 Tableau de bord Supabase → **Authentication** → **Sign In / Providers** →
 **Email** → désactiver **Confirm email**.
+
+### Deux pièges déjà rencontrés sur ce projet
+
+- **"Email logins are disabled"** à la connexion → le fournisseur
+  **Email** lui-même était désactivé (interrupteur séparé de "Confirm
+  email", tout en haut du même panneau). Vérifiez qu'il est activé.
+- **"Example and test domains are currently not supported"** à la
+  création d'un compte depuis l'écran "Utilisateurs" du site → Supabase
+  Auth refuse, sur son endpoint public `/signup`, tout domaine sans
+  vrai serveur mail derrière — peu importe le TLD (`.local` et `.io`
+  inventés ont tous les deux été refusés). C'est pour ça que
+  `acces/config.js` utilise le vrai domaine de l'entreprise
+  (`gft.com`) avec un sous-adressage `planif-gft+` — voir le
+  commentaire dans ce fichier. Ce piège ne touche que la création
+  depuis le site ; créer un compte depuis le tableau de bord
+  (`/admin/users`) n'a jamais ce problème, quel que soit le domaine.
+- **"email rate limit exceeded"** à la création d'un compte → le
+  service d'e-mail intégré par défaut de Supabase a un quota très bas
+  (souvent 2/heure), même quand aucun e-mail n'est réellement envoyé
+  (Confirm email désactivé). En cas de blocage : soit attendre que le
+  quota se réinitialise, soit créer le compte depuis le tableau de
+  bord (Authentication → Users → Add user, voir étape 3) qui n'est pas
+  soumis à ce quota, soit configurer un SMTP personnalisé
+  (Authentication → Settings → SMTP Settings) pour lever la limite
+  définitivement.
 
 ## 3. Créer le tout premier compte administrateur
 
@@ -47,7 +72,7 @@ choisi.
 
 1. Tableau de bord Supabase → **Authentication** → **Users** → **Add
    user** :
-   - Email : `votrenom@planif-gft.io` (remplacez `votrenom` par le nom
+   - Email : `planif-gft+votrenom@gft.com` (remplacez `votrenom` par le nom
      d'utilisateur souhaité)
    - Password : le mot de passe que vous voulez utiliser
    - Cochez **Auto Confirm User**
