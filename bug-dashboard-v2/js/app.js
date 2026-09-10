@@ -77,7 +77,7 @@
     S.raw = ''; S.archived = meta; S.analysisId = meta.id || null; S.analysisName = meta.nom || '';
     if (meta.refDate) { S.refDate = new Date(meta.refDate + 'T00:00:00'); $('refDateInput').value = meta.refDate; }
     var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
-    S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: -1, dueDate: -1, created: -1 };
+    S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: has('assignee'), dueDate: has('dueDate'), created: has('created') };
     S.headers = [];
     renderColumnChips(S.cols);
     var b = $('archiveBanner');
@@ -102,7 +102,7 @@
     var spec = [['key', 'Clé', 'req'], ['status', 'Statut', 'req'], ['team', 'Équipe', 'imp'], ['priority', 'Priorité', 'imp'], ['targetDate', 'Target date', 'imp'], ['labels', 'Labels (PRJ301)', 'imp'], ['fixVersion', 'Fix Version', 'imp'], ['resolution', 'Résolution', 'imp'], ['summary', 'Résumé', 'opt'], ['assignee', 'Responsable', 'opt'], ['dueDate', 'Due date', 'opt'], ['created', 'Created', 'opt']];
     $('colChips').innerHTML = spec.map(function (s) {
       var ok = cols[s[0]] !== -1;
-      return '<span class="chip ' + (ok ? 'on' : (s[2] === 'opt' ? 'opt' : 'off')) + '" title="' + (ok ? 'Colonne détectée : ' + esc(S.headers[cols[s[0]]]) : 'Colonne non trouvée') + '">' + (ok ? '✓ ' : '✗ ') + s[1] + '</span>';
+      return '<span class="chip ' + (ok ? 'on' : (s[2] === 'opt' ? 'opt' : 'off')) + '" title="' + (ok ? 'Colonne détectée : ' + esc(S.headers[cols[s[0]]] || s[1]) : 'Colonne non trouvée') + '">' + (ok ? '✓ ' : '✗ ') + s[1] + '</span>';
     }).join('');
   }
 
