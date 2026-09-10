@@ -14,7 +14,7 @@
   var S = APP.state;
   var LOCAL_KEY = 'bdv2:history', LOCAL_MAX = 30;
   var H = { items: [], source: null, currentHash: null, compare: [] };
-  var ui = { metric: 'global', team: '', series: null };
+  var ui = { metric: 'global', selectedTd: null };
 
   async function sha256(text) {
     try {
@@ -144,71 +144,152 @@
     if (i.resume && i.resume.refDate) return new Date(i.resume.refDate + 'T00:00:00');
     return new Date(i.at);
   }
-  function versionNum(i) { var m = (i.nom || '').match(/\d+(?:\.\d+)+/); return m ? m[0].split('.').map(Number) : null; }
-  function cmpOfficial(a, b) {
-    var d = bizDate(a) - bizDate(b); if (d) return d;
-    var va = versionNum(a), vb = versionNum(b);
-    if (va && vb) { for (var k = 0; k < Math.max(va.length, vb.length); k++) { var x = (va[k] || 0) - (vb[k] || 0); if (x) return x; } }
-    return new Date(a.at) - new Date(b.at);
+  function versionNum(i) { var m = (i.nom || '').match(/\d+(?:\.\d+)+/); return m ? m[0] : ''; }
+
+  // ── Stats d'une analyse, par Target date (une Target date = une version) ──
+  function tdStats(item) {
+    if (item._byTd) return item._byTd;
+    var cfg = CFG.get(), bk = cfg.priorities.blockerKeys || ['blocker', 'highest'];
+    var out = {};
+    (item.tickets || []).forEach(function (c) {
+      var td = c.td || 'none';
+      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+      var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
+      st.total++; st.pctSum += c.pc || 0; if (c.d) st.done++; else st.open++;
+      if (isB && !c.d) st.blockersOpen++;
+      if (c.o === 'PRJ301') { st.prj301++; if (!c.d) st.prj301Open++; st.byOrigin.PRJ301++; } else st.byOrigin.Interne++;
+      if (c.fx) st.hasFix++; if (c.d && !c.fx) st.doneNoFix++;
+      st.byStatus[c.st] = (st.byStatus[c.st] || 0) + 1;
+      var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
+      var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
+    });
+    Object.keys(out).forEach(function (td) { out[td].progress = out[td].total ? Math.round(out[td].pctSum / out[td].total * 10) / 10 : 0; });
+    item._byTd = out; return out;
   }
-  // Index réels dans H.items, triés : officielles par date métier croissante, travail par date de création décroissante.
-  function officialIdx() { return H.items.map(function (i, k) { return k; }).filter(function (k) { return H.items[k].epingle; }).sort(function (a, b) { return cmpOfficial(H.items[a], H.items[b]); }); }
-  function workIdx() { return H.items.map(function (i, k) { return k; }).filter(function (k) { return !H.items[k].epingle; }).reverse(); }
-  function seriesItems() {
-    var off = officialIdx();
-    var useOff = ui.series === 'official' || (ui.series !== 'all' && off.length >= 2);
-    return useOff ? { items: off.map(function (k) { return H.items[k]; }), official: true } : { items: H.items.slice(), official: false };
+  CFG.onChange(function () { H.items.forEach(function (i) { delete i._byTd; }); });
+  function mainTd(item) { var b = tdStats(item), best = 'none', n = -1; Object.keys(b).forEach(function (td) { if (b[td].total > n) { n = b[td].total; best = td; } }); return best; }
+
+  // Versions = Target dates rencontrées dans le journal ; photos = analyses qui
+  // contiennent des tickets de cette Target date ; officielle = photo épinglée
+  // la plus récente.
+  function versionsIndex() {
+    var map = {};
+    H.items.forEach(function (it, k) {
+      Object.keys(tdStats(it)).forEach(function (td) {
+        var v = map[td] = map[td] || { td: td, photos: [], official: null, officialMatch: false };
+        v.photos.push(k);
+        // officielle : la photo épinglée dont la date du nom est cette Target date ;
+        // à défaut, la plus récente des épinglées contenant cette Target date.
+        if (it.epingle && td !== 'none') {
+          var match = C.toISO(bizDate(it)) === td;
+          if (v.official == null || (match && !v.officialMatch) || (match === v.officialMatch && it.at > H.items[v.official].at)) { v.official = k; v.officialMatch = match; }
+        }
+      });
+    });
+    return Object.keys(map).sort(function (a, b) { if (a === 'none') return 1; if (b === 'none') return -1; return a.localeCompare(b); }).map(function (td) { return map[td]; });
+  }
+  function tdLabel(td, withYear) { if (td === 'none') return 'Sans Target date'; var d = new Date(td + 'T00:00:00'); return withYear ? C.fmtDate(d) : C.fmtDate(d).slice(0, 5); }
+  function versionLabel(v, withYear) {
+    var off = v.official != null ? H.items[v.official] : null;
+    var num = off && v.officialMatch ? versionNum(off) : '';
+    return (num ? num + ' · ' : '') + tdLabel(v.td, withYear);
+  }
+  function officialIdx() { return versionsIndex().filter(function (v) { return v.official != null; }).map(function (v) { return v.official; }); }
+
+  // ── Séries d'un graphique à partir de points {label, st} ─────────────────
+  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  function chartFrom(metric, points) {
+    var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
+    var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
+    var lines = function (series, opts) { return CH.lineChart(Object.assign({ labels: labels, series: series }, opts || {})); };
+    if (metric === 'global') return lines([{ label: 'Total', color: P.NEUTRAL, values: g('total') }, { label: 'Ouverts', color: P.CATEGORICAL[0], values: g('open') }, { label: 'Terminés', color: P.CATEGORICAL[5], values: g('done') }, { label: 'Blockers ouverts', color: P.CATEGORICAL[7], values: g('blockersOpen') }, { label: 'PRJ301 ouverts', color: '#4a3aa7', values: g('prj301Open') }]);
+    if (metric === 'progress') return lines([{ label: 'Avancement pondéré', color: P.CATEGORICAL[0], values: g('progress') }], { unit: '%', max: 100, area: true });
+    if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
+    if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
+    var field = metric === 'status' ? 'byStatus' : metric === 'priority' ? 'byPriority' : 'byTeam';
+    var keys = []; points.forEach(function (p) { if (p.st) Object.keys(p.st[field]).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); });
+    var dim = metric === 'status' ? 'status' : metric === 'priority' ? 'priority' : 'team';
+    var fake = keys.map(function (k) { return { team: k, teamLabel: k, priority: k, priorityLabel: k, priorityKey: C.normalize(k), status: k }; });
+    keys = C.DIMS[dim].order(keys, cfg, fake);
+    if (keys.length > 8) keys = keys.slice(0, 8);
+    var colors = P.colorsForDim(dim, keys, cfg, fake);
+    return (metric === 'teams' ? '<p class="sub">Tickets ouverts (non terminés) par équipe.</p>' : '') + lines(keys.map(function (k) { return { label: k, color: colors[k], values: points.map(function (p) { if (!p.st) return null; var v = p.st[field][k]; return v == null ? 0 : (metric === 'teams' ? v.open : v); }) }; }));
   }
 
+  // ── Section Évolution ────────────────────────────────────────────────────
   function renderHistory() {
     var hasData = S.tickets.length > 0;
     var rootEl = $(hasData ? 'historyRoot' : 'emptyHistoryRoot'); if (!rootEl) return;
     var other = $(hasData ? 'emptyHistoryRoot' : 'historyRoot'); if (other) other.innerHTML = '';
     var items = H.items;
     if (!items.length) { rootEl.innerHTML = hasData ? '<div class="card"><h2>Évolution</h2><div class="sub">Le journal est vide : chaque clic sur « Analyser » avec de nouvelles données ajoute un point. Revenez après la prochaine analyse.</div></div>' : ''; return; }
-    var ser = seriesItems();
-    var labels = ser.items.map(function (i) { var d = bizDate(i); return ser.official ? (String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0')) : shortWhen(i.at); });
+    var versions = versionsIndex();
+    var sel = versions.find(function (v) { return v.td === ui.selectedTd; }) || null;
     var h = '';
-    var metricOpts = [['global', 'Global (ouverts, terminés, blockers, retards)'], ['progress', 'Avancement pondéré (%)'], ['versions', 'Stock à livrer par version'], ['teams', 'Tickets ouverts par équipe'], ['origin', 'Origine PRJ301 / Interne']];
-    var off = officialIdx();
-    h += '<div class="card"><div class="card-head"><div><h2>Évolution — ' + (ser.official ? 'versions officielles (' + ser.items.length + ')' : 'toutes les analyses (' + ser.items.length + ')') + '</h2><div class="sub">' + (ser.official ? 'Un point par version officielle, dans l\'ordre de leur date. ' : 'Un point par analyse journalisée. ') + (H.source === 'supabase' ? 'Journal partagé.' : 'Journal local de ce navigateur.') + '</div></div>' +
-      '<div class="card-tools"><select class="dim-select" id="histSeries"><option value="official"' + (ser.official ? ' selected' : '') + '' + (off.length < 2 ? ' disabled' : '') + '>Versions officielles</option><option value="all"' + (!ser.official ? ' selected' : '') + '>Toutes les analyses</option></select><select class="dim-select" id="histMetric">' + metricOpts.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div></div><div class="chart-body" id="histChart">' + chartFor(ui.metric, ser.items, labels) + '</div></div>';
+    // puces de versions
+    var chips = '<button type="button" class="fchip' + (!sel ? ' is-on' : '') + '" data-ver="">Versions officielles</button>' + versions.map(function (v) {
+      return '<button type="button" class="fchip' + (sel && sel.td === v.td ? ' is-on' : '') + '" data-ver="' + esc(v.td) + '" title="' + v.photos.length + ' photo' + (v.photos.length > 1 ? 's' : '') + (v.official != null ? ' · officielle : ' + esc(items[v.official].nom || '') : ' · aucune photo épinglée') + '">' + (v.official != null ? '📌 ' : '') + esc(versionLabel(v, false)) + ' <span class="dd-count">' + v.photos.length + '</span></button>';
+    }).join('');
+    var metricSel = '<select class="dim-select" id="histMetric">' + METRICS.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+    var title, sub, chart, extra = '';
+    if (!sel) {
+      var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] }; });
+      title = 'Évolution entre versions — ' + pts.length + ' version' + (pts.length > 1 ? 's' : '');
+      sub = 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.';
+      chart = pts.length ? chartFrom(ui.metric, pts) : '<div class="empty">Aucune Target date dans le journal.</div>';
+    } else {
+      var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
+      var pts2 = photos.map(function (k) { return { label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td], k: k }; });
+      title = 'Version ' + versionLabel(sel, true) + ' — ' + photos.length + ' photo' + (photos.length > 1 ? 's' : '');
+      sub = 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non). Les filtres de la section Analyse ne s\'appliquent pas ici.';
+      chart = chartFrom(ui.metric, pts2);
+      // rythme
+      if (pts2.length >= 2) {
+        var f = pts2[0], l = pts2[pts2.length - 1];
+        var days = Math.max((new Date(items[l.k].at) - new Date(items[f.k].at)) / 86400000, 0);
+        var closed = l.st.done - f.st.done, appeared = l.st.total - f.st.total;
+        var pace = days >= 0.5 ? closed / days : null;
+        var td = sel.td !== 'none' ? new Date(sel.td + 'T00:00:00') : null;
+        var proj = pace && pace > 0 && l.st.open > 0 ? new Date(new Date(items[l.k].at).getTime() + l.st.open / pace * 86400000) : null;
+        extra = '<div class="diff-grid" style="margin-top:12px">' +
+          '<div class="diff-box"><div class="n">' + l.st.open + '</div><div class="l">reste à livrer (dernière photo)</div></div>' +
+          '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? days.toFixed(1) + ' j' : Math.round(days * 24) + ' h') + ')</div></div>' +
+          '<div class="diff-box"><div class="n">' + (appeared >= 0 ? '+' : '') + appeared + '</div><div class="l">tickets apparus dans la version</div></div>' +
+          '<div class="diff-box"><div class="n">' + (pace == null ? '—' : pace.toFixed(1)) + '</div><div class="l">terminés par jour (rythme moyen)</div></div>' +
+          '<div class="diff-box"><div class="n" style="font-size:16px">' + (l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (td ? 'stock à zéro à ce rythme — Target date ' + C.fmtDate(td) + (proj && td ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : 'stock à zéro à ce rythme') + '</div></div></div>';
+        extra += '<ul class="hist-list" style="margin-top:12px">' + pts2.slice().reverse().map(function (p, idx) {
+          var prev = pts2[pts2.length - 2 - idx]; var it = items[p.k];
+          var d = prev ? ' · Δ terminés ' + (p.st.done - prev.st.done >= 0 ? '+' : '') + (p.st.done - prev.st.done) + ' · Δ total ' + (p.st.total - prev.st.total >= 0 ? '+' : '') + (p.st.total - prev.st.total) : '';
+          return '<li class="hist-item' + (it.hash === H.currentHash ? ' is-current' : '') + '"><span class="when">' + fmtWhen(it.at) + '</span><span class="name">' + (it.epingle ? '📌 ' : '') + esc(it.nom || 'Analyse n°' + (p.k + 1)) + '</span><span class="meta">' + p.st.total + ' tickets · ' + p.st.open + ' ouverts · ' + p.st.done + ' terminés · ' + p.st.progress + '%' + d + '</span><button type="button" class="ghost small" data-hist-open="' + p.k + '">' + (S.archived && S.archived.index === p.k ? 'Ouverte' : 'Ouvrir') + '</button></li>';
+        }).join('') + '</ul>';
+      }
+    }
+    h += '<div class="card"><div class="card-head"><div><h2>' + esc(title) + '</h2><div class="sub">' + sub + '</div></div><div class="card-tools">' + metricSel + '</div></div>' +
+      '<div class="filter-group" style="margin-top:10px" id="histVersions">' + chips + '</div><div class="chart-body" id="histChart">' + chart + '</div>' + extra + '</div>';
 
+    // journal : officielles + travail regroupées par version
     var row = function (real, official) {
       var i = items[real], checked = H.compare.indexOf(real) !== -1, cur = i.hash === H.currentHash, d = bizDate(i);
       return '<li class="hist-item' + (cur ? ' is-current' : '') + '"><input type="checkbox" data-cmp="' + real + '" ' + (checked ? 'checked' : '') + ' title="Comparer"><span class="when" title="Journalisée le ' + fmtWhen(i.at) + '">' + (official ? C.fmtDate(d) : fmtWhen(i.at)) + '</span><span class="name">' + esc(i.nom || 'Analyse n°' + (real + 1)) + (cur ? ' <span class="tk-badge tk-badge--preview">courante</span>' : '') + '</span><span class="meta">' + i.nb + ' tickets · ' + (i.resume.kpis ? i.resume.kpis.open + ' ouverts · ' + i.resume.kpis.progress + '%' : '') + (i.byName ? ' · ' + esc(i.byName) : '') + '</span>' +
         '<button type="button" class="ghost small" data-hist-open="' + real + '" ' + (i.tickets && i.tickets.length ? '' : 'disabled title="Tickets non conservés"') + '>' + (S.archived && S.archived.index === real ? 'Ouverte' : 'Ouvrir') + '</button>' +
         '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="' + (official ? 'Retirer des versions officielles' : 'Marquer comme version officielle') + '">' + (official ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
     };
-    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Analyses épinglées, classées par la date indiquée dans leur nom (ex. « 3.9.7 OFFICIEL (2026-09-11) »), sinon par date de référence. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div></div>' +
+    var off = officialIdx();
+    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Photos épinglées, une par Target date (la plus récente fait foi), dans l\'ordre des Target dates. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div></div>' +
       (off.length ? '<ul class="hist-list" style="margin-top:12px">' + off.map(function (k) { return row(k, true); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune version officielle : épinglez (📍) une analyse pour la faire apparaître ici.</p>') + '</div>';
-    var work = workIdx();
-    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + work.length + '</span></h2><div class="sub">Toutes les autres analyses journalisées, de la plus récente à la plus ancienne.</div></div></div>' +
-      (work.length ? '<ul class="hist-list" style="margin-top:12px">' + work.map(function (k) { return row(k, false); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune analyse de travail.</p>') +
+    var groups = {};
+    items.forEach(function (it, k) { if (it.epingle) return; var td = mainTd(it); (groups[td] = groups[td] || []).push(k); });
+    var gkeys = Object.keys(groups).sort(function (a, b) { if (a === 'none') return 1; if (b === 'none') return -1; return b.localeCompare(a); });
+    var nWork = items.filter(function (i) { return !i.epingle; }).length;
+    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + nWork + '</span></h2><div class="sub">Les sous-versions, regroupées par version (Target date), de la plus récente à la plus ancienne.</div></div></div>' +
+      (gkeys.length ? gkeys.map(function (td) {
+        var v = versions.find(function (x) { return x.td === td; });
+        return '<h4 style="margin:14px 0 6px;font-size:12.5px;color:var(--navy)">' + esc(v ? versionLabel(v, true) : tdLabel(td, true)) + ' <span class="tk-badge tk-badge--muted">' + groups[td].length + '</span></h4><ul class="hist-list">' + groups[td].reverse().map(function (k) { return row(k, false); }).join('') + '</ul>';
+      }).join('') : '<p class="sub" style="margin-top:10px">Aucune analyse de travail.</p>') +
       '<div id="histCompare">' + compareHtml(items) + '</div></div>';
     rootEl.innerHTML = h;
-    $('histMetric').addEventListener('change', function () { ui.metric = this.value; var sr = seriesItems(); $('histChart').innerHTML = chartFor(ui.metric, sr.items, sr.items.map(function (i) { var d = bizDate(i); return sr.official ? (String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0')) : shortWhen(i.at); })); });
-    $('histSeries').addEventListener('change', function () { ui.series = this.value; renderHistory(); });
-  }
-
-  function chartFor(metric, items, labels) {
-    var kp = function (f) { return items.map(function (i) { return i.resume.kpis ? i.resume.kpis[f] : null; }); };
-    if (metric === 'global') return CH.lineChart({ labels: labels, series: [{ label: 'Ouverts', color: P.CATEGORICAL[0], values: kp('open') }, { label: 'Terminés', color: P.CATEGORICAL[5], values: kp('done') }, { label: 'Blockers ouverts', color: P.CATEGORICAL[7], values: kp('blockersOpen') }, { label: 'Target date dépassée', color: P.CATEGORICAL[1], values: kp('overdue') }] });
-    if (metric === 'progress') return CH.lineChart({ labels: labels, series: [{ label: 'Avancement pondéré', color: P.CATEGORICAL[0], values: kp('progress') }], unit: '%', max: 100, area: true });
-    if (metric === 'origin') return CH.lineChart({ labels: labels, series: [{ label: 'PRJ301', color: '#4a3aa7', values: items.map(function (i) { return i.resume.byOrigin ? i.resume.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: items.map(function (i) { return i.resume.byOrigin ? i.resume.byOrigin.Interne : null; }) }] });
-    if (metric === 'versions') {
-      var keys = []; items.forEach(function (i) { Object.keys(i.resume.byVersion || {}).forEach(function (v) { if (keys.indexOf(v) === -1) keys.push(v); }); });
-      keys.sort(function (a, b) { if (a === 'Sans version') return 1; if (b === 'Sans version') return -1; return a.localeCompare(b, 'fr', { numeric: true }); });
-      if (keys.length > 8) keys = keys.slice(-8);
-      return '<p class="sub">Stock à livrer = tickets non terminés rattachés à chaque version, à la date de chaque analyse. Une courbe qui descend = la version se vide ; une courbe qui monte = du stock arrive (nouveaux bugs ou report).</p>' + CH.lineChart({ labels: labels, series: keys.map(function (v, idx) { return { label: v, color: v === 'Sans version' ? P.NEUTRAL : P.CATEGORICAL[idx % 8], values: items.map(function (i) { var b = i.resume.byVersion && i.resume.byVersion[v]; return b ? b.open : null; }) }; }) });
-    }
-    if (metric === 'teams') {
-      var tk = []; items.forEach(function (i) { Object.keys(i.resume.byTeam || {}).forEach(function (t) { if (tk.indexOf(t) === -1) tk.push(t); }); });
-      var cfg = CFG.get(); tk = C.DIMS.team.order(tk, cfg, []).slice(0, 8);
-      var cols = P.colorsForDim('team', tk, cfg, tk.map(function (t) { return { team: t, teamLabel: t }; }));
-      return CH.lineChart({ labels: labels, series: tk.map(function (t) { return { label: (cfg.teams.alias && cfg.teams.alias[t]) || t, color: cols[t], values: items.map(function (i) { var b = i.resume.byTeam && i.resume.byTeam[t]; return b ? b.open : null; }) }; }) });
-    }
-    return '';
+    $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
+    $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; renderHistory(); });
   }
 
   // ── Comparateur ────────────────────────────────────────────────────
