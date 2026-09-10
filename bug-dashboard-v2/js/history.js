@@ -53,7 +53,7 @@
     var cfg = CFG.get();
     return (list || []).map(function (c) {
       var pk = C.normalize(c.p || '');
-      return { key: c.k, summary: c.s, status: c.st, statusKey: C.normalize(c.st), resolution: c.r, team: c.tm, teamLabel: (cfg.teams.alias && cfg.teams.alias[c.tm]) || c.tm, priority: c.p, priorityKey: pk, priorityLabel: (cfg.priorities.groups && cfg.priorities.groups[pk]) || c.p, origin: c.o, isPrj301: c.o === 'PRJ301', version: c.v, versionState: c.vs, fixVersion: c.fx, hasFix: !!c.fx, targetDate: c.td ? new Date(c.td + 'T00:00:00') : null, targetRaw: c.td, isDone: !!c.d, pct: c.pc, labels: c.lb || '' };
+      return { key: c.k, summary: c.s, status: c.st, statusKey: C.normalize(c.st), resolution: c.r, team: c.tm, teamLabel: (cfg.teams.alias && cfg.teams.alias[c.tm]) || c.tm, priority: c.p, priorityKey: pk, priorityLabel: (cfg.priorities.groups && cfg.priorities.groups[pk]) || c.p, origin: c.o, isPrj301: c.o === 'PRJ301', version: c.v, versionState: c.vs, fixVersion: c.fx, hasFix: !!c.fx, targetDate: c.td ? new Date(c.td + 'T00:00:00') : null, targetRaw: c.td, dueDate: null, dueRaw: '', created: null, type: '', assignee: '', versionDeploy: null, isDone: !!c.d, pct: c.pc, labels: c.lb || '' };
     });
   }
 
@@ -114,7 +114,10 @@
   function shortWhen(iso) { var d = new Date(iso); return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
 
   // Analyses « précédentes » = tout sauf celle qui porte le hash courant.
-  function previousItems() { return H.items.filter(function (i) { return i.hash !== H.currentHash; }); }
+  function previousItems() {
+    var idx = -1; H.items.forEach(function (i, k) { if (i.hash === H.currentHash) idx = k; });
+    return idx === -1 ? H.items.slice() : H.items.slice(0, idx);
+  }
   function filtersActive() { var f = S.filters; return f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0; }
 
   // ── Deltas + sparklines sur les tuiles ────────────────────────────
@@ -131,10 +134,13 @@
   });
 
   // ── Section Évolution ──────────────────────────────────────────────
-  APP.hooks.render.push(function () {
-    var rootEl = $('historyRoot'); if (!rootEl) return;
+  APP.hooks.render.push(renderHistory);
+  function renderHistory() {
+    var hasData = S.tickets.length > 0;
+    var rootEl = $(hasData ? 'historyRoot' : 'emptyHistoryRoot'); if (!rootEl) return;
+    var other = $(hasData ? 'emptyHistoryRoot' : 'historyRoot'); if (other) other.innerHTML = '';
     var items = H.items;
-    if (!items.length) { rootEl.innerHTML = '<div class="card"><h2>Évolution</h2><div class="sub">Le journal est vide : chaque clic sur « Analyser » avec de nouvelles données ajoute un point. Revenez après la prochaine analyse.</div></div>'; return; }
+    if (!items.length) { rootEl.innerHTML = hasData ? '<div class="card"><h2>Évolution</h2><div class="sub">Le journal est vide : chaque clic sur « Analyser » avec de nouvelles données ajoute un point. Revenez après la prochaine analyse.</div></div>' : ''; return; }
     var labels = items.map(function (i) { return shortWhen(i.at); });
     var colorsC = P.CATEGORICAL;
     var h = '';
@@ -148,11 +154,11 @@
         var real = items.length - 1 - idx;
         var checked = H.compare.indexOf(real) !== -1;
         return '<li class="hist-item' + (i.hash === H.currentHash ? ' is-current' : '') + '"><input type="checkbox" data-cmp="' + real + '" ' + (checked ? 'checked' : '') + ' title="Comparer"><span class="when">' + fmtWhen(i.at) + '</span><span class="name">' + esc(i.nom || 'Analyse n°' + (real + 1)) + (i.epingle ? ' 📌' : '') + (i.hash === H.currentHash ? ' <span class="tk-badge tk-badge--preview">courante</span>' : '') + '</span><span class="meta">' + i.nb + ' tickets · ' + (i.resume.kpis ? i.resume.kpis.open + ' ouverts · ' + i.resume.kpis.progress + '%' : '') + (i.byName ? ' · ' + esc(i.byName) : '') + '</span>' +
-          '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="Épingler">' + (i.epingle ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
+          '<button type="button" class="ghost small" data-hist-open="' + real + '" ' + (i.tickets && i.tickets.length ? '' : 'disabled title="Tickets non conservés"') + '>' + (S.archived && S.archived.index === real ? 'Ouverte' : 'Ouvrir') + '</button><button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="Épingler">' + (i.epingle ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
       }).join('') + '</ul><div id="histCompare">' + compareHtml(items) + '</div></div>';
     rootEl.innerHTML = h;
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; $('histChart').innerHTML = chartFor(ui.metric, items, labels); });
-  });
+  }
 
   function chartFor(metric, items, labels) {
     var kp = function (f) { return items.map(function (i) { return i.resume.kpis ? i.resume.kpis[f] : null; }); };
@@ -206,26 +212,34 @@
   document.addEventListener('click', async function (e) {
     var b = e.target.closest('[data-diff]');
     if (b && lastDiff) { var set = lastDiff.sets[b.dataset.diff] || []; DD.open({ title: 'Comparateur — ' + b.querySelector('.l').textContent, subtitle: fmtWhen(lastDiff.a.at) + ' → ' + fmtWhen(lastDiff.b.at), tickets: inflate(set) }); return; }
+    var op = e.target.closest('[data-hist-open]');
+    if (op) { var io = +op.dataset.histOpen, it0 = H.items[io]; H.currentHash = it0.hash; APP.loadArchived(inflate(it0.tickets), { id: it0.id, index: io, nom: it0.nom, when: fmtWhen(it0.at), refDate: it0.resume && it0.resume.refDate, hash: it0.hash }); document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: it0, isNew: false } })); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     var r = e.target.closest('[data-hist-rename]');
-    if (r) { var it = H.items[+r.dataset.histRename]; var nom = prompt('Nom de l\'analyse :', it.nom || ''); if (nom == null) return; it.nom = nom.trim(); if (H.source === 'supabase' && it.id) await S.client.from('bdv2_analyses').update({ nom: it.nom || null }).eq('id', it.id); else saveLocal(H.items); APP.rerender(); return; }
+    if (r) { var it = H.items[+r.dataset.histRename]; var nom = prompt('Nom de l\'analyse :', it.nom || ''); if (nom == null) return; it.nom = nom.trim(); if (H.source === 'supabase' && it.id) await S.client.from('bdv2_analyses').update({ nom: it.nom || null }).eq('id', it.id); else saveLocal(H.items); refresh(); return; }
     var p = e.target.closest('[data-hist-pin]');
-    if (p) { var ip = H.items[+p.dataset.histPin]; ip.epingle = !ip.epingle; if (H.source === 'supabase' && ip.id) await S.client.from('bdv2_analyses').update({ epingle: ip.epingle }).eq('id', ip.id); else saveLocal(H.items); APP.rerender(); return; }
+    if (p) { var ip = H.items[+p.dataset.histPin]; ip.epingle = !ip.epingle; if (H.source === 'supabase' && ip.id) await S.client.from('bdv2_analyses').update({ epingle: ip.epingle }).eq('id', ip.id); else saveLocal(H.items); refresh(); return; }
     var dl = e.target.closest('[data-hist-del]');
-    if (dl) { var idx = +dl.dataset.histDel, id = H.items[idx]; if (!confirm('Supprimer cette analyse du journal ?')) return; if (H.source === 'supabase' && id.id) { var res = await S.client.from('bdv2_analyses').delete().eq('id', id.id); if (res.error) { alert(res.error.message); return; } } H.items.splice(idx, 1); if (H.source !== 'supabase') saveLocal(H.items); H.compare = []; APP.rerender(); return; }
+    if (dl) { var idx = +dl.dataset.histDel, id = H.items[idx]; if (!confirm('Supprimer cette analyse du journal ?')) return; if (H.source === 'supabase' && id.id) { var res = await S.client.from('bdv2_analyses').delete().eq('id', id.id); if (res.error) { alert(res.error.message); return; } } H.items.splice(idx, 1); if (H.source !== 'supabase') saveLocal(H.items); H.compare = []; refresh(); return; }
   });
+  function refresh() { if (S.tickets.length) APP.rerender(); else renderHistory(); }
   document.addEventListener('change', function (e) {
     var c = e.target.closest('[data-cmp]'); if (!c) return;
     var i = +c.dataset.cmp;
     if (c.checked) { H.compare.push(i); if (H.compare.length > 2) H.compare.shift(); } else H.compare = H.compare.filter(function (x) { return x !== i; });
-    APP.rerender();
+    refresh();
   });
 
   document.addEventListener('bdv2:ready', async function () {
     await load();
     if (S.raw) { H.currentHash = await sha256(S.raw + '|' + C.toISO(S.refDate)); }
-    if (S.tickets.length) APP.rerender();
+    if (S.tickets.length) APP.rerender(); else renderHistory();
     var cur = H.items.filter(function (i) { return i.hash === H.currentHash; }).pop();
     if (cur) { S.analysisId = cur.id || null; document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: cur, isNew: false } })); }
+  });
+  document.addEventListener('bdv2:archived', async function (e) {
+    if (e.detail && e.detail.meta) return;
+    H.currentHash = S.raw ? await sha256(S.raw + '|' + C.toISO(S.refDate)) : null;
+    refresh();
   });
   root.BDV2History = { get: function () { return H; }, load: load, record: record, inflate: inflate, snapshot: snapshot, sha256: sha256 };
 })(window);

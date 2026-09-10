@@ -57,7 +57,7 @@
     if (!parsed.rows.length) { setMsg('Aucune ligne détectée — la première ligne collée doit contenir les en-têtes.', 'err'); return false; }
     var cols = C.detectColumns(parsed.headers);
     if (cols.status === -1) { setMsg('Colonne « Status » introuvable dans les en-têtes collés.', 'err'); renderColumnChips(cols); return false; }
-    S.raw = raw; S.headers = parsed.headers; S.cols = cols;
+    S.raw = raw; S.headers = parsed.headers; S.cols = cols; S.archived = null; $('archiveBanner').classList.add('hidden');
     S.tickets = C.buildTickets(parsed.rows, parsed.headers, cols);
     S.analysisName = ($('analysisName').value || '').trim();
     try { localStorage.setItem(LS.raw, raw); localStorage.setItem(LS.name, S.analysisName); } catch (e) {}
@@ -69,6 +69,33 @@
     setMsg(S.tickets.length + ' tickets analysés' + (cols.targetDate === -1 ? ' — sans colonne Target date (retards et versions indisponibles)' : '') + '.', 'ok');
     if (!opts.silent) hooks.afterAnalyze.forEach(function (fn) { try { fn(S); } catch (e) { console.error(e); } });
     return true;
+  }
+
+  // Ouvre une analyse du journal (lecture seule) comme jeu de données courant.
+  function loadArchived(tickets, meta) {
+    S.tickets = tickets.map(function (t, i) { t.idx = i; return t; });
+    S.raw = ''; S.archived = meta; S.analysisId = meta.id || null; S.analysisName = meta.nom || '';
+    if (meta.refDate) { S.refDate = new Date(meta.refDate + 'T00:00:00'); $('refDateInput').value = meta.refDate; }
+    var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
+    S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: -1, dueDate: -1, created: -1 };
+    S.headers = [];
+    renderColumnChips(S.cols);
+    var b = $('archiveBanner');
+    b.classList.remove('hidden');
+    b.innerHTML = '📂 <span>Analyse archivée <b>' + esc(meta.nom || ('n°' + (meta.index + 1))) + '</b> du <b>' + esc(meta.when) + '</b> (' + tickets.length + ' tickets, lecture seule). Les chiffres, le train et les graphiques reflètent cette analyse ; collez de nouvelles données pour en créer une nouvelle.</span><button type="button" class="ghost small" id="archiveExit">Revenir à l\'analyse courante</button>';
+    $('archiveExit').addEventListener('click', exitArchive);
+    $('emptyState').classList.add('hidden'); $('emptyHistoryRoot').innerHTML = '';
+    $('dashboard').classList.remove('hidden');
+    setMsg('Analyse archivée ouverte en lecture seule.', 'ok');
+    rerender();
+    document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: meta } }));
+  }
+  function exitArchive() {
+    S.archived = null; $('archiveBanner').classList.add('hidden');
+    var saved = null; try { saved = localStorage.getItem(LS.raw); } catch (e) {}
+    try { var rd = localStorage.getItem(LS.refDate); if (rd) { $('refDateInput').value = rd; S.refDate = new Date(rd + 'T00:00:00'); } } catch (e) {}
+    if (saved) { $('pasteArea').value = saved; analyze({ silent: true }); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
+    else { S.tickets = []; $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); setMsg('', ''); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
   }
 
   function renderColumnChips(cols) {
@@ -272,7 +299,8 @@
     $('clearBtn').addEventListener('click', function () {
       $('pasteArea').value = ''; $('analysisName').value = '';
       try { localStorage.removeItem(LS.raw); } catch (e) {}
-      S.tickets = []; $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); $('colChips').innerHTML = ''; setMsg('', ''); DD.close();
+      S.tickets = []; S.raw = ''; S.archived = null; $('archiveBanner').classList.add('hidden'); $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); $('colChips').innerHTML = ''; setMsg('', ''); DD.close();
+      document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } }));
     });
     var refInput = $('refDateInput');
     refInput.value = (function () { try { return localStorage.getItem(LS.refDate); } catch (e) { return null; } })() || C.toISO(new Date());
@@ -347,6 +375,6 @@
     document.dispatchEvent(new CustomEvent('bdv2:ready'));
   }
 
-  root.BDV2App = { state: S, hooks: hooks, available: available, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, setMsg: setMsg, esc: esc };
+  root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, setMsg: setMsg, esc: esc };
   document.addEventListener('DOMContentLoaded', init);
 })(window);
