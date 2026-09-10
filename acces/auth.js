@@ -40,18 +40,20 @@
     return client;
   }
 
-  // Le nom d'utilisateur est tout ce que la personne voit et saisit.
-  // En interne, Supabase Auth a besoin d'une adresse e-mail : on lui
-  // en fabrique une, invisible, sur un domaine technique dédié.
-  function normaliserNomUtilisateur(nom) {
-    return String(nom || '').trim().toLowerCase();
+  // L'identifiant de connexion est l'adresse e-mail GFT de la personne
+  // (@gft.com) — pas de domaine technique inventé, pas d'indirection :
+  // ce que l'admin saisit à la création du compte est ce que la
+  // personne retape pour se connecter.
+  function normaliserEmail(email) {
+    return String(email || '').trim().toLowerCase();
   }
-  function nomUtilisateurValide(nom) {
-    return /^[a-z0-9._-]{3,32}$/.test(nom);
+  function emailValide(email) {
+    return /^[a-z0-9._%+-]+@gft\.com$/.test(normaliserEmail(email));
   }
-  function emailInterne(nomUtilisateur) {
-    var prefixe = CFG.emailPrefix || '';
-    return prefixe + normaliserNomUtilisateur(nomUtilisateur) + '@' + (CFG.domaine || 'gft.com');
+  // Nom court dérivé de l'adresse (partie avant @), utilisé uniquement
+  // pour l'affichage (listes, journal) — jamais pour se connecter.
+  function nomAffichage(email) {
+    return normaliserEmail(email).split('@')[0];
   }
 
   async function getSession() {
@@ -59,10 +61,9 @@
     return res && res.data ? res.data.session : null;
   }
 
-  async function seConnecter(nomUtilisateur, motDePasse) {
-    var nom = normaliserNomUtilisateur(nomUtilisateur);
+  async function seConnecter(email, motDePasse) {
     return getClient().auth.signInWithPassword({
-      email: emailInterne(nom),
+      email: normaliserEmail(email),
       password: motDePasse
     });
   }
@@ -128,9 +129,9 @@
   root.PlanifAuth = {
     OUTILS: OUTILS,
     getClient: getClient,
-    normaliserNomUtilisateur: normaliserNomUtilisateur,
-    nomUtilisateurValide: nomUtilisateurValide,
-    emailInterne: emailInterne,
+    normaliserEmail: normaliserEmail,
+    emailValide: emailValide,
+    nomAffichage: nomAffichage,
     getSession: getSession,
     seConnecter: seConnecter,
     seDeconnecter: seDeconnecter,
