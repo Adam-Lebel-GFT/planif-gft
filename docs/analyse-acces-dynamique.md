@@ -64,6 +64,12 @@ Deux listes, deux écrans d'administration :
   l'accès manuellement (voir §7, limite technique).
 - Un compte peut être **désactivé** sans être supprimé : l'accès est
   coupé immédiatement, sans toucher au mot de passe.
+- **Expiration sur inactivité** : une session est coupée après
+  **1 heure sans activité**. Le contrôle s'applique pendant que la page
+  est ouverte et au retour sur le site (fermer l'onglet et revenir deux
+  heures plus tard déconnecte aussi). Le temps passé dans les outils qui
+  partagent la session compte comme de l'activité. Voir §7 pour la
+  raison du choix d'implémentation.
 
 ## 5. Accès au site et journal de connexion
 
@@ -104,6 +110,18 @@ plutôt que la vraie adresse ; Supabase Auth refusait cette adresse
 fictive à la création de compte (endpoint `/signup`), quel que soit le
 domaine choisi — utiliser la vraie adresse est plus simple et évite ce
 problème durablement.
+
+**Expiration de session sur inactivité (1 h)** : Supabase propose ce
+réglage côté serveur ("Inactivity timeout", Authentication → Sessions),
+mais uniquement à partir du **plan Pro**. Le projet étant sur le plan
+gratuit, la règle est appliquée côté application (`acces/auth.js`) :
+horodatage de la dernière activité partagé entre les onglets, vérifié
+toutes les 30 s et à chaque chargement de page. C'est suffisant pour
+l'usage visé (couper un accès laissé ouvert sur un poste), mais ce
+n'est pas une garantie serveur : quelqu'un ayant un accès technique au
+navigateur pourrait conserver le jeton. Si ce niveau de garantie
+devient nécessaire, passer au plan Pro et activer le réglage natif
+(les deux mécanismes peuvent coexister).
 
 **Sécurité des données** : le site n'a pas de serveur — le navigateur
 parle directement à Supabase avec une clé publique. Toute la logique de

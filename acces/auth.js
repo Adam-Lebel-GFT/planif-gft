@@ -62,14 +62,97 @@
   }
 
   async function seConnecter(email, motDePasse) {
-    return getClient().auth.signInWithPassword({
+    var res = await getClient().auth.signInWithPassword({
       email: normaliserEmail(email),
       password: motDePasse
     });
+    if (!res.error) marquerActivite();
+    return res;
   }
 
   async function seDeconnecter() {
+    oublierActivite();
     return getClient().auth.signOut();
+  }
+
+  /* ── Expiration de session sur inactivité ────────────────────
+     Supabase sait le faire côté serveur ("Inactivity timeout"),
+     mais uniquement à partir du plan Pro. On l'applique donc ici :
+     l'horodatage de la dernière activité est partagé entre les
+     onglets via localStorage, et vérifié à la fois pendant que la
+     page est ouverte (toutes les 30 s) et à chaque chargement —
+     fermer l'onglet et revenir deux heures plus tard déconnecte
+     donc aussi. */
+  var INACTIVITE_MS = 60 * 60 * 1000;          // 1 heure
+  var CLE_ACTIVITE = 'planif_acces_derniere_activite';
+  var PERIODE_VERIF_MS = 30 * 1000;
+  var ECART_ECRITURE_MS = 30 * 1000;           // n'écrit pas à chaque geste
+
+  function marquerActivite() {
+    try { localStorage.setItem(CLE_ACTIVITE, String(Date.now())); } catch (e) { /* stockage indisponible */ }
+  }
+  function oublierActivite() {
+    try { localStorage.removeItem(CLE_ACTIVITE); } catch (e) { /* idem */ }
+  }
+  function derniereActivite() {
+    try {
+      var v = parseInt(localStorage.getItem(CLE_ACTIVITE), 10);
+      return isNaN(v) ? null : v;
+    } catch (e) { return null; }
+  }
+  // Sans horodatage connu (premier chargement après la mise en place,
+  // navigation privée, stockage bloqué), on ne déconnecte pas : on
+  // repart de maintenant.
+  function inactiviteDepassee() {
+    var t = derniereActivite();
+    if (t === null) { marquerActivite(); return false; }
+    return (Date.now() - t) > INACTIVITE_MS;
+  }
+
+  // onExpire() est appelé après la déconnexion effective ; chaque page
+  // décide quoi afficher (écran de login, redirection...).
+  function demarrerSurveillanceInactivite(onExpire) {
+    var dernierEcrit = 0;
+    var termine = false;
+
+    function activite() {
+      var maintenant = Date.now();
+      if (maintenant - dernierEcrit < ECART_ECRITURE_MS) return;
+      dernierEcrit = maintenant;
+      marquerActivite();
+    }
+    ['mousedown', 'keydown', 'touchstart', 'scroll', 'focus'].forEach(function (ev) {
+      root.addEventListener(ev, activite, { passive: true, capture: true });
+    });
+
+    async function verifier() {
+      if (termine || !inactiviteDepassee()) return;
+      termine = true;
+      await seDeconnecter();
+      if (typeof onExpire === 'function') onExpire();
+    }
+    setInterval(verifier, PERIODE_VERIF_MS);
+    root.addEventListener('visibilitychange', function () {
+      if (!document.hidden) verifier();
+    });
+  }
+
+  // Version « page d'outil » : à appeler depuis un outil qui partage la
+  // session (sprint, radar, plan de livraisons...). Indispensable pour
+  // que le temps passé dans l'outil compte comme de l'activité — sinon
+  // une heure de travail dans un outil déconnecterait du lanceur. À
+  // l'expiration, la session est coupée et la page rechargée : l'outil
+  // revient en mode local, son contenu local est conservé.
+  async function surveillerInactiviteOutil() {
+    var session = await getSession();
+    if (!session) return;
+    if (inactiviteDepassee()) {
+      await seDeconnecter();
+      root.location.reload();
+      return;
+    }
+    marquerActivite();
+    demarrerSurveillanceInactivite(function () { root.location.reload(); });
   }
 
   // Fiche du compte connecté (nom d'utilisateur, actif, doit changer
@@ -132,6 +215,11 @@
     normaliserEmail: normaliserEmail,
     emailValide: emailValide,
     nomAffichage: nomAffichage,
+    INACTIVITE_MS: INACTIVITE_MS,
+    marquerActivite: marquerActivite,
+    inactiviteDepassee: inactiviteDepassee,
+    demarrerSurveillanceInactivite: demarrerSurveillanceInactivite,
+    surveillerInactiviteOutil: surveillerInactiviteOutil,
     getSession: getSession,
     seConnecter: seConnecter,
     seDeconnecter: seDeconnecter,

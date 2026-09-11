@@ -1431,6 +1431,10 @@ document.getElementById('publishBtn').addEventListener('click', publishPlan);
 writePlanSnapshot();
 attachDnD('phaseDefsList', () => state.phaseDefs);
 attachDnD('milestonesList', () => state.milestones);
+
+// Compte le temps passé ici comme de l'activité, et coupe la session
+// après 1 h d'inactivité (voir acces/auth.js).
+if (window.PlanifAuth) window.PlanifAuth.surveillerInactiviteOutil().catch(e => console.warn(e));
 </script>
 </body>
 </html>
