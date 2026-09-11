@@ -165,6 +165,83 @@ window.addEventListener('message', function(e) {
 
 ---
 
+## Composant partagé — le champ « copier-coller » (`assets/paste-field.js`)
+
+Le moteur de collage du **Bug Dashboard v2 (radar)** est extrait dans
+`assets/paste-field.js` et réutilisé par le Sprint Planning, le Poker Planning et
+le Bug Dashboard (lite). Il expose `window.TKPaste`.
+
+Ce qu'il gère, une fois pour toutes :
+
+- collage Excel (TSV), CSV Jira (virgule ou point-virgule), cellules entre
+  guillemets, résumés multi-lignes ;
+- accents cassés d'un CSV Jira ouvert dans Excel (« Ã© » → « é ») ;
+- copie directe du navigateur de tickets Jira (un ticket étalé sur plusieurs lignes) ;
+- en-têtes `Custom field (Team code)` → `Team code`, colonnes répétées fusionnées ;
+- détection des colonnes par équivalences (`Clé` = `Key` = `Issue key`…).
+
+### Monter le champ dans un outil
+
+```html
+<script src="../assets/paste-field.js"></script>
+<div id="mon-collage"></div>
+```
+
+```js
+TKPaste.mount({
+  mount: 'mon-collage',
+  fields: MES_CHAMPS,
+  storageKey: 'monOutil:collage',     // facultatif : restaure le collage au rechargement
+  onParse: function (res) {           // res = { raw, headers, rows, cols }
+    // … construire le modèle de l'outil …
+    return '3 lignes analysées.';     // message de succès ; { error: '…' } pour refuser
+  }
+});
+```
+
+### Déclarer les champs — `need` n'est pas le même d'un outil à l'autre
+
+C'est le seul réglage réellement spécifique : **ce qu'il faut pour progresser**
+diffère selon l'outil.
+
+| `need`  | Effet |
+|---------|-------|
+| `req`   | Obligatoire — l'analyse est refusée sans lui |
+| `any`   | Au moins un champ du même `group` doit être présent |
+| `imp`   | Utile mais non bloquant |
+| `opt`   | Facultatif |
+
+| Outil | Nécessaire pour progresser |
+|-------|----------------------------|
+| Bug Dashboard (lite) / Radar | `Statut` |
+| Sprint Planning (backlog) | `Clé` + `Sprint` + `Team code` — sans eux une story ne se rattache ni à une équipe ni à un sprint |
+| Poker Planning | `Clé` **ou** `Résumé` (`need:'any'`, même `group`) |
+
+Les équivalences d'en-têtes viennent du catalogue `TKPaste.CATALOG` ; un champ peut
+fournir sa propre liste via `candidates`. Un candidat préfixé par `=` n'est comparé
+qu'en égalité stricte (`'=sp'` ne doit pas capter la colonne `Sprint`).
+
+### Pastilles des colonnes — la règle visuelle
+
+**Trouvé → vert avec un crochet ✓. Absent → gris avec une croix ✗.** Le rouge est
+réservé aux seules colonnes qui *bloquent* l'analyse. Cette règle vaut pour les
+quatre outils : le radar utilise ses propres classes `.chip` (`bug-dashboard-v2`),
+les autres les classes `.tkp-chip` injectées par le composant.
+
+### Imports de fichiers
+
+`TKPaste.fromMatrix(matrice, ligneEntetes)` et `TKPaste.findHeaderRow(matrice, champs)`
+permettent aux imports `.xlsx` / export HTML Jira de profiter des mêmes équivalences
+(cf. `parseBacklog` du Sprint Planning et `mapJiraRows` du Poker Planning).
+
+### Dégradation
+
+Chaque outil vérifie `typeof TKPaste === 'undefined'` avant de s'en servir : si le
+fichier n'est pas chargé (page copiée sans le dossier `assets/`), l'outil affiche un
+message au lieu de planter.
+
+---
+
 ## Versionnage
 
 Format : `v[majeure].[ticket principal].[ticket board]`

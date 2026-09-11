@@ -99,10 +99,14 @@
   }
 
   function renderColumnChips(cols) {
-    var spec = [['key', 'Clé', 'req'], ['status', 'Statut', 'req'], ['team', 'Équipe', 'imp'], ['priority', 'Priorité', 'imp'], ['targetDate', 'Target date', 'imp'], ['labels', 'Labels (PRJ301)', 'imp'], ['fixVersion', 'Fix Version', 'imp'], ['resolution', 'Résolution', 'imp'], ['summary', 'Résumé', 'opt'], ['assignee', 'Responsable', 'opt'], ['dueDate', 'Due date', 'opt'], ['created', 'Created', 'opt']];
+    var spec = [['key', 'Clé', 'imp'], ['status', 'Statut', 'req'], ['team', 'Équipe', 'imp'], ['priority', 'Priorité', 'imp'], ['targetDate', 'Target date', 'imp'], ['labels', 'Labels (PRJ301)', 'imp'], ['fixVersion', 'Fix Version', 'imp'], ['resolution', 'Résolution', 'imp'], ['summary', 'Résumé', 'opt'], ['assignee', 'Responsable', 'opt'], ['dueDate', 'Due date', 'opt'], ['created', 'Created', 'opt']];
     $('colChips').innerHTML = spec.map(function (s) {
       var ok = cols[s[0]] !== -1;
-      return '<span class="chip ' + (ok ? 'on' : (s[2] === 'opt' ? 'opt' : 'off')) + '" title="' + (ok ? 'Colonne détectée : ' + esc(S.headers[cols[s[0]]] || s[1]) : 'Colonne non trouvée') + '">' + (ok ? '✓ ' : '✗ ') + s[1] + '</span>';
+      // Trouvé → vert avec un crochet ; absent → gris avec une croix. Le rouge est
+      // réservé à la seule colonne qui bloque l'analyse (Statut), comme dans les
+      // autres outils du toolkit (assets/paste-field.js).
+      var cls = ok ? 'on' : (s[2] === 'req' ? 'off' : 'opt');
+      return '<span class="chip ' + cls + '" title="' + (ok ? 'Colonne détectée : ' + esc(S.headers[cols[s[0]]] || s[1]) : (s[2] === 'req' ? 'Colonne nécessaire pour progresser — non trouvée' : 'Colonne non trouvée')) + '">' + (ok ? '✓ ' : '✗ ') + s[1] + '</span>';
     }).join('');
   }
 
