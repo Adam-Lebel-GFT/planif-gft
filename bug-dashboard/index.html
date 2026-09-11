@@ -92,20 +92,6 @@
     color:var(--muted);
     margin-bottom:14px;
   }
-  textarea#pasteArea{
-    width:100%;
-    min-height:120px;
-    border:1.5px dashed var(--border);
-    border-radius:10px;
-    padding:14px;
-    font-family:var(--font-mono);
-    font-size:12px;
-    color:var(--text);
-    resize:vertical;
-    background:#fbfcfe;
-  }
-  textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
-  .paste-actions{display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap;}
   button{
     font-family:var(--font);
     font-weight:700;
@@ -119,9 +105,6 @@
   button.primary:hover{background:var(--accent);}
   button.ghost{background:#fff; color:var(--muted); border:1px solid var(--border);}
   button.ghost:hover{border-color:var(--navy); color:var(--navy);}
-  .status-msg{font-size:12px; color:var(--muted);}
-  .status-msg.ok{color:var(--green); font-weight:600;}
-  .status-msg.err{color:var(--red); font-weight:600;}
 
   .empty-state{
     text-align:center;
@@ -285,6 +268,7 @@
      (et retirerait toute la feuille, variables incluses) dès que ce seul import externe est
      bloqué, même quand theme.css lui-même s'est chargé correctement. -->
 <link rel="stylesheet" href="../assets/theme.css">
+<script src="../assets/paste-field.js"></script>
 </head>
 <body>
 
@@ -317,13 +301,8 @@
 
 <div class="card">
   <h2>1. Coller les données</h2>
-  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici. Colonnes reconnues automatiquement : Key, Priority, Status, Team code, Due Date, Fix Version, Labels.</div>
-  <textarea id="pasteArea" placeholder="Colle ton tableau Excel ici (Ctrl+V)…"></textarea>
-  <div class="paste-actions">
-    <button class="primary" id="analyzeBtn">Analyser</button>
-    <button class="ghost" id="clearBtn">Effacer</button>
-    <span class="status-msg" id="statusMsg"></span>
-  </div>
+  <div class="card-sub">Sélectionne les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis colle ici — le collage accepte aussi un CSV Jira (virgule ou point-virgule) et une copie directe du navigateur de tickets Jira.</div>
+  <div id="pasteMount"></div>
 </div>
 
 <div id="emptyState" class="card empty-state">
@@ -453,15 +432,19 @@
 
 <script>
 // ============ Column detection ============
-const COLUMN_CANDIDATES = {
-  key: ['key', 'clé', 'cle'],
-  priority: ['priority', 'priorité', 'priorite'],
-  status: ['status', 'statut'],
-  team: ['team code', 'équipe', 'equipe', 'team'],
-  dueDate: ["due date", "date d'échéance", 'date echeance', 'échéance', 'echeance'],
-  fixVersion: ['fix version/s', 'fix versions', 'fix version', 'fixversion', 'version corrigée', 'version corrigee'],
-  labels: ['labels', 'étiquettes', 'etiquettes', 'label', 'tags'],
-};
+// Champs attendus par ce dashboard, dans l'ordre d'affichage des pastilles.
+// need: 'req' = nécessaire pour progresser, 'imp' = utile, 'opt' = facultatif.
+// Les équivalences d'en-têtes (« Clé » = « Key » = « Issue key »…) viennent du
+// catalogue commun de TKPaste (assets/paste-field.js).
+const PASTE_FIELDS = [
+  { key: 'key',        label: 'Clé',             need: 'imp' },
+  { key: 'status',     label: 'Statut',          need: 'req' },
+  { key: 'team',       label: 'Équipe',          need: 'imp' },
+  { key: 'priority',   label: 'Priorité',        need: 'imp' },
+  { key: 'dueDate',    label: 'Due date',        need: 'imp' },
+  { key: 'fixVersion', label: 'Fix Version',     need: 'imp' },
+  { key: 'labels',     label: 'Labels (PRJ301)', need: 'imp' },
+];
 
 // Étiquette qui marque un ticket comme provenant du projet de test PRJ301 (recherchée en
 // sous-chaîne dans le champ Labels, peu importe les autres étiquettes présentes sur le ticket).
@@ -469,29 +452,6 @@ const PRJ301_LABEL = 'sourceproject_prj301';
 
 function normalize(s){
   return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-
-function findColumnIndex(headers, candidates){
-  const normHeaders = headers.map(normalize);
-  for(const cand of candidates){
-    const nc = normalize(cand);
-    const idx = normHeaders.findIndex(h => h === nc || h.includes(nc));
-    if(idx !== -1) return idx;
-  }
-  return -1;
-}
-
-function parsePastedData(raw){
-  const lines = raw.replace(/\r/g,'').split('\n').filter(l => l.trim().length > 0);
-  if(lines.length < 2) return {headers:[], rows:[]};
-  const headers = lines[0].split('\t').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const cells = line.split('\t');
-    const obj = {};
-    headers.forEach((h,i) => obj[h] = (cells[i]||'').trim());
-    return obj;
-  });
-  return {headers, rows};
 }
 
 function parseDMY(cell){
@@ -707,6 +667,7 @@ let currentColorMap = loadColorMap();
 // Dernier jeu de données analysé (complet, non filtré) — permet au drill-down de retrouver
 // les lignes brutes derrière n'importe quelle section du dashboard (statut, équipe, KPI...).
 let lastDataset = null;
+let pasteField = null;   // champ « copier-coller » partagé (TKPaste)
 // Filtre d'origine actif ('all' | 'prj301' | 'internal'), appliqué à tout le dashboard sauf
 // au bloc "Origine des tickets" lui-même (toujours calculé sur l'ensemble des tickets).
 let originFilter = localStorage.getItem(STORAGE_KEYS.originFilter) || 'all';
@@ -842,25 +803,32 @@ function init(){
   const targetInput = document.getElementById('targetDateInput');
   refInput.value = localStorage.getItem(STORAGE_KEYS.refDate) || todayISO();
   targetInput.value = localStorage.getItem(STORAGE_KEYS.targetDate) || '';
-  refInput.addEventListener('change', () => { localStorage.setItem(STORAGE_KEYS.refDate, refInput.value); if(document.getElementById('pasteArea').value.trim()) analyze(); });
+  refInput.addEventListener('change', () => { localStorage.setItem(STORAGE_KEYS.refDate, refInput.value); if(pasteField && pasteField.getRaw().trim()) pasteField.analyze(true); });
   targetInput.addEventListener('change', () => { localStorage.setItem(STORAGE_KEYS.targetDate, targetInput.value); });
 
-  const savedRaw = localStorage.getItem(STORAGE_KEYS.raw);
-  if(savedRaw){
-    document.getElementById('pasteArea').value = savedRaw;
-    analyze();
+  // Champ « copier-coller » partagé (assets/paste-field.js) : même moteur que le
+  // radar — Excel, CSV, accents cassés, copie du navigateur Jira — avec les
+  // pastilles des colonnes trouvées. Le collage précédent est restauré tout seul.
+  if(typeof TKPaste === 'undefined'){
+    // Le reste de la page continue de se lier normalement : seul le collage est perdu.
+    document.getElementById('pasteMount').innerHTML =
+      '<p style="font-size:12px;color:var(--red);font-weight:700">Champ de collage indisponible — le fichier <code>assets/paste-field.js</code> n\'a pas pu être chargé. Ouvre l\'outil depuis le lanceur Agile Toolkit.</p>';
+  } else {
+    pasteField = TKPaste.mount({
+      mount: 'pasteMount',
+      placeholder: 'Colle ton tableau Excel ici (Ctrl+V)…',
+      analyzeLabel: 'Analyser',
+      fields: PASTE_FIELDS,
+      storageKey: STORAGE_KEYS.raw,
+      onParse: analyze,
+      onClear: () => {
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('emptyState').classList.remove('hidden');
+        lastDataset = null;
+        closeDrillDown();
+      }
+    });
   }
-
-  document.getElementById('analyzeBtn').addEventListener('click', analyze);
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    document.getElementById('pasteArea').value = '';
-    localStorage.removeItem(STORAGE_KEYS.raw);
-    document.getElementById('dashboard').classList.add('hidden');
-    document.getElementById('emptyState').classList.remove('hidden');
-    setMsg('', '');
-    lastDataset = null;
-    closeDrillDown();
-  });
 
   // Drill-down : délégation sur le document (le contenu des sections est reconstruit à
   // chaque analyse/tri, un binding par élément serait perdu à chaque re-rendu).
@@ -934,38 +902,16 @@ function setPctCollapsed(collapsed, body, btn){
   btn.querySelector('.collapse-label').textContent = collapsed ? 'Afficher' : 'Réduire';
 }
 
-function setMsg(text, cls){
-  const el = document.getElementById('statusMsg');
-  el.textContent = text;
-  el.className = 'status-msg' + (cls ? ' '+cls : '');
-}
-
-function analyze(){
-  const raw = document.getElementById('pasteArea').value;
-  if(!raw.trim()){ setMsg('Colle des données avant d\'analyser.', 'err'); return; }
-
-  const {headers, rows} = parsePastedData(raw);
-  if(rows.length === 0){ setMsg('Aucune ligne détectée — vérifie que la 1ère ligne collée contient les en-têtes.', 'err'); return; }
-
-  const cols = {
-    key: findColumnIndex(headers, COLUMN_CANDIDATES.key),
-    status: findColumnIndex(headers, COLUMN_CANDIDATES.status),
-    team: findColumnIndex(headers, COLUMN_CANDIDATES.team),
-    priority: findColumnIndex(headers, COLUMN_CANDIDATES.priority),
-    dueDate: findColumnIndex(headers, COLUMN_CANDIDATES.dueDate),
-    fixVersion: findColumnIndex(headers, COLUMN_CANDIDATES.fixVersion),
-    labels: findColumnIndex(headers, COLUMN_CANDIDATES.labels),
-  };
-  if(cols.status === -1){ setMsg('Colonne "Status" introuvable dans les en-têtes collés.', 'err'); return; }
-
+// Appelée par le champ « copier-coller » une fois le collage parsé et les colonnes
+// détectées (TKPaste a déjà vérifié que « Statut » est là). La chaîne retournée
+// s'affiche comme message de succès à côté des boutons.
+function analyze({headers, rows, cols}){
   // Sans colonne Labels, le filtre PRJ301/Interne ne peut rien distinguer — repli sur
   // "Tous" pour éviter un dashboard filtré silencieusement à vide.
   if(cols.labels === -1 && originFilter !== 'all'){
     originFilter = 'all';
     localStorage.setItem(STORAGE_KEYS.originFilter, originFilter);
   }
-
-  localStorage.setItem(STORAGE_KEYS.raw, raw);
 
   const refDateVal = document.getElementById('refDateInput').value;
   const refDate = refDateVal ? new Date(refDateVal + 'T00:00:00') : new Date();
@@ -978,7 +924,7 @@ function analyze(){
 
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
-  setMsg(`${rows.length} tickets analysés.`, 'ok');
+  return `${rows.length} tickets analysés${cols.key === -1 ? ' — sans colonne Clé (drill-down sans références)' : ''}.`;
 }
 
 // Recalcule et redessine tout ce qui dépend du filtre d'origine (tableau de pondération,

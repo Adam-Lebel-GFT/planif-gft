@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (variables communes). Les styles inline ci-dessous, déclarés après, restent prioritaires : aucun impact visuel. -->
 <link rel="stylesheet" href="../assets/theme.css">
+<script src="../assets/paste-field.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -171,6 +172,15 @@ body::before {
   content: '';
   flex: 1; height: 1px;
   background: var(--grey2);
+}
+
+/* ── Panneau du champ « copier-coller » partagé (assets/paste-field.js) ── */
+.paste-panel {
+  background: var(--white);
+  border: 1.5px solid var(--grey2);
+  border-radius: var(--radius2);
+  padding: 18px 20px;
+  margin-bottom: 32px;
 }
 
 /* ── File upload cards ── */
@@ -775,6 +785,10 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     </div>
   </div>
 
+  <!-- Backlog par copier-coller (alternative au fichier ci-dessus) -->
+  <div class="label">Backlog Jira par copier-coller <span style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optionnel — remplace le fichier)</span></div>
+  <div class="paste-panel" id="backlog-paste"></div>
+
   <!-- Sprint selector -->
   <div class="label">Sprints à calculer</div>
   <div class="sprint-section">
@@ -910,7 +924,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 
 <script>
 // ── State ──
-const state = { planning:null, backlog:null, sprints:[], mode:'all', selected:new Set() };
+const state = { planning:null, backlog:null, backlogPasted:null, sprints:[], mode:'all', selected:new Set() };
 const WORKING_CODES  = new Set(['R','S','AS']);
 // ── Dynamic team sets (rebuilt from sidebar on apply) ──
 function parseTeamList(str) {
@@ -999,7 +1013,7 @@ function prefillSidebarFromFile(p) {
 }
 
 // ── File inputs ──
-const FILE_DEFAULTS = { params: 'Aucun fichier sélectionné', planning: 'Aucun fichier sélectionné' };
+const FILE_DEFAULTS = { params: 'Aucun fichier sélectionné', planning: 'Aucun fichier sélectionné', backlog: 'Aucun fichier sélectionné' };
 
 function setupFileInput(inputId, cardId, nameId, trashId, key, extra) {
   const input   = document.getElementById(inputId);
@@ -1030,6 +1044,7 @@ function setupFileInput(inputId, cardId, nameId, trashId, key, extra) {
 function clearFile(key) {
   const map = {
     planning: { inputId:'file-planning', cardId:'card-planning', nameId:'name-planning', trashId:'trash-planning' },
+    backlog:  { inputId:'file-backlog',  cardId:'card-backlog',  nameId:'name-backlog',  trashId:'trash-backlog'  },
   };
   const { inputId, cardId, nameId, trashId } = map[key];
   state[key] = null;
@@ -1075,6 +1090,52 @@ const STATUS_COLOR = {
 };
 const JIRA_BASE_URL = 'https://vaudoise.atlassian.net/browse/';
 
+// Champs du backlog, dans l'ordre d'affichage des pastilles du champ « copier-coller ».
+// Ici l'équivalence utile n'est pas celle du radar de bugs : sans Clé, Sprint et
+// Team code, une story ne peut être rattachée ni à une équipe ni à un sprint — le
+// backlog ne sert alors à rien, d'où need:'req' sur ces trois-là.
+// Les en-têtes acceptés viennent du catalogue commun (assets/paste-field.js).
+const BACKLOG_FIELDS = [
+  { key: 'key',         label: 'Clé',           need: 'req' },
+  { key: 'sprint',      label: 'Sprint',        need: 'req' },
+  { key: 'team',        label: 'Team code',     need: 'req' },
+  { key: 'storyPoints', label: 'Story Points',  need: 'imp' },
+  { key: 'status',      label: 'Statut',        need: 'imp' },
+  { key: 'summary',     label: 'Résumé',        need: 'imp' },
+  { key: 'assignee',    label: 'Responsable',   need: 'opt' },
+  { key: 'epic',        label: 'Épopée',        need: 'opt' },
+  { key: 'labels',      label: 'Labels',        need: 'opt' },
+  { key: 'created',     label: 'Created',       need: 'opt' },
+];
+
+// { headers, rows } (fichier ou collage) + colonnes détectées → stories du dashboard.
+function storiesFromRows(headers, rows, cols) {
+  const cell = (r, k) => TKPaste.cellAt(r, headers, cols[k]);
+  const stories = [];
+  for (const r of rows) {
+    const key = cell(r, 'key');
+    if (!key || key === 'Key') continue;
+    const status = cell(r, 'status'), teamCode = cell(r, 'team');
+    const team = TEAM_MAP[teamCode] || teamCode;
+    const sprint = cell(r, 'sprint');
+    const color = STATUS_COLOR[status.toLowerCase()] || 'grey';
+    // Spillover: parse all sprint numbers (handles "Sprint 55,Sprint 56" and "Sprint 55, Sprint 56")
+    const sprintNums = sprint.split(',').map(x => {
+      const m = x.match(/Sprint\s*(\d+)/i); return m ? parseInt(m[1]) : null;
+    }).filter(n => n !== null);
+    const maxNum = sprintNums.length ? Math.max(...sprintNums) : null;
+    stories.push({
+      key, team, sprint, color, status,
+      sp: parseFloat(cell(r, 'storyPoints')) || 0,
+      epic: cell(r, 'epic'), summary: cell(r, 'summary'),
+      assignee: cell(r, 'assignee'), url: JIRA_BASE_URL + key,
+      labels: cell(r, 'labels'), created: cell(r, 'created'),
+      sprintNums, maxSprintNum: maxNum, isSpillover: false
+    });
+  }
+  return stories;
+}
+
 async function parseBacklog(file) {
   // Detect format: binary XLS (BIFF) starts with D0 CF magic bytes
   const firstBytes = new Uint8Array(await file.slice(0, 4).arrayBuffer());
@@ -1098,55 +1159,45 @@ async function parseBacklog(file) {
     );
   }
 
-  // Find header row containing 'Key' and 'Status'
-  let hdrIdx = -1, hdrCells = null;
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i].includes('Key') && rows[i].includes('Status')) {
-      hdrIdx = i; hdrCells = rows[i]; break;
-    }
-  }
+  if (typeof TKPaste === 'undefined') { log('Backlog : composant de lecture indisponible (assets/paste-field.js).', 'warn'); return []; }
+  // Ligne d'en-têtes : celle qui reconnaît le plus de champs du backlog (mêmes
+  // équivalences que le collage, donc « Clé »/« Key »/« Issue key » indifféremment).
+  const hdrIdx = TKPaste.findHeaderRow(rows, BACKLOG_FIELDS, { scan: 30, minHits: 2 });
   if (hdrIdx < 0) { log('Backlog : en-tête non trouvé.', 'warn'); return []; }
 
-  const col = k => hdrCells.indexOf(k);
-  const ci = {
-    key: col('Key'), sp: col('Story Points'), epic: col("Lien d'\u00e9pop\u00e9e"),
-    summary: col('Summary'), assignee: col('Assignee'), status: col('Status'),
-    team: col('Team code'), sprint: col('Sprint'),
-    labels: col('Labels'), created: col('Created')
-  };
-  log(`Colonnes détectées — Key:${ci.key} Team:${ci.team} Sprint:${ci.sprint} Status:${ci.status}`, 'info');
+  const { headers, rows: objRows } = TKPaste.fromMatrix(rows, hdrIdx);
+  const cols = TKPaste.detect(headers, BACKLOG_FIELDS);
+  const found = BACKLOG_FIELDS.filter(f => cols[f.key] !== -1).map(f => f.label);
+  const missing = BACKLOG_FIELDS.filter(f => cols[f.key] === -1).map(f => f.label);
+  log(`Colonnes trouvées — ${found.join(', ') || 'aucune'}${missing.length ? ' · absentes : ' + missing.join(', ') : ''}`, 'info');
 
-  const stories = [];
-  for (let i = hdrIdx + 1; i < rows.length; i++) {
-    const c = rows[i];
-    if (c.length < 3) continue;
-    const key = c[ci.key] || '';
-    if (!key || key === 'Key') continue;
-    const status = c[ci.status] || '', teamCode = c[ci.team] || '';
-    const team = TEAM_MAP[teamCode] || teamCode;
-    const sprint = c[ci.sprint] || '';
-    const color = STATUS_COLOR[status.toLowerCase()] || 'grey';
-    // Debug spillover candidates
-    if (key === 'POLC-1088' || key === 'POLC-4613') {
-      log(`DEBUG ${key}: team="${teamCode}"→"${team}" sprint="${sprint}" status="${status}"`, 'warn');
-    }
-    // Spillover: parse all sprint numbers (handles "Sprint 55,Sprint 56" and "Sprint 55, Sprint 56")
-    const sprintNums = sprint.split(',').map(s => {
-      const m = s.match(/Sprint\s*(\d+)/i); return m ? parseInt(m[1]) : null;
-    }).filter(n => n !== null);
-    const maxNum = sprintNums.length ? Math.max(...sprintNums) : null;
-    stories.push({
-      key, team, sprint, color, status,
-      sp: parseFloat(c[ci.sp]) || 0,
-      epic: c[ci.epic] || '', summary: c[ci.summary] || '',
-      assignee: c[ci.assignee] || '', url: JIRA_BASE_URL + key,
-      labels: c[ci.labels] || '', created: c[ci.created] || '',
-      sprintNums, maxSprintNum: maxNum, isSpillover: false
-    });
-  }
-  return stories;
+  return storiesFromRows(headers, objRows, cols);
 }
 
+// ── Backlog par copier-coller (champ partagé, assets/paste-field.js) ──
+// Même moteur que le radar : Excel, CSV Jira, accents cassés, copie directe du
+// navigateur de tickets. Les stories collées priment sur le fichier backlog.
+var backlogPaste = typeof TKPaste === 'undefined' ? null : TKPaste.mount({
+  mount: 'backlog-paste',
+  sub: 'Sélectionnez les colonnes du backlog dans Excel (avec la ligne d\'en-têtes), Ctrl+C, puis collez ici — un CSV Jira ou une copie directe du navigateur de tickets passent aussi. Les stories collées remplacent le fichier backlog ci-dessus.',
+  placeholder: 'Collez ici le backlog Jira (Ctrl+V)…',
+  analyzeLabel: 'Analyser le backlog',
+  fields: BACKLOG_FIELDS,
+  storageKey: 'sprintPlanning:backlogPaste',
+  onParse: function (res) {
+    var stories = storiesFromRows(res.headers, res.rows, res.cols);
+    if (!stories.length) return { error: 'Aucune story exploitable — chaque ligne doit porter une clé Jira.' };
+    state.backlogPasted = stories;
+    var sprints = {};
+    stories.forEach(function (st) { st.sprintNums.forEach(function (n) { sprints['Sprint ' + n] = 1; }); });
+    var nbS = Object.keys(sprints).length;
+    var teams = {};
+    stories.forEach(function (st) { if (st.team) teams[st.team] = 1; });
+    return stories.length + ' story(ies) collée(s) · ' + Object.keys(teams).length + ' équipe(s) · ' +
+      nbS + ' sprint(s) détecté(s).';
+  },
+  onClear: function () { state.backlogPasted = null; }
+});
 
 function updateRunBtn() {
   // Seul le fichier planning est obligatoire — les params viennent de la sidebar
@@ -2073,7 +2124,10 @@ async function runCalculation() {
     log('Génération du fichier Excel…','info');
     // Stocker pour le dashboard
     let stories = [];
-    if (state.backlog) {
+    if (state.backlogPasted && state.backlogPasted.length) {
+      stories = state.backlogPasted;
+      log(`${stories.length} story(ies) reprise(s) du backlog collé.`, 'ok');
+    } else if (state.backlog) {
       log('Lecture du backlog Jira…', 'info');
       stories = await parseBacklog(state.backlog);
       log(`${stories.length} story(ies) chargée(s) depuis le backlog.`, 'ok');

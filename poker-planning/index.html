@@ -449,6 +449,9 @@ button.person:hover { background: var(--bg); }
 .jira-import .ji-s { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .jira-import.has-file .ji-s { color: var(--green); font-weight: 600; }
 
+/* Champ « copier-coller » partagé (assets/paste-field.js), sous l'import de fichier */
+.jira-paste { margin: 0 0 12px; }
+
 .cfg { margin-top: 12px; padding: 14px; border: 1px dashed var(--border); border-radius: 11px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
 .cfg .hint { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
 .cfg .hint b { color: var(--text); }
@@ -641,6 +644,7 @@ button.person:hover { background: var(--bg); }
                 <span class="ji-s" id="jira-info">Glisse ton export Excel ou clique — les stories se remplissent toutes seules.</span>
               </span>
             </label>
+            <div class="jira-paste" id="jira-paste"></div>
             <div id="ls"></div>
             <button class="tk-btn tk-btn--ghost add-story" type="button" data-act="add-s">＋ Ajouter une story</button>
           </div>
@@ -774,6 +778,7 @@ button.person:hover { background: var(--bg); }
     </main>
   </div>
 
+<script src="../assets/paste-field.js"></script>
 <script src="supabase.js"></script>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
@@ -1918,13 +1923,18 @@ function normHdr(s) {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ').trim();
 }
-function pickCol(hdr, names) {
-  for (var i = 0; i < hdr.length; i++) {
-    var h = normHdr(hdr[i]);
-    for (var j = 0; j < names.length; j++) { if (h === names[j] || h.indexOf(names[j]) === 0) return i; }
-  }
-  return -1;
-}
+/* Champs attendus pour une session de poker, dans l'ordre d'affichage des
+   pastilles. L'équivalence qui permet de progresser n'est pas celle d'un
+   backlog de sprint : ici il suffit d'avoir de quoi nommer la story — une clé
+   OU un résumé (need:'any' sur le même groupe) ; le reste enrichit la carte.
+   Les en-têtes acceptés viennent du catalogue commun (assets/paste-field.js). */
+var POKER_FIELDS = [
+  { key: 'key',         label: 'Clé',         need: 'any', group: 'story' },
+  { key: 'summary',     label: 'Résumé',      need: 'any', group: 'story' },
+  { key: 'type',        label: 'Type',        need: 'opt' },
+  { key: 'priority',    label: 'Priorité',    need: 'opt' },
+  { key: 'description', label: 'Description', need: 'opt' }
+];
 function mapPrio(v) {
   var p = normHdr(v);
   if (!p) return '';
@@ -1936,34 +1946,29 @@ function mapPrio(v) {
 function mapType(v) {
   return /bug|bogue|anomalie|defect|incident/.test(normHdr(v)) ? 'bug' : 'story';
 }
-function mapJiraRows(rows) {
-  var hdrIdx = -1;
-  for (var i = 0; i < Math.min(rows.length, 15); i++) {
-    var hs = (rows[i] || []).map(normHdr);
-    if (hs.some(function (h) { return h.indexOf('summary') === 0 || h.indexOf('resume') === 0 || h === 'objet' || h === 'titre'; })) { hdrIdx = i; break; }
-  }
-  if (hdrIdx < 0) return [];
-  var hdr = rows[hdrIdx];
-  var ck = pickCol(hdr, ['issue key', 'key', 'cle de ticket', 'cle', 'clef']);
-  var cs = pickCol(hdr, ['summary', 'resume', 'objet', 'titre']);
-  var ct = pickCol(hdr, ['issue type', 'type de ticket', 'type']);
-  var cp = pickCol(hdr, ['priority', 'priorite']);
-  var cd = pickCol(hdr, ['description']);
+/* { headers, rows } + colonnes détectées → stories du lobby (fichier ou collage). */
+function storiesFromParsed(headers, rows, cols) {
+  var cell = function (r, k) { return TKPaste.cellAt(r, headers, cols[k]); };
   var out = [];
-  for (var r = hdrIdx + 1; r < rows.length; r++) {
-    var c = rows[r];
-    if (!c || !c.length) continue;
-    var key = ck >= 0 ? String(c[ck] == null ? '' : c[ck]).trim() : '';
-    var title = cs >= 0 ? String(c[cs] == null ? '' : c[cs]).trim() : '';
-    if (!key && !title) continue;
+  rows.forEach(function (r) {
+    var key = cell(r, 'key'), title = cell(r, 'summary');
+    if (!key && !title) return;
     out.push({
       key: key, title: title,
-      type: ct >= 0 ? mapType(c[ct]) : 'story',
-      prio: cp >= 0 ? mapPrio(c[cp]) : '',
-      desc: cd >= 0 ? String(c[cd] == null ? '' : c[cd]).trim() : ''
+      type: cols.type !== -1 ? mapType(cell(r, 'type')) : 'story',
+      prio: cols.priority !== -1 ? mapPrio(cell(r, 'priority')) : '',
+      desc: cell(r, 'description')
     });
-  }
+  });
   return out;
+}
+function mapJiraRows(rows) {
+  // Les exports Jira « Excel » commencent parfois par des lignes de préambule :
+  // on retient la ligne qui reconnaît le plus de colonnes attendues.
+  var hdrIdx = TKPaste.findHeaderRow(rows, POKER_FIELDS, { scan: 15, minHits: 1 });
+  if (hdrIdx < 0) return [];
+  var p = TKPaste.fromMatrix(rows, hdrIdx);
+  return storiesFromParsed(p.headers, p.rows, TKPaste.detect(p.headers, POKER_FIELDS));
 }
 function readSheetRows(file) {
   return file.slice(0, 8).arrayBuffer().then(function (buf) {
@@ -2008,6 +2013,27 @@ function importJira(file) {
     jiraInfo((e && e.message) || 'Import impossible.', 'err');
   });
 }
+/* Collage direct (champ partagé, assets/paste-field.js) — même moteur que le
+   radar : Excel, CSV Jira, accents cassés, copie du navigateur de tickets. */
+function bindJiraPaste() {
+  if (!$('jira-paste') || typeof TKPaste === 'undefined') return;
+  TKPaste.mount({
+    mount: 'jira-paste',
+    sub: 'Ou collez directement les colonnes depuis Excel ou Jira (Ctrl+V) — une <b>Clé</b> ou un <b>Résumé</b> suffit pour créer les stories. Le collage remplace la liste ci-dessous.',
+    placeholder: 'Collez ici vos stories (Ctrl+V)…',
+    analyzeLabel: 'Créer les stories',
+    fields: POKER_FIELDS,
+    onParse: function (res) {
+      var parsed = storiesFromParsed(res.headers, res.rows, res.cols);
+      if (!parsed.length) return { error: 'Aucune story trouvée — chaque ligne doit porter une clé ou un résumé.' };
+      lobby.stories = parsed;
+      renderLobby();
+      jiraInfo(parsed.length + (parsed.length > 1 ? ' stories créées' : ' story créée') + ' par collage.', 'ok');
+      return parsed.length + (parsed.length > 1 ? ' stories créées.' : ' story créée.');
+    }
+  });
+}
+
 function bindJiraImport() {
   var input = $('in-xlsx'), card = $('jira-card');
   if (!input || !card) return;
@@ -2142,6 +2168,7 @@ function boot() {
   }
   renderLobby();
   bindJiraImport();
+  bindJiraPaste();
   updateCfgDot();
   maybeResume();
   show('view-lobby');
@@ -2149,7 +2176,8 @@ function boot() {
 
 /* Hooks de test (jsdom) — sans effet en usage normal */
 window.__pk = { buildLink: buildLink, parseHashCfg: parseHashCfg, computeStats: computeStats, validCfg: validCfg,
-                mapJiraRows: mapJiraRows, qrSvg: qrSvg, importJira: importJira };
+                mapJiraRows: mapJiraRows, qrSvg: qrSvg, importJira: importJira,
+                storiesFromParsed: storiesFromParsed, POKER_FIELDS: POKER_FIELDS };
 
 boot();
 })();
