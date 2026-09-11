@@ -295,6 +295,9 @@
         badge.innerHTML = 'Mode local — <a href="../">connectez-vous depuis le lanceur</a> pour partager configuration et journal';
       }
     } catch (e) { console.warn(e); badge.className = 'mode-badge local'; badge.textContent = 'Mode local'; }
+    // Compte le temps passé ici comme de l'activité, et coupe la
+    // session après 1 h d'inactivité (voir acces/auth.js).
+    try { await A.surveillerInactiviteOutil(); } catch (e) { console.warn(e); }
   }
 
   // ── Liaison de l'interface ─────────────────────────────────────────

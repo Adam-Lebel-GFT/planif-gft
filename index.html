@@ -343,6 +343,8 @@
     document.getElementById(elId).className = 'acc-msg';
   }
 
+  var surveillanceDemarree = false;
+
   function afficherApp(profil, outils) {
     hide('gate-screen'); hide('login-screen'); hide('password-screen');
     document.querySelectorAll('.tool[data-outil]').forEach(function (a) {
@@ -352,6 +354,13 @@
     document.getElementById('topbar-username').textContent = profil.nom_utilisateur;
     document.getElementById('topbar-user').style.display = 'flex';
     show('app-main');
+    // Quel que soit le chemin d'entrée (login, changement de mot de
+    // passe, session restaurée), la surveillance démarre ici, une fois.
+    if (!surveillanceDemarree) {
+      surveillanceDemarree = true;
+      A.marquerActivite();
+      A.demarrerSurveillanceInactivite(retourLoginSessionExpiree);
+    }
   }
 
   // logConnexion : une ligne au journal ne doit être ajoutée qu'à une
@@ -404,9 +413,24 @@
     location.reload();
   });
 
+  function retourLoginSessionExpiree() {
+    hide('gate-screen'); hide('password-screen'); hide('app-main');
+    document.getElementById('topbar-user').style.display = 'none';
+    show('login-screen');
+    showMsg('login-msg', 'Session expirée après 1 heure d\'inactivité. Reconnectez-vous.');
+  }
+
   (async function init() {
     var session = await A.getSession();
     if (!session) { hide('gate-screen'); show('login-screen'); return; }
+    // Session encore valide côté Supabase, mais inactive depuis trop
+    // longtemps : on la coupe avant d'afficher quoi que ce soit.
+    if (A.inactiviteDepassee()) {
+      await A.seDeconnecter();
+      retourLoginSessionExpiree();
+      return;
+    }
+    A.marquerActivite();
     await apresConnexion(false);
   })();
 })();

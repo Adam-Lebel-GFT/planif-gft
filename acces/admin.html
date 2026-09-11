@@ -564,6 +564,14 @@
   (async function init() {
     var session = await A.getSession();
     if (!session) { location.href = '../'; return; }
+    // Session inactive depuis plus d'une heure : on la coupe et on
+    // renvoie à l'écran de connexion (le lanceur affiche le message).
+    if (A.inactiviteDepassee()) {
+      await A.seDeconnecter();
+      location.href = '../';
+      return;
+    }
+    A.marquerActivite();
     var profil = await A.monProfil();
     if (!profil || !profil.actif || profil.doit_changer_mot_de_passe) { location.href = '../'; return; }
     var outils = await A.mesOutils();
@@ -577,6 +585,8 @@
     document.getElementById('topbar-user').style.display = '';
     document.getElementById('gate-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
+
+    A.demarrerSurveillanceInactivite(function () { location.href = '../'; });
 
     await chargerRoles();
     refreshUserRolesGrid();
