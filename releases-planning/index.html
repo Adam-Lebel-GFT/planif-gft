@@ -196,6 +196,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
         <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
         <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard v2 les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard v2</button>
         <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
+        <span id="syncTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center">Chargement du plan partagé…</span>
       </div>
     </div>
   </div>
@@ -529,8 +530,69 @@ async function publishPlan() {
   }
 }
 
+// ── État du plan partagé en base ───────────────────────────────────────
+// Même table que le Bug Dashboard v2 (bdv2_config), sous une autre clé : le
+// plan (versions, phases, jalons, surcharges, cadence) suit l'utilisateur d'un
+// poste à l'autre et se partage entre tous. Dernier qui écrit gagne, comme la
+// configuration du Bug Dashboard. localStorage reste le repli hors ligne.
+const REMOTE_KEY = 'releases-planning';
+let remoteClient = null, remoteUser = null, remoteReady = false, remoteTimer = null;
+let stateDirty = false; // l'utilisateur a modifié le plan depuis l'ouverture
+
+function syncTag(txt, ok) {
+  const el = document.getElementById('syncTag');
+  if (el) { el.textContent = txt; el.style.color = ok ? 'var(--green)' : 'var(--muted)'; }
+}
+
+async function loadRemoteState() {
+  const A = window.PlanifAuth;
+  if (!A) { syncTag('Plan local de ce navigateur', false); return; }
+  let session = null;
+  try { session = await A.getSession(); } catch (e) {}
+  if (!session) { syncTag('Plan local de ce navigateur — connectez-vous pour le partager', false); return; }
+  remoteClient = A.getClient(); remoteUser = session.user.id;
+  try {
+    const res = await remoteClient.from('bdv2_config').select('valeur, maj_le').eq('cle', REMOTE_KEY).maybeSingle();
+    if (res.error) throw res.error;
+    remoteReady = true;
+    if (res.data && res.data.valeur) {
+      // Une modification faite avant l'arrivée de la version partagée l'emporte :
+      // on n'écrase jamais ce que l'utilisateur vient de saisir.
+      if (stateDirty) { syncTag('Plan partagé ignoré — vos modifications locales sont conservées', false); return; }
+      adoptState(res.data.valeur);
+      saveLocalOnly();
+      syncFieldsFromState(); renderAll(); applyCollapse(); writePlanSnapshot();
+      syncTag('Plan partagé ✓' + (res.data.maj_le ? ' — maj ' + new Date(res.data.maj_le).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : ''), true);
+    } else {
+      saveRemoteState(); // première utilisation connectée : publie l'état local
+      syncTag('Plan partagé ✓ (initialisé depuis ce navigateur)', true);
+    }
+  } catch (e) {
+    console.warn('état partagé indisponible', e);
+    syncTag('Plan partagé indisponible — enregistré localement', false);
+  }
+}
+
+function saveRemoteState() {
+  if (!remoteClient || !remoteReady) return;
+  clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(async () => {
+    try {
+      const res = await remoteClient.from('bdv2_config').upsert({ cle: REMOTE_KEY, valeur: state, maj_par: remoteUser, maj_le: new Date().toISOString() });
+      if (res.error) throw res.error;
+      syncTag('Plan partagé ✓', true);
+    } catch (e) { console.warn(e); syncTag('Partage refusé : ' + (e.message || e), false); }
+  }, 600);
+}
+
+function saveLocalOnly() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
 function saveState() {
   writePlanSnapshot();
+  stateDirty = true;
+  saveRemoteState();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     const tag = document.getElementById('savedTag');
@@ -543,8 +605,14 @@ function saveState() {
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
+    if (raw) adoptState(JSON.parse(raw));
+  } catch (e) { /* données corrompues — on repart des valeurs par défaut */ }
+}
+
+// Reprend un état enregistré — celui de ce navigateur ou celui de la base
+// partagée — en le normalisant : migrations de format et garde-fous.
+function adoptState(saved) {
+  {
     if (!saved || typeof saved !== 'object') return;
     const base = defaultState();
     state = Object.assign(base, saved);
@@ -594,10 +662,13 @@ function loadState() {
       v.start = v.phases[0].start;
       v.end = v.phases[v.phases.length - 1].end;
     });
-  } catch (e) { /* données corrompues — on repart des valeurs par défaut */ }
+  }
 }
 
 function resetState() {
+  // L'état est partagé : la réinitialisation repart des valeurs par défaut
+  // pour tous les utilisateurs, pas seulement dans ce navigateur.
+  if (!confirm('Réinitialiser le plan aux valeurs par défaut ?' + (remoteReady ? '\n\nLe plan étant partagé, tous les utilisateurs le verront réinitialisé.' : ''))) return;
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   state = defaultState();
   editingVersionId = null;
@@ -1433,6 +1504,9 @@ document.getElementById('addMilestoneBtn').addEventListener('click', addMileston
 document.getElementById('resetBtn').addEventListener('click', resetState);
 document.getElementById('publishBtn').addEventListener('click', publishPlan);
 writePlanSnapshot();
+// L'état partagé arrive après le premier rendu : il remplace l'état local si
+// l'utilisateur n'a encore rien modifié (voir loadRemoteState).
+loadRemoteState().catch(e => console.warn(e));
 attachDnD('phaseDefsList', () => state.phaseDefs);
 attachDnD('milestonesList', () => state.milestones);
 
