@@ -594,6 +594,13 @@ footer span {
 .sb-input-text{width:100%;padding:5px 8px;border-radius:4px;border:1px solid var(--grey2);background:var(--white);color:var(--navy);font-family:Manrope,sans-serif;font-size:11px;margin-top:4px;box-sizing:border-box}
 .sb-input-text::placeholder{color:var(--muted)}
 .sb-input-text:focus{outline:none;border-color:#1A7A42;box-shadow:0 0 0 2px rgba(26,122,66,.15)}
+.backlog-summary{display:none;margin:-8px 0 18px;padding:10px 14px;border-radius:var(--radius);font-size:11px;line-height:1.5;background:var(--white);border:1px solid var(--grey2);color:var(--text)}
+.backlog-summary.visible{display:block}
+.backlog-summary.warn{border-color:#E8C8A0;background:#FDF6EE}
+.backlog-summary .bs-team{display:inline-block;margin-right:8px;font-family:'DM Mono',monospace;font-size:10px}
+.backlog-summary .bs-miss{color:#8A3A1A;font-weight:700}
+.run-hint{margin-top:8px;text-align:center;font-size:10px;color:var(--muted)}
+.run-hint.hidden{display:none}
 .team-sel-section{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius);padding:16px;margin-bottom:20px}
 .team-sel-title{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:12px}
 .team-sel-sub{font-size:11px;color:var(--muted);margin-bottom:10px}
@@ -813,6 +820,8 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     </div>
   </div>
 
+  <div class="backlog-summary" id="backlog-summary"></div>
+
   <!-- Backlog par copier-coller (alternative au fichier ci-dessus) -->
   <div class="label">Backlog Jira par copier-coller <span style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optionnel — remplace le fichier)</span></div>
   <div class="paste-panel" id="backlog-paste"></div>
@@ -839,6 +848,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     <div class="run-arrow">▶</div>
     Lancer le calcul
   </button>
+  <div class="run-hint" id="run-hint">Le fichier de planning est obligatoire : le backlog seul ne déclenche aucun calcul. Les stories apparaissent dans le dashboard, après le calcul.</div>
 
   <div class="progress-bar" id="progress-bar">
     <div class="progress-fill" id="progress-fill"></div>
@@ -1175,6 +1185,7 @@ function applySidebarParams() {
   readSidebarIntoConfig();
   saveConfig();
   renderTeamSelectorFromPlanning();
+  if (typeof renderBacklogSummary === 'function') renderBacklogSummary();
   toggleSidebar();
 }
 
@@ -1337,6 +1348,7 @@ function clearFile(key) {
     planning: { inputId:'file-planning', cardId:'card-planning', nameId:'name-planning', trashId:'trash-planning' },
     backlog:  { inputId:'file-backlog',  cardId:'card-backlog',  nameId:'name-backlog',  trashId:'trash-backlog'  },
   };
+  if (key === 'backlog') setTimeout(renderBacklogSummary, 0);
   const { inputId, cardId, nameId, trashId } = map[key];
   state[key] = null;
   const input   = document.getElementById(inputId);
@@ -1362,7 +1374,45 @@ function clearFile(key) {
 
 
 setupFileInput('file-planning', 'card-planning', 'name-planning', 'trash-planning', 'planning', loadSprintsFromPlanning);
-setupFileInput('file-backlog',  'card-backlog',  'name-backlog',  'trash-backlog',  'backlog',  null);
+setupFileInput('file-backlog',  'card-backlog',  'name-backlog',  'trash-backlog',  'backlog',  renderBacklogSummary);
+
+// Le backlog ne déclenche aucun calcul à lui seul : sans compte rendu immédiat,
+// le déposer ne produit rien de visible et un code d'équipe non rapproché ne se
+// découvre qu'au dashboard. On le relit donc tout de suite, et à chaque
+// changement de types d'équipe.
+async function renderBacklogSummary() {
+  var box = document.getElementById('backlog-summary');
+  if (!box) return;
+  var stories = null;
+  if (state.backlogPasted && state.backlogPasted.length) stories = state.backlogPasted;
+  else if (state.backlog) { try { stories = await parseBacklog(state.backlog); } catch (e) { stories = null; } }
+  if (!stories) { box.className = 'backlog-summary'; box.innerHTML = ''; return; }
+
+  var parEquipe = {}, inconnus = {}, sprints = {};
+  stories.forEach(function(st) {
+    parEquipe[st.team] = (parEquipe[st.team] || 0) + 1;
+    if (!INCLUDED_TEAMS.has(st.team)) inconnus[st.team] = (inconnus[st.team] || 0) + 1;
+    String(st.sprint || '').split(',').forEach(function(sp) { sp = sp.trim(); if (sp) sprints[sp] = 1; });
+  });
+  var connues = Object.keys(parEquipe).filter(function(t){ return INCLUDED_TEAMS.has(t); }).sort();
+  var manquants = Object.keys(inconnus).sort();
+  var spList = Object.keys(sprints).sort();
+
+  var h = '<b>' + stories.length + ' story(ies) lue(s)</b>'
+        + (spList.length ? ' · ' + spList.slice(0, 4).join(', ') + (spList.length > 4 ? '…' : '') : '')
+        + '<br>';
+  h += connues.length
+    ? connues.map(function(t){ return '<span class="bs-team">' + esc(t) + ' (' + parEquipe[t] + ')</span>'; }).join('')
+    : '<span class="bs-miss">Aucune story rattachée à une équipe connue.</span>';
+  if (manquants.length) {
+    h += '<br><span class="bs-miss">Codes non rapprochés : '
+      + manquants.map(function(t){ return esc(t) + ' (' + inconnus[t] + ')'; }).join(', ')
+      + '</span> — ajoutez-les dans Paramètres › Types d\'équipe, sous la forme « NomDuPlanning = ' + esc(manquants[0]) + ' ».';
+  }
+  h += '<br><span style="color:var(--muted)">Les stories s\'affichent dans le dashboard, après « Lancer le calcul » — le fichier de planning est nécessaire.</span>';
+  box.innerHTML = h;
+  box.className = 'backlog-summary visible' + (manquants.length || !connues.length ? ' warn' : '');
+}
 
 // ── Parse Backlog (Jira XLS export) ──────────────────────────
 const STATUS_COLOR = {
@@ -1473,6 +1523,7 @@ var backlogPaste = typeof TKPaste === 'undefined' ? null : TKPaste.mount({
   storageKey: 'sprintPlanning:backlogPaste',
   onParse: function (res) {
     var stories = storiesFromRows(res.headers, res.rows, res.cols);
+    setTimeout(renderBacklogSummary, 0);
     if (!stories.length) return { error: 'Aucune story exploitable — chaque ligne doit porter une clé Jira.' };
     state.backlogPasted = stories;
     var sprints = {};
@@ -1489,6 +1540,8 @@ var backlogPaste = typeof TKPaste === 'undefined' ? null : TKPaste.mount({
 function updateRunBtn() {
   // Seul le fichier planning est obligatoire — les params viennent de la sidebar
   document.getElementById('run-btn').disabled = !state.planning;
+  var hint = document.getElementById('run-hint');
+  if (hint) hint.classList.toggle('hidden', !!state.planning);
 }
 
 // ── Sprint mode ──
