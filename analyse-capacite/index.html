@@ -82,7 +82,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .chip:hover{border-color:var(--navy2);color:var(--navy)}
 .chip.on{background:var(--navy);border-color:var(--navy);color:var(--white)}
 .chip .tag{font-family:'DM Mono',monospace;font-size:9px;opacity:.65;font-weight:500}
-.chip.offw{opacity:.42}
+.chip.offw{opacity:.42;cursor:not-allowed}
+.chip.offw:not(.on):hover{border-color:var(--grey2);color:var(--muted)}
 .persons-head{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
 .persons-head .flabel{margin:0}
 .mini-btn{padding:4px 10px;border-radius:4px;border:1.5px solid var(--grey2);background:var(--white);font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s}
@@ -549,6 +550,15 @@ function setRange(a,b){
 function teamList(){ var s=[],seen={}; state.persons.forEach(function(p){ if(!seen[p.team]){ seen[p.team]=1; s.push(p.team); } }); return s; }
 function countryList(){ var s=[],seen={}; state.persons.forEach(function(p){ var c=p.country||''; if(c && !seen[c]){ seen[c]=1; s.push(c); } }); s.sort(); return s; }
 function roleList(){ var s=[],seen={}; state.persons.forEach(function(p){ var r=p.role||'—'; if(!seen[r]){ seen[r]=1; s.push(r); } }); s.sort(function(a,b){ return roleRank(a)-roleRank(b) || a.localeCompare(b); }); return s; }
+// Filtrage croisé : applique toutes les facettes sauf celle qu'on est en train
+// de dessiner, pour que ses options restent comparables entre elles.
+function matchesExcept(p, except){
+  if(except!=='teams' && filters.teams.size && !filters.teams.has(p.team)) return false;
+  if(except!=='roles' && filters.roles.size && !filters.roles.has(p.role||'—')) return false;
+  if(except!=='countries' && filters.countries.size && !filters.countries.has(p.country||'—')) return false;
+  if(filters.q && p.name.toLowerCase().indexOf(filters.q)<0) return false;
+  return true;
+}
 function matches(p){
   if(filters.teams.size && !filters.teams.has(p.team)) return false;
   if(filters.roles.size && !filters.roles.has(p.role||'—')) return false;
@@ -607,32 +617,35 @@ function aggPeriod(g, ppl){
 // ── Rendu : chips ──
 function renderChips(){
   var tl=teamList(), rl=roleList(), cl=countryList(), vis=visiblePersons();
-  function nWin(pred){ return state.persons.filter(function(p){ return activeInWindow(p) && pred(p); }).length; }
+  // Compteur d'une option : personnes de la période qui passent les autres facettes.
+  function nWin(except, pred){ return state.persons.filter(function(p){ return activeInWindow(p) && matchesExcept(p, except) && pred(p); }).length; }
+  // Une option sans personne est grisée et inactive, sauf si elle est elle-même
+  // sélectionnée (il faut pouvoir la désélectionner pour revenir en arrière).
+  function facetChip(set, val, n, html, totalCount){
+    var picked=set.has(val), na=(n===0 && !picked);
+    var b=document.createElement('button');
+    b.className='chip'+((!na && (set.size===0||picked))?' on':'')+(na?' offw':'');
+    b.innerHTML=html+' <span class="tag">'+n+'</span>';
+    if(na){ b.disabled=true; b.title='Aucune personne avec cette valeur pour la sélection courante'; }
+    else b.onclick=function(){ toggleFilter(set, val, totalCount); };
+    return b;
+  }
   var ct=$('#chips-teams'); ct.innerHTML='';
   tl.forEach(function(t){
-    var n=nWin(function(p){ return p.team===t; });
-    var b=document.createElement('button'); b.className='chip'+((filters.teams.size===0||filters.teams.has(t))?' on':'');
-    b.innerHTML=esc(t)+' <span class="tag">'+n+'</span>';
-    b.onclick=function(){ toggleFilter(filters.teams, t, tl.length); };
-    ct.appendChild(b);
+    var n=nWin('teams', function(p){ return p.team===t; });
+    ct.appendChild(facetChip(filters.teams, t, n, esc(t), tl.length));
   });
   var cr=$('#chips-roles'); cr.innerHTML='';
   rl.forEach(function(rle){
-    var n=nWin(function(p){ return (p.role||'—')===rle; });
-    var b=document.createElement('button'); b.className='chip'+((filters.roles.size===0||filters.roles.has(rle))?' on':'');
-    b.innerHTML=esc(rle)+' <span class="tag">'+n+'</span>';
-    b.onclick=function(){ toggleFilter(filters.roles, rle, rl.length); };
-    cr.appendChild(b);
+    var n=nWin('roles', function(p){ return (p.role||'—')===rle; });
+    cr.appendChild(facetChip(filters.roles, rle, n, esc(rle), rl.length));
   });
   var blk=$('#block-countries'), cco=$('#chips-countries'); cco.innerHTML='';
   if(cl.length){
     blk.style.display='';
     cl.forEach(function(co){
-      var n=nWin(function(p){ return (p.country||'')===co; });
-      var b=document.createElement('button'); b.className='chip'+((filters.countries.size===0||filters.countries.has(co))?' on':'');
-      b.innerHTML=flagFor(co)+' '+esc(co)+' <span class="tag">'+n+'</span>';
-      b.onclick=function(){ toggleFilter(filters.countries, co, cl.length); };
-      cco.appendChild(b);
+      var n=nWin('countries', function(p){ return (p.country||'')===co; });
+      cco.appendChild(facetChip(filters.countries, co, n, flagFor(co)+' '+esc(co), cl.length));
     });
   } else { blk.style.display='none'; }
   var cp=$('#chips-persons'); cp.innerHTML='';
