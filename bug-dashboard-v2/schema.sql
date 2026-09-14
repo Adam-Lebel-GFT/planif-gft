@@ -3,7 +3,9 @@
 -- lyahaxyexgjxpezemwhv via le connecteur ; conservé ici comme référence,
 -- idempotent). Prérequis : acces/schema.sql (table profils).
 --
---   bdv2_config     configuration partagée (une ligne, cle = 'bug-dashboard-v2')
+--   bdv2_config     configurations partagées des outils, une ligne par clé :
+--                   'bug-dashboard-v2', 'releases-planning' (plan de livraisons),
+--                   'sprint-planning' (types d'équipe et pourcentages)
 --   plan_versions   plan de livraisons publié depuis releases-planning
 --   bdv2_analyses   journal des analyses (snapshot par clic « Analyser »)
 --

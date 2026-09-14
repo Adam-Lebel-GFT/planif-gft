@@ -81,7 +81,7 @@ js_e = content.find('\nrender();`;', js_s) + len('\nrender();')
 rendered = eval_tl(content[js_s:js_e])
 lines_r = rendered.split('\n')
 func_start = next(i for i,l in enumerate(lines_r) if l.startswith('function openRapport') or l.startswith('function togTeam'))
-stub = 'var curI=0,OV={},SCOL={},SD=[],STORIES_ALL=[],AT=[],PR={vc:2,vi:2,vt:2},IT=new Set(),TT=new Set(),actT=new Set(),MN=[],DN=[],pkState=null,multiSel=[],ganttCollapsed=false,panelState={},WK=new Set();\nvar window={opener:null,CONFIRMED:{},ASSIGN:{},CONF:{},NOTES:{},RISKS:{}};\nvar sessionStorage={getItem:function(){return null;},setItem:function(){},removeItem:function(){}};\nfunction render(){}\n'
+stub = 'var curI=0,OV={},SCOL={},SD=[],STORIES_ALL=[],AT=[],PR={ap:.1,bp:.1},CATS=[],PAL=[],CAT_OF={},actT=new Set(),MN=[],DN=[],pkState=null,multiSel=[],ganttCollapsed=false,panelState={},WK=new Set();\nvar window={opener:null,CONFIRMED:{},ASSIGN:{},CONF:{},NOTES:{},RISKS:{}};\nvar sessionStorage={getItem:function(){return null;},setItem:function(){},removeItem:function(){}};\nfunction render(){}\n'
 node_check(stub + '\n'.join(lines_r[func_start:]), 'Dashboard JS')
 ```
 
@@ -131,15 +131,33 @@ const JS = `var re = /foo${String.fromCharCode(10)}bar/;`;
 const JS = `html += '&#x27;';  // pas de \'`
 ```
 
-### Équipes dynamiques
+### Types d'équipe configurables
 
-Les sets d'équipes sont reconstruits dynamiquement depuis la sidebar :
+Il n'y a plus de trio figé CONF / INTEG / TRANS. Le panneau Paramètres tient une
+liste de types d'équipe, d'au moins un élément, chacun avec son nom, sa vélocité,
+ses équipes et son code de fichier :
 
 ```js
-refreshTeamSets(); // → rebuild INCLUDED_TEAMS, INTEG_TEAMS, TRANS_TEAMS
+config.categories = [{ nom:'Configuration', code:'CONF', velocite:2.0, equipes:['CONF-1', …] }, …];
+rebuildTeamIndex();   // → INCLUDED_TEAMS, _teamOrder, index équipe → type
 ```
 
-**Ne jamais hardcoder** `['CONF-1','CONF-2',...]` dans le code — utiliser `_teamSets.all`.
+À utiliser plutôt que de tester une appartenance en dur :
+
+| Besoin | Appel |
+|---|---|
+| type d'une équipe (rang) | `catIndexOfTeam(t)` / `catOfTeam(t)` |
+| vélocité d'une équipe | `velociteOfTeam(t)` |
+| idem depuis un calcul figé | `catIndexFor(params.categories, t)` / `velociteFor(params.categories, t)` |
+| couleurs du rang *i* | `catStyle(i)` (`CAT_PALETTE`, recyclée au-delà de six) |
+| ordre des équipes | `_teamOrder` (page), `AT` (dashboard) |
+
+**Ne jamais hardcoder** `['CONF-1','CONF-2',…]` ni supposer trois types. Le dashboard
+et le rapport reçoivent les types dans `CATS` / `payload.categories`, avec leur palette.
+
+La configuration (types d'équipe + pourcentages) est enregistrée dans `localStorage`
+et, dès qu'une session existe, partagée via `bdv2_config` sous la clé
+`'sprint-planning'` — même mécanisme que le Plan de livraisons.
 
 ### Personnes Vaudoise (hardcodées volontairement)
 
