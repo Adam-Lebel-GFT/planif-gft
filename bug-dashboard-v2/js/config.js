@@ -135,6 +135,18 @@
   // l'onglet « IA » et la case de section correspondante sont alors masqués.
   function aiLoaded() { return !!(root.BDV2App && root.BDV2App.available && root.BDV2App.available.ai); }
 
+  // Jalons proposés : ceux définis dans le plan de livraisons (avec leurs vrais
+  // libellés) dès que le lot « plan » est chargé ; sinon, la liste de secours.
+  function boundaryChoices(current) {
+    if (root.BDV2Plan && root.BDV2Plan.boundaryOptions) return root.BDV2Plan.boundaryOptions(current);
+    return [['freeze', 'Code freeze'], ['gonogo', 'Go / No-go'], ['deploy', 'Déploiement sur la branche'], ['start', 'Début de la version'], ['end', 'Fin de la version']];
+  }
+  function boundarySelect(attr, current) {
+    return '<select class="cfg-select" data-' + attr + '="boundary">' + boundaryChoices(current).map(function (o) {
+      return '<option value="' + esc(o[0]) + '"' + (current === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+    }).join('') + '</select>';
+  }
+
   var drawerTab = 'teams';
   var ctxRef = { teams: [], priorities: [], statuses: [] };
   var bound = false;
@@ -244,13 +256,13 @@
       h += '<h4>Rattachement d\'un ticket à une version</h4>' +
         '<p class="cfg-help">Un ticket est rattaché à la <strong>première version</strong> dont le jalon choisi tombe le jour de sa Target date ou après (les Target dates sont des vendredis ; la version déployée le mardi suivant l\'emporte donc). Une tolérance négative autorise un jalon quelques jours <em>avant</em> la Target date. La Fix Version reste informative, sauf si vous cochez l\'option ci-dessous.</p>' +
         '<div class="cfg-grid">' +
-        '<label>Jalon de référence <select class="cfg-select" data-rule="boundary">' + [['deploy', 'Déploiement sur la branche'], ['freeze', 'Code freeze'], ['gonogo', 'Go / No-go'], ['start', 'Début de la version'], ['end', 'Fin de la version']].map(function (o) { return '<option value="' + o[0] + '"' + (cfg.version.boundary === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Jalon de référence ' + boundarySelect('rule', cfg.version.boundary) + '</label>' +
         '<label>Tolérance (jours) <input type="number" class="cfg-input num" data-rule="toleranceDays" value="' + cfg.version.toleranceDays + '"></label>' +
         '<label class="cfg-check"><input type="checkbox" data-rule="useFixVersion" ' + (cfg.version.useFixVersion ? 'checked' : '') + '> si la Fix Version correspond au nom d\'une version publiée, elle l\'emporte sur la Target date</label>' +
         '</div>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
-        '<label>Jalon surveillé <select class="cfg-select" data-alert="boundary">' + [['freeze', 'Code freeze'], ['gonogo', 'Go / No-go'], ['deploy', 'Déploiement sur la branche'], ['end', 'Fin de la version']].map(function (o) { return '<option value="' + o[0] + '"' + ((cfg.alerts.boundary || 'freeze') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Jalon surveillé ' + boundarySelect('alert', cfg.alerts.boundary || 'freeze') + '</label>' +
         '<label>… atteint dans <input type="number" step="0.5" min="0" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
         '<label>… et avancement du ticket sous <input type="number" class="cfg-input num" data-alert="minPct" value="' + cfg.alerts.minPct + '"> %</label>' +
         '</div>' +

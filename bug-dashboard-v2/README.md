@@ -51,7 +51,10 @@ terminés sans Fix Version, Target date dépassée, sans Target date, blockers P
 (versions déjà déployées), au-delà du plan, et **« Version imminente, ticket peu avancé »** —
 tickets ouverts rattachés à une version à venir dont l'avancement pondéré est sous le seuil
 alors que le jalon surveillé approche. Seuils dans Configurer → Règles → Alertes : jalon
-**Code freeze**, atteint dans **3 jours ou moins**, avancement **sous 50 %**. Le jalon surveillé
+**Code freeze**, atteint dans **3 jours ou moins**, avancement **sous 50 %**. Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,
+avec leurs libellés réels — un jalon renommé (« Déploiement sur l'environnement IAT ») ou
+supprimé s'y voit tel quel ; un jalon configuré mais absent du plan reste listé, marqué
+« absent du plan », plutôt que de retomber silencieusement sur le déploiement. Le jalon surveillé
 est indépendant du jalon de rattachement (Déploiement) : c'est le gel du code qui ferme la porte
 à un ticket, pas la mise en production. Une configuration enregistrée avant ce changement est
 migrée (`schema` 2) : le seuil passe de 7 à 3 jours s'il était resté au défaut, une valeur

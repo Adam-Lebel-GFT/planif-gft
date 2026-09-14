@@ -12,6 +12,10 @@
   var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config, CH = root.BDV2Charts, APP = root.BDV2App, DD = root.BDV2Drill;
   var esc = APP.esc, $ = function (id) { return document.getElementById(id); };
   var LOCAL_KEY = 'planif:plan-publie';
+  // État complet du plan de livraisons : en base sous cette clé (même table que
+  // la configuration du radar), et dans ce navigateur sous celle de l'outil.
+  var PLAN_STATE_KEY = 'releases-planning';
+  var PLAN_STATE_LOCAL = 'gft-vaudoise-plan-livraisons-v3';
   var S = APP.state;
   var plan = { versions: [], source: null, meta: null };
 
@@ -26,8 +30,48 @@
     return parseJalon(iso);
   }
 
+  // Libellés par défaut, utilisés tant que le plan n'a pas été lu : les jalons
+  // sont renommables dans le plan de livraisons (« Déploiement sur
+  // l'environnement IAT »…), ce sont ces noms-là qu'il faut afficher.
+  var DEFAULT_LABELS = { freeze: 'Code freeze', gonogo: 'Go / No-go', deploy: 'Déploiement sur la branche', revert: 'Dernier revert possible', nextbr: 'Branche suivante disponible' };
+  var VERSION_BOUNDS = [['start', 'Début de la version'], ['end', 'Fin de la version']];
+  var milestones = null; // [{ id, label }] tels que définis dans le plan
+
+  function boundaryLabel(id) {
+    if (milestones) { for (var i = 0; i < milestones.length; i++) if (milestones[i].id === id) return milestones[i].label; }
+    var vb = VERSION_BOUNDS.filter(function (o) { return o[0] === id; })[0];
+    return vb ? vb[1] : (DEFAULT_LABELS[id] || id);
+  }
+  // Choix proposés dans la configuration : les jalons réellement définis dans le
+  // plan, plus les bornes de version. Un jalon configuré mais absent du plan
+  // reste listé, signalé comme tel, pour que le repli ne soit pas silencieux.
+  function boundaryOptions(current) {
+    var opts = (milestones || Object.keys(DEFAULT_LABELS).map(function (k) { return { id: k, label: DEFAULT_LABELS[k] }; }))
+      .map(function (m) { return [m.id, m.label]; }).concat(VERSION_BOUNDS);
+    if (current && !opts.some(function (o) { return o[0] === current; })) opts.push([current, boundaryLabel(current) + ' (absent du plan)']);
+    return opts;
+  }
+
+  async function loadMilestones() {
+    if (S.client) {
+      try {
+        var res = await S.client.from('bdv2_config').select('valeur').eq('cle', PLAN_STATE_KEY).maybeSingle();
+        if (!res.error && res.data && res.data.valeur && Array.isArray(res.data.valeur.milestones)) {
+          milestones = res.data.valeur.milestones.map(function (m) { return { id: m.id, label: m.label || m.id }; });
+          return;
+        }
+      } catch (e) { console.warn('libellés des jalons indisponibles', e); }
+    }
+    // Repli : l'état local du plan de livraisons, même navigateur, même origine.
+    try {
+      var raw = JSON.parse(localStorage.getItem(PLAN_STATE_LOCAL) || 'null');
+      if (raw && Array.isArray(raw.milestones)) milestones = raw.milestones.map(function (m) { return { id: m.id, label: m.label || m.id }; });
+    } catch (e) {}
+  }
+
   async function load() {
     plan = { versions: [], source: null, meta: null };
+    await loadMilestones();
     if (S.client) {
       try {
         var res = await S.client.from('plan_versions').select('id,label,debut,fin,jalons,ordre,publie_le,publie_par').order('ordre');
@@ -104,8 +148,7 @@
     return tiles;
   });
 
-  var BOUNDARY_LABELS = { deploy: 'Déploiement sur la branche', freeze: 'Code freeze', gonogo: 'Go / No-go', start: 'Début de version', end: 'Fin de version' };
-  function alertBoundaryLabel(cfg) { var b = cfg.alerts.boundary || 'freeze'; return BOUNDARY_LABELS[b] || b; }
+  function alertBoundaryLabel(cfg) { return boundaryLabel(cfg.alerts.boundary || 'freeze'); }
 
   // ── Alertes ────────────────────────────────────────────────────────
   APP.hooks.alerts.push(function (vis) {
@@ -165,8 +208,8 @@
     var none = vis.filter(function (t) { return t.versionState === 'none'; });
     cols.push(col('__none', null, none, 'none'));
     var srcTxt = plan.source === 'supabase' ? 'Plan partagé (publié le ' + (plan.meta ? new Date(plan.meta).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '?') + ')' : 'Plan local de ce navigateur (non publié)';
-    var rule = { deploy: 'Déploiement sur la branche', freeze: 'Code freeze', gonogo: 'Go / No-go', start: 'Début de version', end: 'Fin de version' }[cfg.version.boundary] || cfg.version.boundary;
-    card.innerHTML = '<div class="card-head"><div><h2>Train de livraison — ' + ov.length + ' versions</h2><div class="sub">Chaque ticket est rattaché à la première version dont le jalon « ' + esc(rule) + '» tombe à sa Target date ou après' + (cfg.version.toleranceDays ? ' (tolérance ' + cfg.version.toleranceDays + ' j)' : '') + '. Grand chiffre = <b>stock à livrer</b> (tickets ouverts) ; jauge = avancement pondéré. Cliquez un nom de version pour filtrer tout le dashboard.</div></div>' +
+    var rule = boundaryLabel(cfg.version.boundary);
+    card.innerHTML = '<div class="card-head"><div><h2>Train de livraison — ' + ov.length + ' versions</h2><div class="sub">Chaque ticket est rattaché à la première version dont le jalon « ' + esc(rule) + ' » tombe à sa Target date ou après' + (cfg.version.toleranceDays ? ' (tolérance ' + cfg.version.toleranceDays + ' j)' : '') + '. Grand chiffre = <b>stock à livrer</b> (tickets ouverts) ; jauge = avancement pondéré. Cliquez un nom de version pour filtrer tout le dashboard.</div></div>' +
       '<div class="card-tools"><span class="plan-note">' + esc(srcTxt) + '</span><button type="button" class="ghost small" id="planReload">Recharger le plan</button><a class="ghost small btn-like" href="../releases-planning/">Ouvrir le plan</a></div></div>' +
       '<div class="train" style="margin-top:12px">' + cols.join('') + '</div>';
     $('planReload').addEventListener('click', async function () { await load(); APP.rerender(); });
@@ -203,5 +246,5 @@
   });
 
   document.addEventListener('bdv2:ready', async function () { await load(); if (S.tickets.length) APP.rerender(); });
-  root.BDV2Plan = { load: load, get: function () { return plan; }, orderedVersions: orderedVersions };
+  root.BDV2Plan = { load: load, get: function () { return plan; }, orderedVersions: orderedVersions, boundaryLabel: boundaryLabel, boundaryOptions: boundaryOptions };
 })(window);
