@@ -77,6 +77,12 @@ le bandeau, courbes d'évolution (global, avancement, stock à livrer par versio
 origine), comparateur entre deux analyses (nouveaux, disparus, terminés, changements de
 statut/équipe/version, stock par version). Sans session : journal local (30 dernières).
 
+Deux tuiles du bandeau, **Ajoutés à la version** et **Retirés de la version**, comparent
+l'extrait courant à la première photo de la version (même Target date) : le grand chiffre
+compte depuis le début de la version, le delta depuis l'analyse précédente, et le clic ouvre
+les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
+disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
+
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
 par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.
 Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe de « In

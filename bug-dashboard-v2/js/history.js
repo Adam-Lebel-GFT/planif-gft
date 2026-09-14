@@ -133,6 +133,62 @@
     return { delta: { value: delta, goodUp: m[1], label: 'vs analyse du ' + fmtWhen(prev[prev.length - 1].at), unit: tileId === 'progress' ? ' pt' : '' }, spark: spark };
   });
 
+  // ── Tuiles « périmètre de la version » ────────────────────────────
+  // Ce qui est entré et sorti de la version depuis sa première photo (le début
+  // de la version) ; le delta de chaque tuile donne le mouvement depuis
+  // l'analyse précédente. La comparaison se fait par clé de ticket : un ticket
+  // dont la Target date a changé sort de la version, donc « retiré ».
+  function dominantTd(tickets) {
+    var by = {}, best = null, n = -1;
+    tickets.forEach(function (t) {
+      var td = t.targetDate ? C.toISO(t.targetDate) : 'none';
+      by[td] = (by[td] || 0) + 1;
+      if (by[td] > n) { n = by[td]; best = td; }
+    });
+    return best;
+  }
+  function ticketsAt(item, td) {
+    var out = {};
+    (item.tickets || []).forEach(function (t) { if ((t.td || 'none') === td) out[t.k] = t; });
+    return out;
+  }
+  APP.hooks.extraTiles.push(function (vis) {
+    // Les photos du journal ne sont pas filtrées : comparer un extrait filtré
+    // ferait passer pour « retirés » des tickets simplement masqués.
+    if (filtersActive() || !vis.length) return [];
+    var td = dominantTd(vis); if (!td || td === 'none') return [];
+    var mine = vis.filter(function (t) { return (t.targetDate ? C.toISO(t.targetDate) : 'none') === td; });
+    // Photos antérieures à l'analyse affichée : en ouvrant une analyse archivée,
+    // on compare à ce qui la précède, pas à ce qui l'a suivie.
+    var cur = H.items.filter(function (i) { return i.hash === H.currentHash; })[0];
+    var limit = cur ? new Date(cur.at).getTime() : Date.now();
+    var olders = H.items.filter(function (i) {
+      return i.hash !== H.currentHash && new Date(i.at).getTime() < limit && (i.tickets || []).some(function (t) { return (t.td || 'none') === td; });
+    }).sort(function (a, b) { return new Date(a.at) - new Date(b.at); });
+    if (!olders.length) return []; // première photo de cette version : rien à comparer
+    var first = olders[0], last = olders[olders.length - 1];
+    var now = {}; mine.forEach(function (t) { now[t.key] = t; });
+    var diff = function (ref) {
+      var was = ticketsAt(ref, td);
+      return {
+        added: mine.filter(function (t) { return !was[t.key]; }),
+        removed: inflate(Object.keys(was).filter(function (k) { return !now[k]; }).map(function (k) { return was[k]; }))
+      };
+    };
+    var since = diff(first), prev = diff(last);
+    var depuis = 'depuis la 1re photo de la version (' + shortWhen(first.at) + ')';
+    var deltaOf = function (n) { return { value: n, goodUp: false, label: 'depuis l\'analyse du ' + fmtWhen(last.at) }; };
+    return [
+      { id: 'scopeAdded', label: 'Ajoutés à la version', value: since.added.length, sub: depuis + ' — Target date ' + C.fmtDate(new Date(td + 'T00:00:00')),
+        tone: since.added.length ? 'warn' : 'neutral', delta: deltaOf(prev.added.length),
+        drill: function () { return { title: 'Tickets ajoutés à la version', subtitle: 'Absents de la photo du ' + fmtWhen(first.at) + ', présents aujourd\'hui', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.added }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.added }] }; } },
+      { id: 'scopeRemoved', label: 'Retirés de la version', value: since.removed.length, sub: depuis + ' — Target date modifiée ou ticket disparu de l\'extrait',
+        tone: since.removed.length ? 'good' : 'neutral', delta: deltaOf(prev.removed.length),
+        drill: function () { return { title: 'Tickets retirés de la version', subtitle: 'Présents dans la photo du ' + fmtWhen(first.at) + ', absents aujourd\'hui — état au moment de cette photo', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.removed }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.removed }] }; } }
+    ];
+  });
+
+
   // ── Section Évolution ──────────────────────────────────────────────
   APP.hooks.render.push(renderHistory);
 
