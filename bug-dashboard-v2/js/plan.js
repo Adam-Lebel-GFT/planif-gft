@@ -117,15 +117,15 @@
     // demi-journées : lundi matin → mercredi soir = 5 demi-journées, soit 2,5 j.
     var maxHalves = Math.round((cfg.alerts.daysBefore || 3) * 2);
     var minPct = cfg.alerts.minPct || 50;
-    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && t.versionAlertAt && C.halfDiff(refAt, t.versionAlertAt) <= maxHalves && t.pct < minPct; });
+    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && t.versionAlertAt && C.halvesLeft(refAt, t.versionAlertAt) <= maxHalves && t.pct < minPct; });
     if (soon.length) {
       var byV = {};
-      soon.forEach(function (t) { var v = byV[t.version] = byV[t.version] || { n: 0, halves: C.halfDiff(refAt, t.versionAlertAt) }; v.n++; });
+      soon.forEach(function (t) { var v = byV[t.version] = byV[t.version] || { n: 0, halves: C.halvesLeft(refAt, t.versionAlertAt) }; v.n++; });
       var detail = Object.keys(byV).map(function (v) {
         var h = byV[v].halves;
-        return esc(v) + ' : ' + byV[v].n + ' ticket' + (byV[v].n > 1 ? 's' : '') + ', ' + (h < 0 ? 'jalon dépassé de ' + C.fmtHalfDays(-h) + ' j' : h === 0 ? 'jalon aujourd\'hui' : 'dans ' + C.fmtHalfDays(h) + ' j');
+        return esc(v) + ' : ' + byV[v].n + ' ticket' + (byV[v].n > 1 ? 's' : '') + ', ' + (h < 0 ? 'jalon dépassé' : h === 0 ? 'plus une demi-journée' : 'reste ' + C.fmtHalfDays(h) + ' j');
       }).join(' · ');
-      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + minPct + '% d\'avancement</b> alors que le jalon « ' + esc(alertBoundaryLabel(cfg)) + ' » de leur version tombe dans ' + C.fmtHalfDays(maxHalves) + ' jour' + (maxHalves > 2 ? 's' : '') + ' ou moins — ' + detail + '.', tickets: soon, title: 'Jalon imminent, ticket peu avancé' });
+      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + minPct + '% d\'avancement</b> alors qu\'il reste ' + C.fmtHalfDays(maxHalves) + ' jour' + (maxHalves > 2 ? 's' : '') + ' ou moins de travail avant le jalon « ' + esc(alertBoundaryLabel(cfg)) + ' » de leur version — ' + detail + '.', tickets: soon, title: 'Jalon imminent, ticket peu avancé' });
     }
     var beyond = vis.filter(function (t) { return t.versionState === 'none' && t.targetDate && !t.isDone; });
     if (beyond.length) out.push({ level: 'info', icon: '→', html: '<b>' + beyond.length + ' ticket' + (beyond.length > 1 ? 's' : '') + ' avec une Target date au-delà du plan publié</b> — ajoutez des versions dans le plan de livraisons ou avancez la Target date.', tickets: beyond, title: 'Au-delà du plan' });

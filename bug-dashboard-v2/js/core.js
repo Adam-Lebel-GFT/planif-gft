@@ -252,6 +252,12 @@
   }
   // Instant de référence : la date choisie, à la demi-journée choisie.
   function atHalf(date, half) { var d = startOfDay(date); if (half) d.setHours(12); return d; }
+  // Demi-journées de travail qu'il reste avant un jalon. Ne comptent ni la
+  // demi-journée en cours (à 11h30 le lundi, le matin est derrière nous) ni
+  // celle du jalon (le gel tombe le jeudi vers 7h, personne ne travaille avant :
+  // le jeudi matin est déjà fermé). Lundi matin → gel jeudi matin = lundi PM,
+  // mardi AM, mardi PM, mercredi AM, mercredi PM, soit 5 demi-journées = 2,5 j.
+  function halvesLeft(from, at) { return halfDiff(from, at) - 1; }
 
   // ── Modèle ticket ──────────────────────────────────────────────────
   function cellAt(row, headers, idx) { return idx !== -1 ? (row[headers[idx]] || '') : ''; }
@@ -487,7 +493,7 @@
     COLUMN_CANDIDATES: COLUMN_CANDIDATES, PRJ301_LABEL: PRJ301_LABEL,
     DEFAULT_STATUS_PCT: DEFAULT_STATUS_PCT, PRIORITY_ORDER_DEFAULT: PRIORITY_ORDER_DEFAULT,
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
-    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf,
+    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf, halvesLeft: halvesLeft,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
     DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };

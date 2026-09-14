@@ -57,11 +57,14 @@ est indépendant du jalon de rattachement (Déploiement) : c'est le gel du code 
 migrée (`schema` 2) : le seuil passe de 7 à 3 jours s'il était resté au défaut, une valeur
 choisie explicitement est conservée.
 
-Le temps restant est compté en **demi-journées** : `releases-planning` publie ses jalons avec
-leur demi-journée (matin `T00:00`, après-midi `T12:00` — Code freeze le mercredi soir,
-déploiement le mardi matin), et la demi-journée de référence se choisit à côté de la date de
-référence. Lundi matin → mercredi soir = **2,5 jours**. Le seuil accepte les demi-journées
-(2,5). Un plan publié avant cette évolution (date nue) vaut « matin », comme avant.
+Le temps restant est compté en **demi-journées de travail** : `releases-planning` publie ses
+jalons avec leur demi-journée (matin `T00:00`, après-midi `T12:00`), et la demi-journée en cours
+se choisit à côté de la date de référence (pré-remplie sur l'heure courante). Ne comptent ni la
+demi-journée en cours — à 11h30 le lundi, le matin est derrière nous — ni celle du jalon : un
+Code freeze le jeudi vers 7h ferme déjà le jeudi matin, personne ne travaillant avant. Lundi
+matin, gel le jeudi matin : lundi après-midi (0,5) + mardi (1) + mercredi (1) = **2,5 jours**.
+Le seuil accepte les demi-journées (2,5). Un plan publié avant cette évolution (date nue) vaut
+« matin », comme avant.
 
 ## Journal des analyses
 
