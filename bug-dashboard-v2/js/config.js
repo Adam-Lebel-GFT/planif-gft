@@ -32,7 +32,7 @@
     priorities: { order: C.PRIORITY_ORDER_DEFAULT.slice(), colors: {}, groups: {}, blockerKeys: ['blocker', 'highest'] },
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
-    alerts:     { daysBefore: 3, minPct: 50 },
+    alerts:     { boundary: 'freeze', daysBefore: 3, minPct: 50 },
     cards:      DEFAULT_CARDS,
     views: {
       direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
@@ -250,9 +250,11 @@
         '</div>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
-        '<label>Version déployée dans <input type="number" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
+        '<label>Jalon surveillé <select class="cfg-select" data-alert="boundary">' + [['freeze', 'Code freeze'], ['gonogo', 'Go / No-go'], ['deploy', 'Déploiement sur la branche'], ['end', 'Fin de la version']].map(function (o) { return '<option value="' + o[0] + '"' + ((cfg.alerts.boundary || 'freeze') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label>… atteint dans <input type="number" step="0.5" min="0" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
         '<label>… et avancement du ticket sous <input type="number" class="cfg-input num" data-alert="minPct" value="' + cfg.alerts.minPct + '"> %</label>' +
-        '</div>';
+        '</div>' +
+        '<p class="cfg-help">Le temps restant est compté en <strong>demi-journées</strong> : les jalons du plan tombent le matin ou l\'après-midi (le Code freeze le mercredi soir, le déploiement le mardi matin), et la demi-journée de référence se choisit en haut de page. Lundi matin → mercredi soir = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
     } else if (drawerTab === 'views') {
       h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
       h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
@@ -306,7 +308,7 @@
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
       else if (d.rule !== undefined) update(function (c) { c.version[d.rule] = t.type === 'checkbox' ? t.checked : (t.type === 'number' ? Number(t.value) || 0 : t.value); });
-      else if (d.alert !== undefined) update(function (c) { c.alerts[d.alert] = Number(t.value) || 0; });
+      else if (d.alert !== undefined) update(function (c) { c.alerts[d.alert] = t.type === 'number' ? (Number(t.value) || 0) : t.value; });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
       else if (d.viewSection !== undefined) update(function (c) { c.views[d.viewSection].sections[d.section] = t.checked; });

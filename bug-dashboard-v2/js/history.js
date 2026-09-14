@@ -40,7 +40,7 @@
     return {
       kpis: { total: k.total, open: k.open, done: k.done, blockers: k.blockers, blockersOpen: k.blockersOpen, overdue: k.overdue, prj301: k.prj301, hasFix: k.hasFix, doneNoFix: k.doneNoFix, noVersion: k.noVersion, deployedOpen: k.deployedOpen, progress: Math.round(k.progress * 10) / 10 },
       byTeam: byTeam, byVersion: byVersion, byStatus: byStatus, byPriority: byPriority, byOrigin: byOrigin,
-      refDate: C.toISO(S.refDate)
+      refDate: C.toISO(S.refDate), refHalf: S.refHalf || 0
     };
   }
   function compactTickets(tickets) {
@@ -340,7 +340,7 @@
     var b = e.target.closest('[data-diff]');
     if (b && lastDiff) { var set = lastDiff.sets[b.dataset.diff] || []; DD.open({ title: 'Comparateur — ' + b.querySelector('.l').textContent, subtitle: fmtWhen(lastDiff.a.at) + ' → ' + fmtWhen(lastDiff.b.at), tickets: inflate(set) }); return; }
     var op = e.target.closest('[data-hist-open]');
-    if (op) { var io = +op.dataset.histOpen, it0 = H.items[io]; H.currentHash = it0.hash; APP.loadArchived(inflate(it0.tickets), { id: it0.id, index: io, nom: it0.nom, when: fmtWhen(it0.at), refDate: it0.resume && it0.resume.refDate, hash: it0.hash }); document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: it0, isNew: false } })); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (op) { var io = +op.dataset.histOpen, it0 = H.items[io]; H.currentHash = it0.hash; APP.loadArchived(inflate(it0.tickets), { id: it0.id, index: io, nom: it0.nom, when: fmtWhen(it0.at), refDate: it0.resume && it0.resume.refDate, refHalf: it0.resume && it0.resume.refHalf, hash: it0.hash }); document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: it0, isNew: false } })); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     var r = e.target.closest('[data-hist-rename]');
     if (r) { var it = H.items[+r.dataset.histRename]; var nom = prompt('Nom de l\'analyse :', it.nom || ''); if (nom == null) return; it.nom = nom.trim(); if (H.source === 'supabase' && it.id) await S.client.from('bdv2_analyses').update({ nom: it.nom || null }).eq('id', it.id); else saveLocal(H.items); refresh(); return; }
     var p = e.target.closest('[data-hist-pin]');

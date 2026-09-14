@@ -237,6 +237,22 @@
   function dayDiff(a, b) { return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
   function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 
+  // ── Demi-journées ──────────────────────────────────────────────────
+  // Le plan de livraisons place ses jalons à la demi-journée (le Code freeze
+  // tombe le mercredi soir, le déploiement le mardi matin) : l'heure portée
+  // par la date le dit — avant midi = matin (0), à partir de midi = après-midi
+  // (1). Une date sans heure (anciens plans publiés) vaut « matin ».
+  function halfOf(d) { return d && d.getHours() >= 12 ? 1 : 0; }
+  // Nombre de demi-journées de a à b (négatif si b est déjà passé).
+  function halfDiff(a, b) { return dayDiff(a, b) * 2 + (halfOf(b) - halfOf(a)); }
+  // Demi-journées → jours, en français : 5 → « 2,5 », 4 → « 2 ».
+  function fmtHalfDays(halves) {
+    var d = halves / 2;
+    return (d % 1 === 0 ? String(d) : d.toFixed(1).replace('.', ','));
+  }
+  // Instant de référence : la date choisie, à la demi-journée choisie.
+  function atHalf(date, half) { var d = startOfDay(date); if (half) d.setHours(12); return d; }
+
   // ── Modèle ticket ──────────────────────────────────────────────────
   function cellAt(row, headers, idx) { return idx !== -1 ? (row[headers[idx]] || '') : ''; }
 
@@ -471,7 +487,7 @@
     COLUMN_CANDIDATES: COLUMN_CANDIDATES, PRJ301_LABEL: PRJ301_LABEL,
     DEFAULT_STATUS_PCT: DEFAULT_STATUS_PCT, PRIORITY_ORDER_DEFAULT: PRIORITY_ORDER_DEFAULT,
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
-    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay,
+    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
     DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };

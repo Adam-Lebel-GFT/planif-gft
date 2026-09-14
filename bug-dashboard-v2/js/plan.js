@@ -15,10 +15,15 @@
   var S = APP.state;
   var plan = { versions: [], source: null, meta: null };
 
-  function boundaryDate(v, cfg) {
-    var b = cfg.version.boundary;
+  // Un jalon publié porte sa demi-journée dans l'heure (T00:00 / T12:00) ;
+  // une date nue (plan publié avant cette évolution) vaut « matin ».
+  function parseJalon(iso) { return iso ? new Date(/T/.test(iso) ? iso : iso + 'T00:00:00') : null; }
+  // `which` permet de viser un autre jalon que celui du rattachement — les
+  // alertes comptent jusqu'au Code freeze, pas jusqu'au déploiement.
+  function boundaryDate(v, cfg, which) {
+    var b = which || cfg.version.boundary;
     var iso = b === 'start' ? v.start : b === 'end' ? v.end : (v.jalons && v.jalons[b]) || v.jalons && v.jalons.deploy || v.end;
-    return iso ? new Date(iso + 'T00:00:00') : null;
+    return parseJalon(iso);
   }
 
   async function load() {
@@ -59,7 +64,7 @@
     var tol = (cfg.version.toleranceDays || 0) * 86400000;
     var ref = C.startOfDay(S.refDate);
     tickets.forEach(function (t) {
-      t.version = null; t.versionState = 'none'; t.versionDeploy = null; t.versionReason = '';
+      t.version = null; t.versionState = 'none'; t.versionDeploy = null; t.versionAlertAt = null; t.versionReason = '';
       var hit = null;
       if (cfg.version.useFixVersion && t.fixVersion && byLabel[C.normalize(t.fixVersion)]) { hit = byLabel[C.normalize(t.fixVersion)]; t.versionReason = 'Fix Version'; }
       else if (t.targetDate && ov.length) {
@@ -67,7 +72,7 @@
         for (var i = 0; i < ov.length; i++) { if (ov[i].at.getTime() >= target) { hit = ov[i]; break; } }
         t.versionReason = hit ? 'Target date' : 'au-delà du plan';
       } else if (!t.targetDate) t.versionReason = 'sans Target date';
-      if (hit) { t.version = hit.v.label; t.versionDeploy = hit.at; t.versionState = hit.at < ref ? 'deployed' : 'planned'; }
+      if (hit) { t.version = hit.v.label; t.versionDeploy = hit.at; t.versionState = hit.at < ref ? 'deployed' : 'planned'; t.versionAlertAt = boundaryDate(hit.v, cfg, cfg.alerts.boundary); }
     });
   });
 
@@ -99,16 +104,28 @@
     return tiles;
   });
 
+  var BOUNDARY_LABELS = { deploy: 'Déploiement sur la branche', freeze: 'Code freeze', gonogo: 'Go / No-go', start: 'Début de version', end: 'Fin de version' };
+  function alertBoundaryLabel(cfg) { var b = cfg.alerts.boundary || 'freeze'; return BOUNDARY_LABELS[b] || b; }
+
   // ── Alertes ────────────────────────────────────────────────────────
   APP.hooks.alerts.push(function (vis) {
     if (!S.hasPlan) return [];
-    var cfg = CFG.get(), ref = C.startOfDay(S.refDate), out = [];
+    var cfg = CFG.get(), ref = C.startOfDay(S.refDate), refAt = C.atHalf(S.refDate, S.refHalf), out = [];
     var lateReal = vis.filter(function (t) { return t.versionState === 'deployed' && !t.isDone; });
     if (lateReal.length) out.push({ level: 'critical', icon: '⚠', html: '<b>' + lateReal.length + ' ticket' + (lateReal.length > 1 ? 's' : '') + ' ouvert' + (lateReal.length > 1 ? 's' : '') + ' sur des versions déjà déployées</b> — retard réel, à replanifier ou à livrer en correctif.', tickets: lateReal, title: 'Retard réel' });
-    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && C.dayDiff(ref, t.versionDeploy) <= (cfg.alerts.daysBefore || 3) && t.pct < (cfg.alerts.minPct || 50); });
+    // Temps restant avant le jalon d'alerte (Code freeze par défaut), compté en
+    // demi-journées : lundi matin → mercredi soir = 5 demi-journées, soit 2,5 j.
+    var maxHalves = Math.round((cfg.alerts.daysBefore || 3) * 2);
+    var minPct = cfg.alerts.minPct || 50;
+    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && t.versionAlertAt && C.halfDiff(refAt, t.versionAlertAt) <= maxHalves && t.pct < minPct; });
     if (soon.length) {
-      var byV = {}; soon.forEach(function (t) { byV[t.version] = (byV[t.version] || 0) + 1; });
-      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + cfg.alerts.minPct + '% d\'avancement</b> alors que leur version est déployée dans ' + cfg.alerts.daysBefore + ' jour' + (cfg.alerts.daysBefore > 1 ? 's' : '') + ' ou moins — ' + Object.keys(byV).map(function (v) { return esc(v) + ' (' + byV[v] + ')'; }).join(', ') + '.', tickets: soon, title: 'Version imminente, ticket peu avancé' });
+      var byV = {};
+      soon.forEach(function (t) { var v = byV[t.version] = byV[t.version] || { n: 0, halves: C.halfDiff(refAt, t.versionAlertAt) }; v.n++; });
+      var detail = Object.keys(byV).map(function (v) {
+        var h = byV[v].halves;
+        return esc(v) + ' : ' + byV[v].n + ' ticket' + (byV[v].n > 1 ? 's' : '') + ', ' + (h < 0 ? 'jalon dépassé de ' + C.fmtHalfDays(-h) + ' j' : h === 0 ? 'jalon aujourd\'hui' : 'dans ' + C.fmtHalfDays(h) + ' j');
+      }).join(' · ');
+      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + minPct + '% d\'avancement</b> alors que le jalon « ' + esc(alertBoundaryLabel(cfg)) + ' » de leur version tombe dans ' + C.fmtHalfDays(maxHalves) + ' jour' + (maxHalves > 2 ? 's' : '') + ' ou moins — ' + detail + '.', tickets: soon, title: 'Jalon imminent, ticket peu avancé' });
     }
     var beyond = vis.filter(function (t) { return t.versionState === 'none' && t.targetDate && !t.isDone; });
     if (beyond.length) out.push({ level: 'info', icon: '→', html: '<b>' + beyond.length + ' ticket' + (beyond.length > 1 ? 's' : '') + ' avec une Target date au-delà du plan publié</b> — ajoutez des versions dans le plan de livraisons ou avancez la Target date.', tickets: beyond, title: 'Au-delà du plan' });

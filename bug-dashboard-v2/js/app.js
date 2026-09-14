@@ -9,10 +9,10 @@
   var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config, CH = root.BDV2Charts, DD = root.BDV2Drill;
   var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var $ = function (id) { return document.getElementById(id); };
-  var LS = { raw: 'bdv2:rawPaste', refDate: 'bdv2:refDate', view: 'bdv2:view', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
+  var LS = { raw: 'bdv2:rawPaste', refDate: 'bdv2:refDate', refHalf: 'bdv2:refHalf', view: 'bdv2:view', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
 
   var S = {
-    raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(),
+    raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
     filters: { origin: 'all', version: 'all', teams: [] },
     view: 'projet', session: null, client: null, profil: null,
     alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: ''
@@ -76,6 +76,7 @@
     S.tickets = tickets.map(function (t, i) { t.idx = i; return t; });
     S.raw = ''; S.archived = meta; S.analysisId = meta.id || null; S.analysisName = meta.nom || '';
     if (meta.refDate) { S.refDate = new Date(meta.refDate + 'T00:00:00'); $('refDateInput').value = meta.refDate; }
+    if (meta.refHalf != null) { S.refHalf = Number(meta.refHalf) || 0; $('refHalfSelect').value = String(S.refHalf); }
     var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
     S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: has('assignee'), dueDate: has('dueDate'), created: has('created') };
     S.headers = [];
@@ -93,7 +94,7 @@
   function exitArchive() {
     S.archived = null; $('archiveBanner').classList.add('hidden');
     var saved = null; try { saved = localStorage.getItem(LS.raw); } catch (e) {}
-    try { var rd = localStorage.getItem(LS.refDate); if (rd) { $('refDateInput').value = rd; S.refDate = new Date(rd + 'T00:00:00'); } } catch (e) {}
+    try { var rd = localStorage.getItem(LS.refDate); if (rd) { $('refDateInput').value = rd; S.refDate = new Date(rd + 'T00:00:00'); } var rh = localStorage.getItem(LS.refHalf); if (rh != null) { S.refHalf = Number(rh) || 0; $('refHalfSelect').value = rh; } } catch (e) {}
     if (saved) { $('pasteArea').value = saved; analyze({ silent: true }); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
     else { S.tickets = []; $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); setMsg('', ''); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
   }
@@ -313,6 +314,13 @@
     refInput.value = (function () { try { return localStorage.getItem(LS.refDate); } catch (e) { return null; } })() || C.toISO(new Date());
     S.refDate = new Date(refInput.value + 'T00:00:00');
     refInput.addEventListener('change', function () { S.refDate = refInput.value ? new Date(refInput.value + 'T00:00:00') : new Date(); try { localStorage.setItem(LS.refDate, refInput.value); } catch (e) {} rerender(); });
+    // Demi-journée de référence : les jalons du plan tombent le matin ou
+    // l'après-midi, le temps restant se compte donc par demi-journées.
+    var halfSel = $('refHalfSelect');
+    var savedHalf = (function () { try { return localStorage.getItem(LS.refHalf); } catch (e) { return null; } })();
+    S.refHalf = savedHalf != null ? (Number(savedHalf) || 0) : (new Date().getHours() >= 12 ? 1 : 0);
+    halfSel.value = String(S.refHalf);
+    halfSel.addEventListener('change', function () { S.refHalf = Number(halfSel.value) || 0; try { localStorage.setItem(LS.refHalf, halfSel.value); } catch (e) {} rerender(); });
     // vues
     var viewSel = $('viewSelect');
     function fillViews() { var v = cfg().views; viewSel.innerHTML = Object.keys(v).map(function (id) { return '<option value="' + id + '"' + (id === S.view ? ' selected' : '') + '>' + esc(v[id].label) + '</option>'; }).join(''); }

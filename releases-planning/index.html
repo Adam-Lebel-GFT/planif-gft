@@ -489,7 +489,11 @@ function resolvedPlan() {
       const half0 = hasOverride ? (ov.half || 0) : (m.half || 0);
       let halfIdx = day0 * 2 + half0;
       halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
-      jalons[m.id] = toISO(addDays(vStart, Math.floor(halfIdx / 2)));
+      // La demi-journée est conservée dans l'heure (matin T00:00, après-midi
+      // T12:00) : le Bug Dashboard v2 compte le temps restant avant un jalon
+      // en demi-journées. Un consommateur qui ne lit que la date retombe sur
+      // le matin, comme avant.
+      jalons[m.id] = toISO(addDays(vStart, Math.floor(halfIdx / 2))) + (halfIdx % 2 ? 'T12:00' : 'T00:00');
     });
     return { id: v.id, label: v.label, start: v.start, end: v.end, ordre: vi, jalons };
   });
