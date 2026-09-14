@@ -89,7 +89,7 @@
     if (next) {
       var inNext = vis.filter(function (t) { return t.version === next.v.label; }), openNext = inNext.filter(function (t) { return !t.isDone; });
       var days = C.dayDiff(ref, next.at);
-      tiles.push({ id: 'nextVersion', label: 'Prochaine version · ' + next.v.label, value: openNext.length, unit: '/ ' + inNext.length + ' à livrer', sub: 'déploiement ' + C.fmtDate(next.at) + ' — J' + (days >= 0 ? '-' + days : '+' + (-days)) + ' · ' + openNext.filter(function (t) { return t.isBlocker; }).length + ' blocker' + (openNext.filter(function (t) { return t.isBlocker; }).length > 1 ? 's' : ''), tone: days <= (cfg.alerts.daysBefore || 7) && openNext.length ? 'serious' : 'accent',
+      tiles.push({ id: 'nextVersion', label: 'Prochaine version · ' + next.v.label, value: openNext.length, unit: '/ ' + inNext.length + ' à livrer', sub: 'déploiement ' + C.fmtDate(next.at) + ' — J' + (days >= 0 ? '-' + days : '+' + (-days)) + ' · ' + openNext.filter(function (t) { return t.isBlocker; }).length + ' blocker' + (openNext.filter(function (t) { return t.isBlocker; }).length > 1 ? 's' : ''), tone: days <= (cfg.alerts.daysBefore || 3) && openNext.length ? 'serious' : 'accent',
         drill: function () { return { title: 'Version ' + next.v.label, subtitle: 'Déploiement le ' + C.fmtDate(next.at), tabs: [{ label: 'Reste à livrer', tickets: openNext }, { label: 'Terminés', tickets: inNext.filter(function (t) { return t.isDone; }) }] }; } });
     }
     tiles.push({ id: 'deployedOpen', label: 'Retard réel', value: k.deployedOpen, sub: 'ouverts sur des versions déjà déployées', tone: k.deployedOpen ? 'critical' : 'neutral',
@@ -105,10 +105,10 @@
     var cfg = CFG.get(), ref = C.startOfDay(S.refDate), out = [];
     var lateReal = vis.filter(function (t) { return t.versionState === 'deployed' && !t.isDone; });
     if (lateReal.length) out.push({ level: 'critical', icon: '⚠', html: '<b>' + lateReal.length + ' ticket' + (lateReal.length > 1 ? 's' : '') + ' ouvert' + (lateReal.length > 1 ? 's' : '') + ' sur des versions déjà déployées</b> — retard réel, à replanifier ou à livrer en correctif.', tickets: lateReal, title: 'Retard réel' });
-    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && C.dayDiff(ref, t.versionDeploy) <= (cfg.alerts.daysBefore || 7) && t.pct < (cfg.alerts.minPct || 50); });
+    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && C.dayDiff(ref, t.versionDeploy) <= (cfg.alerts.daysBefore || 3) && t.pct < (cfg.alerts.minPct || 50); });
     if (soon.length) {
       var byV = {}; soon.forEach(function (t) { byV[t.version] = (byV[t.version] || 0) + 1; });
-      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + cfg.alerts.minPct + '% d\'avancement</b> alors que leur version est déployée dans moins de ' + cfg.alerts.daysBefore + ' jours — ' + Object.keys(byV).map(function (v) { return esc(v) + ' (' + byV[v] + ')'; }).join(', ') + '.', tickets: soon, title: 'Version imminente, ticket peu avancé' });
+      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + cfg.alerts.minPct + '% d\'avancement</b> alors que leur version est déployée dans ' + cfg.alerts.daysBefore + ' jour' + (cfg.alerts.daysBefore > 1 ? 's' : '') + ' ou moins — ' + Object.keys(byV).map(function (v) { return esc(v) + ' (' + byV[v] + ')'; }).join(', ') + '.', tickets: soon, title: 'Version imminente, ticket peu avancé' });
     }
     var beyond = vis.filter(function (t) { return t.versionState === 'none' && t.targetDate && !t.isDone; });
     if (beyond.length) out.push({ level: 'info', icon: '→', html: '<b>' + beyond.length + ' ticket' + (beyond.length > 1 ? 's' : '') + ' avec une Target date au-delà du plan publié</b> — ajoutez des versions dans le plan de livraisons ou avancez la Target date.', tickets: beyond, title: 'Au-delà du plan' });
@@ -158,7 +158,7 @@
       var open = list.filter(function (t) { return !t.isDone; });
       var k = C.computeKpis(list);
       var days = at ? C.dayDiff(ref, at) : null;
-      var urgent = kind === 'next' && days != null && days <= (cfg.alerts.daysBefore || 7) && open.length;
+      var urgent = kind === 'next' && days != null && days <= (cfg.alerts.daysBefore || 3) && open.length;
       var selected = S.filters.version === label;
       var stack = C.DIMS.status.order(allStatuses, cfg).map(function (st) {
         var n = list.filter(function (t) { return t.status === st; }).length; if (!n) return '';
