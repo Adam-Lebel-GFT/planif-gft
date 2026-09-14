@@ -76,3 +76,9 @@ ajoute une entrée : agrégats + liste compacte des tickets (~50 Ko). Deltas et 
 le bandeau, courbes d'évolution (global, avancement, stock à livrer par version, par équipe,
 origine), comparateur entre deux analyses (nouveaux, disparus, terminés, changements de
 statut/équipe/version, stock par version). Sans session : journal local (30 dernières).
+
+Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
+par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.
+Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe de « In
+Progress » à « Code Review » avance sans être terminé, et le compte de terminés, aveugle à ce
+travail, projetait bien trop loin.

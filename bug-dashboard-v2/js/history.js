@@ -264,14 +264,21 @@
         var days = Math.max((new Date(items[l.k].at) - new Date(items[f.k].at)) / 86400000, 0);
         var closed = l.st.done - f.st.done, appeared = l.st.total - f.st.total;
         var pace = days >= 0.5 ? closed / days : null;
+        // Prévision : rythme d'<b>avancement pondéré</b> (points par jour) plutôt
+        // que nombre de tickets terminés par jour. Un ticket qui passe de « In
+        // Progress » à « Code Review » avance sans être terminé : le compte de
+        // terminés ne le voit pas et projetait donc bien trop loin.
+        var gain = l.st.progress - f.st.progress;
+        var ppd = days >= 0.5 ? gain / days : null;
         var td = sel.td !== 'none' ? new Date(sel.td + 'T00:00:00') : null;
-        var proj = pace && pace > 0 && l.st.open > 0 ? new Date(new Date(items[l.k].at).getTime() + l.st.open / pace * 86400000) : null;
+        var proj = ppd && ppd > 0 && l.st.progress < 100 ? new Date(new Date(items[l.k].at).getTime() + (100 - l.st.progress) / ppd * 86400000) : null;
+        var dec = function (n) { return n.toFixed(1).replace('.', ','); };
         extra = '<div class="diff-grid" style="margin-top:12px">' +
           '<div class="diff-box"><div class="n">' + l.st.open + '</div><div class="l">reste à livrer (dernière photo)</div></div>' +
           '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? days.toFixed(1) + ' j' : Math.round(days * 24) + ' h') + ')</div></div>' +
           '<div class="diff-box"><div class="n">' + (appeared >= 0 ? '+' : '') + appeared + '</div><div class="l">tickets apparus dans la version</div></div>' +
-          '<div class="diff-box"><div class="n">' + (pace == null ? '—' : pace.toFixed(1)) + '</div><div class="l">terminés par jour (rythme moyen)</div></div>' +
-          '<div class="diff-box"><div class="n" style="font-size:16px">' + (l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (td ? 'stock à zéro à ce rythme — Target date ' + C.fmtDate(td) + (proj && td ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : 'stock à zéro à ce rythme') + '</div></div></div>';
+          '<div class="diff-box"><div class="n">' + (ppd == null ? '—' : (ppd >= 0 ? '+' : '') + dec(ppd)) + '</div><div class="l">points d\'avancement par jour (rythme moyen)' + (pace == null ? '' : ' — ' + dec(pace) + ' terminé' + (pace >= 2 ? 's' : '') + '/j') + '</div></div>' +
+          '<div class="diff-box"><div class="n" style="font-size:16px">' + (l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (l.st.open === 0 ? 'plus rien à livrer' : proj ? '100 % d\'avancement à ce rythme' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') + (td ? ' — Target date ' + C.fmtDate(td) + (proj ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') + '</div></div></div>';
         extra += '<ul class="hist-list" style="margin-top:12px">' + pts2.slice().reverse().map(function (p, idx) {
           var prev = pts2[pts2.length - 2 - idx]; var it = items[p.k];
           var d = prev ? ' · Δ terminés ' + (p.st.done - prev.st.done >= 0 ? '+' : '') + (p.st.done - prev.st.done) + ' · Δ total ' + (p.st.total - prev.st.total >= 0 ? '+' : '') + (p.st.total - prev.st.total) : '';
