@@ -254,7 +254,7 @@
         '<label>… atteint dans <input type="number" step="0.5" min="0" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
         '<label>… et avancement du ticket sous <input type="number" class="cfg-input num" data-alert="minPct" value="' + cfg.alerts.minPct + '"> %</label>' +
         '</div>' +
-        '<p class="cfg-help">Le temps restant est compté en <strong>demi-journées</strong> : les jalons du plan tombent le matin ou l\'après-midi (le Code freeze le mercredi soir, le déploiement le mardi matin), et la demi-journée de référence se choisit en haut de page. Lundi matin → mercredi soir = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
+        '<p class="cfg-help">Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (choisie en haut de page, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
     } else if (drawerTab === 'views') {
       h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
       h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
