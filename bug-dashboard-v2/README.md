@@ -50,11 +50,18 @@ Déterministes, calculées à chaque rendu et cliquables (drill-down) : blockers
 terminés sans Fix Version, Target date dépassée, sans Target date, blockers PRJ301, retard réel
 (versions déjà déployées), au-delà du plan, et **« Version imminente, ticket peu avancé »** —
 tickets ouverts rattachés à une version à venir dont l'avancement pondéré est sous le seuil
-alors que le déploiement est proche. Seuils dans Configurer → Règles → Alertes : **3 jours ou
-moins** et **moins de 50 %** d'avancement (le seuil de jours sert aussi à marquer « urgente » la
-prochaine version dans le bandeau et le train). Une configuration enregistrée avant ce
-changement est migrée (`schema` 2) : le seuil passe de 7 à 3 jours s'il était resté au défaut,
-une valeur choisie explicitement est conservée.
+alors que le jalon surveillé approche. Seuils dans Configurer → Règles → Alertes : jalon
+**Code freeze**, atteint dans **3 jours ou moins**, avancement **sous 50 %**. Le jalon surveillé
+est indépendant du jalon de rattachement (Déploiement) : c'est le gel du code qui ferme la porte
+à un ticket, pas la mise en production. Une configuration enregistrée avant ce changement est
+migrée (`schema` 2) : le seuil passe de 7 à 3 jours s'il était resté au défaut, une valeur
+choisie explicitement est conservée.
+
+Le temps restant est compté en **demi-journées** : `releases-planning` publie ses jalons avec
+leur demi-journée (matin `T00:00`, après-midi `T12:00` — Code freeze le mercredi soir,
+déploiement le mardi matin), et la demi-journée de référence se choisit à côté de la date de
+référence. Lundi matin → mercredi soir = **2,5 jours**. Le seuil accepte les demi-journées
+(2,5). Un plan publié avant cette évolution (date nue) vaut « matin », comme avant.
 
 ## Journal des analyses
 
