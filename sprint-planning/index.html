@@ -620,6 +620,7 @@ footer span {
 .sb-cat .sb-input-text{margin-top:0}
 .sb-cat-field{margin-top:6px}
 .sb-cat-field .sb-lbl{font-size:10px;color:var(--muted)}
+.sb-hint{font-size:9px;color:var(--muted);margin-top:3px;line-height:1.35}
 .sb-add-cat{width:100%;padding:7px;border:1px dashed var(--grey3);border-radius:var(--radius);background:transparent;color:var(--muted);font-family:Manrope,sans-serif;font-size:11px;font-weight:600;cursor:pointer}
 .sb-add-cat:hover{border-color:var(--navy);color:var(--navy)}
 .sb-sync{font-size:10px;color:var(--muted);margin-bottom:8px;text-align:center;min-height:13px}
@@ -934,10 +935,16 @@ const WORKING_CODES  = new Set(['R','S','AS']);
 // sert à retrouver la vélocité dans l'onglet « Parameters » d'un fichier importé,
 // et la liste d'équipes est comparée à la colonne équipe du planning.
 var DEFAULT_CATEGORIES = [
-  { nom:'Configuration', code:'CONF',  velocite:2.0, equipes:['CONF-1','CONF-2','CONF-3','ARCH','Digital','GLOBAL','INSIGHT'] },
-  { nom:'Intégration',   code:'INTEG', velocite:2.0, equipes:['INTEG 4','INTEG 5'] },
-  { nom:'Transverse',    code:'TRANS', velocite:2.0, equipes:['TRANS'] }
+  { nom:'Configuration', code:'CONF',  velocite:2.0, equipes:['CONF-1','CONF-2','CONF-3','ARCH','Digital','GLOBAL','INSIGHT'],
+    alias:{ 'CONF-1':['GW-PC-TEAM1'], 'CONF-2':['GW-PC-TEAM2'], 'CONF-3':['GW-PC-TEAM3'] } },
+  { nom:'Intégration',   code:'INTEG', velocite:2.0, equipes:['INTEG 4','INTEG 5'],
+    alias:{ 'INTEG 4':['GW-PC-TEAM4'], 'INTEG 5':['GW-PC-TEAM5'] } },
+  { nom:'Transverse',    code:'TRANS', velocite:2.0, equipes:['TRANS'], alias:{} }
 ];
+// Alias historiques, injectés une fois dans une configuration enregistrée avant
+// que le champ « équipes » ne sache les porter (migration schéma 1 → 2).
+var LEGACY_ALIASES = { 'CONF-1':['GW-PC-TEAM1'], 'CONF-2':['GW-PC-TEAM2'], 'CONF-3':['GW-PC-TEAM3'],
+                       'INTEG 4':['GW-PC-TEAM4'], 'INTEG 5':['GW-PC-TEAM5'] };
 
 // Une teinte par rang de catégorie, recyclée au-delà de six. Les trois premières
 // reprennent exactement les couleurs historiques CONF / INTEG / TRANS pour que
@@ -952,16 +959,43 @@ var CAT_PALETTE = [
 ];
 function catStyle(i) { return CAT_PALETTE[((i % CAT_PALETTE.length) + CAT_PALETTE.length) % CAT_PALETTE.length]; }
 
+// Un champ d'équipes se lit « CONF-1 = GW-PC-TEAM1, ARCH » : à gauche le nom tel
+// qu'il apparaît dans le planning, à droite les codes du backlog qui le désignent
+// (plusieurs codes séparés par « | »). Sans « = », le nom sert aussi de code.
+function parseTeamEntries(str) {
+  return String(str||'').split(',').map(function(part) {
+    var bits = part.split('=');
+    var nom = bits.shift().trim();
+    var alias = bits.join('=').split('|').map(function(a){ return a.trim(); }).filter(function(a){ return a.length > 0; });
+    return { nom: nom, alias: alias };
+  }).filter(function(e){ return e.nom.length > 0; });
+}
 function parseTeamList(str) {
-  return String(str||'').split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+  return parseTeamEntries(str).map(function(e){ return e.nom; });
+}
+function formatTeamField(cat) {
+  return (cat.equipes || []).map(function(t) {
+    var a = (cat.alias || {})[t] || [];
+    return a.length ? t + ' = ' + a.join(' | ') : t;
+  }).join(', ');
 }
 function normalizeCategory(c, i) {
   var vel = parseFloat(c && c.velocite);
+  var equipes = Array.isArray(c && c.equipes) ? parseTeamList(c.equipes.join(',')) : parseTeamList(c && c.equipes);
+  var alias = {};
+  var src = (c && c.alias && typeof c.alias === 'object') ? c.alias : {};
+  equipes.forEach(function(t) {
+    var a = src[t];
+    a = Array.isArray(a) ? a : (a ? [a] : []);
+    a = a.map(function(x){ return String(x).trim(); }).filter(function(x){ return x.length > 0 && x !== t; });
+    if (a.length) alias[t] = a;
+  });
   return {
     nom:      (c && c.nom ? String(c.nom) : 'Type ' + (i+1)).trim(),
     code:     (c && c.code ? String(c.code) : '').trim(),
     velocite: (isFinite(vel) && vel > 0) ? vel : 2.0,
-    equipes:  Array.isArray(c && c.equipes) ? parseTeamList(c.equipes.join(',')) : parseTeamList(c && c.equipes)
+    equipes:  equipes,
+    alias:    alias
   };
 }
 function normalizeCategories(list) {
@@ -970,7 +1004,7 @@ function normalizeCategories(list) {
 }
 
 // Configuration persistée (voir loadConfig / saveConfig).
-var SP_SCHEMA = 1;
+var SP_SCHEMA = 2;   // 2 : le champ des équipes porte les codes du backlog
 var config = {
   schema: SP_SCHEMA,
   agile_pct: 0.10, bogues_pct: 0.10, raffinage_pct: 0.20, support_pct: 0.10,
@@ -978,16 +1012,27 @@ var config = {
 };
 
 // Index équipe → catégorie, reconstruit à chaque changement de configuration.
-var _cats = [], _catByTeam = {}, _teamOrder = [];
+var _cats = [], _catByTeam = {}, _teamOrder = [], _teamByAlias = {};
 var INCLUDED_TEAMS = new Set();
 function rebuildTeamIndex() {
   _cats = normalizeCategories(config.categories);
-  _catByTeam = {}; _teamOrder = []; INCLUDED_TEAMS = new Set();
+  _catByTeam = {}; _teamOrder = []; _teamByAlias = {}; INCLUDED_TEAMS = new Set();
   _cats.forEach(function(c, i) {
     c.equipes.forEach(function(t) {
       if (_catByTeam[t] === undefined) { _catByTeam[t] = i; _teamOrder.push(t); INCLUDED_TEAMS.add(t); }
+      // Le nom de l'équipe vaut toujours comme code, plus ses alias déclarés.
+      _teamByAlias[t.toLowerCase()] = t;
+      ((c.alias || {})[t] || []).forEach(function(a) {
+        if (_teamByAlias[a.toLowerCase()] === undefined) _teamByAlias[a.toLowerCase()] = t;
+      });
     });
   });
+}
+// Code d'équipe du backlog → nom d'équipe du planning. Un code inconnu est rendu
+// tel quel : la story reste visible et signale le rapprochement manquant.
+function teamFromBacklogCode(code) {
+  var k = String(code || '').trim();
+  return _teamByAlias[k.toLowerCase()] || k;
 }
 function catIndexOfTeam(t) { var i = _catByTeam[t]; return i === undefined ? -1 : i; }
 function catOfTeam(t) { var i = catIndexOfTeam(t); return i < 0 ? null : _cats[i]; }
@@ -1063,8 +1108,9 @@ function renderCategories() {
       + '</div>'
       + '<div class="sb-row" style="margin-bottom:6px"><span class="sb-lbl">Vélocité (JP/SP)</span>'
       +   '<input class="sb-input sb-cat-vel" type="number" step="0.1" min="0.1" value="' + c.velocite + '"></div>'
-      + '<div class="sb-cat-field"><span class="sb-lbl">Équipes du planning</span>'
-      +   '<input class="sb-input-text sb-cat-equipes" value="' + esc(c.equipes.join(', ')) + '" placeholder="ex: CONF-1, CONF-2"></div>'
+      + '<div class="sb-cat-field"><span class="sb-lbl">Équipes — nom du planning = code du backlog</span>'
+      +   '<input class="sb-input-text sb-cat-equipes" value="' + esc(formatTeamField(c)) + '" placeholder="ex: CONF-1 = GW-PC-TEAM1, ARCH">'
+      +   '<div class="sb-hint">Sans « = », le nom sert aussi de code. Plusieurs codes : CONF-1 = GW-PC-TEAM1 | GWPC1</div></div>'
       + '<div class="sb-cat-field"><span class="sb-lbl">Code du fichier Paramètres</span>'
       +   '<input class="sb-input-text sb-cat-code" value="' + esc(c.code) + '" placeholder="ex: CONF — facultatif"></div>'
       + '</div>';
@@ -1082,11 +1128,15 @@ function readSidebarIntoConfig() {
   var cards = document.querySelectorAll('#sb-cats .sb-cat');
   if (cards.length) {
     config.categories = [].map.call(cards, function(card, i) {
+      var entries = parseTeamEntries(card.querySelector('.sb-cat-equipes').value);
+      var alias = {};
+      entries.forEach(function(e) { if (e.alias.length) alias[e.nom] = e.alias; });
       return normalizeCategory({
         nom:      card.querySelector('.sb-cat-nom').value,
         code:     card.querySelector('.sb-cat-code').value,
         velocite: card.querySelector('.sb-cat-vel').value,
-        equipes:  parseTeamList(card.querySelector('.sb-cat-equipes').value)
+        equipes:  entries.map(function(e){ return e.nom; }),
+        alias:    alias
       }, i);
     });
   }
@@ -1138,8 +1188,22 @@ function syncTag(txt, ok) {
   if (el) { el.textContent = txt; el.classList.toggle('ok', !!ok); }
 }
 
+// Configuration enregistrée avant le schéma 2 : les alias du backlog vivaient
+// dans une table figée du code. On les réinjecte pour les équipes historiques,
+// sinon leurs stories cesseraient d'être rattachées.
+function migrateConfig(raw) {
+  if (!raw || (Number(raw.schema) || 1) >= 2) return raw;
+  (raw.categories || []).forEach(function(c) {
+    if (!c || !Array.isArray(c.equipes)) return;
+    c.alias = c.alias || {};
+    c.equipes.forEach(function(t) { if (!c.alias[t] && LEGACY_ALIASES[t]) c.alias[t] = LEGACY_ALIASES[t].slice(); });
+  });
+  return raw;
+}
+
 function adoptConfig(raw) {
   if (!raw || typeof raw !== 'object') return;
+  raw = migrateConfig(raw);
   var num = function(v, d) { var n = parseFloat(v); return isFinite(n) ? n : d; };
   config.agile_pct     = num(raw.agile_pct,     config.agile_pct);
   config.bogues_pct    = num(raw.bogues_pct,    config.bogues_pct);
@@ -1175,7 +1239,7 @@ function saveConfig() {
 async function loadConfig() {
   try {
     var raw = localStorage.getItem(SP_LS_KEY);
-    if (raw) adoptConfig(JSON.parse(raw));
+    if (raw) { adoptConfig(JSON.parse(raw)); saveLocalConfig(); }
   } catch (e) {}
   syncSidebarFromConfig();
   syncTag('Configuration de ce navigateur', false);
@@ -1301,10 +1365,6 @@ setupFileInput('file-planning', 'card-planning', 'name-planning', 'trash-plannin
 setupFileInput('file-backlog',  'card-backlog',  'name-backlog',  'trash-backlog',  'backlog',  null);
 
 // ── Parse Backlog (Jira XLS export) ──────────────────────────
-const TEAM_MAP = {
-  'GW-PC-TEAM1': 'CONF-1', 'GW-PC-TEAM2': 'CONF-2', 'GW-PC-TEAM3': 'CONF-3',
-  'GW-PC-TEAM4': 'INTEG 4', 'GW-PC-TEAM5': 'INTEG 5'
-};
 const STATUS_COLOR = {
   'open':                   'red',
   'selected for analyse':   'red',
@@ -1343,7 +1403,7 @@ function storiesFromRows(headers, rows, cols) {
     const key = cell(r, 'key');
     if (!key || key === 'Key') continue;
     const status = cell(r, 'status'), teamCode = cell(r, 'team');
-    const team = TEAM_MAP[teamCode] || teamCode;
+    const team = teamFromBacklogCode(teamCode);
     const sprint = cell(r, 'sprint');
     const color = STATUS_COLOR[status.toLowerCase()] || 'grey';
     // Spillover: parse all sprint numbers (handles "Sprint 55,Sprint 56" and "Sprint 55, Sprint 56")

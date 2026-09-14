@@ -138,9 +138,16 @@ liste de types d'équipe, d'au moins un élément, chacun avec son nom, sa vélo
 ses équipes et son code de fichier :
 
 ```js
-config.categories = [{ nom:'Configuration', code:'CONF', velocite:2.0, equipes:['CONF-1', …] }, …];
-rebuildTeamIndex();   // → INCLUDED_TEAMS, _teamOrder, index équipe → type
+config.categories = [{ nom:'Configuration', code:'CONF', velocite:2.0,
+                       equipes:['CONF-1', …], alias:{ 'CONF-1':['GW-PC-TEAM1'] } }, …];
+rebuildTeamIndex();   // → INCLUDED_TEAMS, _teamOrder, index équipe → type et code → équipe
 ```
+
+Le champ des équipes se saisit « CONF-1 = GW-PC-TEAM1, ARCH » : à gauche le nom du
+planning, à droite les codes du backlog Jira qui le désignent (plusieurs séparés par
+`|`). C'est ce qui remplace la table `TEAM_MAP` autrefois écrite en dur ; le
+rapprochement passe par `teamFromBacklogCode(code)`, insensible à la casse, qui rend
+un code inconnu tel quel plutôt que de perdre la story.
 
 À utiliser plutôt que de tester une appartenance en dur :
 
