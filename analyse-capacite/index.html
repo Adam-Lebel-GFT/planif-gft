@@ -547,9 +547,12 @@ function setRange(a,b){
   renderAll();
 }
 
-function teamList(){ var s=[],seen={}; state.persons.forEach(function(p){ if(!seen[p.team]){ seen[p.team]=1; s.push(p.team); } }); return s; }
-function countryList(){ var s=[],seen={}; state.persons.forEach(function(p){ var c=p.country||''; if(c && !seen[c]){ seen[c]=1; s.push(c); } }); s.sort(); return s; }
-function roleList(){ var s=[],seen={}; state.persons.forEach(function(p){ var r=p.role||'—'; if(!seen[r]){ seen[r]=1; s.push(r); } }); s.sort(function(a,b){ return roleRank(a)-roleRank(b) || a.localeCompare(b); }); return s; }
+// Comparateur alphabétique : accents ignorés, nombres triés comme des nombres
+// (« TEAM 9 » avant « TEAM 10 »).
+function byLabel(a,b){ return String(a).localeCompare(String(b), 'fr', { numeric:true, sensitivity:'base' }); }
+function teamList(){ var s=[],seen={}; state.persons.forEach(function(p){ if(!seen[p.team]){ seen[p.team]=1; s.push(p.team); } }); s.sort(byLabel); return s; }
+function countryList(){ var s=[],seen={}; state.persons.forEach(function(p){ var c=p.country||''; if(c && !seen[c]){ seen[c]=1; s.push(c); } }); s.sort(byLabel); return s; }
+function roleList(){ var s=[],seen={}; state.persons.forEach(function(p){ var r=p.role||'—'; if(!seen[r]){ seen[r]=1; s.push(r); } }); s.sort(byLabel); return s; }
 // Filtrage croisé : applique toutes les facettes sauf celle qu'on est en train
 // de dessiner, pour que ses options restent comparables entre elles.
 function matchesExcept(p, except){
@@ -650,7 +653,8 @@ function renderChips(){
     function(c){ return flagFor(c)+' '+esc(c); });
   $('#block-countries').style.display = nCo ? '' : 'none';
   var cp=$('#chips-persons'); cp.innerHTML='';
-  var sorted=vis.filter(activeInWindow).sort(function(a,b){ return a.team.localeCompare(b.team) || roleRank(a.role)-roleRank(b.role) || a.name.localeCompare(b.name); });
+  // Regroupées par équipe (A→Z), puis par nom (A→Z) à l'intérieur de chaque équipe.
+  var sorted=vis.filter(activeInWindow).sort(function(a,b){ return byLabel(a.team,b.team) || byLabel(a.name,b.name); });
   sorted.forEach(function(p){
     var b=document.createElement('button'); b.className='chip'+(selected.has(p.name)?' on':'');
     b.title=(p.country?p.country+' · ':'')+p.role+' · '+p.team+(p.alloc<1?' · alloc. '+Math.round(p.alloc*100)+' %':'');
