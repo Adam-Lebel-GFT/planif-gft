@@ -30,7 +30,7 @@
 <div class="hero">
   <div>
     <h1>Bug Dashboard v2 — Radar de stabilisation</h1>
-    <p>Collez un extrait Jira : le radar projette chaque ticket sur le train de livraison (Target date → version), croise équipes, statuts, priorités et origine, journalise chaque analyse pour suivre l'évolution, et rédige une synthèse pour la direction.</p>
+    <p>Collez un extrait Jira : le radar projette chaque ticket sur le train de livraison (Target date → version), croise équipes, statuts, priorités et origine, journalise chaque analyse pour suivre l'évolution et lève les alertes de stabilisation.</p>
     <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
   </div>
   <div class="hero-fields">
@@ -91,6 +91,7 @@
     </div>
   </section>
 
+  <!-- Alimentée par js/ai.js quand le module est chargé ; masquée sinon. -->
   <section id="sec-ai" class="hidden">
     <div class="card ai-card" id="aiCard"></div>
   </section>
@@ -161,6 +162,8 @@
 <script src="js/app.js"></script>
 <script src="js/plan.js"></script>
 <script src="js/history.js"></script>
-<script src="js/ai.js"></script>
+<!-- Synthèse IA masquée : décommenter cette ligne pour réactiver la section « Synthèse IA »
+     et « Demander au Radar » (la section #sec-ai reste masquée tant que le module n'est pas chargé). -->
+<!-- <script src="js/ai.js"></script> -->
 </body>
 </html>

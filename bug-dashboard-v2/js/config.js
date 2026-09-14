@@ -22,16 +22,21 @@
     { id: 'done_fix',        title: 'Résolutions × Fix Version',     rows: 'resolution', cols: 'fixState', measure: 'count',    style: 'table',   visible: true }
   ];
 
+  // Version du schéma de configuration : incrémentée quand un défaut livré doit
+  // primer sur une valeur déjà enregistrée (localStorage / Supabase) — voir migrate().
+  var SCHEMA = 2;
+
   var DEFAULTS = {
+    schema:     SCHEMA,
     teams:      { order: [], alias: {}, hidden: [], colors: {} },
     priorities: { order: C.PRIORITY_ORDER_DEFAULT.slice(), colors: {}, groups: {}, blockerKeys: ['blocker', 'highest'] },
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
-    alerts:     { daysBefore: 7, minPct: 50 },
+    alerts:     { daysBefore: 3, minPct: 50 },
     cards:      DEFAULT_CARDS,
     views: {
-      direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: true, train: true, cube: true, history: true, alerts: true } },
-      projet:    { label: 'Chef de projet', cards: DEFAULT_CARDS.map(function (c) { return c.id; }), sections: { kpis: true, ai: true, train: true, cube: true, history: true, alerts: true } },
+      direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
+      projet:    { label: 'Chef de projet', cards: DEFAULT_CARDS.map(function (c) { return c.id; }), sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
       scrum:     { label: 'Scrum',          cards: ['team_status', 'team_priority', 'status', 'team', 'done_fix'], sections: { kpis: true, ai: false, train: true, cube: true, history: false, alerts: true } }
     },
     ai:         { model: 'claude-haiku-4-5', auto: true, tone: 'direction' },
@@ -65,8 +70,20 @@
     return base;
   }
 
+  // Une config enregistrée l'emporte sur les défauts livrés (merge) : migrate()
+  // efface les seules valeurs restées au défaut d'une version antérieure, pour
+  // que le nouveau défaut s'applique. Un seuil choisi explicitement est conservé.
+  function migrate(stored) {
+    if (!stored || typeof stored !== 'object') return stored;
+    var from = Number(stored.schema) || 1;
+    // v2 : « version imminente, ticket peu avancé » passe de 7 à 3 jours.
+    if (from < 2 && stored.alerts && Number(stored.alerts.daysBefore) === 7) delete stored.alerts.daysBefore;
+    stored.schema = SCHEMA;
+    return stored;
+  }
+
   function loadLocal() {
-    try { var raw = localStorage.getItem(LS_KEY); if (raw) cfg = merge(deepClone(DEFAULTS), JSON.parse(raw)); } catch (e) {}
+    try { var raw = localStorage.getItem(LS_KEY); if (raw) cfg = merge(deepClone(DEFAULTS), migrate(JSON.parse(raw))); } catch (e) {}
   }
   function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) {} }
 
@@ -79,7 +96,7 @@
       if (res.error) throw res.error;
       remoteReady = true;
       if (res.data && res.data.valeur) {
-        cfg = merge(deepClone(DEFAULTS), res.data.valeur);
+        cfg = merge(deepClone(DEFAULTS), migrate(res.data.valeur));
         saveLocal();
       } else {
         saveRemote(); // première utilisation connectée : publie la config locale
@@ -104,7 +121,7 @@
   function onChange(fn) { listeners.push(fn); }
   function reset() { cfg = deepClone(DEFAULTS); saveLocal(); saveRemote(); notify(); }
   function exportJSON() { return JSON.stringify(cfg, null, 2); }
-  function importJSON(text) { var o = JSON.parse(text); cfg = merge(deepClone(DEFAULTS), o); saveLocal(); saveRemote(); notify(); }
+  function importJSON(text) { var o = JSON.parse(text); cfg = merge(deepClone(DEFAULTS), migrate(o)); saveLocal(); saveRemote(); notify(); }
 
   // ── Tiroir de configuration ────────────────────────────────────────
   var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', bars: 'Barres', donut: 'Donut', table: 'Tableau' };
@@ -113,6 +130,10 @@
   Object.keys(C.DIMS).forEach(function (k) { DIM_LABELS[k] = C.DIMS[k].label; });
 
   var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+
+  // Le lot IA n'est pas toujours livré (js/ai.js peut ne pas être chargé) :
+  // l'onglet « IA » et la case de section correspondante sont alors masqués.
+  function aiLoaded() { return !!(root.BDV2App && root.BDV2App.available && root.BDV2App.available.ai); }
 
   var drawerTab = 'teams';
   var ctxRef = { teams: [], priorities: [], statuses: [] };
@@ -139,7 +160,9 @@
 
   function renderDrawer() {
     var el = document.getElementById('cfgBody');
-    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['cards', 'Cartes'], ['rules', 'Règles'], ['views', 'Vues'], ['ai', 'IA'], ['data', 'Sauvegarde']];
+    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['cards', 'Cartes'], ['rules', 'Règles'], ['views', 'Vues'], ['ai', 'IA'], ['data', 'Sauvegarde']]
+      .filter(function (t) { return t[0] !== 'ai' || aiLoaded(); });
+    if (drawerTab === 'ai' && !aiLoaded()) drawerTab = 'teams';
     document.getElementById('cfgTabs').innerHTML = tabs.map(function (t) {
       return '<button type="button" class="cfg-tab' + (t[0] === drawerTab ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
     }).join('');
@@ -227,14 +250,14 @@
         '</div>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
-        '<label>Version déployée dans moins de <input type="number" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours</label>' +
+        '<label>Version déployée dans <input type="number" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
         '<label>… et avancement du ticket sous <input type="number" class="cfg-input num" data-alert="minPct" value="' + cfg.alerts.minPct + '"> %</label>' +
         '</div>';
     } else if (drawerTab === 'views') {
       h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
       h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
         var v = cfg.views[id];
-        return '<tr><td><input type="text" class="cfg-input" value="' + esc(v.label) + '" data-view-label="' + id + '"></td><td class="num">' + v.cards.length + '</td><td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + s + '</label>'; }).join(' ') + '</td></tr>';
+        return '<tr><td><input type="text" class="cfg-input" value="' + esc(v.label) + '" data-view-label="' + id + '"></td><td class="num">' + v.cards.length + '</td><td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].filter(function (s) { return s !== 'ai' || aiLoaded(); }).map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + s + '</label>'; }).join(' ') + '</td></tr>';
       }).join('') + '</tbody></table>';
     } else if (drawerTab === 'ai') {
       h += '<p class="cfg-help">La synthèse est générée par une fonction serveur (la clé d\'API n\'est jamais dans la page). Le modèle le moins coûteux est sélectionné par défaut.</p>' +
