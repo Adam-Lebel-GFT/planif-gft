@@ -310,12 +310,30 @@
     var plotW = w - padL - padR;
     var xOf = function (t) { return padL + (t - t0) / (t1 - t0) * plotW; };
     var yOf = function (v) { return padT + (1 - v / 100) * (h - padT - padB); };
-    // Valeur attendue à une date : rampe linéaire jusqu'au gel, puis 100 %.
+    // Valeur attendue à une date. La rampe ne progresse que les jours ouvrés :
+    // elle monte du lundi au vendredi, reste plate le week-end, et atteint
+    // 100 % au gel. Un écart constaté le lundi matin se lit alors pour ce qu'il
+    // est, sans le faux retard qu'ajoutaient deux jours sans personne au travail.
     var fz = opts.freeze ? opts.freeze.getTime() : t1, s0 = opts.start.getTime();
+    var isWorkday = function (d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; };
+    var workDays = function (a, b) {
+      if (b <= a) return 0;
+      var total = 0, d = new Date(a); d.setHours(0, 0, 0, 0);
+      while (d.getTime() < b) {
+        var nx = new Date(d); nx.setDate(nx.getDate() + 1);
+        if (isWorkday(d)) {
+          var lo = Math.max(d.getTime(), a), hi = Math.min(nx.getTime(), b);
+          if (hi > lo) total += (hi - lo) / 86400000;
+        }
+        d = nx;
+      }
+      return total;
+    };
+    var workTotal = workDays(s0, fz) || 1;
     var expected = function (t) {
       if (t <= s0) return startPct;
       if (t >= fz) return 100;
-      return startPct + (100 - startPct) * (t - s0) / (fz - s0);
+      return startPct + (100 - startPct) * workDays(s0, t) / workTotal;
     };
     var g = '';
     for (var i = 0; i <= 4; i++) {
@@ -348,9 +366,16 @@
     }
 
     // rampe attendue
-    var rx0 = xOf(s0), ry0 = yOf(startPct), rxf = xOf(Math.min(fz, t1)), ryf = yOf(expected(Math.min(fz, t1)));
-    var ramp = '<path class="ramp" d="M' + rx0.toFixed(1) + ' ' + ry0.toFixed(1) + ' L' + rxf.toFixed(1) + ' ' + ryf.toFixed(1) +
-      (fz < t1 ? ' L' + xOf(t1).toFixed(1) + ' ' + yOf(100).toFixed(1) : '') + '"/>';
+    // Un sommet par frontière de journée : c'est ce qui donne les paliers.
+    var rEnd = Math.min(fz, t1), rampD = 'M' + xOf(s0).toFixed(1) + ' ' + yOf(startPct).toFixed(1);
+    var rd = new Date(s0); rd.setHours(0, 0, 0, 0); rd.setDate(rd.getDate() + 1);
+    for (var guard = 0; rd.getTime() < rEnd && guard < 400; guard++) {
+      rampD += ' L' + xOf(rd.getTime()).toFixed(1) + ' ' + yOf(expected(rd.getTime())).toFixed(1);
+      rd.setDate(rd.getDate() + 1);
+    }
+    rampD += ' L' + xOf(rEnd).toFixed(1) + ' ' + yOf(expected(rEnd)).toFixed(1);
+    if (fz < t1) rampD += ' L' + xOf(t1).toFixed(1) + ' ' + yOf(100).toFixed(1);
+    var ramp = '<path class="ramp" d="' + rampD + '"/>';
     // jalon de gel
     var marks = '';
     if (opts.freeze && fz >= t0 && fz <= t1) {
@@ -421,7 +446,7 @@
       ticks + lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
-      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + '</span>' +
+      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + ', jours ouvrés seulement</span>' +
       (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé</span>' : '') +
       '</div>';
   }

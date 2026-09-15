@@ -330,7 +330,7 @@ body.dd-open{overflow:hidden;}
 .bu .proj{fill:none; stroke-width:2; stroke-dasharray:3 4; opacity:.65;}
 .bu .mark{stroke:#C3C8D2; stroke-width:1; stroke-dasharray:3 3;}
 .bu .today{stroke:var(--navy); stroke-width:1.5; stroke-dasharray:4 3; opacity:.5;}
-.bu .today-band{fill:var(--navy); opacity:.055;}
+.bu .today-band{fill:#fa8072; opacity:.20;}
 .bu .weekend{fill:#8d94a3; opacity:.09;}
 .bu .tick{stroke:#A8B0BE; stroke-width:1;}
 .bu .tick.half{stroke:#CFD5DE;}
