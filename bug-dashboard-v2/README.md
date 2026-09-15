@@ -136,7 +136,8 @@ Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizo
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une
 rampe grise dit où l'on devrait être — **25 % au début de la version** (elle ne démarre pas à
 zéro, ses tickets entrent déjà partiellement avancés ; réglable dans Configurer → Règles), **100 %
-au Code freeze**, puis plateau. Elle ne monte que pendant les **heures ouvrées** (8 h – 19 h en
+au jalon qui fait foi** — celui choisi pour les alertes, le Code freeze par défaut ; le trait et
+son étiquette désignent ce même jalon — puis plateau. Elle ne monte que pendant les **heures ouvrées** (8 h – 19 h en
 semaine, réglable) : plate la nuit, plate le week-end, elle reprend le matin, pour qu'un écart
 constaté le lundi matin ne porte pas le faux retard de deux jours sans personne au travail.
 L'axe suit la même idée : les heures fermées y sont **comprimées** — elles comptent pour un
@@ -148,8 +149,14 @@ Sans plan publié pour cette Target date — donc sans début ni gel à opposer 
 graphique reste la courbe photo par photo.
 
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
-par **jour ouvré** entre la première et la dernière photo) jusqu'à 100 %, et le compare à la
-Target date. Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe
+par **jour ouvré** entre la première et la dernière photo) jusqu'au **jalon qui fait foi** — celui
+choisi pour les alertes, le Code freeze par défaut, celui-là même que vise la rampe du burn-up.
+Le grand chiffre répond à « est-ce qu'on y arrive ? » : l'avancement atteint **au jalon** à ce
+rythme, et ce qui manque pour les 100 % (« 95,1 % au Code freeze — il manque 4,9 pts, soit 0,4 j
+ouvré »). Aucune date de 100 % n'est affichée au-delà du jalon : le gel tombe le jeudi matin, donc
+le dernier moment ouvré est le mercredi à 19 h et le jeudi ne compte pas — une date obtenue en
+créditant ce jeudi-là serait fausse. Sans plan publié, donc sans jalon, la tuile retombe sur
+l'ancienne lecture : la date des 100 % face à la Target date. Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe
 de « In Progress » à « Code Review » avance sans être terminé, et le compte de terminés, aveugle à
 ce travail, projetait bien trop loin.
 

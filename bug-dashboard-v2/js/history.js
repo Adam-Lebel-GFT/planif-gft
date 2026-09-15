@@ -317,12 +317,65 @@
   // week-end ne compte jamais comme du temps de travail.
   function openWin() { var b = CFG.get().burnup || {}; var a = b.openFrom == null ? 8 : b.openFrom, z = b.openTo == null ? 19 : b.openTo; return { a: a, z: z, h: z - a }; }
   function workDays(a, b) { var w = openWin(); return C.openHours(a, b, w.a, w.z) / w.h; }
+  // Jalon qui fait foi pour une version (celui des alertes), avec son libellé.
+  function gateOf(td) {
+    if (!root.BDV2Plan || !root.BDV2Plan.versionForDate || td === 'none') return null;
+    var pv = root.BDV2Plan.versionForDate(td, CFG.get());
+    return pv && (pv.deadline || pv.freeze) ? pv : null;
+  }
+  // Dernier instant où l'on travaille avant un jalon. Le gel tombe le jeudi
+  // matin — personne n'y touche avant 7 h — donc le dernier moment utile est le
+  // mercredi à 19 h, et le jeudi matin ne compte pas dans la prévision.
+  function lastOpenBefore(gate) {
+    var w = openWin(), g = gate.getTime(), d = new Date(gate); d.setHours(0, 0, 0, 0);
+    for (var i = 0; i < 400; i++) {
+      if (C.isWorkday(d)) {
+        var oa = new Date(d); oa.setHours(w.a, 0, 0, 0);
+        var ob = new Date(d); ob.setHours(w.z, 0, 0, 0);
+        var end = Math.min(g, ob.getTime());
+        if (end > oa.getTime()) return new Date(end);
+      }
+      d.setDate(d.getDate() - 1);
+    }
+    return gate;
+  }
+  // Tuile de prévision : le grand chiffre répond à « est-ce qu'on y arrive ? »,
+  // c'est-à-dire l'avancement atteint AU JALON à ce rythme. On n'affiche pas de
+  // date de 100 % au-delà du jalon : elle ne s'obtiendrait qu'en créditant des
+  // heures qui ne comptent plus. Sans plan publié, on retombe sur l'ancienne
+  // lecture — la date des 100 % face à la Target date.
+  function forecastBox(o) {
+    var d = o.dec;
+    if (o.stateOnly) return { n: '—', l: 'prévision indisponible : filtre d\'état actif, les 100 % ne sont pas atteignables' };
+    if (o.open === 0) return { n: 'Backlog vidé', l: 'plus rien à livrer' };
+    var tail = o.td ? ' · Target date ' + C.fmtDate(o.td) : '';
+    if (o.atGate == null || !o.gate) {
+      return { n: o.proj ? C.fmtDate(o.proj) : o.progress >= 100 ? '100 %' : 'indéterminé',
+        l: (o.proj ? '100 % d\'avancement à ce rythme' : o.progress >= 100 ? 'objectif atteint' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') +
+          (o.td ? ' — Target date ' + C.fmtDate(o.td) + (o.proj ? (o.proj > o.td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(o.td, o.proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') };
+    }
+    var name = '<b>' + esc(o.gateName || 'jalon') + '</b>';
+    if (o.atGate >= 99.95) {
+      return { n: '100 %',
+        l: 'd\'avancement au ' + name + (o.proj ? ' — 100 % atteints le ' + C.fmtDate(o.proj) : '') +
+          ' <b style="color:#006300">(dans les temps)</b>' + tail };
+    }
+    var miss = 100 - o.atGate, last = lastOpenBefore(o.gate), w = openWin();
+    return { n: d(o.atGate) + ' %',
+      l: 'd\'avancement au ' + name + ' à ce rythme — dernier moment ouvré : ' + C.fmtDate(last) + ' à ' + last.getHours() + ' h — il manque ' +
+        '<b style="color:var(--critical)">' + d(miss) + ' pts</b>' + (o.ppd > 0 ? ', soit ' + d(miss / o.ppd) + ' j ouvré' + (miss / o.ppd >= 2 ? 's' : '') : '') + tail };
+  }
+
+  function gateLabel(pv) {
+    return root.BDV2Plan && root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(pv.deadlineKey || 'freeze') : 'Code freeze';
+  }
 
   function burnupFor(sel, pts2, photos) {
     if (!root.BDV2Plan || !root.BDV2Plan.versionForDate) return null;
     var cfg = CFG.get();
     var pv = root.BDV2Plan.versionForDate(sel.td, cfg);
-    if (!pv || !pv.start || !pv.freeze) return null;
+    var gate = pv && (pv.deadline || pv.freeze);
+    if (!pv || !pv.start || !gate) return null;
     var items = H.items;
     var points = pts2.map(function (p, i) {
       return { t: new Date(items[photos[i]].at), v: p.st.progress, label: fmtWhen(items[photos[i]].at) };
@@ -335,8 +388,8 @@
       if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
     }
     return CH.burnupChart({
-      start: pv.start, end: pv.deploy || pv.end || pv.freeze, freeze: pv.freeze,
-      freezeLabel: root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(cfg.alerts.boundary || 'freeze') : 'Code freeze',
+      start: pv.start, end: pv.deploy || pv.end || gate, deadline: gate,
+      deadlineLabel: gateLabel(pv),
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
       openFrom: openWin().a, openTo: openWin().z,
       today: C.startOfDay(S.refDate), points: points, rate: rate, color: P.CATEGORICAL[0]
@@ -435,12 +488,20 @@
         var stateOnly = S.filters.state !== 'all';
         var proj = !stateOnly && ppd && ppd > 0 && l.st.progress < 100 ? C.addOpenHours(tL, (100 - l.st.progress) / ppd * openWin().h, openWin().a, openWin().z) : null;
         var dec = function (n) { return n.toFixed(1).replace('.', ','); };
+        // Prévision : ce qui compte, c'est où l'on sera au jalon qui fait foi —
+        // le gel de code par défaut — et non la date des 100 %, qui peut tomber
+        // après lui. La rampe du burn-up vise ce même jalon : les deux se
+        // contredisaient tant que la tuile se comparait à la Target date.
+        var pvG = gateOf(sel.td), gate = pvG && (pvG.deadline || pvG.freeze);
+        var atGate = gate && ppd != null ? l.st.progress + workDays(tL, gate) * ppd : null;
+        var box = forecastBox({ stateOnly: stateOnly, open: l.st.open, progress: l.st.progress, proj: proj, ppd: ppd,
+          gate: gate, gateName: pvG ? gateLabel(pvG) : '', atGate: atGate, td: td, dec: dec });
         extra = '<div class="diff-grid" style="margin-top:12px">' +
           '<div class="diff-box"><div class="n">' + l.st.open + '</div><div class="l">reste à livrer (dernière photo)</div></div>' +
           '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? dec(days) + ' j ouvrés' : Math.round(days * openWin().h) + ' h ouvrées') + ')</div></div>' +
           '<div class="diff-box"><div class="n">' + (appeared >= 0 ? '+' : '') + appeared + '</div><div class="l">tickets apparus dans la version</div></div>' +
           '<div class="diff-box"><div class="n">' + (ppd == null ? '—' : (ppd >= 0 ? '+' : '') + dec(ppd)) + '</div><div class="l">points d\'avancement par jour ouvré (rythme moyen)' + (pace == null ? '' : ' — ' + dec(pace) + ' terminé' + (pace >= 2 ? 's' : '') + '/j ouvré') + '</div></div>' +
-          '<div class="diff-box"><div class="n" style="font-size:16px">' + (stateOnly ? '—' : l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (stateOnly ? 'prévision indisponible : filtre d\'état actif, les 100 % ne sont pas atteignables' : l.st.open === 0 ? 'plus rien à livrer' : proj ? '100 % d\'avancement à ce rythme' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') + (td && !stateOnly ? ' — Target date ' + C.fmtDate(td) + (proj ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') + '</div></div></div>';
+          '<div class="diff-box"><div class="n" style="font-size:16px">' + box.n + '</div><div class="l">' + box.l + '</div></div></div>';
         extra += '<ul class="hist-list" style="margin-top:12px">' + pts2.slice().reverse().map(function (p, idx) {
           var prev = pts2[pts2.length - 2 - idx]; var it = items[p.k];
           var d = prev ? ' · Δ terminés ' + (p.st.done - prev.st.done >= 0 ? '+' : '') + (p.st.done - prev.st.done) + ' · Δ total ' + (p.st.total - prev.st.total >= 0 ? '+' : '') + (p.st.total - prev.st.total) : '';

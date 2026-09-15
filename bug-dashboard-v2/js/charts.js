@@ -331,7 +331,7 @@
     // elle monte du lundi au vendredi, reste plate le week-end, et atteint
     // 100 % au gel. Un écart constaté le lundi matin se lit alors pour ce qu'il
     // est, sans le faux retard qu'ajoutaient deux jours sans personne au travail.
-    var fz = opts.freeze ? opts.freeze.getTime() : t1, s0 = opts.start.getTime();
+    var fz = opts.deadline ? opts.deadline.getTime() : t1, s0 = opts.start.getTime();
     var workTotal = spans(s0, fz).open || 1;
     var expected = function (t) {
       if (t <= s0) return startPct;
@@ -382,11 +382,11 @@
     rampD += ' L' + xOf(rEnd).toFixed(1) + ' ' + yOf(expected(rEnd)).toFixed(1);
     if (fz < t1) rampD += ' L' + xOf(t1).toFixed(1) + ' ' + yOf(100).toFixed(1);
     var ramp = '<path class="ramp" d="' + rampD + '"/>';
-    // jalon de gel
+    // jalon qui fait foi (gel de code par défaut, réglable)
     var marks = '';
-    if (opts.freeze && fz >= t0 && fz <= t1) {
+    if (opts.deadline && fz >= t0 && fz <= t1) {
       marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-        '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.freezeLabel || 'Code freeze') + '</text>';
+        '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.deadlineLabel || 'Code freeze') + '</text>';
     }
     // Week-ends en gris : personne n'avance, alors que la rampe, elle, monte —
     // c'est la moitié de l'explication d'un écart un lundi matin.
@@ -466,7 +466,7 @@
       ticks + lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
-      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + ', heures ouvrées seulement (' + OPEN_A + ' h – ' + OPEN_B + ' h)</span>' +
+      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.deadlineLabel || 'Code freeze') + ', heures ouvrées seulement (' + OPEN_A + ' h – ' + OPEN_B + ' h)</span>' +
       (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé</span>' : '') +
       '</div>';
   }

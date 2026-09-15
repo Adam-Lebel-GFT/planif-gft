@@ -24,6 +24,7 @@
   function parseJalon(iso) { return iso ? new Date(/T/.test(iso) ? iso : iso + 'T00:00:00') : null; }
   // `which` permet de viser un autre jalon que celui du rattachement — les
   // alertes comptent jusqu'au Code freeze, pas jusqu'au déploiement.
+  function deadlineKey(cfg) { return (cfg.alerts && cfg.alerts.boundary) || 'freeze'; }
   function boundaryDate(v, cfg, which) {
     var b = which || cfg.version.boundary;
     var iso = b === 'start' ? v.start : b === 'end' ? v.end : (v.jalons && v.jalons[b]) || v.jalons && v.jalons.deploy || v.end;
@@ -136,6 +137,12 @@
       end: hit.v.end ? new Date(hit.v.end + 'T00:00:00') : null,
       freeze: boundaryDate(hit.v, cfg, 'freeze'),
       deploy: boundaryDate(hit.v, cfg, 'deploy'),
+      // Jalon qui fait foi pour juger l'avancement : celui choisi pour les
+      // alertes (Configurer → Règles). C'est là que la rampe du burn-up atteint
+      // 100 % et c'est à lui que se compare la prévision — sans quoi le
+      // graphique et la tuile jugeraient sur deux dates différentes.
+      deadlineKey: deadlineKey(cfg),
+      deadline: boundaryDate(hit.v, cfg, deadlineKey(cfg)),
       boundary: hit.at
     };
   }
