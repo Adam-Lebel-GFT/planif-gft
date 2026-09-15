@@ -120,6 +120,26 @@
     });
   });
 
+  // Version du plan à laquelle une Target date se rattache — même règle que
+  // les tickets (première version dont le jalon de rattachement tombe à cette
+  // date ou après), pour que l'évolution parle bien de la même version.
+  function versionForDate(iso, cfg) {
+    cfg = cfg || CFG.get();
+    if (!iso || !plan.versions.length) return null;
+    var tol = (cfg.version.toleranceDays || 0) * 86400000;
+    var t = C.startOfDay(new Date(iso + 'T00:00:00')).getTime() + tol;
+    var hit = orderedVersions(cfg).filter(function (x) { return x.at.getTime() >= t; })[0];
+    if (!hit) return null;
+    return {
+      label: hit.v.label,
+      start: hit.v.start ? new Date(hit.v.start + 'T00:00:00') : null,
+      end: hit.v.end ? new Date(hit.v.end + 'T00:00:00') : null,
+      freeze: boundaryDate(hit.v, cfg, 'freeze'),
+      deploy: boundaryDate(hit.v, cfg, 'deploy'),
+      boundary: hit.at
+    };
+  }
+
   // ── Filtre version ─────────────────────────────────────────────────
   APP.hooks.versionOptions.push(function () {
     if (!S.hasPlan) return [];
@@ -246,5 +266,5 @@
   });
 
   document.addEventListener('bdv2:ready', async function () { await load(); if (S.tickets.length) APP.rerender(); });
-  root.BDV2Plan = { load: load, get: function () { return plan; }, orderedVersions: orderedVersions, boundaryLabel: boundaryLabel, boundaryOptions: boundaryOptions };
+  root.BDV2Plan = { load: load, get: function () { return plan; }, orderedVersions: orderedVersions, versionForDate: versionForDate, boundaryLabel: boundaryLabel, boundaryOptions: boundaryOptions };
 })(window);

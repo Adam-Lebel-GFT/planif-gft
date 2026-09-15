@@ -302,6 +302,32 @@
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
   var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  // Burn-up : rend null si le plan ne connaît pas cette Target date (pas de
+  // début ni de gel à opposer aux photos) — on retombe alors sur la courbe.
+  function burnupFor(sel, pts2, photos) {
+    if (!root.BDV2Plan || !root.BDV2Plan.versionForDate) return null;
+    var cfg = CFG.get();
+    var pv = root.BDV2Plan.versionForDate(sel.td, cfg);
+    if (!pv || !pv.start || !pv.freeze) return null;
+    var items = H.items;
+    var points = pts2.map(function (p, i) {
+      return { t: new Date(items[photos[i]].at), v: p.st.progress, label: fmtWhen(items[photos[i]].at) };
+    }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
+    if (!points.length) return null;
+    // rythme observé entre la première et la dernière photo, en points par jour
+    var rate = null;
+    if (points.length >= 2) {
+      var days = (points[points.length - 1].t - points[0].t) / 86400000;
+      if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
+    }
+    return CH.burnupChart({
+      start: pv.start, end: pv.deploy || pv.end || pv.freeze, freeze: pv.freeze,
+      freezeLabel: root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(cfg.alerts.boundary || 'freeze') : 'Code freeze',
+      startPct: cfg.burnup ? cfg.burnup.startPct : 25,
+      today: C.startOfDay(S.refDate), points: points, rate: rate, color: P.CATEGORICAL[0]
+    });
+  }
+
   function scopeNote() {
     return scopeOn()
       ? ' <b>Périmètre : ' + esc(scopeLabel()) + '</b> — chaque photo est recalculée sur ce filtre (état, équipes, origine).'
@@ -365,8 +391,13 @@
       var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
       var pts2 = photos.map(function (k) { return { label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td] || EMPTY_ST, k: k }; });
       title = 'Version ' + versionLabel(sel, true) + ' — ' + photos.length + ' photo' + (photos.length > 1 ? 's' : '');
-      sub = 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).' + scopeNote();
-      chart = chartFrom(ui.metric, pts2);
+      sub = (ui.metric === 'progress'
+        ? 'Avancement de la version sur son calendrier : chaque photo se place à sa date, la rampe grise dit où l\'on devrait être, le nombre coloré donne l\'écart à la dernière photo.'
+        : 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).') + scopeNote();
+      // L'avancement d'une version se lit en burn-up quand le plan donne ses
+      // dates : axe de dates réel, rampe attendue, écart à la rampe.
+      var bu = ui.metric === 'progress' && sel.td !== 'none' ? burnupFor(sel, pts2, photos) : null;
+      chart = bu || chartFrom(ui.metric, pts2);
       // rythme
       if (pts2.length >= 2) {
         var f = pts2[0], l = pts2[pts2.length - 1];

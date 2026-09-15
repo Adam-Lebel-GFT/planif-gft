@@ -123,6 +123,15 @@ séries), **barres empilées** par priorité et pour la Fix Version (composition
 **bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
 graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
 
+Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizontal devient le
+calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une
+rampe grise dit où l'on devrait être — **25 % au début de la version** (elle ne démarre pas à
+zéro, ses tickets entrent déjà partiellement avancés ; réglable dans Configurer → Règles), **100 %
+au Code freeze**, puis plateau. Le trait vertical marque la date de référence, le pointillé
+prolonge le rythme observé, et le nombre coloré donne l'écart à la rampe à la dernière photo.
+Sans plan publié pour cette Target date — donc sans début ni gel à opposer aux photos — le
+graphique reste la courbe photo par photo.
+
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
 par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.
 Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe de « In

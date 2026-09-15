@@ -326,6 +326,14 @@ body.dd-open{overflow:hidden;}
 .lc .ln{fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round;}
 .lc .pt{stroke:#fff; stroke-width:2; cursor:pointer;}
 .lc .area{opacity:.12;}
+.bu .ramp{fill:none; stroke:#B9C0CC; stroke-width:2; stroke-dasharray:6 4; stroke-linejoin:round;}
+.bu .proj{fill:none; stroke-width:2; stroke-dasharray:3 4; opacity:.65;}
+.bu .mark{stroke:#C3C8D2; stroke-width:1; stroke-dasharray:3 3;}
+.bu .today{stroke:var(--navy); stroke-width:1.5; stroke-dasharray:4 3; opacity:.5;}
+.bu .mark-l{font-size:9.5px; fill:var(--muted); font-weight:700;}
+.bu .gap{stroke-width:2;}
+.bu .gap-l{font-size:11px; font-weight:800;}
+.legend-item .dot.dash{background:#B9C0CC; border-radius:1px; height:3px; width:12px;}
 .bc .bar{cursor:pointer; transition:opacity .12s ease;}
 .bc .bar:hover{opacity:.82;}
 .chart-scroll{overflow-x:auto; padding-bottom:4px;}
