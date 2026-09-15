@@ -127,6 +127,9 @@
   // ── Tiroir de configuration ────────────────────────────────────────
   var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', bars: 'Barres', donut: 'Donut', table: 'Tableau' };
   var MEASURE_LABELS = { count: 'Nombre de tickets', progress: '% avancement pondéré', shareRow: '% de la ligne', shareCol: '% de la colonne', shareTotal: '% du total' };
+  // Largeur d'une carte dans la grille du cube. « auto » : pleine largeur quand
+  // le tableau est large (beaucoup de colonnes ou de lignes), sinon une colonne.
+  var WIDTH_LABELS = { auto: 'Largeur auto', '1': '1 colonne', '2': '2 colonnes', full: 'Pleine largeur' };
   var DIM_LABELS = {};
   Object.keys(C.DIMS).forEach(function (k) { DIM_LABELS[k] = C.DIMS[k].label; });
 
@@ -386,7 +389,7 @@
   }
 
   root.BDV2Config = {
-    DEFAULTS: DEFAULTS, STYLE_LABELS: STYLE_LABELS, MEASURE_LABELS: MEASURE_LABELS, DIM_LABELS: DIM_LABELS,
+    DEFAULTS: DEFAULTS, STYLE_LABELS: STYLE_LABELS, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
     get: get, update: update, onChange: onChange, reset: reset, exportJSON: exportJSON, importJSON: importJSON,
     loadLocal: loadLocal, loadRemote: loadRemote,
     open: open, close: close, renderDrawer: renderDrawer

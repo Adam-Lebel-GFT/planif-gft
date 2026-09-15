@@ -65,12 +65,18 @@ comparaison serait fausse.
 ## Cube multidimensionnel
 
 Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
-doigt), le titre s'édite en place, les trois sélecteurs changent lignes, colonnes et mesure, les
-icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
+doigt), le titre s'édite en place, les quatre sélecteurs changent lignes, colonnes, mesure et
+largeur, les icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
 avec des réglages par défaut, visible dans la vue courante, et place le curseur dans son titre.
 L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle aussi réordonnable au
 glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
 absentes de la vue gardent leur place dans la liste.
+
+La **largeur** d'une carte vaut *1 colonne*, *2 colonnes*, *pleine largeur* ou *auto*. En auto,
+les tableaux larges (heatmap de plus de 5 colonnes, tableau de plus de 4, empilé vertical de plus
+de 7 lignes) prennent toute la largeur. Ce calcul porte sur l'**extrait complet**, jamais sur les
+tickets filtrés : filtrer ne rétrécit donc plus une carte ni ne réorganise la grille. Sous 1000 px
+de large, « 2 colonnes » retombe sur une colonne.
 
 ## Alertes
 
