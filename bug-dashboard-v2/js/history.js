@@ -206,11 +206,40 @@
   function versionNum(i) { var m = (i.nom || '').match(/\d+(?:\.\d+)+/); return m ? m[0] : ''; }
 
   // ── Stats d'une analyse, par Target date (une Target date = une version) ──
-  function tdStats(item) {
-    if (item._byTd) return item._byTd;
+  // Les photos gardent chaque ticket avec son état, son équipe et son origine :
+  // l'évolution peut donc se recalculer sur le périmètre choisi dans la barre
+  // de filtres. La version n'en fait pas partie (la section est déjà rangée par
+  // version), ni la sélection issue d'une alerte (figée sur l'extrait courant).
+  var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
+    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+  function scopeKey() { var f = S.filters; return [f.state, f.origin, (f.teams || []).slice().sort().join(',')].join('|'); }
+  function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || (f.teams || []).length > 0; }
+  function scopeLabel() {
+    var f = S.filters, out = [];
+    if (f.state !== 'all') out.push(f.state === 'open' ? 'Ouverts' : 'Terminés');
+    if (f.origin !== 'all') out.push(f.origin === 'prj301' ? 'PRJ301' : 'Interne');
+    (f.teams || []).forEach(function (t) { out.push(t); });
+    return out.join(' · ');
+  }
+  function inScope(c) {
+    var f = S.filters;
+    if (f.state === 'open' && c.d) return false;
+    if (f.state === 'done' && !c.d) return false;
+    if (f.origin === 'prj301' && c.o !== 'PRJ301') return false;
+    if (f.origin === 'internal' && c.o === 'PRJ301') return false;
+    if ((f.teams || []).length && f.teams.indexOf(c.tm) === -1) return false;
+    return true;
+  }
+  // `raw` : les statistiques hors filtre, pour que la liste des versions et
+  // leurs photos ne bougent pas quand on restreint le périmètre.
+  function tdStats(item, raw) {
+    var key = raw ? null : scopeKey();
+    if (raw) { if (item._byTdRaw) return item._byTdRaw; }
+    else if (item._byTd && item._byTdKey === key) return item._byTd;
     var cfg = CFG.get(), bk = cfg.priorities.blockerKeys || ['blocker', 'highest'];
     var out = {};
     (item.tickets || []).forEach(function (c) {
+      if (!raw && !inScope(c)) return;
       var td = c.td || 'none';
       var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
       var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
@@ -223,9 +252,10 @@
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
     });
     Object.keys(out).forEach(function (td) { out[td].progress = out[td].total ? Math.round(out[td].pctSum / out[td].total * 10) / 10 : 0; });
-    item._byTd = out; return out;
+    if (raw) item._byTdRaw = out; else { item._byTd = out; item._byTdKey = key; }
+    return out;
   }
-  CFG.onChange(function () { H.items.forEach(function (i) { delete i._byTd; }); });
+  CFG.onChange(function () { H.items.forEach(function (i) { delete i._byTd; delete i._byTdRaw; }); });
   function mainTd(item) { var b = tdStats(item), best = 'none', n = -1; Object.keys(b).forEach(function (td) { if (b[td].total > n) { n = b[td].total; best = td; } }); return best; }
 
   // Versions = Target dates rencontrées dans le journal ; photos = analyses qui
@@ -234,7 +264,7 @@
   function versionsIndex() {
     var map = {};
     H.items.forEach(function (it, k) {
-      Object.keys(tdStats(it)).forEach(function (td) {
+      Object.keys(tdStats(it, true)).forEach(function (td) {
         var v = map[td] = map[td] || { td: td, photos: [], official: null, officialMatch: false };
         v.photos.push(k);
         // officielle : la photo épinglée dont la date du nom est cette Target date ;
@@ -272,6 +302,12 @@
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
   var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  function scopeNote() {
+    return scopeOn()
+      ? ' <b>Périmètre : ' + esc(scopeLabel()) + '</b> — chaque photo est recalculée sur ce filtre (état, équipes, origine).'
+      : ' Les filtres d\'état, d\'équipe et d\'origine de la barre s\'appliquent à ces graphiques.';
+  }
+
   // Forme par vue : des comptages photo par photo se lisent mieux en barres
   // (groupées pour comparer des séries, empilées pour une composition, en
   // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
@@ -321,15 +357,15 @@
     var metricSel = '<select class="dim-select" id="histMetric">' + METRICS.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
     var title, sub, chart, extra = '';
     if (!sel) {
-      var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] }; });
+      var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] || EMPTY_ST }; });
       title = 'Évolution entre versions — ' + pts.length + ' version' + (pts.length > 1 ? 's' : '');
-      sub = 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.';
+      sub = 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
       chart = pts.length ? chartFrom(ui.metric, pts) : '<div class="empty">Aucune Target date dans le journal.</div>';
     } else {
       var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
-      var pts2 = photos.map(function (k) { return { label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td], k: k }; });
+      var pts2 = photos.map(function (k) { return { label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td] || EMPTY_ST, k: k }; });
       title = 'Version ' + versionLabel(sel, true) + ' — ' + photos.length + ' photo' + (photos.length > 1 ? 's' : '');
-      sub = 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non). Les filtres de la section Analyse ne s\'appliquent pas ici.';
+      sub = 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).' + scopeNote();
       chart = chartFrom(ui.metric, pts2);
       // rythme
       if (pts2.length >= 2) {
@@ -344,14 +380,18 @@
         var gain = l.st.progress - f.st.progress;
         var ppd = days >= 0.5 ? gain / days : null;
         var td = sel.td !== 'none' ? new Date(sel.td + 'T00:00:00') : null;
-        var proj = ppd && ppd > 0 && l.st.progress < 100 ? new Date(new Date(items[l.k].at).getTime() + (100 - l.st.progress) / ppd * 86400000) : null;
+        // Sous « Ouverts » ou « Terminés », l'avancement ne décrit plus qu'une
+        // part du périmètre : les 100 % ne veulent plus rien dire, donc pas de
+        // date projetée plutôt qu'une date fausse.
+        var stateOnly = S.filters.state !== 'all';
+        var proj = !stateOnly && ppd && ppd > 0 && l.st.progress < 100 ? new Date(new Date(items[l.k].at).getTime() + (100 - l.st.progress) / ppd * 86400000) : null;
         var dec = function (n) { return n.toFixed(1).replace('.', ','); };
         extra = '<div class="diff-grid" style="margin-top:12px">' +
           '<div class="diff-box"><div class="n">' + l.st.open + '</div><div class="l">reste à livrer (dernière photo)</div></div>' +
           '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? days.toFixed(1) + ' j' : Math.round(days * 24) + ' h') + ')</div></div>' +
           '<div class="diff-box"><div class="n">' + (appeared >= 0 ? '+' : '') + appeared + '</div><div class="l">tickets apparus dans la version</div></div>' +
           '<div class="diff-box"><div class="n">' + (ppd == null ? '—' : (ppd >= 0 ? '+' : '') + dec(ppd)) + '</div><div class="l">points d\'avancement par jour (rythme moyen)' + (pace == null ? '' : ' — ' + dec(pace) + ' terminé' + (pace >= 2 ? 's' : '') + '/j') + '</div></div>' +
-          '<div class="diff-box"><div class="n" style="font-size:16px">' + (l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (l.st.open === 0 ? 'plus rien à livrer' : proj ? '100 % d\'avancement à ce rythme' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') + (td ? ' — Target date ' + C.fmtDate(td) + (proj ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') + '</div></div></div>';
+          '<div class="diff-box"><div class="n" style="font-size:16px">' + (stateOnly ? '—' : l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (stateOnly ? 'prévision indisponible : filtre d\'état actif, les 100 % ne sont pas atteignables' : l.st.open === 0 ? 'plus rien à livrer' : proj ? '100 % d\'avancement à ce rythme' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') + (td && !stateOnly ? ' — Target date ' + C.fmtDate(td) + (proj ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') + '</div></div></div>';
         extra += '<ul class="hist-list" style="margin-top:12px">' + pts2.slice().reverse().map(function (p, idx) {
           var prev = pts2[pts2.length - 2 - idx]; var it = items[p.k];
           var d = prev ? ' · Δ terminés ' + (p.st.done - prev.st.done >= 0 ? '+' : '') + (p.st.done - prev.st.done) + ' · Δ total ' + (p.st.total - prev.st.total >= 0 ? '+' : '') + (p.st.total - prev.st.total) : '';
