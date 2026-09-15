@@ -44,6 +44,14 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 4. **Accès** : outil `bug-dashboard-v2` dans l'écran Rôles (attribué automatiquement aux rôles
    qui avaient le v1). Tous les rôles connectés partagent configuration et journal.
 
+## Filtres
+
+La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le
+nombre de tickets de chaque choix), **Origine**, **Version** et **Équipes**. Les filtres sont
+conservés dans ce navigateur. Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
+« Ajoutés / Retirés » se retirent : les photos du journal, elles, ne sont pas filtrées, et la
+comparaison serait fausse.
+
 ## Cube multidimensionnel
 
 Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
