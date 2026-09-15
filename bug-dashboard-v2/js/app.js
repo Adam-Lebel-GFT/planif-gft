@@ -13,7 +13,7 @@
 
   var S = {
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
-    filters: { state: 'all', origin: 'all', version: 'all', teams: [] },
+    filters: { state: 'all', origin: 'all', version: 'all', teams: [], priorities: [] },
     view: 'projet', session: null, client: null, profil: null,
     alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: '',
     // Sélection issue d'une alerte : une liste de tickets figée au moment du
@@ -52,6 +52,9 @@
         if (f.version === '__none' ? t.versionState !== 'none' : f.version === '__deployed' ? t.versionState !== 'deployed' : vk !== f.version) return false;
       }
       if (f.teams.length && f.teams.indexOf(t.team) === -1) return false;
+      // Priorité : on filtre sur le libellé regroupé (celui du cube et des
+      // graphiques), pas sur la valeur Jira brute.
+      if (f.priorities.length && f.priorities.indexOf(t.priorityLabel) === -1) return false;
       if (S.pick && !S.pick.ids[ticketId(t)]) return false;
       return true;
     });
@@ -177,6 +180,11 @@
     $('fTeams').innerHTML = ordered.map(function (lbl) {
       var raw = rawByLabel[lbl];
       return '<button type="button" class="fchip' + (S.filters.teams.indexOf(raw) !== -1 ? ' is-on' : '') + '" data-team="' + esc(raw) + '"><span class="dot" style="background:' + colors[lbl] + '"></span>' + esc(lbl) + '</button>';
+    }).join('');
+    var prioLabels = []; base.forEach(function (t) { if (prioLabels.indexOf(t.priorityLabel) === -1) prioLabels.push(t.priorityLabel); });
+    var prioColors = P.colorsForDim('priority', prioLabels, conf, base);
+    $('fPriority').innerHTML = C.DIMS.priority.order(prioLabels, conf, base).map(function (lbl) {
+      return '<button type="button" class="fchip' + (S.filters.priorities.indexOf(lbl) !== -1 ? ' is-on' : '') + '" data-priority="' + esc(lbl) + '"><span class="dot" style="background:' + prioColors[lbl] + '"></span>' + esc(lbl) + '</button>';
     }).join('');
     $('fPick').innerHTML = S.pick
       ? '<button type="button" class="fchip is-pick" id="fPickDrop" title="Retirer cette sélection">' + esc(S.pick.label) + ' <span class="x">✕</span></button>'
@@ -428,11 +436,15 @@
     CFG.onChange(function () { fillViews(); rerender(); });
     // filtres
     try { var f = JSON.parse(localStorage.getItem(LS.filters) || 'null'); if (f) S.filters = Object.assign(S.filters, f); } catch (e) {}
+    // Filtres enregistrés avant l'arrivée d'une dimension : on rétablit le tableau vide.
+    if (!Array.isArray(S.filters.teams)) S.filters.teams = [];
+    if (!Array.isArray(S.filters.priorities)) S.filters.priorities = [];
     $('fState').addEventListener('click', function (e) { var b = e.target.closest('[data-state]'); if (b) { S.filters.state = b.dataset.state; rerender(); } });
     $('fOrigin').addEventListener('click', function (e) { var b = e.target.closest('[data-origin]'); if (b && !b.disabled) { S.filters.origin = b.dataset.origin; rerender(); } });
     $('fVersion').addEventListener('click', function (e) { var b = e.target.closest('[data-version]'); if (b) { S.filters.version = b.dataset.version; rerender(); } });
     $('fTeams').addEventListener('click', function (e) { var b = e.target.closest('[data-team]'); if (!b) return; var i = S.filters.teams.indexOf(b.dataset.team); if (i === -1) S.filters.teams.push(b.dataset.team); else S.filters.teams.splice(i, 1); rerender(); });
-    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [] }; S.pick = null; rerender(); });
+    $('fPriority').addEventListener('click', function (e) { var b = e.target.closest('[data-priority]'); if (!b) return; var i = S.filters.priorities.indexOf(b.dataset.priority); if (i === -1) S.filters.priorities.push(b.dataset.priority); else S.filters.priorities.splice(i, 1); rerender(); });
+    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [], priorities: [] }; S.pick = null; rerender(); });
     $('fPick').addEventListener('click', function (e) { if (e.target.closest('#fPickDrop')) { S.pick = null; rerender(); } });
     // « Filtrer le radar » depuis la fiche d'une alerte : on fige la liste des
     // tickets telle qu'elle était au clic, les alertes se recalculant ensuite
