@@ -33,6 +33,7 @@
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
     alerts:     { boundary: 'freeze', daysBefore: 3, minPct: 50 },
+    burnup:     { startPct: 25 },
     cards:      DEFAULT_CARDS,
     views: {
       direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
@@ -261,6 +262,11 @@
         '<label>Tolérance (jours) <input type="number" class="cfg-input num" data-rule="toleranceDays" value="' + cfg.version.toleranceDays + '"></label>' +
         '<label class="cfg-check"><input type="checkbox" data-rule="useFixVersion" ' + (cfg.version.useFixVersion ? 'checked' : '') + '> si la Fix Version correspond au nom d\'une version publiée, elle l\'emporte sur la Target date</label>' +
         '</div>' +
+        '<h4>Avancement attendu</h4>' +
+        '<p class="cfg-help">Sur le graphique d\'avancement d\'une version, une rampe de référence monte du début de la version au Code freeze, où elle atteint 100 %. Une version ne démarre pas à zéro — ses tickets entrent déjà partiellement avancés — d\'où ce point de départ.</p>' +
+        '<div class="cfg-grid">' +
+        '<label>La version démarre à <input type="number" min="0" max="90" class="cfg-input num" data-burnup="startPct" value="' + (cfg.burnup ? cfg.burnup.startPct : 25) + '"> % d\'avancement</label>' +
+        '</div>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
         '<label>Jalon surveillé ' + boundarySelect('alert', cfg.alerts.boundary || 'freeze') + '</label>' +
@@ -321,6 +327,7 @@
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
       else if (d.rule !== undefined) update(function (c) { c.version[d.rule] = t.type === 'checkbox' ? t.checked : (t.type === 'number' ? Number(t.value) || 0 : t.value); });
+      else if (d.burnup !== undefined) update(function (c) { c.burnup[d.burnup] = Math.max(0, Math.min(90, Number(t.value) || 0)); });
       else if (d.alert !== undefined) update(function (c) { c.alerts[d.alert] = t.type === 'number' ? (Number(t.value) || 0) : t.value; });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });

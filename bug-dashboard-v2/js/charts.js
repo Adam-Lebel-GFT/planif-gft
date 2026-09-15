@@ -293,6 +293,102 @@
     }).join('') + '</div>' : '');
   }
 
+  // ── Burn-up d'une version ──────────────────────────────────────────
+  // Axe des dates réel (et non un cran par photo), rampe de référence du début
+  // de version au Code freeze puis plateau, trait « aujourd'hui », et
+  // prolongement du rythme observé. On lit l'écart à la rampe d'un coup d'œil.
+  function burnupChart(opts) {
+    var pts = (opts.points || []).slice().sort(function (a, b) { return a.t - b.t; });
+    var h = opts.height || 240, w = opts.width || 720;
+    var padL = 36, padR = 16, padT = 14, padB = 26;
+    var startPct = opts.startPct == null ? 25 : opts.startPct;
+    var t0 = opts.start.getTime(), t1 = opts.end.getTime();
+    // Une photo hors des bornes du plan élargit le domaine plutôt que d'être rognée.
+    pts.forEach(function (p) { var t = p.t.getTime(); if (t < t0) t0 = t; if (t > t1) t1 = t; });
+    if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
+    if (t1 <= t0) t1 = t0 + 86400000;
+    var plotW = w - padL - padR;
+    var xOf = function (t) { return padL + (t - t0) / (t1 - t0) * plotW; };
+    var yOf = function (v) { return padT + (1 - v / 100) * (h - padT - padB); };
+    // Valeur attendue à une date : rampe linéaire jusqu'au gel, puis 100 %.
+    var fz = opts.freeze ? opts.freeze.getTime() : t1, s0 = opts.start.getTime();
+    var expected = function (t) {
+      if (t <= s0) return startPct;
+      if (t >= fz) return 100;
+      return startPct + (100 - startPct) * (t - s0) / (fz - s0);
+    };
+    var g = '';
+    for (var i = 0; i <= 4; i++) {
+      var gv = i * 25, gy = yOf(gv);
+      g += '<line class="grid" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
+        '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + gv + '%</text>';
+    }
+    // graduations de dates : une par jour tant que ça respire, sinon espacées
+    var days = Math.max(1, Math.round((t1 - t0) / 86400000));
+    var stepD = Math.ceil(days / 8), lx = '';
+    for (var d = 0; d <= days; d += stepD) {
+      var td = t0 + d * 86400000;
+      lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
+    }
+    // rampe attendue
+    var rx0 = xOf(s0), ry0 = yOf(startPct), rxf = xOf(Math.min(fz, t1)), ryf = yOf(expected(Math.min(fz, t1)));
+    var ramp = '<path class="ramp" d="M' + rx0.toFixed(1) + ' ' + ry0.toFixed(1) + ' L' + rxf.toFixed(1) + ' ' + ryf.toFixed(1) +
+      (fz < t1 ? ' L' + xOf(t1).toFixed(1) + ' ' + yOf(100).toFixed(1) : '') + '"/>';
+    // jalon de gel
+    var marks = '';
+    if (opts.freeze && fz >= t0 && fz <= t1) {
+      marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.freezeLabel || 'Code freeze') + '</text>';
+    }
+    if (opts.today) {
+      var tx = xOf(opts.today.getTime());
+      marks += '<line class="today" x1="' + tx.toFixed(1) + '" x2="' + tx.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l" x="' + (tx + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '">réf. ' + fmtDay(opts.today) + '</text>';
+    }
+    // avancement observé
+    var dpath = '', dots = '';
+    pts.forEach(function (p) {
+      var x = xOf(p.t.getTime()), y = yOf(p.v);
+      dpath += (dpath ? ' L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+      var exp = Math.round(expected(p.t.getTime()) * 10) / 10;
+      dots += '<circle class="pt" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4" fill="' + opts.color + '" data-tip="' +
+        esc(p.label + ' — ' + p.v + ' % · attendu ' + exp + ' % · écart ' + (p.v >= exp ? '+' : '') + Math.round((p.v - exp) * 10) / 10 + ' pt') + '"/>';
+    });
+    var line = dpath ? '<path class="ln" d="' + dpath + '" stroke="' + opts.color + '"/>' : '';
+    // prolongement du rythme observé jusqu'aux 100 %
+    var proj = '';
+    if (pts.length >= 2 && opts.rate > 0) {
+      var last = pts[pts.length - 1], needD = (100 - last.v) / opts.rate;
+      if (needD > 0) {
+        var tEnd = Math.min(last.t.getTime() + needD * 86400000, t1);
+        var vEnd = last.v + (tEnd - last.t.getTime()) / 86400000 * opts.rate;
+        proj = '<path class="proj" d="M' + xOf(last.t.getTime()).toFixed(1) + ' ' + yOf(last.v).toFixed(1) +
+          ' L' + xOf(tEnd).toFixed(1) + ' ' + yOf(Math.min(vEnd, 100)).toFixed(1) + '" stroke="' + opts.color + '"/>';
+      }
+    }
+    // écart à la rampe, à la dernière photo : un trait et un nombre, plutôt
+    // qu'un aplat coloré qui mentirait dès que les courbes se croisent.
+    var gap = '';
+    if (pts.length) {
+      var lp = pts[pts.length - 1], le = expected(lp.t.getTime()), diff = Math.round((lp.v - le) * 10) / 10;
+      var gx = xOf(lp.t.getTime()), gy1 = yOf(lp.v), gy2 = yOf(le), late = diff < 0;
+      if (Math.abs(diff) >= 0.5) {
+        gap = '<line class="gap" x1="' + gx.toFixed(1) + '" x2="' + gx.toFixed(1) + '" y1="' + gy1.toFixed(1) + '" y2="' + gy2.toFixed(1) +
+          '" stroke="' + (late ? 'var(--critical)' : '#006300') + '"/>' +
+          '<text class="gap-l" x="' + (gx + 6).toFixed(1) + '" y="' + ((gy1 + gy2) / 2 + 3).toFixed(1) + '" fill="' + (late ? 'var(--critical)' : '#006300') + '">' +
+          (diff > 0 ? '+' : '') + diff + ' pt</text>';
+      }
+    }
+    var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + g +
+      '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+      lx + marks + ramp + proj + line + gap + dots + '</svg>';
+    return svg + '<div class="legend">' +
+      '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
+      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + '</span>' +
+      (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé</span>' : '') +
+      '</div>';
+  }
+
   function lineChart(opts) {
     var series = opts.series, labels = opts.labels, w = opts.width || 720, h = opts.height || 220;
     var padL = 36, padR = 14, padT = 12, padB = 26;
@@ -320,7 +416,8 @@
     return svg + (series.length >= 2 ? '<div class="legend">' + series.map(function (s) { return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + esc(s.label) + '</span>'; }).join('') + '</div>' : '');
   }
   function niceMax(v) { var p = Math.pow(10, Math.floor(Math.log10(v))); var f = v / p; var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 4 ? 4 : f <= 5 ? 5 : f <= 8 ? 8 : 10; return nf * p; }
+  function fmtDay(d) { return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); }
   function fmtTick(v, unit) { return (Number.isInteger(v) ? v : v.toFixed(1)) + (unit || ''); }
 
-  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
+  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, burnupChart: burnupChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
 })(window);
