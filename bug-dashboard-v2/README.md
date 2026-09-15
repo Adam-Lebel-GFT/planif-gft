@@ -47,8 +47,10 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 ## Filtres
 
 La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le
-nombre de tickets de chaque choix), **Origine**, **Version** et **Équipes**. Les filtres sont
-conservés dans ce navigateur.
+nombre de tickets de chaque choix), **Origine**, **Version**, **Équipes** et **Priorité**. Équipes
+et Priorité sont des puces multi-sélection (plusieurs valeurs = une union) ; la priorité est celle
+affichée par le radar, c'est-à-dire le regroupement défini dans Configurer → Priorités. Les filtres
+sont conservés dans ce navigateur.
 
 Une **alerte se transforme en filtre** : le clic ouvre la fiche des tickets comme avant, et son
 en-tête porte « ⌖ Filtrer le radar » — le tableau de bord ne garde alors que ces tickets-là,
@@ -109,7 +111,8 @@ compte depuis le début de la version, le delta depuis l'analyse précédente, e
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
 
-Les filtres **État**, **Équipes** et **Origine** de la barre s'appliquent à ces graphiques :
+Les filtres **État**, **Équipes**, **Origine** et **Priorité** de la barre s'appliquent à ces
+graphiques :
 chaque photo est recalculée sur ce périmètre, ses tickets étant conservés un par un. La liste des
 versions et de leurs photos, elle, reste complète. Deux exceptions volontaires : la prévision
 disparaît sous un filtre d'état (les 100 % d'avancement ne sont plus atteignables si l'on exclut
