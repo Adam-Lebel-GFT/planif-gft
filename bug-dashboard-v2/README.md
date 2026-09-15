@@ -109,6 +109,13 @@ compte depuis le début de la version, le delta depuis l'analyse précédente, e
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
 
+Les filtres **État**, **Équipes** et **Origine** de la barre s'appliquent à ces graphiques :
+chaque photo est recalculée sur ce périmètre, ses tickets étant conservés un par un. La liste des
+versions et de leurs photos, elle, reste complète. Deux exceptions volontaires : la prévision
+disparaît sous un filtre d'état (les 100 % d'avancement ne sont plus atteignables si l'on exclut
+les terminés), et les deltas du bandeau comme les tuiles « Ajoutés / Retirés » restent masqués
+sous filtre — ceux-là comparent les agrégats enregistrés dans la photo, pas ses tickets.
+
 La section s'ouvre sur l'**avancement pondéré de la version en cours** ; les puces et le
 sélecteur de mesure restent libres ensuite. Chaque mesure a la forme qui lui va : courbe pour
 l'avancement et la vue globale, **barres groupées** par statut et par équipe (comparer des
