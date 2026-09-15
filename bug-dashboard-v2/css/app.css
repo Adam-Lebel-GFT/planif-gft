@@ -85,6 +85,9 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .fchip{background:#fff; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:5px 11px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px;}
 .fchip .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
 .fchip.is-on{border-color:var(--navy); color:var(--navy); background:#EAF1F8;}
+.fchip.is-pick{border-color:var(--accent); color:var(--accent); background:#EAF1F8; cursor:pointer;}
+.fchip.is-pick .x{font-weight:800; opacity:.6;}
+.fchip.is-pick:hover{background:#dce9f6;}
 .filter-reset{margin-left:auto;}
 .filter-summary{font-size:12px; color:var(--muted);}
 .seg .seg-n{font-weight:700; opacity:.55; font-size:11px; margin-left:1px;}

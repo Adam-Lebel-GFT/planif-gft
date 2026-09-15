@@ -118,7 +118,7 @@
     var idx = -1; H.items.forEach(function (i, k) { if (i.hash === H.currentHash) idx = k; });
     return idx === -1 ? H.items.slice() : H.items.slice(0, idx);
   }
-  function filtersActive() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0; }
+  function filtersActive() { var f = S.filters; return !!S.pick || f.state !== 'all' || f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0; }
 
   // ── Deltas + sparklines sur les tuiles ────────────────────────────
   var TILE_METRIC = { total: ['total', false], progress: ['progress', true], done: ['done', true], fix: ['hasFix', true], doneNoFix: ['doneNoFix', false], blockers: ['blockersOpen', false], overdue: ['overdue', false], prj301: ['prj301', false], noVersion: ['noVersion', false], deployedOpen: ['deployedOpen', false] };

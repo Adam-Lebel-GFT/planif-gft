@@ -48,7 +48,15 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 
 La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le
 nombre de tickets de chaque choix), **Origine**, **Version** et **Équipes**. Les filtres sont
-conservés dans ce navigateur. Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
+conservés dans ce navigateur.
+
+Une **alerte se transforme en filtre** : le clic ouvre la fiche des tickets comme avant, et son
+en-tête porte « ⌖ Filtrer le radar » — le tableau de bord ne garde alors que ces tickets-là,
+signalés par une puce bleue dans la barre. La liste est figée au moment du clic (les alertes se
+recalculent ensuite sur le périmètre filtré) et ne survit pas à un nouveau collage, contrairement
+aux autres filtres. Seules les fiches d'alerte proposent ce bouton.
+
+Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
 « Ajoutés / Retirés » se retirent : les photos du journal, elles, ne sont pas filtrées, et la
 comparaison serait fausse.
 

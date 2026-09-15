@@ -23,13 +23,16 @@
     { id: 'labels', label: 'Labels', get: function (t) { return t.labels; }, render: function (t) { return '<span class="dd-sum" title="' + esc(t.labels) + '">' + (t.labels ? esc(t.labels) : '<span class="dd-empty">—</span>') + '</span>'; } }
   ];
 
-  var state = { tabs: [], active: 0, sort: { col: 'key', dir: 1 }, title: '', subtitle: '' };
+  var state = { tabs: [], active: 0, sort: { col: 'key', dir: 1 }, title: '', subtitle: '', pick: null };
 
   function open(opts) {
     state.tabs = opts.tabs || [{ label: 'Tickets', tickets: opts.tickets || [] }];
     state.active = Math.min(opts.activeTab || 0, state.tabs.length - 1);
     state.title = opts.title || 'Tickets';
     state.subtitle = opts.subtitle || '';
+    // `pick` : ce que « Filtrer le radar » appliquera. Absent, le bouton
+    // n'apparaît pas — toutes les fiches ne se transforment pas en filtre.
+    state.pick = opts.pick || null;
     render();
     var ov = document.getElementById('ddOverlay');
     ov.classList.add('is-open'); ov.setAttribute('aria-hidden', 'false');
@@ -42,6 +45,8 @@
   }
 
   function render() {
+    var fb = document.getElementById('ddFilter');
+    if (fb) fb.classList.toggle('hidden', !state.pick);
     document.getElementById('ddTitle').textContent = state.title;
     document.getElementById('ddSub').textContent = state.subtitle;
     document.getElementById('ddTabs').innerHTML = state.tabs.map(function (tb, i) {
@@ -94,6 +99,11 @@
 
   function init() {
     document.getElementById('ddClose').addEventListener('click', close);
+    document.getElementById('ddFilter').addEventListener('click', function () {
+      if (!state.pick) return;
+      document.dispatchEvent(new CustomEvent('bdv2:drill-filter', { detail: state.pick }));
+      close();
+    });
     document.getElementById('ddOverlay').addEventListener('click', function (e) { if (e.target.id === 'ddOverlay') close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.getElementById('ddOverlay').classList.contains('is-open')) close(); });
     document.getElementById('ddTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { state.active = +b.dataset.tab; render(); } });
