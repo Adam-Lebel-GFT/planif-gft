@@ -109,6 +109,13 @@ compte depuis le début de la version, le delta depuis l'analyse précédente, e
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
 
+La section s'ouvre sur l'**avancement pondéré de la version en cours** ; les puces et le
+sélecteur de mesure restent libres ensuite. Chaque mesure a la forme qui lui va : courbe pour
+l'avancement et la vue globale, **barres groupées** par statut et par équipe (comparer des
+séries), **barres empilées** par priorité et pour la Fix Version (composition d'un total),
+**bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
+graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
+
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
 par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.
 Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe de « In
