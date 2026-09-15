@@ -267,19 +267,27 @@
       var pv = C.pivot(vis, card.rows, card.cols, conf);
       var allRow = []; base.forEach(function (t) { var k = C.DIMS[card.rows].keyOf(t); if (allRow.indexOf(k) === -1) allRow.push(k); });
       var rowColors = P.colorsForDim(card.rows, allRow, conf, base);
-      var colors = {};
-      if (card.cols) { var allCol = []; base.forEach(function (t) { var k = C.DIMS[card.cols].keyOf(t); if (allCol.indexOf(k) === -1) allCol.push(k); }); colors = P.colorsForDim(card.cols, allCol, conf, base); }
+      var colors = {}, allCol = [];
+      if (card.cols) { base.forEach(function (t) { var k = C.DIMS[card.cols].keyOf(t); if (allCol.indexOf(k) === -1) allCol.push(k); }); colors = P.colorsForDim(card.cols, allCol, conf, base); }
       var ctx = { pivot: pv, style: card.style, measure: card.measure, colors: colors, rowColors: rowColors, card: card };
       S.cardCtx[card.id] = ctx;
-      var wide = card.style === 'heatmap' && pv.cols.length > 5 || card.style === 'table' && pv.cols.length > 4 || card.style === 'vstack' && pv.rows.length > 7;
+      // Largeur : réglage de la carte, « auto » par défaut. L'automatisme compte
+      // les lignes et colonnes de l'extrait complet, jamais celles des tickets
+      // filtrés : sinon un filtre rétrécirait les cartes et réorganiserait toute
+      // la grille sous les yeux de l'utilisateur.
+      var nCol = card.cols ? allCol.length : 0;
+      var auto = card.style === 'heatmap' && nCol > 5 || card.style === 'table' && nCol > 4 || card.style === 'vstack' && allRow.length > 7;
+      var width = card.width || 'auto';
+      var wcls = width === 'full' || (width === 'auto' && auto) ? ' wide' : width === '2' ? ' w2' : '';
       var styles = Object.keys(CFG.STYLE_LABELS).filter(function (s) { return card.cols ? s !== 'donut' : (s === 'bars' || s === 'donut' || s === 'table'); });
       var dimOpts = function (sel, allowNone) { var o = allowNone ? '<option value=""' + (!sel ? ' selected' : '') + '>× —</option>' : ''; Object.keys(CFG.DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + (allowNone ? '× ' : '') + CFG.DIM_LABELS[k] + '</option>'; }); return o; };
-      return '<div class="card' + (wide ? ' wide' : '') + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div>' +
+      return '<div class="card' + wcls + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div>' +
         '<div class="card-ident"><span class="grip" data-card-drag="' + esc(card.id) + '" title="Glisser pour réordonner les cartes">⠿</span>' +
         '<input type="text" class="card-title" value="' + esc(card.title) + '" data-card-title="' + esc(card.id) + '" title="Renommer la carte" aria-label="Titre de la carte">' +
         '<button type="button" class="icon-btn" data-card-del="' + esc(card.id) + '" title="Supprimer la carte">🗑</button></div>' +
         '<div class="sub">' + esc(CFG.DIM_LABELS[card.rows]) + (card.cols ? ' × ' + esc(CFG.DIM_LABELS[card.cols]) : '') + ' · ' + esc(CFG.MEASURE_LABELS[card.measure]) + '</div></div>' +
         '<div class="card-tools"><select class="dim-select" data-card-rows="' + esc(card.id) + '" title="Lignes">' + dimOpts(card.rows, false) + '</select><select class="dim-select" data-card-cols="' + esc(card.id) + '" title="Colonnes">' + dimOpts(card.cols, true) + '</select><select class="dim-select" data-card-measure="' + esc(card.id) + '" title="Mesure">' + Object.keys(CFG.MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (card.measure === m ? ' selected' : '') + '>' + CFG.MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
+        '<select class="dim-select" data-card-width="' + esc(card.id) + '" title="Largeur de la carte">' + Object.keys(CFG.WIDTH_LABELS).map(function (w) { return '<option value="' + w + '"' + (width === w ? ' selected' : '') + '>' + CFG.WIDTH_LABELS[w] + '</option>'; }).join('') + '</select>' +
         '<span class="style-seg">' + styles.map(function (s) { return '<button type="button" data-card-style="' + esc(card.id) + '" data-style="' + s + '" class="' + (card.style === s ? 'is-on' : '') + '" title="' + CFG.STYLE_LABELS[s] + '">' + STYLE_ICONS[s] + '</button>'; }).join('') + '</span></div></div>' +
         '<div class="chart-body">' + CH.renderPivot(ctx) + '</div></div>';
     }).join('') || '<div class="empty">Aucune carte visible dans cette vue — ajoutez-en une avec la carte « + ».</div>';
@@ -490,6 +498,7 @@
       else if (d.cardRows !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardRows; }); if (card) card.rows = t.value; });
       else if (d.cardCols !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardCols; }); if (card) card.cols = t.value || null; });
       else if (d.cardMeasure !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardMeasure; }); if (card) card.measure = t.value; });
+      else if (d.cardWidth !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardWidth; }); if (card) card.width = t.value; });
     });
   }
 
