@@ -33,7 +33,7 @@
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
     alerts:     { boundary: 'freeze', daysBefore: 3, minPct: 50 },
-    burnup:     { startPct: 25, openFrom: 5, openTo: 19 },
+    burnup:     { startPct: 25, openFrom: 8, openTo: 19 },
     cards:      DEFAULT_CARDS,
     views: {
       direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
@@ -266,7 +266,7 @@
         '<p class="cfg-help">Sur le graphique d\'avancement d\'une version, une rampe de référence monte du début de la version au Code freeze, où elle atteint 100 %. Une version ne démarre pas à zéro — ses tickets entrent déjà partiellement avancés — d\'où ce point de départ.</p>' +
         '<div class="cfg-grid">' +
         '<label>La version démarre à <input type="number" min="0" max="90" class="cfg-input num" data-burnup="startPct" value="' + (cfg.burnup ? cfg.burnup.startPct : 25) + '"> % d\'avancement</label>' +
-        '<label>Journée de travail de <input type="number" min="0" max="23" class="cfg-input num" data-burnup="openFrom" value="' + (cfg.burnup ? cfg.burnup.openFrom : 5) + '"> h à <input type="number" min="1" max="24" class="cfg-input num" data-burnup="openTo" value="' + (cfg.burnup ? cfg.burnup.openTo : 19) + '"> h</label>' +
+        '<label>Journée de travail de <input type="number" min="0" max="23" class="cfg-input num" data-burnup="openFrom" value="' + (cfg.burnup ? cfg.burnup.openFrom : 8) + '"> h à <input type="number" min="1" max="24" class="cfg-input num" data-burnup="openTo" value="' + (cfg.burnup ? cfg.burnup.openTo : 19) + '"> h</label>' +
         '</div>' +
         '<p class="cfg-help">Hors de ces heures et le week-end, la rampe reste plate et l\'axe du graphique est comprimé — une analyse saisie la nuit reste visible, dans un couloir étroit.</p>' +
         '<h4>Alertes</h4>' +

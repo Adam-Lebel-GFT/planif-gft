@@ -308,11 +308,12 @@
     if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
     if (t1 <= t0) t1 = t0 + 86400000;
     var plotW = w - padL - padR;
-    // Journée de travail et compression. Les nuits et les week-ends ne portent
+    // Journée de travail (8 h – 19 h par défaut) et compression. Les nuits et
+    // les week-ends ne portent
     // presque jamais de données : les supprimer les rendrait invisibles, alors
     // qu'une analyse saisie à 22 h existe. Ils sont donc comprimés — un temps
     // fermé compte pour 1/SQUASH de sa durée — plutôt qu'effacés.
-    var OPEN_A = opts.openFrom == null ? 5 : opts.openFrom;
+    var OPEN_A = opts.openFrom == null ? 8 : opts.openFrom;
     var OPEN_B = opts.openTo == null ? 19 : opts.openTo;
     var SQUASH = 6;
     var isWorkday = function (d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; };
