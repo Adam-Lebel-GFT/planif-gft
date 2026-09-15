@@ -340,6 +340,21 @@
       marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
         '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.freezeLabel || 'Code freeze') + '</text>';
     }
+    // Week-ends en gris : personne n'avance, alors que la rampe, elle, monte —
+    // c'est la moitié de l'explication d'un écart un lundi matin.
+    var bands = '', cur = new Date(t0); cur.setHours(0, 0, 0, 0);
+    while (cur.getTime() <= t1) {
+      var wd = cur.getDay();
+      if (wd === 0 || wd === 6) {
+        var wx0 = Math.max(xOf(cur.getTime()), padL);
+        var nxt = new Date(cur); nxt.setDate(nxt.getDate() + 1);
+        var wx1 = Math.min(xOf(nxt.getTime()), w - padR);
+        if (wx1 > wx0) bands += '<rect class="weekend" x="' + wx0.toFixed(1) + '" y="' + padT + '" width="' + (wx1 - wx0).toFixed(1) +
+          '" height="' + (yOf(0) - padT).toFixed(1) + '"/>';
+      }
+      cur.setDate(cur.getDate() + 1); // incrément par date : insensible au changement d'heure
+    }
+
     // La date de référence est une journée, pas un instant : on la surligne en
     // entier plutôt que de tirer un trait au milieu de rien.
     if (opts.today) {
@@ -384,7 +399,7 @@
           (diff > 0 ? '+' : '') + diff + ' pt</text>';
       }
     }
-    var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + g +
+    var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
       '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
       lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
