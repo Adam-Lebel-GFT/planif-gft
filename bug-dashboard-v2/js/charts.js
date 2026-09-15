@@ -330,6 +330,23 @@
       var td = t0 + d * 86400000;
       lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
     }
+    // Graduations de demi-journées : tout se compte en demi-journées dans le
+    // radar — le gel tombe le matin, le reste à courir aussi. Les traits de midi
+    // disparaissent quand la fenêtre est trop large pour qu'on les distingue.
+    var ticks = '', dayW = plotW / Math.max((t1 - t0) / 86400000, 0.5);
+    var tk = new Date(t0); tk.setHours(0, 0, 0, 0);
+    while (tk.getTime() <= t1) {
+      for (var hh = 0; hh <= 12; hh += 12) {
+        if (hh === 12 && dayW < 26) continue;
+        var tt = new Date(tk); tt.setHours(hh);
+        if (tt.getTime() < t0 || tt.getTime() > t1) continue;
+        var tx2 = xOf(tt.getTime());
+        ticks += '<line class="tick' + (hh ? ' half' : '') + '" x1="' + tx2.toFixed(1) + '" x2="' + tx2.toFixed(1) +
+          '" y1="' + yOf(0).toFixed(1) + '" y2="' + (yOf(0) + (hh ? 4 : 7)).toFixed(1) + '"/>';
+      }
+      tk.setDate(tk.getDate() + 1);
+    }
+
     // rampe attendue
     var rx0 = xOf(s0), ry0 = yOf(startPct), rxf = xOf(Math.min(fz, t1)), ryf = yOf(expected(Math.min(fz, t1)));
     var ramp = '<path class="ramp" d="M' + rx0.toFixed(1) + ' ' + ry0.toFixed(1) + ' L' + rxf.toFixed(1) + ' ' + ryf.toFixed(1) +
@@ -340,10 +357,30 @@
       marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
         '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.freezeLabel || 'Code freeze') + '</text>';
     }
+    // Week-ends en gris : personne n'avance, alors que la rampe, elle, monte —
+    // c'est la moitié de l'explication d'un écart un lundi matin.
+    var bands = '', cur = new Date(t0); cur.setHours(0, 0, 0, 0);
+    while (cur.getTime() <= t1) {
+      var wd = cur.getDay();
+      if (wd === 0 || wd === 6) {
+        var wx0 = Math.max(xOf(cur.getTime()), padL);
+        var nxt = new Date(cur); nxt.setDate(nxt.getDate() + 1);
+        var wx1 = Math.min(xOf(nxt.getTime()), w - padR);
+        if (wx1 > wx0) bands += '<rect class="weekend" x="' + wx0.toFixed(1) + '" y="' + padT + '" width="' + (wx1 - wx0).toFixed(1) +
+          '" height="' + (yOf(0) - padT).toFixed(1) + '"/>';
+      }
+      cur.setDate(cur.getDate() + 1); // incrément par date : insensible au changement d'heure
+    }
+
+    // La date de référence est une journée, pas un instant : on la surligne en
+    // entier plutôt que de tirer un trait au milieu de rien.
     if (opts.today) {
-      var tx = xOf(opts.today.getTime());
-      marks += '<line class="today" x1="' + tx.toFixed(1) + '" x2="' + tx.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-        '<text class="mark-l" x="' + (tx + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '">réf. ' + fmtDay(opts.today) + '</text>';
+      var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
+      var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
+      if (bx1 > bx0) marks += '<rect class="today-band" x="' + bx0.toFixed(1) + '" y="' + padT + '" width="' + (bx1 - bx0).toFixed(1) +
+        '" height="' + (yOf(0) - padT).toFixed(1) + '"/>';
+      marks += '<line class="today" x1="' + bx0.toFixed(1) + '" x2="' + bx0.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l" x="' + (bx0 + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '">réf. ' + fmtDay(opts.today) + '</text>';
     }
     // avancement observé
     var dpath = '', dots = '';
@@ -379,9 +416,9 @@
           (diff > 0 ? '+' : '') + diff + ' pt</text>';
       }
     }
-    var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + g +
+    var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
       '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-      lx + marks + ramp + proj + line + gap + dots + '</svg>';
+      ticks + lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
       '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + '</span>' +
