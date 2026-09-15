@@ -340,10 +340,15 @@
       marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
         '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.freezeLabel || 'Code freeze') + '</text>';
     }
+    // La date de référence est une journée, pas un instant : on la surligne en
+    // entier plutôt que de tirer un trait au milieu de rien.
     if (opts.today) {
-      var tx = xOf(opts.today.getTime());
-      marks += '<line class="today" x1="' + tx.toFixed(1) + '" x2="' + tx.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-        '<text class="mark-l" x="' + (tx + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '">réf. ' + fmtDay(opts.today) + '</text>';
+      var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
+      var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
+      if (bx1 > bx0) marks += '<rect class="today-band" x="' + bx0.toFixed(1) + '" y="' + padT + '" width="' + (bx1 - bx0).toFixed(1) +
+        '" height="' + (yOf(0) - padT).toFixed(1) + '"/>';
+      marks += '<line class="today" x1="' + bx0.toFixed(1) + '" x2="' + bx0.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l" x="' + (bx0 + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '">réf. ' + fmtDay(opts.today) + '</text>';
     }
     // avancement observé
     var dpath = '', dots = '';
