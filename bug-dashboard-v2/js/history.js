@@ -312,6 +312,12 @@
   var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
   // Burn-up : rend null si le plan ne connaît pas cette Target date (pas de
   // début ni de gel à opposer aux photos) — on retombe alors sur la courbe.
+  // Fenêtre ouvrée du burn-up (Configurer → Règles). Tout ce qui parle de
+  // rythme s'y réfère — le graphique comme la prévision chiffrée — pour qu'un
+  // week-end ne compte jamais comme du temps de travail.
+  function openWin() { var b = CFG.get().burnup || {}; var a = b.openFrom == null ? 8 : b.openFrom, z = b.openTo == null ? 19 : b.openTo; return { a: a, z: z, h: z - a }; }
+  function workDays(a, b) { var w = openWin(); return C.openHours(a, b, w.a, w.z) / w.h; }
+
   function burnupFor(sel, pts2, photos) {
     if (!root.BDV2Plan || !root.BDV2Plan.versionForDate) return null;
     var cfg = CFG.get();
@@ -322,17 +328,17 @@
       return { t: new Date(items[photos[i]].at), v: p.st.progress, label: fmtWhen(items[photos[i]].at) };
     }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
     if (!points.length) return null;
-    // rythme observé entre la première et la dernière photo, en points par jour
+    // rythme observé entre la première et la dernière photo, en points par jour ouvré
     var rate = null;
     if (points.length >= 2) {
-      var days = (points[points.length - 1].t - points[0].t) / 86400000;
+      var days = workDays(points[0].t, points[points.length - 1].t);
       if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
     }
     return CH.burnupChart({
       start: pv.start, end: pv.deploy || pv.end || pv.freeze, freeze: pv.freeze,
       freezeLabel: root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(cfg.alerts.boundary || 'freeze') : 'Code freeze',
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
-      openFrom: cfg.burnup ? cfg.burnup.openFrom : 8, openTo: cfg.burnup ? cfg.burnup.openTo : 19,
+      openFrom: openWin().a, openTo: openWin().z,
       today: C.startOfDay(S.refDate), points: points, rate: rate, color: P.CATEGORICAL[0]
     });
   }
@@ -410,7 +416,10 @@
       // rythme
       if (pts2.length >= 2) {
         var f = pts2[0], l = pts2[pts2.length - 1];
-        var days = Math.max((new Date(items[l.k].at) - new Date(items[f.k].at)) / 86400000, 0);
+        var tF = new Date(items[f.k].at), tL = new Date(items[l.k].at);
+        // Jours ouvrés, comme le graphique : une photo du vendredi et une du
+        // lundi sont séparées d'un jour de travail, pas de trois.
+        var days = workDays(tF, tL);
         var closed = l.st.done - f.st.done, appeared = l.st.total - f.st.total;
         var pace = days >= 0.5 ? closed / days : null;
         // Prévision : rythme d'<b>avancement pondéré</b> (points par jour) plutôt
@@ -424,13 +433,13 @@
         // part du périmètre : les 100 % ne veulent plus rien dire, donc pas de
         // date projetée plutôt qu'une date fausse.
         var stateOnly = S.filters.state !== 'all';
-        var proj = !stateOnly && ppd && ppd > 0 && l.st.progress < 100 ? new Date(new Date(items[l.k].at).getTime() + (100 - l.st.progress) / ppd * 86400000) : null;
+        var proj = !stateOnly && ppd && ppd > 0 && l.st.progress < 100 ? C.addOpenHours(tL, (100 - l.st.progress) / ppd * openWin().h, openWin().a, openWin().z) : null;
         var dec = function (n) { return n.toFixed(1).replace('.', ','); };
         extra = '<div class="diff-grid" style="margin-top:12px">' +
           '<div class="diff-box"><div class="n">' + l.st.open + '</div><div class="l">reste à livrer (dernière photo)</div></div>' +
-          '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? days.toFixed(1) + ' j' : Math.round(days * 24) + ' h') + ')</div></div>' +
+          '<div class="diff-box"><div class="n">' + (closed >= 0 ? '+' : '') + closed + '</div><div class="l">terminés entre la 1<sup>re</sup> et la dernière photo (' + (days >= 1 ? dec(days) + ' j ouvrés' : Math.round(days * openWin().h) + ' h ouvrées') + ')</div></div>' +
           '<div class="diff-box"><div class="n">' + (appeared >= 0 ? '+' : '') + appeared + '</div><div class="l">tickets apparus dans la version</div></div>' +
-          '<div class="diff-box"><div class="n">' + (ppd == null ? '—' : (ppd >= 0 ? '+' : '') + dec(ppd)) + '</div><div class="l">points d\'avancement par jour (rythme moyen)' + (pace == null ? '' : ' — ' + dec(pace) + ' terminé' + (pace >= 2 ? 's' : '') + '/j') + '</div></div>' +
+          '<div class="diff-box"><div class="n">' + (ppd == null ? '—' : (ppd >= 0 ? '+' : '') + dec(ppd)) + '</div><div class="l">points d\'avancement par jour ouvré (rythme moyen)' + (pace == null ? '' : ' — ' + dec(pace) + ' terminé' + (pace >= 2 ? 's' : '') + '/j ouvré') + '</div></div>' +
           '<div class="diff-box"><div class="n" style="font-size:16px">' + (stateOnly ? '—' : l.st.open === 0 ? 'Backlog vidé' : proj ? C.fmtDate(proj) : 'indéterminé') + '</div><div class="l">' + (stateOnly ? 'prévision indisponible : filtre d\'état actif, les 100 % ne sont pas atteignables' : l.st.open === 0 ? 'plus rien à livrer' : proj ? '100 % d\'avancement à ce rythme' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') + (td && !stateOnly ? ' — Target date ' + C.fmtDate(td) + (proj ? (proj > td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(td, proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') + '</div></div></div>';
         extra += '<ul class="hist-list" style="margin-top:12px">' + pts2.slice().reverse().map(function (p, idx) {
           var prev = pts2[pts2.length - 2 - idx]; var it = items[p.k];

@@ -316,29 +316,13 @@
     var OPEN_A = opts.openFrom == null ? 8 : opts.openFrom;
     var OPEN_B = opts.openTo == null ? 19 : opts.openTo;
     var SQUASH = 6;
-    var isWorkday = function (d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; };
-    // Heures ouvertes d'un intervalle, et sa largeur visuelle (ouvert + fermé/6).
+    // Heures ouvertes d'un intervalle (celles du noyau : lundi-vendredi, de
+    // OPEN_A à OPEN_B) et sa largeur visuelle (ouvert + fermé/SQUASH).
     function spans(a, b) {
-      var open = 0, closed = 0;
-      if (b <= a) return { open: 0, visual: 0 };
-      var d = new Date(a); d.setHours(0, 0, 0, 0);
-      var guard = 0;
-      while (d.getTime() < b && guard++ < 2000) {
-        var nx = new Date(d); nx.setDate(nx.getDate() + 1);
-        var lo = Math.max(d.getTime(), a), hi = Math.min(nx.getTime(), b);
-        if (hi > lo) {
-          var o = 0;
-          if (isWorkday(d)) {
-            var oa = new Date(d); oa.setHours(OPEN_A);
-            var ob = new Date(d); ob.setHours(OPEN_B);
-            var ol = Math.max(oa.getTime(), lo), oh = Math.min(ob.getTime(), hi);
-            if (oh > ol) o = oh - ol;
-          }
-          open += o; closed += (hi - lo) - o;
-        }
-        d = nx;
-      }
-      return { open: open / 3600000, visual: (open + closed / SQUASH) / 3600000 };
+      if (!(b > a)) return { open: 0, visual: 0 };
+      var open = C.openHours(a, b, OPEN_A, OPEN_B);
+      var closed = (b - a) / 3600000 - open;
+      return { open: open, visual: open + closed / SQUASH };
     }
     var vTotal = spans(t0, t1).visual || 1;
     var xOf = function (t) { return padL + spans(t0, Math.max(t0, Math.min(t, t1))).visual / vTotal * plotW; };
@@ -439,15 +423,29 @@
         esc(p.label + ' — ' + p.v + ' % · attendu ' + exp + ' % · écart ' + (p.v >= exp ? '+' : '') + Math.round((p.v - exp) * 10) / 10 + ' pt') + '"/>';
     });
     var line = dpath ? '<path class="ln" d="' + dpath + '" stroke="' + opts.color + '"/>' : '';
-    // prolongement du rythme observé jusqu'aux 100 %
+    // Prolongement du rythme observé jusqu'aux 100 %. `rate` est un nombre de
+    // points par jour OUVRÉ : le trait avance donc dans le même temps que la
+    // rampe et reste plat la nuit et le week-end, au lieu de créditer des
+    // journées où personne ne travaille.
     var proj = '';
     if (pts.length >= 2 && opts.rate > 0) {
-      var last = pts[pts.length - 1], needD = (100 - last.v) / opts.rate;
-      if (needD > 0) {
-        var tEnd = Math.min(last.t.getTime() + needD * 86400000, t1);
-        var vEnd = last.v + (tEnd - last.t.getTime()) / 86400000 * opts.rate;
-        proj = '<path class="proj" d="M' + xOf(last.t.getTime()).toFixed(1) + ' ' + yOf(last.v).toFixed(1) +
-          ' L' + xOf(tEnd).toFixed(1) + ' ' + yOf(Math.min(vEnd, 100)).toFixed(1) + '" stroke="' + opts.color + '"/>';
+      var last = pts[pts.length - 1], dayH = OPEN_B - OPEN_A;
+      var needH = (100 - last.v) / opts.rate * dayH;
+      if (needH > 0) {
+        var reach = C.addOpenHours(last.t, needH, OPEN_A, OPEN_B);
+        var pEnd = Math.min(reach ? reach.getTime() : t1, t1);
+        var vAt = function (t) { return Math.min(100, last.v + spans(last.t.getTime(), t).open / dayH * opts.rate); };
+        var pd = 'M' + xOf(last.t.getTime()).toFixed(1) + ' ' + yOf(last.v).toFixed(1);
+        var pday = new Date(last.t); pday.setHours(0, 0, 0, 0);
+        for (var pg = 0; pday.getTime() < pEnd && pg < 400; pg++) {
+          [OPEN_A, OPEN_B].forEach(function (hh) {
+            var e = new Date(pday); e.setHours(hh, 0, 0, 0);
+            if (e.getTime() > last.t.getTime() && e.getTime() < pEnd) pd += ' L' + xOf(e.getTime()).toFixed(1) + ' ' + yOf(vAt(e.getTime())).toFixed(1);
+          });
+          pday.setDate(pday.getDate() + 1);
+        }
+        pd += ' L' + xOf(pEnd).toFixed(1) + ' ' + yOf(vAt(pEnd)).toFixed(1);
+        proj = '<path class="proj" d="' + pd + '" stroke="' + opts.color + '"/>';
       }
     }
     // écart à la rampe, à la dernière photo : un trait et un nombre, plutôt

@@ -142,12 +142,21 @@ constaté le lundi matin ne porte pas le faux retard de deux jours sans personne
 L'axe suit la même idée : les heures fermées y sont **comprimées** — elles comptent pour un
 sixième de leur durée — plutôt que supprimées, de sorte qu'une analyse saisie à 22 h reste
 visible, dans un couloir étroit, sans que les nuits mangent les deux tiers de la largeur. Les week-ends sont grisés, la journée de référence surlignée, l'axe gradué par demi-journées ; le pointillé
-prolonge le rythme observé, et le nombre coloré donne l'écart à la rampe à la dernière photo.
+prolonge le rythme observé — **dans le même temps ouvré que la rampe**, donc en escalier, plat la
+nuit et le week-end — et le nombre coloré donne l'écart à la rampe à la dernière photo.
 Sans plan publié pour cette Target date — donc sans début ni gel à opposer aux photos — le
 graphique reste la courbe photo par photo.
 
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
-par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.
-Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe de « In
-Progress » à « Code Review » avance sans être terminé, et le compte de terminés, aveugle à ce
-travail, projetait bien trop loin.
+par **jour ouvré** entre la première et la dernière photo) jusqu'à 100 %, et le compare à la
+Target date. Elle ne se fonde pas sur le nombre de tickets terminés par jour : un ticket qui passe
+de « In Progress » à « Code Review » avance sans être terminé, et le compte de terminés, aveugle à
+ce travail, projetait bien trop loin.
+
+Rythme et prolongement se comptent en **temps ouvré**, la même horloge que la rampe (`openHours`
+et `addOpenHours` dans `js/core.js`) : une photo du vendredi et une du lundi sont séparées d'**un**
+jour de travail, pas de trois, et la date des 100 % ne crédite jamais un samedi. Le graphique et la
+case chiffrée partagent ce calcul, donc ils ne peuvent plus se contredire. Quand le rythme est si
+lent que les 100 % sortent de l'horizon, la prévision affiche « indéterminé » plutôt qu'une date
+inventée. Le dépassement de la Target date, lui, reste exprimé en jours calendaires : un retard se
+vit dans le calendrier.

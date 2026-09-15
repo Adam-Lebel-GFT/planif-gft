@@ -259,6 +259,50 @@
   // mardi AM, mardi PM, mercredi AM, mercredi PM, soit 5 demi-journées = 2,5 j.
   function halvesLeft(from, at) { return halfDiff(from, at) - 1; }
 
+  // ── Temps ouvré ────────────────────────────────────────────────────
+  // Une seule horloge pour tout ce qui parle de rythme : du lundi au vendredi,
+  // de `from` h à `to` h. La rampe du burn-up, le rythme observé et sa
+  // projection s'y réfèrent — sans quoi le graphique dirait qu'on avance le
+  // samedi. `ms` en entrée ou en sortie, jamais des jours calendaires.
+  function isWorkday(d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; }
+  // Heures ouvrées entre deux instants (accepte des dates ou des timestamps).
+  function openHours(a, b, from, to) {
+    var ta = a instanceof Date ? a.getTime() : a, tb = b instanceof Date ? b.getTime() : b;
+    if (!(tb > ta)) return 0;
+    var ms = 0, d = new Date(ta); d.setHours(0, 0, 0, 0);
+    for (var guard = 0; d.getTime() < tb && guard < 4000; guard++) {
+      if (isWorkday(d)) {
+        var oa = new Date(d); oa.setHours(from, 0, 0, 0);
+        var ob = new Date(d); ob.setHours(to, 0, 0, 0);
+        var lo = Math.max(oa.getTime(), ta), hi = Math.min(ob.getTime(), tb);
+        if (hi > lo) ms += hi - lo;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return ms / 3600000;
+  }
+  // Instant atteint après `hours` heures ouvrées à partir de `from`. null quand
+  // le rythme est si lent que la cible sort de l'horizon raisonnable (10 ans) :
+  // mieux vaut « indéterminé » qu'une date inventée.
+  function addOpenHours(from, hours, fromH, toH) {
+    var t0 = from instanceof Date ? from.getTime() : from;
+    if (!(hours > 0)) return new Date(t0);
+    var left = hours * 3600000, d = new Date(t0); d.setHours(0, 0, 0, 0);
+    for (var guard = 0; guard < 4000; guard++) {
+      if (isWorkday(d)) {
+        var oa = new Date(d); oa.setHours(fromH, 0, 0, 0);
+        var ob = new Date(d); ob.setHours(toH, 0, 0, 0);
+        var lo = Math.max(oa.getTime(), t0), hi = ob.getTime();
+        if (hi > lo) {
+          if (hi - lo >= left) return new Date(lo + left);
+          left -= hi - lo;
+        }
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  }
+
   // ── Modèle ticket ──────────────────────────────────────────────────
   function cellAt(row, headers, idx) { return idx !== -1 ? (row[headers[idx]] || '') : ''; }
 
@@ -493,7 +537,7 @@
     COLUMN_CANDIDATES: COLUMN_CANDIDATES, PRJ301_LABEL: PRJ301_LABEL,
     DEFAULT_STATUS_PCT: DEFAULT_STATUS_PCT, PRIORITY_ORDER_DEFAULT: PRIORITY_ORDER_DEFAULT,
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
-    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf, halvesLeft: halvesLeft,
+    parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf, halvesLeft: halvesLeft, isWorkday: isWorkday, openHours: openHours, addOpenHours: addOpenHours,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
     DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };
