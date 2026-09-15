@@ -144,7 +144,9 @@ L'axe suit la même idée : les heures fermées y sont **comprimées** — elles
 sixième de leur durée — plutôt que supprimées, de sorte qu'une analyse saisie à 22 h reste
 visible, dans un couloir étroit, sans que les nuits mangent les deux tiers de la largeur. Les week-ends sont grisés, la journée de référence surlignée, l'axe gradué par demi-journées ; le pointillé
 prolonge le rythme observé — **dans le même temps ouvré que la rampe**, donc en escalier, plat la
-nuit et le week-end — et le nombre coloré donne l'écart à la rampe à la dernière photo.
+nuit et le week-end — et **s'arrête au jalon** : au-delà, le temps ne compte plus pour cette
+échéance, et sa hauteur au jalon est exactement le chiffre de la tuile de prévision. Le nombre
+coloré donne l'écart à la rampe à la dernière photo.
 Sans plan publié pour cette Target date — donc sans début ni gel à opposer aux photos — le
 graphique reste la courbe photo par photo.
 

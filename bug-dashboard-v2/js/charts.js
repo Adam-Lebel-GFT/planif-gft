@@ -426,14 +426,16 @@
     // Prolongement du rythme observé jusqu'aux 100 %. `rate` est un nombre de
     // points par jour OUVRÉ : le trait avance donc dans le même temps que la
     // rampe et reste plat la nuit et le week-end, au lieu de créditer des
-    // journées où personne ne travaille.
+    // journées où personne ne travaille. Il s'arrête au jalon : au-delà, le
+    // temps ne compte plus pour cette échéance — le gel tombe le jeudi matin,
+    // le jeudi ouvré n'a pas à pousser la courbe jusqu'aux 100 %.
     var proj = '';
     if (pts.length >= 2 && opts.rate > 0) {
       var last = pts[pts.length - 1], dayH = OPEN_B - OPEN_A;
       var needH = (100 - last.v) / opts.rate * dayH;
-      if (needH > 0) {
+      if (needH > 0 && Math.min(fz, t1) > last.t.getTime()) {
         var reach = C.addOpenHours(last.t, needH, OPEN_A, OPEN_B);
-        var pEnd = Math.min(reach ? reach.getTime() : t1, t1);
+        var pEnd = Math.min(reach ? reach.getTime() : t1, t1, fz);
         var vAt = function (t) { return Math.min(100, last.v + spans(last.t.getTime(), t).open / dayH * opts.rate); };
         var pd = 'M' + xOf(last.t.getTime()).toFixed(1) + ' ' + yOf(last.v).toFixed(1);
         var pday = new Date(last.t); pday.setHours(0, 0, 0, 0);
@@ -467,7 +469,7 @@
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
       '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.deadlineLabel || 'Code freeze') + ', heures ouvrées seulement (' + OPEN_A + ' h – ' + OPEN_B + ' h)</span>' +
-      (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé</span>' : '') +
+      (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé jusqu\'au ' + esc(opts.deadlineLabel || 'Code freeze') + '</span>' : '') +
       '</div>';
   }
 
