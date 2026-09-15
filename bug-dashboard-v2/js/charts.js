@@ -330,6 +330,23 @@
       var td = t0 + d * 86400000;
       lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
     }
+    // Graduations de demi-journées : tout se compte en demi-journées dans le
+    // radar — le gel tombe le matin, le reste à courir aussi. Les traits de midi
+    // disparaissent quand la fenêtre est trop large pour qu'on les distingue.
+    var ticks = '', dayW = plotW / Math.max((t1 - t0) / 86400000, 0.5);
+    var tk = new Date(t0); tk.setHours(0, 0, 0, 0);
+    while (tk.getTime() <= t1) {
+      for (var hh = 0; hh <= 12; hh += 12) {
+        if (hh === 12 && dayW < 26) continue;
+        var tt = new Date(tk); tt.setHours(hh);
+        if (tt.getTime() < t0 || tt.getTime() > t1) continue;
+        var tx2 = xOf(tt.getTime());
+        ticks += '<line class="tick' + (hh ? ' half' : '') + '" x1="' + tx2.toFixed(1) + '" x2="' + tx2.toFixed(1) +
+          '" y1="' + yOf(0).toFixed(1) + '" y2="' + (yOf(0) + (hh ? 4 : 7)).toFixed(1) + '"/>';
+      }
+      tk.setDate(tk.getDate() + 1);
+    }
+
     // rampe attendue
     var rx0 = xOf(s0), ry0 = yOf(startPct), rxf = xOf(Math.min(fz, t1)), ryf = yOf(expected(Math.min(fz, t1)));
     var ramp = '<path class="ramp" d="M' + rx0.toFixed(1) + ' ' + ry0.toFixed(1) + ' L' + rxf.toFixed(1) + ' ' + ryf.toFixed(1) +
@@ -401,7 +418,7 @@
     }
     var svg = '<svg class="lc bu" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
       '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-      lx + marks + ramp + proj + line + gap + dots + '</svg>';
+      ticks + lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
       '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + '</span>' +

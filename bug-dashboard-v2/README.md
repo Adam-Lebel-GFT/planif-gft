@@ -127,7 +127,7 @@ Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizo
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une
 rampe grise dit où l'on devrait être — **25 % au début de la version** (elle ne démarre pas à
 zéro, ses tickets entrent déjà partiellement avancés ; réglable dans Configurer → Règles), **100 %
-au Code freeze**, puis plateau. Les week-ends sont grisés et la journée de référence surlignée, le pointillé
+au Code freeze**, puis plateau. Les week-ends sont grisés, la journée de référence surlignée, l'axe gradué par demi-journées ; le pointillé
 prolonge le rythme observé, et le nombre coloré donne l'écart à la rampe à la dernière photo.
 Sans plan publié pour cette Target date — donc sans début ni gel à opposer aux photos — le
 graphique reste la courbe photo par photo.

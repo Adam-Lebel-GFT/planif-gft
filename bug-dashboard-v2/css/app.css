@@ -332,6 +332,8 @@ body.dd-open{overflow:hidden;}
 .bu .today{stroke:var(--navy); stroke-width:1.5; stroke-dasharray:4 3; opacity:.5;}
 .bu .today-band{fill:var(--navy); opacity:.055;}
 .bu .weekend{fill:#8d94a3; opacity:.09;}
+.bu .tick{stroke:#A8B0BE; stroke-width:1;}
+.bu .tick.half{stroke:#CFD5DE;}
 .bu .mark-l{font-size:9.5px; fill:var(--muted); font-weight:700;}
 .bu .gap{stroke-width:2;}
 .bu .gap-l{font-size:11px; font-weight:800;}
