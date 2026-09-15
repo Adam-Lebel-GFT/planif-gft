@@ -248,11 +248,82 @@
       var wide = card.style === 'heatmap' && pv.cols.length > 5 || card.style === 'table' && pv.cols.length > 4 || card.style === 'vstack' && pv.rows.length > 7;
       var styles = Object.keys(CFG.STYLE_LABELS).filter(function (s) { return card.cols ? s !== 'donut' : (s === 'bars' || s === 'donut' || s === 'table'); });
       var dimOpts = function (sel, allowNone) { var o = allowNone ? '<option value=""' + (!sel ? ' selected' : '') + '>× —</option>' : ''; Object.keys(CFG.DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + (allowNone ? '× ' : '') + CFG.DIM_LABELS[k] + '</option>'; }); return o; };
-      return '<div class="card' + (wide ? ' wide' : '') + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div><h2>' + esc(card.title) + '</h2><div class="sub">' + esc(CFG.DIM_LABELS[card.rows]) + (card.cols ? ' × ' + esc(CFG.DIM_LABELS[card.cols]) : '') + ' · ' + esc(CFG.MEASURE_LABELS[card.measure]) + '</div></div>' +
+      return '<div class="card' + (wide ? ' wide' : '') + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div>' +
+        '<div class="card-ident"><span class="grip" data-card-drag="' + esc(card.id) + '" title="Glisser pour réordonner les cartes">⠿</span>' +
+        '<input type="text" class="card-title" value="' + esc(card.title) + '" data-card-title="' + esc(card.id) + '" title="Renommer la carte" aria-label="Titre de la carte">' +
+        '<button type="button" class="icon-btn" data-card-del="' + esc(card.id) + '" title="Supprimer la carte">🗑</button></div>' +
+        '<div class="sub">' + esc(CFG.DIM_LABELS[card.rows]) + (card.cols ? ' × ' + esc(CFG.DIM_LABELS[card.cols]) : '') + ' · ' + esc(CFG.MEASURE_LABELS[card.measure]) + '</div></div>' +
         '<div class="card-tools"><select class="dim-select" data-card-rows="' + esc(card.id) + '" title="Lignes">' + dimOpts(card.rows, false) + '</select><select class="dim-select" data-card-cols="' + esc(card.id) + '" title="Colonnes">' + dimOpts(card.cols, true) + '</select><select class="dim-select" data-card-measure="' + esc(card.id) + '" title="Mesure">' + Object.keys(CFG.MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (card.measure === m ? ' selected' : '') + '>' + CFG.MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
         '<span class="style-seg">' + styles.map(function (s) { return '<button type="button" data-card-style="' + esc(card.id) + '" data-style="' + s + '" class="' + (card.style === s ? 'is-on' : '') + '" title="' + CFG.STYLE_LABELS[s] + '">' + STYLE_ICONS[s] + '</button>'; }).join('') + '</span></div></div>' +
         '<div class="chart-body">' + CH.renderPivot(ctx) + '</div></div>';
-    }).join('') || '<div class="empty">Aucune carte visible dans cette vue — ouvrez la configuration (Cartes).</div>';
+    }).join('') || '<div class="empty">Aucune carte visible dans cette vue — ajoutez-en une avec la carte « + ».</div>';
+    // Tout se règle sur la carte elle-même : elle naît avec des réglages par
+    // défaut, son titre, ses dimensions, sa mesure et son style se changent sur
+    // place, et la corbeille la supprime.
+    grid.innerHTML += '<button type="button" class="card card-add" id="cubeAddCard" title="Ajouter une carte au cube"><span class="plus">+</span><span>Ajouter une carte</span></button>';
+  }
+
+  // Nouvelle carte : ajoutée à la fin et rendue visible dans la vue courante,
+  // sans quoi elle n'apparaîtrait pas dans une vue au jeu de cartes figé.
+  function addCard() {
+    var id = 'card_' + Date.now().toString(36);
+    CFG.update(function (c) {
+      c.cards.push({ id: id, title: 'Nouvelle carte', rows: 'team', cols: 'status', measure: 'count', style: 'hstack', visible: true });
+      var v = c.views[S.view];
+      if (v && v.cards.indexOf(id) === -1) v.cards.push(id);
+    });
+    var el = document.querySelector('[data-card-title="' + id + '"]');
+    if (el) { el.focus(); el.select(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+
+  // ── Réordonnancement des cartes du cube (glisser-déposer) ──────────
+  // Poignée dédiée : les cartes sont cliquables (drill-down) et pleines de
+  // sélecteurs, un glissement sur la carte entière serait pris pour un clic.
+  // Événements pointeur plutôt que drag HTML5 : le doigt fonctionne aussi.
+  function bindCubeDnD() {
+    var grid = $('cubeGrid'), drag = null;
+    grid.addEventListener('pointerdown', function (e) {
+      var h = e.target.closest('[data-card-drag]');
+      if (!h || e.button !== 0) return;
+      var el = h.closest('[data-card-el]'); if (!el) return;
+      e.preventDefault();
+      drag = { el: el, moved: false, handle: h };
+      el.classList.add('is-dragging');
+      try { h.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    grid.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var under = document.elementFromPoint(e.clientX, e.clientY);
+      var over = under && under.closest ? under.closest('[data-card-el]') : null;
+      if (!over || over === drag.el || over.parentNode !== grid) return;
+      var nodes = Array.prototype.slice.call(grid.children);
+      // La carte survolée est-elle avant ou après celle qu'on déplace ?
+      if (nodes.indexOf(over) > nodes.indexOf(drag.el)) over.after(drag.el); else over.before(drag.el);
+      drag.moved = true;
+    });
+    var end = function () {
+      if (!drag) return;
+      drag.el.classList.remove('is-dragging');
+      if (drag.moved) persistCubeOrder();
+      drag = null;
+    };
+    // Sur la fenêtre : déplacer la carte dans le DOM relâche la capture du
+    // pointeur, un relâchement hors de la grille passerait sinon inaperçu et
+    // laisserait la carte en cours de glissement.
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+  }
+
+  // L'ordre affiché ne contient que les cartes visibles de la vue : on réécrit
+  // leur suite dans les emplacements qu'elles occupaient déjà, pour ne pas
+  // déplacer les cartes masquées ou absentes de cette vue.
+  function persistCubeOrder() {
+    var ids = Array.prototype.slice.call($('cubeGrid').querySelectorAll('[data-card-el]')).map(function (el) { return el.dataset.cardEl; });
+    CFG.update(function (c) {
+      var slots = [], byId = {};
+      c.cards.forEach(function (card, i) { byId[card.id] = card; if (ids.indexOf(card.id) !== -1) slots.push(i); });
+      ids.forEach(function (id, n) { if (slots[n] != null && byId[id]) c.cards[slots[n]] = byId[id]; });
+    });
   }
   var STYLE_ICONS = { hstack: '▬', vstack: '▮', heatmap: '▦', bars: '≡', donut: '◔', table: '⊞' };
 
@@ -355,6 +426,17 @@
     document.addEventListener('click', function (e) {
       var st = e.target.closest('[data-card-style]');
       if (st) { CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === st.dataset.cardStyle; }); if (card) card.style = st.dataset.style; }); return; }
+      if (e.target.closest('#cubeAddCard')) { addCard(); return; }
+      var del = e.target.closest('[data-card-del]');
+      if (del) {
+        var id = del.dataset.cardDel, card = cfg().cards.find(function (x) { return x.id === id; });
+        if (!confirm('Supprimer la carte « ' + (card ? card.title : id) + ' » ?')) return;
+        CFG.update(function (c) {
+          c.cards = c.cards.filter(function (x) { return x.id !== id; });
+          Object.keys(c.views).forEach(function (v) { c.views[v].cards = c.views[v].cards.filter(function (x) { return x !== id; }); });
+        });
+        return;
+      }
       var el = e.target.closest('[data-dd]'); if (!el) return;
       if (e.target.closest('select, input, a')) return;
       var spec = resolveDrill(el);
@@ -362,7 +444,8 @@
     });
     document.addEventListener('change', function (e) {
       var t = e.target, d = t.dataset;
-      if (d.cardRows !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardRows; }); if (card) card.rows = t.value; });
+      if (d.cardTitle !== undefined && t.classList.contains('card-title')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardTitle; }); if (card) card.title = t.value; });
+      else if (d.cardRows !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardRows; }); if (card) card.rows = t.value; });
       else if (d.cardCols !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardCols; }); if (card) card.cols = t.value || null; });
       else if (d.cardMeasure !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardMeasure; }); if (card) card.measure = t.value; });
     });
@@ -383,6 +466,7 @@
     CH.initTooltip();
     DD.init();
     bind();
+    bindCubeDnD();
     await initSession();
     try { $('analysisName').value = localStorage.getItem(LS.name) || ''; } catch (e) {}
     var saved = null; try { saved = localStorage.getItem(LS.raw); } catch (e) {}

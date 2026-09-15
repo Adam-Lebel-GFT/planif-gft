@@ -239,7 +239,8 @@
           Object.keys(DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + DIM_LABELS[k] + '</option>'; });
           return o;
         };
-        return '<li class="cfg-item cfg-card" data-card="' + esc(c.id) + '">' +
+        return '<li class="cfg-item cfg-card" draggable="true" data-card="' + esc(c.id) + '">' +
+          '<span class="grip" title="Glisser pour réordonner">⠿</span>' +
           '<label class="cfg-check" title="Visible"><input type="checkbox" data-card-visible="' + esc(c.id) + '" ' + (c.visible ? 'checked' : '') + '></label>' +
           '<input type="text" class="cfg-input cfg-title" value="' + esc(c.title) + '" data-card-title="' + esc(c.id) + '">' +
           '<select class="cfg-select" data-card-rows="' + esc(c.id) + '">' + dimOpts(c.rows, false) + '</select>' +
@@ -344,9 +345,9 @@
     });
   }
 
-  // Glisser-déposer des listes (équipes, priorités) — relié à chaque rendu.
+  // Glisser-déposer des listes (équipes, priorités, cartes) — relié à chaque rendu.
   function bindDnD() {
-    ['cfgTeamList', 'cfgPrioList'].forEach(function (id) {
+    ['cfgTeamList', 'cfgPrioList', 'cfgCardList'].forEach(function (id) {
       var ul = document.getElementById(id); if (!ul) return;
       var dragged = null;
       ul.addEventListener('dragstart', function (e) { dragged = e.target.closest('.cfg-item'); if (dragged) { dragged.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (err) {} } });
@@ -361,6 +362,10 @@
         e.preventDefault();
         var items = Array.prototype.slice.call(ul.querySelectorAll('.cfg-item'));
         if (id === 'cfgTeamList') update(function (c) { c.teams.order = items.map(function (li) { return li.dataset.team; }); });
+        else if (id === 'cfgCardList') update(function (c) {
+          var order = items.map(function (li) { return li.dataset.card; });
+          c.cards.sort(function (a, b) { return order.indexOf(a.id) - order.indexOf(b.id); });
+        });
         else update(function (c) { var shown = items.map(function (li) { return li.dataset.prio; }); var rest = c.priorities.order.filter(function (k) { return shown.indexOf(k) === -1; }); c.priorities.order = shown.concat(rest); });
         renderDrawer();
       });

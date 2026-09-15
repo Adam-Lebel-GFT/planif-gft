@@ -44,6 +44,16 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 4. **Accès** : outil `bug-dashboard-v2` dans l'écran Rôles (attribué automatiquement aux rôles
    qui avaient le v1). Tous les rôles connectés partagent configuration et journal.
 
+## Cube multidimensionnel
+
+Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
+doigt), le titre s'édite en place, les trois sélecteurs changent lignes, colonnes et mesure, les
+icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
+avec des réglages par défaut, visible dans la vue courante, et place le curseur dans son titre.
+L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle aussi réordonnable au
+glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
+absentes de la vue gardent leur place dans la liste.
+
 ## Alertes
 
 Déterministes, calculées à chaque rendu et cliquables (drill-down) : blockers sans équipe,
