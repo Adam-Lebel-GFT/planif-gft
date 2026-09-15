@@ -13,7 +13,7 @@
 
   var S = {
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
-    filters: { origin: 'all', version: 'all', teams: [] },
+    filters: { state: 'all', origin: 'all', version: 'all', teams: [] },
     view: 'projet', session: null, client: null, profil: null,
     alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: ''
   };
@@ -37,6 +37,8 @@
   function visibleTickets() {
     var f = S.filters;
     return baseTickets().filter(function (t) {
+      if (f.state === 'open' && t.isDone) return false;
+      if (f.state === 'done' && !t.isDone) return false;
       if (f.origin === 'prj301' && !t.isPrj301) return false;
       if (f.origin === 'internal' && t.isPrj301) return false;
       if (f.version !== 'all') {
@@ -139,6 +141,12 @@
   function renderFilterBar() {
     var conf = cfg();
     var hasLabels = S.cols.labels !== -1;
+    // État : le radar raisonne en stock à livrer, isoler les ouverts est le
+    // geste le plus fréquent ; le compte de chaque choix évite de cliquer à vide.
+    var all = baseTickets(), nOpen = all.filter(function (t) { return !t.isDone; }).length;
+    $('fState').innerHTML = [['all', 'Tous', all.length], ['open', 'Ouverts', nOpen], ['done', 'Terminés', all.length - nOpen]].map(function (o) {
+      return '<button type="button" data-state="' + o[0] + '" class="' + (S.filters.state === o[0] ? 'is-on' : '') + '">' + o[1] + ' <span class="seg-n">' + o[2] + '</span></button>';
+    }).join('');
     $('fOrigin').innerHTML = [['all', 'Tous'], ['prj301', 'PRJ301'], ['internal', 'Interne']].map(function (o) {
       return '<button type="button" data-origin="' + o[0] + '" class="' + (S.filters.origin === o[0] ? 'is-on' : '') + '" ' + (!hasLabels && o[0] !== 'all' ? 'disabled title="Colonne Labels introuvable"' : '') + '>' + o[1] + '</button>';
     }).join('');
@@ -410,10 +418,11 @@
     CFG.onChange(function () { fillViews(); rerender(); });
     // filtres
     try { var f = JSON.parse(localStorage.getItem(LS.filters) || 'null'); if (f) S.filters = Object.assign(S.filters, f); } catch (e) {}
+    $('fState').addEventListener('click', function (e) { var b = e.target.closest('[data-state]'); if (b) { S.filters.state = b.dataset.state; rerender(); } });
     $('fOrigin').addEventListener('click', function (e) { var b = e.target.closest('[data-origin]'); if (b && !b.disabled) { S.filters.origin = b.dataset.origin; rerender(); } });
     $('fVersion').addEventListener('click', function (e) { var b = e.target.closest('[data-version]'); if (b) { S.filters.version = b.dataset.version; rerender(); } });
     $('fTeams').addEventListener('click', function (e) { var b = e.target.closest('[data-team]'); if (!b) return; var i = S.filters.teams.indexOf(b.dataset.team); if (i === -1) S.filters.teams.push(b.dataset.team); else S.filters.teams.splice(i, 1); rerender(); });
-    $('filterReset').addEventListener('click', function () { S.filters = { origin: 'all', version: 'all', teams: [] }; rerender(); });
+    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [] }; rerender(); });
     // sections repliables
     var collapsed = {}; try { collapsed = JSON.parse(localStorage.getItem(LS.collapsed) || '{}'); } catch (e) {}
     document.querySelectorAll('.collapse-btn[data-target]').forEach(function (b) {

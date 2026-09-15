@@ -87,6 +87,8 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .fchip.is-on{border-color:var(--navy); color:var(--navy); background:#EAF1F8;}
 .filter-reset{margin-left:auto;}
 .filter-summary{font-size:12px; color:var(--muted);}
+.seg .seg-n{font-weight:700; opacity:.55; font-size:11px; margin-left:1px;}
+.seg button.is-on .seg-n{opacity:.75;}
 
 /* ── KPI ────────────────────────────────────────────────────────────── */
 .kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px;}
