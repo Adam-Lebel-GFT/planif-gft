@@ -308,32 +308,50 @@
     if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
     if (t1 <= t0) t1 = t0 + 86400000;
     var plotW = w - padL - padR;
-    var xOf = function (t) { return padL + (t - t0) / (t1 - t0) * plotW; };
+    // Journée de travail et compression. Les nuits et les week-ends ne portent
+    // presque jamais de données : les supprimer les rendrait invisibles, alors
+    // qu'une analyse saisie à 22 h existe. Ils sont donc comprimés — un temps
+    // fermé compte pour 1/SQUASH de sa durée — plutôt qu'effacés.
+    var OPEN_A = opts.openFrom == null ? 5 : opts.openFrom;
+    var OPEN_B = opts.openTo == null ? 19 : opts.openTo;
+    var SQUASH = 6;
+    var isWorkday = function (d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; };
+    // Heures ouvertes d'un intervalle, et sa largeur visuelle (ouvert + fermé/6).
+    function spans(a, b) {
+      var open = 0, closed = 0;
+      if (b <= a) return { open: 0, visual: 0 };
+      var d = new Date(a); d.setHours(0, 0, 0, 0);
+      var guard = 0;
+      while (d.getTime() < b && guard++ < 2000) {
+        var nx = new Date(d); nx.setDate(nx.getDate() + 1);
+        var lo = Math.max(d.getTime(), a), hi = Math.min(nx.getTime(), b);
+        if (hi > lo) {
+          var o = 0;
+          if (isWorkday(d)) {
+            var oa = new Date(d); oa.setHours(OPEN_A);
+            var ob = new Date(d); ob.setHours(OPEN_B);
+            var ol = Math.max(oa.getTime(), lo), oh = Math.min(ob.getTime(), hi);
+            if (oh > ol) o = oh - ol;
+          }
+          open += o; closed += (hi - lo) - o;
+        }
+        d = nx;
+      }
+      return { open: open / 3600000, visual: (open + closed / SQUASH) / 3600000 };
+    }
+    var vTotal = spans(t0, t1).visual || 1;
+    var xOf = function (t) { return padL + spans(t0, Math.max(t0, Math.min(t, t1))).visual / vTotal * plotW; };
     var yOf = function (v) { return padT + (1 - v / 100) * (h - padT - padB); };
     // Valeur attendue à une date. La rampe ne progresse que les jours ouvrés :
     // elle monte du lundi au vendredi, reste plate le week-end, et atteint
     // 100 % au gel. Un écart constaté le lundi matin se lit alors pour ce qu'il
     // est, sans le faux retard qu'ajoutaient deux jours sans personne au travail.
     var fz = opts.freeze ? opts.freeze.getTime() : t1, s0 = opts.start.getTime();
-    var isWorkday = function (d) { var wd = d.getDay(); return wd !== 0 && wd !== 6; };
-    var workDays = function (a, b) {
-      if (b <= a) return 0;
-      var total = 0, d = new Date(a); d.setHours(0, 0, 0, 0);
-      while (d.getTime() < b) {
-        var nx = new Date(d); nx.setDate(nx.getDate() + 1);
-        if (isWorkday(d)) {
-          var lo = Math.max(d.getTime(), a), hi = Math.min(nx.getTime(), b);
-          if (hi > lo) total += (hi - lo) / 86400000;
-        }
-        d = nx;
-      }
-      return total;
-    };
-    var workTotal = workDays(s0, fz) || 1;
+    var workTotal = spans(s0, fz).open || 1;
     var expected = function (t) {
       if (t <= s0) return startPct;
       if (t >= fz) return 100;
-      return startPct + (100 - startPct) * workDays(s0, t) / workTotal;
+      return startPct + (100 - startPct) * spans(s0, t).open / workTotal;
     };
     var g = '';
     for (var i = 0; i <= 4; i++) {
@@ -351,7 +369,7 @@
     // Graduations de demi-journées : tout se compte en demi-journées dans le
     // radar — le gel tombe le matin, le reste à courir aussi. Les traits de midi
     // disparaissent quand la fenêtre est trop large pour qu'on les distingue.
-    var ticks = '', dayW = plotW / Math.max((t1 - t0) / 86400000, 0.5);
+    var ticks = '', dayW = plotW * ((OPEN_B - OPEN_A) + (24 - OPEN_B + OPEN_A) / SQUASH) / vTotal;
     var tk = new Date(t0); tk.setHours(0, 0, 0, 0);
     while (tk.getTime() <= t1) {
       for (var hh = 0; hh <= 12; hh += 12) {
@@ -368,9 +386,12 @@
     // rampe attendue
     // Un sommet par frontière de journée : c'est ce qui donne les paliers.
     var rEnd = Math.min(fz, t1), rampD = 'M' + xOf(s0).toFixed(1) + ' ' + yOf(startPct).toFixed(1);
-    var rd = new Date(s0); rd.setHours(0, 0, 0, 0); rd.setDate(rd.getDate() + 1);
+    var rd = new Date(s0); rd.setHours(0, 0, 0, 0);
     for (var guard = 0; rd.getTime() < rEnd && guard < 400; guard++) {
-      rampD += ' L' + xOf(rd.getTime()).toFixed(1) + ' ' + yOf(expected(rd.getTime())).toFixed(1);
+      [OPEN_A, OPEN_B].forEach(function (hh) {
+        var e = new Date(rd); e.setHours(hh);
+        if (e.getTime() > s0 && e.getTime() < rEnd) rampD += ' L' + xOf(e.getTime()).toFixed(1) + ' ' + yOf(expected(e.getTime())).toFixed(1);
+      });
       rd.setDate(rd.getDate() + 1);
     }
     rampD += ' L' + xOf(rEnd).toFixed(1) + ' ' + yOf(expected(rEnd)).toFixed(1);
@@ -446,7 +467,7 @@
       ticks + lx + marks + ramp + proj + line + gap + dots + '</svg>';
     return svg + '<div class="legend">' +
       '<span class="legend-item"><span class="dot" style="background:' + opts.color + '"></span>Avancement pondéré</span>' +
-      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + ', jours ouvrés seulement</span>' +
+      '<span class="legend-item"><span class="dot dash"></span>Attendu — ' + startPct + ' % au début, 100 % au ' + esc(opts.freezeLabel || 'Code freeze') + ', heures ouvrées seulement (' + OPEN_A + ' h – ' + OPEN_B + ' h)</span>' +
       (proj ? '<span class="legend-item"><span class="dot dash" style="background:' + opts.color + '"></span>Rythme observé prolongé</span>' : '') +
       '</div>';
   }

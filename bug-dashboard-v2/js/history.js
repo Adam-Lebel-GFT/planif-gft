@@ -324,6 +324,7 @@
       start: pv.start, end: pv.deploy || pv.end || pv.freeze, freeze: pv.freeze,
       freezeLabel: root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(cfg.alerts.boundary || 'freeze') : 'Code freeze',
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
+      openFrom: cfg.burnup ? cfg.burnup.openFrom : 5, openTo: cfg.burnup ? cfg.burnup.openTo : 19,
       today: C.startOfDay(S.refDate), points: points, rate: rate, color: P.CATEGORICAL[0]
     });
   }

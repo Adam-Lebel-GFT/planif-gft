@@ -127,9 +127,12 @@ Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizo
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une
 rampe grise dit où l'on devrait être — **25 % au début de la version** (elle ne démarre pas à
 zéro, ses tickets entrent déjà partiellement avancés ; réglable dans Configurer → Règles), **100 %
-au Code freeze**, puis plateau. Elle ne monte que les **jours ouvrés** : plate le samedi et le
-dimanche, elle reprend le lundi, pour qu'un écart constaté le lundi matin ne porte pas le faux
-retard de deux jours sans personne au travail. Les week-ends sont grisés, la journée de référence surlignée, l'axe gradué par demi-journées ; le pointillé
+au Code freeze**, puis plateau. Elle ne monte que pendant les **heures ouvrées** (5 h – 19 h en
+semaine, réglable) : plate la nuit, plate le week-end, elle reprend le matin, pour qu'un écart
+constaté le lundi matin ne porte pas le faux retard de deux jours sans personne au travail.
+L'axe suit la même idée : les heures fermées y sont **comprimées** — elles comptent pour un
+sixième de leur durée — plutôt que supprimées, de sorte qu'une analyse saisie à 22 h reste
+visible, dans un couloir étroit, sans que les nuits mangent les deux tiers de la largeur. Les week-ends sont grisés, la journée de référence surlignée, l'axe gradué par demi-journées ; le pointillé
 prolonge le rythme observé, et le nombre coloré donne l'écart à la rampe à la dernière photo.
 Sans plan publié pour cette Target date — donc sans début ni gel à opposer aux photos — le
 graphique reste la courbe photo par photo.
