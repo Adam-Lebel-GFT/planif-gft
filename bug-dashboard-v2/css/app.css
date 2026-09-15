@@ -85,6 +85,9 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .fchip{background:#fff; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:5px 11px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px;}
 .fchip .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
 .fchip.is-on{border-color:var(--navy); color:var(--navy); background:#EAF1F8;}
+.fchip.is-pick{border-color:var(--accent); color:var(--accent); background:#EAF1F8; cursor:pointer;}
+.fchip.is-pick .x{font-weight:800; opacity:.6;}
+.fchip.is-pick:hover{background:#dce9f6;}
 .filter-reset{margin-left:auto;}
 .filter-summary{font-size:12px; color:var(--muted);}
 .seg .seg-n{font-weight:700; opacity:.55; font-size:11px; margin-left:1px;}
@@ -323,6 +326,9 @@ body.dd-open{overflow:hidden;}
 .lc .ln{fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round;}
 .lc .pt{stroke:#fff; stroke-width:2; cursor:pointer;}
 .lc .area{opacity:.12;}
+.bc .bar{cursor:pointer; transition:opacity .12s ease;}
+.bc .bar:hover{opacity:.82;}
+.chart-scroll{overflow-x:auto; padding-bottom:4px;}
 .hist-controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;}
 .hist-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:280px; overflow:auto;}
 .hist-item{display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; font-size:12.5px; background:#fff;}

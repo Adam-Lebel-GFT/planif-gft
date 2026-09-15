@@ -215,6 +215,84 @@
 
   // ── Courbe multi-séries (évolution, lot 3) ─────────────────────────
   // series : [{label, color, values:[...]}], labels : ['09.09', ...]
+  // ── Histogrammes ───────────────────────────────────────────────────
+  // Trois formes, même repère que la courbe : barres groupées (comparer des
+  // séries entre elles), empilées (composition d'un total), et bandes empilées
+  // à 100 % (part de chaque série). Extrémité arrondie côté valeur, 2 px de
+  // fond entre deux remplissages — les segments restent distincts sans trait.
+  function barPath(x, y, w, h, r) {
+    if (h <= 0.2) return '';
+    r = Math.min(r || 0, w / 2, h);
+    if (!r) return 'M' + x + ' ' + y + ' h' + w + ' v' + h + ' h' + (-w) + ' Z';
+    return 'M' + x + ' ' + (y + h) + ' L' + x + ' ' + (y + r) + ' Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y +
+      ' L' + (x + w - r) + ' ' + y + ' Q' + (x + w) + ' ' + y + ' ' + (x + w) + ' ' + (y + r) +
+      ' L' + (x + w) + ' ' + (y + h) + ' Z';
+  }
+  function barChart(opts) {
+    var series = opts.series, labels = opts.labels, mode = opts.mode || 'group';
+    var h = opts.height || 220, n = labels.length, k = series.length;
+    var padL = 36, padR = 14, padT = 12, padB = 26;
+    var pct = mode === 'percent', stacked = pct || mode === 'stack';
+    var totals = labels.map(function (_, i) {
+      var t = 0; series.forEach(function (s) { var v = s.values[i]; if (v != null) t += v; }); return t;
+    });
+    var max = 0;
+    if (pct) max = 100;
+    else if (stacked) totals.forEach(function (t) { if (t > max) max = t; });
+    else series.forEach(function (s) { s.values.forEach(function (v) { if (v != null && v > max) max = v; }); });
+    if (!max) max = 1;
+    var nice = pct ? 100 : niceMax(max), steps = 4;
+    // Largeur : on s'élargit et on laisse défiler plutôt que d'aligner des
+    // barres illisibles quand le journal compte beaucoup de photos.
+    var w = opts.width || 720;
+    var need = padL + padR + n * (stacked ? 34 : Math.max(k * 9 + 12, 34));
+    var scroll = need > w;
+    if (scroll) w = need;
+    var plot = w - padL - padR, band = plot / Math.max(n, 1);
+    var inner = Math.min(band * 0.78, stacked ? 46 : 120);
+    var yOf = function (v) { return padT + (1 - v / nice) * (h - padT - padB); };
+    var g = '';
+    for (var i = 0; i <= steps; i++) {
+      var gv = nice * i / steps, gy = yOf(gv);
+      g += '<line class="grid" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
+        '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + fmtTick(gv, pct ? '%' : opts.unit) + '</text>';
+    }
+    var lx = '', every = Math.max(1, Math.ceil(n / (scroll ? 30 : 9)));
+    var bars = '';
+    labels.forEach(function (lab, i) {
+      var cx = padL + band * i + band / 2;
+      if (i % every === 0 || i === n - 1) lx += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + esc(lab) + '</text>';
+      if (stacked) {
+        var x = cx - inner / 2, acc = 0, tot = totals[i];
+        // du bas vers le haut : seul le segment de tête porte l'arrondi
+        var stack = series.map(function (s) { return { s: s, v: s.values[i] == null ? 0 : s.values[i] }; }).filter(function (o) { return o.v > 0; });
+        stack.forEach(function (o, j) {
+          var val = pct ? (tot ? o.v / tot * 100 : 0) : o.v;
+          var y0 = yOf(acc), y1 = yOf(acc + val), hh = y0 - y1;
+          var top = j === stack.length - 1;
+          var gap = top ? 0 : 2;
+          var tip = lab + ' — ' + o.s.label + ' : ' + fmtTick(o.v, opts.unit) + (pct && tot ? ' (' + Math.round(o.v / tot * 100) + ' %)' : '');
+          bars += '<path class="bar" d="' + barPath(x, y1, inner, Math.max(hh - gap, 0), top ? 4 : 0) + '" fill="' + o.s.color + '" data-tip="' + esc(tip) + '"/>';
+          acc += val;
+        });
+      } else {
+        var bw = Math.max((inner - 2 * (k - 1)) / k, 1.5);
+        series.forEach(function (s, j) {
+          var v = s.values[i]; if (v == null || v <= 0) return;
+          var bx = cx - inner / 2 + j * (bw + 2), by = yOf(v), bh = yOf(0) - by;
+          bars += '<path class="bar" d="' + barPath(bx, by, bw, bh, 4) + '" fill="' + s.color + '" data-tip="' +
+            esc(lab + ' — ' + s.label + ' : ' + fmtTick(v, opts.unit)) + '"/>';
+        });
+      }
+    });
+    var svg = '<svg class="lc bc" viewBox="0 0 ' + w + ' ' + h + '"' + (scroll ? ' width="' + w + '" height="' + h + '"' : '') + ' role="img">' +
+      g + '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' + lx + bars + '</svg>';
+    if (scroll) svg = '<div class="chart-scroll">' + svg + '</div>';
+    return svg + (k >= 2 ? '<div class="legend">' + series.map(function (s) {
+      return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + esc(s.label) + '</span>';
+    }).join('') + '</div>' : '');
+  }
+
   function lineChart(opts) {
     var series = opts.series, labels = opts.labels, w = opts.width || 720, h = opts.height || 220;
     var padL = 36, padR = 14, padT = 12, padB = 26;
@@ -244,5 +322,5 @@
   function niceMax(v) { var p = Math.pow(10, Math.floor(Math.log10(v))); var f = v / p; var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 4 ? 4 : f <= 5 ? 5 : f <= 8 ? 8 : 10; return nf * p; }
   function fmtTick(v, unit) { return (Number.isInteger(v) ? v : v.toFixed(1)) + (unit || ''); }
 
-  root.BDV2Charts = { renderTiles: renderTiles, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
+  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
 })(window);

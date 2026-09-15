@@ -74,6 +74,7 @@
     <div class="filter-group"><span class="filter-label">Origine</span><div class="seg" id="fOrigin"></div></div>
     <div class="filter-group hidden" id="fVersionGroup"><span class="filter-label">Version</span><div class="seg" id="fVersion"></div></div>
     <div class="filter-group"><span class="filter-label">Équipes</span><div id="fTeams" class="filter-group"></div></div>
+    <span id="fPick"></span>
     <span class="filter-summary" id="filterSummary"></span>
     <button type="button" class="ghost small filter-reset" id="filterReset">Réinitialiser</button>
   </div>
@@ -129,6 +130,7 @@
     <div class="dd-head">
       <div><h3 id="ddTitle">Tickets</h3><div class="dd-sub" id="ddSub"></div></div>
       <div class="dd-actions">
+        <button type="button" class="primary small hidden" id="ddFilter" title="Ne garder que ces tickets dans tout le tableau de bord">⌖ Filtrer le radar</button>
         <button type="button" class="ghost small" id="ddCopy">Copier les clés</button>
         <button type="button" class="ghost small" id="ddJql" title="Copie « key in (…) » à coller dans la recherche Jira">Copier la JQL</button>
         <button type="button" class="ghost small" id="ddCsv">Exporter CSV</button>

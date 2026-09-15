@@ -48,7 +48,15 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 
 La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le
 nombre de tickets de chaque choix), **Origine**, **Version** et **Équipes**. Les filtres sont
-conservés dans ce navigateur. Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
+conservés dans ce navigateur.
+
+Une **alerte se transforme en filtre** : le clic ouvre la fiche des tickets comme avant, et son
+en-tête porte « ⌖ Filtrer le radar » — le tableau de bord ne garde alors que ces tickets-là,
+signalés par une puce bleue dans la barre. La liste est figée au moment du clic (les alertes se
+recalculent ensuite sur le périmètre filtré) et ne survit pas à un nouveau collage, contrairement
+aux autres filtres. Seules les fiches d'alerte proposent ce bouton.
+
+Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
 « Ajoutés / Retirés » se retirent : les photos du journal, elles, ne sont pas filtrées, et la
 comparaison serait fausse.
 
@@ -100,6 +108,13 @@ l'extrait courant à la première photo de la version (même Target date) : le g
 compte depuis le début de la version, le delta depuis l'analyse précédente, et le clic ouvre
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
+
+La section s'ouvre sur l'**avancement pondéré de la version en cours** ; les puces et le
+sélecteur de mesure restent libres ensuite. Chaque mesure a la forme qui lui va : courbe pour
+l'avancement et la vue globale, **barres groupées** par statut et par équipe (comparer des
+séries), **barres empilées** par priorité et pour la Fix Version (composition d'un total),
+**bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
+graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
 
 Sur une version, la **prévision** extrapole le rythme d'**avancement pondéré** (points gagnés
 par jour entre la première et la dernière photo) jusqu'à 100 %, et le compare à la Target date.

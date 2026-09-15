@@ -15,7 +15,11 @@
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
     filters: { state: 'all', origin: 'all', version: 'all', teams: [] },
     view: 'projet', session: null, client: null, profil: null,
-    alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: ''
+    alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: '',
+    // Sélection issue d'une alerte : une liste de tickets figée au moment du
+    // clic. Volontairement hors de S.filters, qui est conservé d'une session à
+    // l'autre — ces identités-là ne valent que pour l'extrait courant.
+    pick: null
   };
   // Points d'extension pour les lots suivants.
   var hooks = { prepare: [], afterAnalyze: [], render: [], kpiExtras: [], extraTiles: [], alerts: [], drill: {}, versionOptions: [] };
@@ -27,6 +31,8 @@
   function cfg() { return CFG.get(); }
   function ratio(a, b) { return a + ' / ' + b; }
   function pct(a, b) { return b ? (a / b * 100).toFixed(0) + '%' : '0%'; }
+
+  function ticketId(t) { return t.key || ('#' + t.idx); }
 
   // Tickets après masquage des équipes (base de toutes les vues).
   function baseTickets() {
@@ -46,6 +52,7 @@
         if (f.version === '__none' ? t.versionState !== 'none' : f.version === '__deployed' ? t.versionState !== 'deployed' : vk !== f.version) return false;
       }
       if (f.teams.length && f.teams.indexOf(t.team) === -1) return false;
+      if (S.pick && !S.pick.ids[ticketId(t)]) return false;
       return true;
     });
   }
@@ -171,6 +178,9 @@
       var raw = rawByLabel[lbl];
       return '<button type="button" class="fchip' + (S.filters.teams.indexOf(raw) !== -1 ? ' is-on' : '') + '" data-team="' + esc(raw) + '"><span class="dot" style="background:' + colors[lbl] + '"></span>' + esc(lbl) + '</button>';
     }).join('');
+    $('fPick').innerHTML = S.pick
+      ? '<button type="button" class="fchip is-pick" id="fPickDrop" title="Retirer cette sélection">' + esc(S.pick.label) + ' <span class="x">✕</span></button>'
+      : '';
     try { localStorage.setItem(LS.filters, JSON.stringify(S.filters)); } catch (e) {}
   }
 
@@ -339,7 +349,7 @@
   function resolveDrill(el) {
     var d = el.dataset, vis = visibleTickets();
     if (d.dd === 'kpi') { var fn = S.kpiDrills[d.ddKpi]; return fn ? fn() : null; }
-    if (d.dd === 'alert') { var a = S.alerts[+d.idx]; return a ? { title: a.title, subtitle: el.querySelector('.txt').textContent, tickets: a.tickets } : null; }
+    if (d.dd === 'alert') { var a = S.alerts[+d.idx]; return a ? { title: a.title, subtitle: el.querySelector('.txt').textContent, tickets: a.tickets, pick: { label: 'Alerte : ' + a.title, tickets: a.tickets } } : null; }
     if (d.dd === 'cell') {
       var ctx = S.cardCtx[d.card]; if (!ctx) return null;
       var pv = ctx.pivot;
@@ -422,7 +432,18 @@
     $('fOrigin').addEventListener('click', function (e) { var b = e.target.closest('[data-origin]'); if (b && !b.disabled) { S.filters.origin = b.dataset.origin; rerender(); } });
     $('fVersion').addEventListener('click', function (e) { var b = e.target.closest('[data-version]'); if (b) { S.filters.version = b.dataset.version; rerender(); } });
     $('fTeams').addEventListener('click', function (e) { var b = e.target.closest('[data-team]'); if (!b) return; var i = S.filters.teams.indexOf(b.dataset.team); if (i === -1) S.filters.teams.push(b.dataset.team); else S.filters.teams.splice(i, 1); rerender(); });
-    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [] }; rerender(); });
+    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [] }; S.pick = null; rerender(); });
+    $('fPick').addEventListener('click', function (e) { if (e.target.closest('#fPickDrop')) { S.pick = null; rerender(); } });
+    // « Filtrer le radar » depuis la fiche d'une alerte : on fige la liste des
+    // tickets telle qu'elle était au clic, les alertes se recalculant ensuite
+    // sur le périmètre filtré.
+    document.addEventListener('bdv2:drill-filter', function (e) {
+      var d = e.detail || {}, ids = {};
+      (d.tickets || []).forEach(function (t) { ids[ticketId(t)] = 1; });
+      S.pick = { label: d.label || 'Sélection', ids: ids, n: (d.tickets || []).length };
+      rerender();
+      document.querySelector('.filterbar').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
     // sections repliables
     var collapsed = {}; try { collapsed = JSON.parse(localStorage.getItem(LS.collapsed) || '{}'); } catch (e) {}
     document.querySelectorAll('.collapse-btn[data-target]').forEach(function (b) {

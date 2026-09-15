@@ -14,7 +14,10 @@
   var S = APP.state;
   var LOCAL_KEY = 'bdv2:history', LOCAL_MAX = 30;
   var H = { items: [], source: null, currentHash: null, compare: [] };
-  var ui = { metric: 'global', selectedTd: null };
+  // Vue par défaut : l'avancement pondéré de la version en cours. `touched`
+  // distingue « pas encore choisi » de « a choisi la vue d'ensemble », pour ne
+  // pas ramener l'utilisateur de force sur la version courante à chaque rendu.
+  var ui = { metric: 'progress', selectedTd: null, touched: false };
 
   async function sha256(text) {
     try {
@@ -118,7 +121,7 @@
     var idx = -1; H.items.forEach(function (i, k) { if (i.hash === H.currentHash) idx = k; });
     return idx === -1 ? H.items.slice() : H.items.slice(0, idx);
   }
-  function filtersActive() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0; }
+  function filtersActive() { var f = S.filters; return !!S.pick || f.state !== 'all' || f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0; }
 
   // ── Deltas + sparklines sur les tuiles ────────────────────────────
   var TILE_METRIC = { total: ['total', false], progress: ['progress', true], done: ['done', true], fix: ['hasFix', true], doneNoFix: ['doneNoFix', false], blockers: ['blockersOpen', false], overdue: ['overdue', false], prj301: ['prj301', false], noVersion: ['noVersion', false], deployedOpen: ['deployedOpen', false] };
@@ -269,10 +272,19 @@
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
   var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  // Forme par vue : des comptages photo par photo se lisent mieux en barres
+  // (groupées pour comparer des séries, empilées pour une composition, en
+  // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
+  // mesure vraiment continue.
+  var CHART_KIND = { global: 'line', progress: 'line', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
   function chartFrom(metric, points) {
     var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
     var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
-    var lines = function (series, opts) { return CH.lineChart(Object.assign({ labels: labels, series: series }, opts || {})); };
+    var kind = CHART_KIND[metric] || 'line';
+    var lines = function (series, opts) {
+      if (kind !== 'line') return CH.barChart(Object.assign({ labels: labels, series: series, mode: kind }, opts || {}));
+      return CH.lineChart(Object.assign({ labels: labels, series: series }, opts || {}));
+    };
     if (metric === 'global') return lines([{ label: 'Total', color: P.NEUTRAL, values: g('total') }, { label: 'Ouverts', color: P.CATEGORICAL[0], values: g('open') }, { label: 'Terminés', color: P.CATEGORICAL[5], values: g('done') }, { label: 'Blockers ouverts', color: P.CATEGORICAL[7], values: g('blockersOpen') }, { label: 'PRJ301 ouverts', color: '#4a3aa7', values: g('prj301Open') }]);
     if (metric === 'progress') return lines([{ label: 'Avancement pondéré', color: P.CATEGORICAL[0], values: g('progress') }], { unit: '%', max: 100, area: true });
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
@@ -295,6 +307,11 @@
     var items = H.items;
     if (!items.length) { rootEl.innerHTML = hasData ? '<div class="card"><h2>Évolution</h2><div class="sub">Le journal est vide : chaque clic sur « Analyser » avec de nouvelles données ajoute un point. Revenez après la prochaine analyse.</div></div>' : ''; return; }
     var versions = versionsIndex();
+    if (!ui.touched) {
+      var cur = items.filter(function (i) { return i.hash === H.currentHash; })[0] || items[items.length - 1];
+      var td = cur ? mainTd(cur) : null;
+      if (td && td !== 'none' && versions.some(function (v) { return v.td === td; })) ui.selectedTd = td;
+    }
     var sel = versions.find(function (v) { return v.td === ui.selectedTd; }) || null;
     var h = '';
     // puces de versions
@@ -367,7 +384,7 @@
       '<div id="histCompare">' + compareHtml(items) + '</div></div>';
     rootEl.innerHTML = h;
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
-    $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; renderHistory(); });
+    $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; ui.touched = true; renderHistory(); });
   }
 
   // ── Comparateur ────────────────────────────────────────────────────
