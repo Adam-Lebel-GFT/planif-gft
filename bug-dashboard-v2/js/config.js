@@ -33,7 +33,7 @@
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
     alerts:     { boundary: 'freeze', daysBefore: 3, minPct: 50 },
-    burnup:     { startPct: 25 },
+    burnup:     { startPct: 25, openFrom: 5, openTo: 19 },
     cards:      DEFAULT_CARDS,
     views: {
       direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
@@ -266,7 +266,9 @@
         '<p class="cfg-help">Sur le graphique d\'avancement d\'une version, une rampe de référence monte du début de la version au Code freeze, où elle atteint 100 %. Une version ne démarre pas à zéro — ses tickets entrent déjà partiellement avancés — d\'où ce point de départ.</p>' +
         '<div class="cfg-grid">' +
         '<label>La version démarre à <input type="number" min="0" max="90" class="cfg-input num" data-burnup="startPct" value="' + (cfg.burnup ? cfg.burnup.startPct : 25) + '"> % d\'avancement</label>' +
+        '<label>Journée de travail de <input type="number" min="0" max="23" class="cfg-input num" data-burnup="openFrom" value="' + (cfg.burnup ? cfg.burnup.openFrom : 5) + '"> h à <input type="number" min="1" max="24" class="cfg-input num" data-burnup="openTo" value="' + (cfg.burnup ? cfg.burnup.openTo : 19) + '"> h</label>' +
         '</div>' +
+        '<p class="cfg-help">Hors de ces heures et le week-end, la rampe reste plate et l\'axe du graphique est comprimé — une analyse saisie la nuit reste visible, dans un couloir étroit.</p>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
         '<label>Jalon surveillé ' + boundarySelect('alert', cfg.alerts.boundary || 'freeze') + '</label>' +
@@ -327,7 +329,11 @@
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
       else if (d.rule !== undefined) update(function (c) { c.version[d.rule] = t.type === 'checkbox' ? t.checked : (t.type === 'number' ? Number(t.value) || 0 : t.value); });
-      else if (d.burnup !== undefined) update(function (c) { c.burnup[d.burnup] = Math.max(0, Math.min(90, Number(t.value) || 0)); });
+      else if (d.burnup !== undefined) update(function (c) {
+        var v = Number(t.value) || 0;
+        c.burnup[d.burnup] = d.burnup === 'startPct' ? Math.max(0, Math.min(90, v)) : Math.max(0, Math.min(24, v));
+        if (c.burnup.openTo <= c.burnup.openFrom) c.burnup.openTo = Math.min(24, c.burnup.openFrom + 1);
+      });
       else if (d.alert !== undefined) update(function (c) { c.alerts[d.alert] = t.type === 'number' ? (Number(t.value) || 0) : t.value; });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
