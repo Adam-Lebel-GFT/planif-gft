@@ -57,7 +57,9 @@
 .wb-iconbtn svg { width: 16px; height: 16px; }
 
 /* ── Corps : toolbar | scène | panneau ───────────────────── */
-.wb-main { flex: 1; display: flex; min-height: 0; position: relative; }
+/* overflow caché : sous 640 px le panneau est replié par translateX(100%),
+   sa boîte dépasse à droite et ferait défiler la page horizontalement. */
+.wb-main { flex: 1; display: flex; min-height: 0; position: relative; overflow: hidden; }
 
 /* Barre d'outils verticale gauche */
 .wb-toolbar {
@@ -178,7 +180,7 @@ svg.wb-layer text { user-select: none; }
 .opt-lbl { font-size: 11px; font-weight: 600; color: var(--muted); width: 62px; flex-shrink: 0; }
 /* Les nuanciers prennent toute la largeur du panneau : libellé au-dessus,
    huit pastilles sur une seule ligne (sinon elles débordent). */
-.opt-row--stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.opt-row--stack { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 14px; }
 .opt-row--stack .opt-lbl { width: auto; }
 .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
 .swatch {
@@ -267,7 +269,7 @@ svg.wb-layer text { user-select: none; }
 }
 .wb-panel-toggle svg { width: 17px; height: 17px; }
 
-/* ── Menu contextuel ─────────────────────────────────────── */
+/* ── Menu contextuel et menu « plus d'actions » ──────────── */
 .wb-ctx {
   position: fixed; z-index: 95; min-width: 208px; display: none;
   background: var(--white); border: 1.5px solid var(--border);
@@ -288,6 +290,73 @@ svg.wb-layer text { user-select: none; }
 .wb-ctx button.danger:hover:not(:disabled) svg { color: var(--red); }
 .wb-ctx .ctx-sep { height: 1px; background: var(--border); margin: 4px 2px; }
 
+/* ── Nom du tableau + état d'enregistrement (topbar) ─────── */
+.wb-boardname {
+  background: rgba(255,255,255,.08); border: 1px solid transparent;
+  border-radius: var(--radius); color: var(--white);
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  padding: 6px 9px; max-width: 230px; min-width: 80px; flex-shrink: 1;
+  text-overflow: ellipsis;
+}
+.wb-boardname::placeholder { color: rgba(255,255,255,.4); font-weight: 400; }
+.wb-boardname:hover { background: rgba(255,255,255,.16); }
+.wb-boardname:focus { outline: none; background: rgba(255,255,255,.22); border-color: var(--accent); }
+.wb-savetag {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .4px;
+  color: rgba(255,255,255,.42); white-space: nowrap; flex-shrink: 0;
+}
+.wb-savetag.err { color: #F0A9A0; }
+
+/* ── Bibliothèque de tableaux ────────────────────────────── */
+.wb-lib { max-width: 680px; width: calc(100vw - 40px); max-height: calc(100vh - 80px); display: flex; flex-direction: column; }
+.wb-lib h4 { font-size: 17px; font-weight: 800; color: var(--navy); letter-spacing: -.3px; }
+.lib-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.lib-top .tk-btn { margin-left: auto; }
+.lib-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; }
+.lib-list { overflow-y: auto; margin: 0 -4px; padding: 0 4px; flex: 1; min-height: 80px; }
+.lib-row {
+  display: flex; align-items: center; gap: 12px; padding: 9px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 7px; background: var(--white); transition: var(--ease);
+}
+.lib-row:hover { border-color: var(--muted); }
+.lib-row.is-current { border-color: var(--accent); background: #F7FAFD; }
+.lib-thumb {
+  width: 74px; height: 50px; flex-shrink: 0; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg) center/contain no-repeat;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted); letter-spacing: .5px;
+}
+.lib-main { flex: 1; min-width: 0; }
+.lib-name {
+  font-size: 13.5px; font-weight: 700; color: var(--navy);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: none; border: none; padding: 0; width: 100%;
+  font-family: var(--font); cursor: pointer;
+}
+.lib-name:focus {
+  outline: none; cursor: text;
+  box-shadow: inset 0 -1.5px 0 var(--accent);
+}
+.lib-row.is-current .lib-name::after { content: ' — ouvert'; color: var(--accent); font-weight: 600; font-size: 11px; }
+.lib-meta { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); letter-spacing: .3px; margin-top: 3px; }
+.lib-acts { display: flex; gap: 3px; flex-shrink: 0; }
+.lib-btn {
+  width: 30px; height: 30px; border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--white); color: var(--muted); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; transition: var(--ease);
+}
+.lib-btn:hover { border-color: var(--navy); color: var(--navy); background: var(--bg); }
+.lib-btn:disabled { opacity: .3; cursor: default; }
+.lib-btn svg { width: 15px; height: 15px; pointer-events: none; }
+.lib-btn--danger:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+.lib-empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 26px 10px; line-height: 1.6; }
+.lib-foot {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.lib-foot .lib-note { font-size: 10.5px; color: var(--muted); flex: 1; min-width: 160px; line-height: 1.5; }
+
 /* ── Toast ───────────────────────────────────────────────── */
 #toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(16px);
@@ -306,6 +375,10 @@ svg.wb-layer text { user-select: none; }
   display: none; align-items: center; justify-content: center; z-index: 90;
 }
 .wb-modal-bg.open { display: flex; }
+/* La confirmation peut être demandée depuis la bibliothèque (suppression
+   d'un tableau) : elle doit passer au-dessus d'elle. */
+#lib-bg { z-index: 90; }
+#modal-bg { z-index: 92; }
 .wb-modal { max-width: 380px; width: calc(100vw - 40px); }
 .wb-modal h4 { font-size: 17px; font-weight: 800; color: var(--navy); letter-spacing: -.3px; margin-bottom: 8px; }
 .wb-modal p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 18px; }
@@ -315,11 +388,24 @@ svg.wb-layer text { user-select: none; }
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .wb-topbar .tool-name, .wb-topbar .version { display: none; }
+  .wb-topbar .tool-name, .wb-topbar .version, .wb-savetag { display: none; }
   .wb-actions .tk-btn .btxt { display: none; }
   .wb-actions .tk-btn { padding: 8px 10px; }
 }
+/* Sous ~720 px, la topbar n'a plus la place de ses séparateurs ni de ses
+   marges : sans ça la dernière action sort de l'écran. */
+@media (max-width: 720px) {
+  .wb-topbar { gap: 6px; padding-inline: 8px; }
+  .wb-topbar .sep { display: none; }
+  .wb-actions { gap: 4px; }
+  .wb-actions .grp { gap: 3px; }
+  .wb-actions .tk-btn { padding: 8px 9px; }
+}
+@media (max-width: 520px) {
+  .wb-logo .wm { display: none; }
+}
 @media (max-width: 640px) {
+  .wb-boardname { display: none; }
   .wb-panel {
     position: absolute; right: 0; top: 0; bottom: 0;
     box-shadow: -8px 0 24px rgba(12, 26, 46, .12);
@@ -342,7 +428,11 @@ svg.wb-layer text { user-select: none; }
     </a>
     <span class="sep" aria-hidden="true"></span>
     <span class="tool-name">Whiteboard</span>
-    <span class="version">v2.0</span>
+    <span class="version">v2.1</span>
+    <span class="sep" aria-hidden="true"></span>
+    <input class="wb-boardname" id="board-name" placeholder="Sans titre" maxlength="80"
+           title="Nom du tableau — cliquez pour le renommer" aria-label="Nom du tableau">
+    <span class="wb-savetag" id="save-tag"></span>
 
     <div class="wb-actions">
       <div class="grp">
@@ -354,30 +444,21 @@ svg.wb-layer text { user-select: none; }
         </button>
       </div>
       <span class="sep" aria-hidden="true"></span>
-      <button class="tk-btn tk-btn--on-dark" id="btn-copy" title="Copier l'image dans le presse-papier (pour Teams / Confluence)">
+      <button class="tk-btn tk-btn--on-dark" id="btn-copy" title="Copier l'image du tableau dans le presse-papier (pour Teams / Confluence)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         <span class="btxt">Copier</span>
       </button>
-      <button class="tk-btn tk-btn--on-dark" id="btn-png" title="Exporter en image PNG (couches visibles)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.9-3.9a2 2 0 0 0-2.8 0L6 19"/></svg>
-        <span class="btxt">PNG</span>
-      </button>
-      <button class="tk-btn tk-btn--on-dark" id="btn-svg" title="Exporter la couche Diagramme en SVG (réutilisable)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-        <span class="btxt">SVG</span>
-      </button>
       <span class="sep" aria-hidden="true"></span>
-      <button class="tk-btn tk-btn--on-dark" id="btn-save" title="Sauvegarder la session (fichier JSON)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-        <span class="btxt">Sauver</span>
+      <button class="tk-btn tk-btn--on-dark" id="btn-lib" title="Mes tableaux — ouvrir, renommer, dupliquer (Ctrl+O)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14.5"/><path d="M6 17h12"/><path d="M8 3v14"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v4H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>
+        <span class="btxt">Tableaux</span>
       </button>
-      <button class="tk-btn tk-btn--on-dark" id="btn-load" title="Reprendre une session (fichier JSON)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <span class="btxt">Ouvrir</span>
+      <button class="tk-btn tk-btn--on-dark" id="btn-new" title="Nouveau tableau">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span class="btxt">Nouveau</span>
       </button>
-      <button class="tk-btn tk-btn--on-dark" id="btn-clear" title="Effacer tout le tableau">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        <span class="btxt">Effacer</span>
+      <button class="wb-iconbtn" id="btn-more" title="Exports, import, vider le tableau" aria-label="Plus d'actions" aria-haspopup="true">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>
       </button>
     </div>
     <input type="file" id="file-json" accept=".json,application/json" style="display:none">
@@ -619,7 +700,8 @@ svg.wb-layer text { user-select: none; }
           (<strong>Maj</strong> = pas large) · <strong>Ctrl+Maj+↑/↓</strong> premier / arrière-plan<br>
           <strong>Maj+clic</strong> ajouter à la sélection · <strong>Alt+glisser</strong> dupliquer ·
           <strong>Maj+glisser</strong> (poignée) conserver les proportions<br>
-          <strong>Maj+1</strong> ajuster au contenu · <strong>Maj+2</strong> ajuster à la sélection ·
+          <strong>Ctrl+O</strong> mes tableaux · <strong>Maj+1</strong> ajuster au contenu ·
+          <strong>Maj+2</strong> ajuster à la sélection ·
           <strong>Espace</strong> ou molette pressée : déplacer la vue · molette : zoom ·
           <strong>Clic droit</strong> : menu
         </p>
@@ -630,6 +712,22 @@ svg.wb-layer text { user-select: none; }
 
 <!-- ── Menu contextuel ────────────────────────────────────── -->
 <div class="wb-ctx" id="ctxmenu" role="menu"></div>
+
+<!-- ── Bibliothèque de tableaux ───────────────────────────── -->
+<div class="wb-modal-bg" id="lib-bg" role="dialog" aria-modal="true" aria-label="Mes tableaux">
+  <div class="wb-lib tk-card">
+    <div class="lib-top">
+      <h4>Mes tableaux</h4>
+      <button class="tk-btn tk-btn--primary" id="lib-new">Nouveau tableau</button>
+    </div>
+    <p class="lib-sub" id="lib-sub">Enregistrés dans ce navigateur.</p>
+    <div class="lib-list" id="lib-list"></div>
+    <div class="lib-foot">
+      <p class="lib-note" id="lib-note"></p>
+      <button class="tk-btn tk-btn--ghost" id="lib-close">Fermer</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Modale de confirmation ─────────────────────────────── -->
 <div class="wb-modal-bg" id="modal-bg" role="dialog" aria-modal="true">
@@ -1747,7 +1845,8 @@ $('#inp-dash').addEventListener('change', function () {
 $('#inp-snap').addEventListener('change', function () { snapOn = this.checked; });
 $('#inp-autosave').addEventListener('change', function () {
   autosaveOn = this.checked;
-  if (autosaveOn) { scheduleAutosave(); } else { clearAutosave(); }
+  if (autosaveOn) { scheduleAutosave(); }
+  else { saveTag('Sauvegarde auto désactivée', true); }
 });
 
 /* ── Panneau « Sélection » ───────────────────────────────── */
@@ -2154,6 +2253,7 @@ document.addEventListener('keydown', function (e) {
     if (k === 'x') { e.preventDefault(); copySelection(true); return; }
     if (k === 'v') { requestPaste(); return; }     // pas de preventDefault : l'événement paste doit suivre
     if (k === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (k === 'o') { e.preventDefault(); openLib(); return; }
     if (k === '0') { e.preventDefault(); var c0 = stageCenter(); zoomAt(c0.x, c0.y, 1); return; }
     if (k === '+' || k === '=') { e.preventDefault(); var c1 = stageCenter(); zoomAt(c1.x, c1.y, view.z * 1.25); return; }
     if (k === '-') { e.preventDefault(); var c2 = stageCenter(); zoomAt(c2.x, c2.y, view.z / 1.25); return; }
@@ -2168,6 +2268,7 @@ document.addEventListener('keydown', function (e) {
   }
   if (e.key === 'Escape') {
     closeCtxMenu();
+    if ($('#lib-bg').classList.contains('open')) { closeLib(); return; }
     if (drag) { cancelDrag(); }
     else if (sel.length) { clearSel(); }
     return;
@@ -3110,14 +3211,19 @@ var CTX_ICONS = {
   fit:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
 };
 var ctxMenu = $('#ctxmenu');
-function closeCtxMenu() { ctxMenu.classList.remove('open'); }
-function buildCtxMenu(items) {
-  ctxMenu.innerHTML = '';
+var moreMenu = null;
+function closeCtxMenu() {
+  ctxMenu.classList.remove('open');
+  if (moreMenu) { moreMenu.classList.remove('open'); }
+}
+/* Construit un menu (clic droit ou « plus d'actions ») dans l'élément donné. */
+function buildMenuInto(el, items) {
+  el.innerHTML = '';
   items.forEach(function (it) {
     if (it === '-') {
       var sp = document.createElement('div');
       sp.className = 'ctx-sep';
-      ctxMenu.appendChild(sp);
+      el.appendChild(sp);
       return;
     }
     var b = document.createElement('button');
@@ -3130,8 +3236,16 @@ function buildCtxMenu(items) {
       closeCtxMenu();
       it.run();
     });
-    ctxMenu.appendChild(b);
+    el.appendChild(b);
   });
+}
+function buildCtxMenu(items) { buildMenuInto(ctxMenu, items); }
+/* Place un menu dans la fenêtre sans le laisser sortir des bords. */
+function placeMenu(el, x, y) {
+  el.classList.add('open');
+  var r = el.getBoundingClientRect();
+  el.style.left = Math.max(6, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+  el.style.top  = Math.max(6, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
 }
 stage.addEventListener('contextmenu', function (e) {
   e.preventDefault();
@@ -3170,15 +3284,14 @@ stage.addEventListener('contextmenu', function (e) {
     ];
   }
   buildCtxMenu(items);
-  ctxMenu.classList.add('open');
-  var r = ctxMenu.getBoundingClientRect();
-  var x = Math.min(e.clientX, window.innerWidth - r.width - 8);
-  var y = Math.min(e.clientY, window.innerHeight - r.height - 8);
-  ctxMenu.style.left = Math.max(6, x) + 'px';
-  ctxMenu.style.top = Math.max(6, y) + 'px';
+  placeMenu(ctxMenu, e.clientX, e.clientY);
 });
 document.addEventListener('pointerdown', function (e) {
   if (ctxMenu.classList.contains('open') && !ctxMenu.contains(e.target)) { closeCtxMenu(); }
+  if (moreMenu && moreMenu.classList.contains('open') &&
+      !moreMenu.contains(e.target) && e.target !== $('#btn-more') && !$('#btn-more').contains(e.target)) {
+    closeCtxMenu();
+  }
 }, true);
 window.addEventListener('resize', closeCtxMenu);
 
@@ -3548,9 +3661,11 @@ function buildDoc() {
   };
 }
 function saveJSON() {
-  download('whiteboard-session_' + stamp() + '.json',
-           new Blob([JSON.stringify(buildDoc(), null, 2)], { type: 'application/json' }));
-  toast('Session sauvegardée (fichier JSON).');
+  var doc = buildDoc();
+  if (currentBoard) { doc.name = currentBoard.name; }
+  download((currentBoard ? slugify(currentBoard.name) : 'whiteboard') + '_' + stamp() + '.json',
+           new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
+  toast('Fichier JSON exporté.');
 }
 /* Charge un document (fichier ou sauvegarde auto) dans l'état courant. */
 function loadDoc(doc, restoreView) {
@@ -3591,72 +3706,531 @@ function importJSON(file) {
       toast('Ce fichier n’est pas une session Whiteboard.', true);
       return;
     }
-    snapshot();
-    loadDoc(doc, true);
-    toast('Session importée (Ctrl+Z pour revenir en arrière).');
+    /* L'import ne remplace jamais le tableau ouvert : il en crée un nouveau,
+       donc rien ne peut être perdu par inadvertance. */
+    var name = String(doc.name || (file.name || '').replace(/\.json$/i, '') || '').trim() || 'Tableau importé';
+    createBoard(name, doc).then(function () {
+      toast('« ' + currentBoard.name + ' » importé dans un nouveau tableau.');
+    });
   };
   reader.onerror = function () { toast('Lecture du fichier impossible.', true); };
   reader.readAsText(file);
 }
 
-/* ── Sauvegarde automatique (localStorage) ───────────────── */
-var AUTOSAVE_KEY = 'whiteboard-gft:autosave';
+/* =============================================================
+   BIBLIOTHÈQUE DE TABLEAUX (IndexedDB)
+
+   localStorage plafonne à ~5 Mo : une capture d'écran collée pèse
+   quelques centaines de kilooctets en data URL, donc une dizaine
+   d'images suffisaient à faire échouer la sauvegarde. IndexedDB offre
+   plusieurs centaines de mégaoctets, y compris en file://, et permet de
+   tenir plusieurs tableaux nommés plutôt qu'une seule session anonyme.
+
+   Trois magasins :
+     boards  {id, name, createdAt, updatedAt, bytes, thumb}  ← la liste
+     docs    {id, doc}                                        ← le contenu
+     meta    {k, v}                                           ← tableau courant
+   La liste ne lit jamais les contenus : afficher dix tableaux chargés
+   d'images ne doit pas ramener dix mégaoctets en mémoire.
+   ============================================================= */
+
+var DB_NAME = 'whiteboard-gft', DB_VERSION = 1;
+var ST_BOARDS = 'boards', ST_DOCS = 'docs', ST_META = 'meta';
+var LEGACY_KEY = 'whiteboard-gft:autosave';
+var LOCAL_FALLBACK_KEY = 'whiteboard-gft:board';
+
+var dbPromise = null;
+var currentBoard = null;      // {id, name, createdAt, updatedAt, thumb}
+var storageMode = 'idb';      // 'idb' | 'local' | 'none'
 var autosaveTimer = null;
+var lastThumbAt = 0;
+var saveTagTimer = null;
+
+function newBoardId() {
+  return 'b' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+}
+function idbOpen() {
+  if (dbPromise) { return dbPromise; }
+  dbPromise = new Promise(function (resolve, reject) {
+    if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB indisponible')); return; }
+    var rq;
+    try { rq = indexedDB.open(DB_NAME, DB_VERSION); }
+    catch (err) { reject(err); return; }
+    rq.onupgradeneeded = function () {
+      var db = rq.result;
+      if (!db.objectStoreNames.contains(ST_BOARDS)) { db.createObjectStore(ST_BOARDS, { keyPath: 'id' }); }
+      if (!db.objectStoreNames.contains(ST_DOCS))   { db.createObjectStore(ST_DOCS,   { keyPath: 'id' }); }
+      if (!db.objectStoreNames.contains(ST_META))   { db.createObjectStore(ST_META,   { keyPath: 'k' }); }
+    };
+    rq.onsuccess = function () {
+      var db = rq.result;
+      /* un autre onglet qui migre la base ne doit pas nous bloquer */
+      db.onversionchange = function () { db.close(); dbPromise = null; };
+      resolve(db);
+    };
+    rq.onerror = function () { reject(rq.error || new Error('ouverture refusée')); };
+    rq.onblocked = function () { reject(new Error('base occupée par un autre onglet')); };
+  });
+  return dbPromise;
+}
+/* Transaction courte : fn reçoit les magasins demandés et rend la requête
+   dont on veut le résultat. */
+function idbRun(stores, mode, fn) {
+  return idbOpen().then(function (db) {
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(stores, mode);
+      var list = [];
+      for (var i = 0; i < stores.length; i++) { list.push(tx.objectStore(stores[i])); }
+      var rq = fn.apply(null, list);
+      var out;
+      if (rq && typeof rq.onsuccess !== 'undefined') { rq.onsuccess = function () { out = rq.result; }; }
+      tx.oncomplete = function () { resolve(out); };
+      tx.onerror  = function () { reject(tx.error || new Error('écriture refusée')); };
+      tx.onabort  = function () { reject(tx.error || new Error('transaction annulée')); };
+    });
+  });
+}
+function boardsAll()      { return idbRun([ST_BOARDS], 'readonly',  function (b) { return b.getAll(); }); }
+function boardMeta(id)    { return idbRun([ST_BOARDS], 'readonly',  function (b) { return b.get(id); }); }
+function boardDocOf(id)   { return idbRun([ST_DOCS],   'readonly',  function (d) { return d.get(id); }); }
+function metaPut(k, v)    { return idbRun([ST_META],   'readwrite', function (m) { return m.put({ k: k, v: v }); }); }
+function metaVal(k) {
+  return idbRun([ST_META], 'readonly', function (m) { return m.get(k); })
+    .then(function (r) { return r ? r.v : null; });
+}
+function boardWrite(meta, doc) {
+  return idbRun([ST_BOARDS, ST_DOCS], 'readwrite', function (b, d) {
+    b.put(meta);
+    return d.put({ id: meta.id, doc: doc });
+  });
+}
+function boardDelete(id) {
+  return idbRun([ST_BOARDS, ST_DOCS], 'readwrite', function (b, d) {
+    b.delete(id);
+    return d.delete(id);
+  });
+}
+
+/* ── Vignette de la liste ────────────────────────────────── */
+/* Rendue directement à petite échelle : inutile de peindre un canvas de
+   8000 px pour une image de 300 px de large. */
+function makeThumb() {
+  var b = contentBBox(false);
+  if (!b) { return Promise.resolve(null); }
+  return imagesReady().then(function () {
+    var scale = Math.min(1, 300 / (b.w + 80), 220 / (b.h + 80));
+    var cv = buildExportCanvas(scale);
+    if (!cv) { return null; }
+    try { return cv.toDataURL('image/jpeg', 0.72); }
+    catch (err) { return null; }
+  }).catch(function () { return null; });
+}
+
+/* ── Indicateur d'enregistrement ─────────────────────────── */
+function saveTag(txt, isErr) {
+  var el = $('#save-tag');
+  if (!el) { return; }
+  el.textContent = txt;
+  el.classList.toggle('err', !!isErr);
+  clearTimeout(saveTagTimer);
+  if (txt && !isErr) {
+    saveTagTimer = setTimeout(function () { el.textContent = ''; }, 2200);
+  }
+}
+
+/* ── Enregistrement du tableau courant ───────────────────── */
 function docIsEmpty() {
   return !state.diagram.length && !state.strokes.length && !state.texts.length && !state.annos.length;
 }
 function scheduleAutosave() {
-  if (!autosaveOn) { return; }
+  if (!autosaveOn || !currentBoard) { return; }
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(writeAutosave, 700);
+  autosaveTimer = setTimeout(function () { persistBoard(false); }, 600);
 }
-var autosaveWarned = false;
-function writeAutosave() {
-  if (!autosaveOn) { return; }
-  try {
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildDoc()));
-    autosaveWarned = false;
-  } catch (err) {
-    /* quota atteint (souvent à cause des images) ou stockage refusé : on le
-       dit une fois, la sauvegarde manuelle reste disponible */
-    if (!autosaveWarned) {
-      autosaveWarned = true;
-      toast('Tableau trop volumineux pour la sauvegarde automatique — utilisez « Sauver ».', true);
+function persistBoard(force) {
+  if (!currentBoard || storageMode === 'none') { return Promise.resolve(false); }
+  if (!autosaveOn && !force) { return Promise.resolve(false); }
+  clearTimeout(autosaveTimer);
+  var doc = buildDoc();
+  var json = JSON.stringify(doc);
+  var now = Date.now();
+  var meta = {
+    id: currentBoard.id, name: currentBoard.name,
+    createdAt: currentBoard.createdAt || now, updatedAt: now,
+    bytes: json.length, thumb: currentBoard.thumb || null
+  };
+  /* la vignette coûte un rendu : au plus une fois toutes les 10 s */
+  var thumbStep = (force || now - lastThumbAt > 10000)
+    ? makeThumb().then(function (t) { if (t) { meta.thumb = t; currentBoard.thumb = t; lastThumbAt = Date.now(); } })
+    : Promise.resolve();
+  return thumbStep.then(function () {
+    if (storageMode === 'local') {
+      try {
+        localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify({ meta: meta, doc: doc }));
+        currentBoard.updatedAt = now;
+        saveTag('Enregistré');
+        return true;
+      } catch (err) {
+        saveTag('Non enregistré — trop volumineux', true);
+        return false;
+      }
     }
+    return boardWrite(meta, doc).then(function () {
+      currentBoard.updatedAt = now;
+      saveTag('Enregistré');
+      return true;
+    });
+  }).catch(function (err) {
+    saveTag('Non enregistré', true);
+    console.warn('enregistrement impossible', err);
+    return false;
+  });
+}
+/* Moments fiables pour écrire : IndexedDB étant asynchrone, une écriture
+   lancée dans beforeunload peut ne pas aboutir — on écrit aussi dès que
+   l'onglet passe en arrière-plan. */
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') { persistBoard(false); }
+});
+window.addEventListener('pagehide', function () { persistBoard(false); });
+window.addEventListener('beforeunload', function () { persistBoard(false); });
+
+/* ── Ouverture / création / bascule de tableau ───────────── */
+function setBoardName(name) {
+  if (!currentBoard) { return; }
+  currentBoard.name = name;
+  $('#board-name').value = name;
+}
+/* Changer de tableau remet l'historique à zéro : un Ctrl+Z ne doit jamais
+   ramener le contenu du tableau précédent dans celui-ci. */
+function resetHistory() {
+  undoStack.length = 0;
+  redoStack.length = 0;
+  liveEdit = null;
+  updateUndoBtns();
+}
+function adoptBoard(meta, doc) {
+  currentBoard = { id: meta.id, name: meta.name || 'Sans titre',
+                   createdAt: meta.createdAt || Date.now(), updatedAt: meta.updatedAt || Date.now(),
+                   thumb: meta.thumb || null };
+  setBoardName(currentBoard.name);
+  imgCache = {};
+  resetHistory();
+  loadDoc(doc || { state: { diagram: [], strokes: [], texts: [], annos: [] } }, true);
+  lastThumbAt = 0;
+  if (storageMode === 'idb') { metaPut('current', currentBoard.id).catch(function () {}); }
+}
+function openBoard(id) {
+  if (currentBoard && currentBoard.id === id) { closeLib(); return Promise.resolve(); }
+  return persistBoard(false).then(function () {
+    return Promise.all([boardMeta(id), boardDocOf(id)]);
+  }).then(function (res) {
+    if (!res[0]) { toast('Tableau introuvable.', true); return; }
+    adoptBoard(res[0], res[1] ? res[1].doc : null);
+    closeLib();
+    toast('« ' + currentBoard.name + ' » ouvert.');
+  }).catch(function (err) {
+    console.warn(err);
+    toast('Ouverture impossible.', true);
+  });
+}
+function defaultBoardName() {
+  var d = new Date();
+  return 'Tableau du ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ' ' + pad2(d.getHours()) + 'h' + pad2(d.getMinutes());
+}
+/* Crée un tableau. doc = contenu initial (import JSON), sinon vide. */
+function createBoard(name, doc) {
+  var before = currentBoard;
+  var step = before ? persistBoard(false) : Promise.resolve();
+  return step.then(function () {
+    var now = Date.now();
+    var meta = { id: newBoardId(), name: name || defaultBoardName(),
+                 createdAt: now, updatedAt: now, bytes: 0, thumb: null };
+    adoptBoard(meta, doc || null);
+    return persistBoard(true);
+  });
+}
+function duplicateBoard(id) {
+  return Promise.all([boardMeta(id), boardDocOf(id)]).then(function (res) {
+    if (!res[0]) { return; }
+    var now = Date.now();
+    var meta = { id: newBoardId(), name: (res[0].name || 'Sans titre') + ' (copie)',
+                 createdAt: now, updatedAt: now, bytes: res[0].bytes || 0, thumb: res[0].thumb || null };
+    return boardWrite(meta, res[1] ? res[1].doc : { state: { diagram: [], strokes: [], texts: [], annos: [] } })
+      .then(function () { toast('Copie créée.'); return renderLib(); });
+  }).catch(function () { toast('Duplication impossible.', true); });
+}
+function renameBoard(id, name) {
+  var clean = String(name || '').trim().slice(0, 80) || 'Sans titre';
+  if (currentBoard && currentBoard.id === id) {
+    setBoardName(clean);
+    return persistBoard(true).then(renderLib);
   }
+  return boardMeta(id).then(function (meta) {
+    if (!meta) { return; }
+    meta.name = clean;
+    meta.updatedAt = meta.updatedAt || Date.now();
+    return idbRun([ST_BOARDS], 'readwrite', function (b) { return b.put(meta); }).then(renderLib);
+  }).catch(function () { toast('Renommage impossible.', true); });
 }
-function clearAutosave() {
-  try { localStorage.removeItem(AUTOSAVE_KEY); } catch (err) { /* rien à faire */ }
+function deleteBoard(id, name) {
+  return confirmModal('Supprimer « ' + name + '… » ?',
+    'Ce tableau et son contenu seront définitivement effacés de ce navigateur. Cette action est irréversible — exportez-le d’abord si vous voulez le garder.',
+    'Supprimer').then(function (ok) {
+    if (!ok) { return; }
+    return boardDelete(id).then(function () {
+      toast('Tableau supprimé.');
+      if (currentBoard && currentBoard.id === id) {
+        /* on ne laisse jamais l'outil sans tableau courant */
+        return boardsAll().then(function (all) {
+          all = (all || []).sort(byUpdated);
+          if (all.length) { return openBoard(all[0].id).then(renderLib); }
+          return createBoard(null, null).then(renderLib);
+        });
+      }
+      return renderLib();
+    });
+  }).catch(function () { toast('Suppression impossible.', true); });
 }
-function restoreAutosave() {
+function exportBoard(id) {
+  return boardDocOf(id).then(function (rec) {
+    return boardMeta(id).then(function (meta) {
+      if (!rec || !meta) { return; }
+      var doc = rec.doc;
+      doc.name = meta.name;
+      download(slugify(meta.name) + '_' + stamp() + '.json',
+               new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
+      toast('Fichier JSON exporté.');
+    });
+  }).catch(function () { toast('Export impossible.', true); });
+}
+/* Nom de fichier lisible tiré du nom du tableau. */
+function slugify(s) {
+  var t = String(s || '').toLowerCase();
+  /* \u0300-\u036f = diacritiques combinants : « Rétro » donne « retro » */
+  if (t.normalize) { t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  t = t.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  return t || 'tableau';
+}
+function byUpdated(a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); }
+
+/* ── Migration depuis l'ancienne sauvegarde localStorage ─── */
+function migrateLegacy() {
   var raw = null;
-  try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (err) { return false; }
-  if (!raw) { return false; }
-  var doc;
-  try { doc = JSON.parse(raw); } catch (err) { return false; }
-  if (!doc || doc.app !== DOC_APP || !doc.state) { return false; }
-  loadDoc(doc, true);
-  if (docIsEmpty()) { return false; }
-  return true;
+  try { raw = localStorage.getItem(LEGACY_KEY); } catch (err) { return Promise.resolve(false); }
+  if (!raw) { return Promise.resolve(false); }
+  var doc = null;
+  try { doc = JSON.parse(raw); } catch (err) { doc = null; }
+  var clear = function () { try { localStorage.removeItem(LEGACY_KEY); } catch (err) {} };
+  if (!doc || doc.app !== DOC_APP || !doc.state) { clear(); return Promise.resolve(false); }
+  var empty = !((doc.state.diagram || []).length || (doc.state.strokes || []).length ||
+                (doc.state.texts || []).length || (doc.state.annos || []).length);
+  if (empty) { clear(); return Promise.resolve(false); }
+  var now = Date.now();
+  var meta = { id: newBoardId(), name: 'Tableau repris', createdAt: now, updatedAt: now,
+               bytes: raw.length, thumb: null };
+  return boardWrite(meta, doc).then(function () {
+    return metaPut('current', meta.id);
+  }).then(function () { clear(); return true; }).catch(function () { return false; });
 }
-window.addEventListener('beforeunload', function () {
-  clearTimeout(autosaveTimer);
-  writeAutosave();
+
+/* ── Amorçage du stockage ────────────────────────────────── */
+function bootStorage() {
+  return idbOpen().then(function () {
+    storageMode = 'idb';
+    return migrateLegacy();
+  }).then(function (migrated) {
+    return metaVal('current').then(function (id) {
+      return id ? Promise.all([boardMeta(id), boardDocOf(id)]) : null;
+    }).then(function (res) {
+      if (res && res[0]) {
+        adoptBoard(res[0], res[1] ? res[1].doc : null);
+        if (migrated) { toast('Session précédente reprise dans « Tableau repris ».'); }
+        else if (!docIsEmpty()) { toast('« ' + currentBoard.name + ' » restauré.'); }
+        return;
+      }
+      return boardsAll().then(function (all) {
+        all = (all || []).sort(byUpdated);
+        if (all.length) {
+          return boardDocOf(all[0].id).then(function (d) {
+            adoptBoard(all[0], d ? d.doc : null);
+            if (!docIsEmpty()) { toast('« ' + currentBoard.name + ' » restauré.'); }
+          });
+        }
+        return createBoard(null, null);
+      });
+    });
+  }).catch(function (err) {
+    /* IndexedDB refusé (navigation privée, réglages restrictifs) : on retombe
+       sur un tableau unique en localStorage, avec ses limites assumées. */
+    console.warn('IndexedDB indisponible, repli localStorage', err);
+    storageMode = 'local';
+    var raw = null;
+    try { raw = localStorage.getItem(LOCAL_FALLBACK_KEY) || localStorage.getItem(LEGACY_KEY); } catch (e2) {}
+    var parsed = null;
+    try { parsed = raw ? JSON.parse(raw) : null; } catch (e3) { parsed = null; }
+    var doc = parsed && parsed.doc ? parsed.doc : (parsed && parsed.state ? parsed : null);
+    var meta = (parsed && parsed.meta) ? parsed.meta
+             : { id: newBoardId(), name: 'Tableau local', createdAt: Date.now(), updatedAt: Date.now() };
+    adoptBoard(meta, doc);
+    if (!docIsEmpty()) { toast('Tableau restauré (stockage limité de ce navigateur).'); }
+  });
+}
+
+/* ── Modale « Mes tableaux » ─────────────────────────────── */
+var LIB_ICONS = {
+  open:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+  rename: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
+  dup:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  export: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
+  del:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+};
+function humanBytes(n) {
+  if (!n) { return '—'; }
+  if (n < 1024) { return n + ' o'; }
+  if (n < 1024 * 1024) { return Math.round(n / 1024) + ' Ko'; }
+  return (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' Mo';
+}
+function humanAgo(ts) {
+  if (!ts) { return 'jamais'; }
+  var s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) { return 'à l’instant'; }
+  if (s < 3600) { return 'il y a ' + Math.round(s / 60) + ' min'; }
+  if (s < 86400) { return 'il y a ' + Math.round(s / 3600) + ' h'; }
+  var d = new Date(ts);
+  return 'le ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+}
+function libRow(meta) {
+  var row = document.createElement('div');
+  row.className = 'lib-row' + (currentBoard && currentBoard.id === meta.id ? ' is-current' : '');
+
+  var th = document.createElement('div');
+  th.className = 'lib-thumb';
+  if (meta.thumb) { th.style.backgroundImage = 'url(' + meta.thumb + ')'; }
+  else { th.textContent = 'VIDE'; }
+  row.appendChild(th);
+
+  var main = document.createElement('div');
+  main.className = 'lib-main';
+  var nameInput = document.createElement('input');
+  nameInput.className = 'lib-name';
+  nameInput.value = meta.name || 'Sans titre';
+  nameInput.readOnly = true;
+  nameInput.addEventListener('click', function () { if (nameInput.readOnly) { openBoard(meta.id); } });
+  nameInput.addEventListener('blur', function () {
+    if (nameInput.readOnly) { return; }
+    nameInput.readOnly = true;
+    if (nameInput.value.trim() !== (meta.name || '')) { renameBoard(meta.id, nameInput.value); }
+  });
+  nameInput.addEventListener('keydown', function (ev) {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { nameInput.blur(); }
+    if (ev.key === 'Escape') { nameInput.value = meta.name || ''; nameInput.readOnly = true; nameInput.blur(); }
+  });
+  main.appendChild(nameInput);
+  var sub = document.createElement('div');
+  sub.className = 'lib-meta';
+  sub.textContent = 'modifié ' + humanAgo(meta.updatedAt) + ' · ' + humanBytes(meta.bytes);
+  main.appendChild(sub);
+  row.appendChild(main);
+
+  var acts = document.createElement('div');
+  acts.className = 'lib-acts';
+  var mk = function (icon, title, cls, run) {
+    var b = document.createElement('button');
+    b.className = 'lib-btn' + (cls ? ' ' + cls : '');
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.innerHTML = LIB_ICONS[icon];
+    b.addEventListener('click', run);
+    acts.appendChild(b);
+    return b;
+  };
+  mk('open', 'Ouvrir', '', function () { openBoard(meta.id); })
+    .disabled = !!(currentBoard && currentBoard.id === meta.id);
+  mk('rename', 'Renommer', '', function () {
+    nameInput.readOnly = false;
+    nameInput.focus();
+    nameInput.select();
+  });
+  mk('dup', 'Dupliquer', '', function () { duplicateBoard(meta.id); });
+  mk('export', 'Exporter en JSON', '', function () { exportBoard(meta.id); });
+  mk('del', 'Supprimer', 'lib-btn--danger', function () { deleteBoard(meta.id, (meta.name || 'Sans titre').slice(0, 24)); });
+  row.appendChild(acts);
+  return row;
+}
+function renderLib() {
+  var list = $('#lib-list');
+  if (storageMode !== 'idb') {
+    list.innerHTML = '<p class="lib-empty">Ce navigateur refuse le stockage local étendu (navigation privée ?).<br>' +
+                     'Un seul tableau est conservé ici — utilisez « Exporter » pour garder vos travaux.</p>';
+    $('#lib-sub').textContent = 'Stockage restreint.';
+    $('#lib-note').textContent = '';
+    return Promise.resolve();
+  }
+  return boardsAll().then(function (all) {
+    all = (all || []).sort(byUpdated);
+    list.innerHTML = '';
+    if (!all.length) {
+      list.innerHTML = '<p class="lib-empty">Aucun tableau enregistré pour le moment.</p>';
+    } else {
+      for (var i = 0; i < all.length; i++) { list.appendChild(libRow(all[i])); }
+    }
+    var total = all.reduce(function (s, m) { return s + (m.bytes || 0); }, 0);
+    $('#lib-sub').textContent = all.length
+      ? all.length + (all.length > 1 ? ' tableaux enregistrés dans ce navigateur · ' : ' tableau enregistré dans ce navigateur · ') + humanBytes(total)
+      : 'Enregistrés dans ce navigateur.';
+    return quotaNote();
+  }).catch(function (err) {
+    console.warn(err);
+    list.innerHTML = '<p class="lib-empty">Lecture de la bibliothèque impossible.</p>';
+  });
+}
+function quotaNote() {
+  var el = $('#lib-note');
+  var base = 'Les tableaux vivent dans ce navigateur, sur ce poste. Pour archiver ou envoyer à un collègue, utilisez « Exporter ».';
+  el.textContent = base;
+  if (!navigator.storage || !navigator.storage.estimate) { return; }
+  return navigator.storage.estimate().then(function (est) {
+    if (!est || !est.quota) { return; }
+    el.textContent = base + ' Espace utilisé : ' + humanBytes(est.usage || 0) + ' sur ' + humanBytes(est.quota) + ' disponibles.';
+  }).catch(function () {});
+}
+function openLib() {
+  $('#lib-bg').classList.add('open');
+  persistBoard(true).then(renderLib);
+}
+function closeLib() { $('#lib-bg').classList.remove('open'); }
+$('#btn-lib').addEventListener('click', openLib);
+$('#lib-close').addEventListener('click', closeLib);
+$('#lib-bg').addEventListener('click', function (e) { if (e.target === this) { closeLib(); } });
+$('#lib-new').addEventListener('click', function () {
+  createBoard(null, null).then(function () { closeLib(); toast('Nouveau tableau créé.'); });
+});
+$('#btn-new').addEventListener('click', function () {
+  createBoard(null, null).then(function () { toast('Nouveau tableau créé.'); });
+});
+$('#board-name').addEventListener('change', function () {
+  renameBoard(currentBoard ? currentBoard.id : null, this.value);
+});
+$('#board-name').addEventListener('keydown', function (e) {
+  e.stopPropagation();
+  if (e.key === 'Enter') { this.blur(); }
 });
 
 /* ── Effacer tout ────────────────────────────────────────── */
 function clearAll() {
   confirmModal(
-    'Effacer tout ?',
-    'Toutes les couches (diagramme, dessin libre, texte, annotations) seront vidées. Ctrl+Z permettra de revenir en arrière.',
-    'Effacer'
+    'Vider ce tableau ?',
+    'Toutes les couches (diagramme, images, dessin libre, texte, annotations) de ce tableau seront vidées. Ctrl+Z permettra de revenir en arrière. Les autres tableaux ne sont pas touchés.',
+    'Vider'
   ).then(function (ok) {
     if (!ok) { return; }
     snapshot();
     state = { diagram: [], strokes: [], texts: [], annos: [] };
     clearSel();
     renderAll();
-    toast('Tableau effacé.');
+    toast('Tableau vidé.');
   });
 }
 
@@ -3664,11 +4238,39 @@ function clearAll() {
 $('#btn-undo').addEventListener('click', undo);
 $('#btn-redo').addEventListener('click', redo);
 $('#btn-copy').addEventListener('click', copyImage);
-$('#btn-png').addEventListener('click', exportPNG);
-$('#btn-svg').addEventListener('click', exportSVG);
-$('#btn-save').addEventListener('click', saveJSON);
-$('#btn-clear').addEventListener('click', clearAll);
-$('#btn-load').addEventListener('click', function () { $('#file-json').click(); });
+
+/* Menu « plus d'actions » : exports, import, vidage. Ils étaient six boutons
+   de plus dans la topbar, qui débordait dès 1440 px une fois la bibliothèque
+   ajoutée. */
+CTX_ICONS.png = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.9-3.9a2 2 0 0 0-2.8 0L6 19"/></svg>';
+CTX_ICONS.json = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>';
+CTX_ICONS.up   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+CTX_ICONS.img  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.6-4.6a2 2 0 0 0-2.8 0L4 20"/></svg>';
+$('#btn-more').addEventListener('click', function (e) {
+  e.stopPropagation();
+  if (!moreMenu) {
+    moreMenu = document.createElement('div');
+    moreMenu.className = 'wb-ctx';
+    moreMenu.setAttribute('role', 'menu');
+    document.body.appendChild(moreMenu);
+  }
+  if (moreMenu.classList.contains('open')) { closeCtxMenu(); return; }
+  buildMenuInto(moreMenu, [
+    { label: 'Insérer une image…', icon: 'img', key: 'I', run: function () { $('#file-img').click(); } },
+    '-',
+    { label: 'Exporter en PNG', icon: 'png', run: exportPNG },
+    { label: 'Exporter le diagramme en SVG', icon: 'export', run: exportSVG },
+    { label: 'Exporter ce tableau en JSON', icon: 'json', run: saveJSON },
+    '-',
+    { label: 'Importer un fichier JSON…', icon: 'up', run: function () { $('#file-json').click(); } },
+    '-',
+    { label: 'Vider ce tableau', icon: 'del', danger: true, run: clearAll }
+  ]);
+  var r = this.getBoundingClientRect();
+  moreMenu.classList.add('open');
+  var mr = moreMenu.getBoundingClientRect();
+  placeMenu(moreMenu, r.right - mr.width, r.bottom + 6);
+});
 $('#file-json').addEventListener('change', function () {
   if (this.files && this.files[0]) { importJSON(this.files[0]); }
   this.value = '';
@@ -3698,9 +4300,7 @@ applyView();
 updateUndoBtns();
 refreshSelPanel();
 renderAll();
-if (restoreAutosave()) {
-  toast('Session précédente restaurée.');
-}
+bootStorage();
 </script>
 </body>
 </html>
