@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Whiteboard — Agile Toolkit</title>
-<meta name="description" content="Tableau blanc hybride : diagrammes de processus structurés et dessin libre à main levée, pour Scrum Masters et coachs agiles.">
+<meta name="description" content="Tableau blanc hybride : diagrammes de processus structurés, pense-bêtes et dessin libre à main levée, pour Scrum Masters et coachs agiles.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* =============================================================
-   Whiteboard GFT — v1
+   Whiteboard GFT — v2
    Architecture en couches (bas → haut) :
      1. Fond (grille)   div CSS         — toggle visibilité
      2. Diagramme       SVG (objets)    — éditable
-     3. Dessin libre    canvas (pixels) — gomme / undo
+     3. Dessin libre    canvas (pixels) — traits sélectionnables
      4. Texte           SVG <text>      — éditable
      5. Annotations     SVG (objets)    — éditable
    Toutes les couches ont pointer-events:none : la scène (#stage)
@@ -142,7 +142,7 @@ svg.wb-layer text { user-select: none; }
 
 /* ── Panneau droit ───────────────────────────────────────── */
 .wb-panel {
-  width: 248px; flex-shrink: 0; z-index: 30;
+  width: 258px; flex-shrink: 0; z-index: 30;
   background: var(--white); border-left: 1.5px solid var(--border);
   overflow-y: auto; padding: 14px;
   display: flex; flex-direction: column; gap: 18px;
@@ -153,19 +153,29 @@ svg.wb-layer text { user-select: none; }
   display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
 }
 .wb-panel h3::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.wb-panel section.collapsed { display: none; }
 
 /* Options d'outil */
 .opt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .opt-row:last-child { margin-bottom: 0; }
 .opt-lbl { font-size: 11px; font-weight: 600; color: var(--muted); width: 62px; flex-shrink: 0; }
-.swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+/* Les nuanciers prennent toute la largeur du panneau : libellé au-dessus,
+   huit pastilles sur une seule ligne (sinon elles débordent). */
+.opt-row--stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.opt-row--stack .opt-lbl { width: auto; }
+.swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
 .swatch {
-  width: 22px; height: 22px; border-radius: 5px; cursor: pointer;
+  width: 100%; aspect-ratio: 1 / 1; border-radius: 5px; cursor: pointer;
   border: 1.5px solid var(--border); padding: 0; transition: var(--ease);
-  position: relative;
+  position: relative; overflow: hidden;
 }
 .swatch:hover { transform: scale(1.12); }
 .swatch.active { outline: 2px solid var(--accent); outline-offset: 1.5px; }
+.swatch.is-none { background: var(--white); }
+.swatch.is-none::after {
+  content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 1.5px;
+  background: var(--red); transform: rotate(-45deg);
+}
 .wb-range { flex: 1; accent-color: var(--accent); min-width: 0; }
 .wb-rangeval { font-family: var(--font-mono); font-size: 10px; color: var(--muted); width: 30px; text-align: right; }
 .wb-select {
@@ -176,6 +186,38 @@ svg.wb-layer text { user-select: none; }
 .opt-group { display: none; }
 .opt-group.shown { display: block; }
 .opt-note { font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+
+/* Actions sur la sélection */
+.sel-count {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .4px;
+  color: var(--muted); margin-bottom: 9px;
+}
+.sel-count b { color: var(--accent); font-weight: 500; }
+.sel-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.sel-btn {
+  flex: 1 1 auto; min-width: 0; padding: 6px 8px;
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--white); color: var(--navy); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  transition: var(--ease); white-space: nowrap;
+}
+.sel-btn:hover:not(:disabled) { border-color: var(--muted); background: var(--bg); }
+.sel-btn:disabled { opacity: .38; cursor: default; }
+.sel-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.sel-btn--danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+.align-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.align-grid .sel-btn { padding: 6px 0; }
+
+/* Cases à cocher de réglage */
+.wb-check {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; color: var(--navy);
+  user-select: none; margin-bottom: 9px;
+}
+.wb-check:last-child { margin-bottom: 0; }
+.wb-check input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.wb-check .kbd { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: var(--muted); font-weight: 400; }
 
 /* Panneau de couches */
 .layer-row {
@@ -207,6 +249,27 @@ svg.wb-layer text { user-select: none; }
   align-items: center; justify-content: center;
 }
 .wb-panel-toggle svg { width: 17px; height: 17px; }
+
+/* ── Menu contextuel ─────────────────────────────────────── */
+.wb-ctx {
+  position: fixed; z-index: 95; min-width: 208px; display: none;
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-hover); padding: 5px;
+}
+.wb-ctx.open { display: block; }
+.wb-ctx button {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border: none; background: transparent; border-radius: 4px;
+  font-family: var(--font); font-size: 12.5px; font-weight: 600; color: var(--navy);
+  cursor: pointer; text-align: left;
+}
+.wb-ctx button svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted); }
+.wb-ctx button .k { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); font-weight: 400; }
+.wb-ctx button:hover:not(:disabled) { background: var(--bg); }
+.wb-ctx button:disabled { opacity: .35; cursor: default; }
+.wb-ctx button.danger:hover:not(:disabled) { background: var(--red-bg); color: var(--red); }
+.wb-ctx button.danger:hover:not(:disabled) svg { color: var(--red); }
+.wb-ctx .ctx-sep { height: 1px; background: var(--border); margin: 4px 2px; }
 
 /* ── Toast ───────────────────────────────────────────────── */
 #toast {
@@ -262,7 +325,7 @@ svg.wb-layer text { user-select: none; }
     </a>
     <span class="sep" aria-hidden="true"></span>
     <span class="tool-name">Whiteboard</span>
-    <span class="version">v1.0</span>
+    <span class="version">v2.0</span>
 
     <div class="wb-actions">
       <div class="grp">
@@ -307,10 +370,10 @@ svg.wb-layer text { user-select: none; }
 
     <!-- ── Barre d'outils gauche ──────────────────────────── -->
     <nav class="wb-toolbar" aria-label="Outils">
-      <button class="wb-tool active" data-tool="select" title="Sélection — déplacer, redimensionner (V)">
+      <button class="wb-tool active" data-tool="select" title="Sélection — cliquer, Maj+clic pour ajouter, glisser dans le vide pour encadrer (V)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l7 17 2.5-7.5L21 10z"/></svg>
       </button>
-      <button class="wb-tool" data-tool="pan" title="Déplacer la vue (H — ou glisser avec la molette)">
+      <button class="wb-tool" data-tool="pan" title="Déplacer la vue (H — ou Espace, ou glisser avec la molette)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V7a2 2 0 0 0-4 0v4"/><path d="M14 10V5a2 2 0 0 0-4 0v6"/><path d="M10 10.5V7a2 2 0 0 0-4 0v7"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
       </button>
       <div class="tb-sep" aria-hidden="true"></div>
@@ -322,6 +385,9 @@ svg.wb-layer text { user-select: none; }
       </button>
       <button class="wb-tool" data-tool="ellipse" title="Cercle / ovale — début ou fin (O)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>
+      </button>
+      <button class="wb-tool" data-tool="note" title="Pense-bête — post-it de rétro ou d'atelier (N)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 4h16v10l-6 6H4z"/><path d="M20 14h-6v6"/></svg>
       </button>
       <button class="wb-tool" data-tool="connector" title="Connecteur — relier deux formes, suit leurs déplacements (C)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="15" y="15" width="7" height="7" rx="1.5"/><path d="M8.5 8.5 13 13"/><path d="M13 9.5V13H9.5"/></svg>
@@ -365,25 +431,31 @@ svg.wb-layer text { user-select: none; }
       </button>
 
       <div class="wb-zoomctl">
-        <button id="btn-zoom-out" title="Zoom arrière">−</button>
-        <span class="zval" id="zoom-val" title="Réinitialiser le zoom à 100 %">100%</span>
-        <button id="btn-zoom-in" title="Zoom avant">+</button>
-        <button id="btn-zoom-fit" title="Ajuster la vue au contenu">
+        <button id="btn-zoom-out" title="Zoom arrière (Ctrl+−)">−</button>
+        <span class="zval" id="zoom-val" title="Réinitialiser le zoom à 100 % (Ctrl+0)">100%</span>
+        <button id="btn-zoom-in" title="Zoom avant (Ctrl++)">+</button>
+        <button id="btn-zoom-fit" title="Ajuster la vue au contenu (Maj+1) — à la sélection (Maj+2)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
         </button>
       </div>
 
-      <div class="wb-hint" id="hint">Sélection : cliquez un objet pour le déplacer, double-clic pour éditer son texte.</div>
+      <div class="wb-hint" id="hint">Sélection : cliquez un objet, Maj+clic pour en ajouter, glissez dans le vide pour encadrer.</div>
     </div>
 
     <!-- ── Panneau droit ──────────────────────────────────── -->
     <aside class="wb-panel" id="panel">
       <section>
-        <h3>Options de l'outil</h3>
+        <h3>Options</h3>
         <div class="opt-group" id="opt-color">
-          <div class="opt-row">
-            <span class="opt-lbl">Couleur</span>
+          <div class="opt-row opt-row--stack">
+            <span class="opt-lbl" id="color-lbl">Trait</span>
             <div class="swatches" id="swatches"></div>
+          </div>
+        </div>
+        <div class="opt-group" id="opt-fill">
+          <div class="opt-row opt-row--stack">
+            <span class="opt-lbl">Remplissage</span>
+            <div class="swatches" id="fill-swatches"></div>
           </div>
         </div>
         <div class="opt-group" id="opt-width">
@@ -397,6 +469,7 @@ svg.wb-layer text { user-select: none; }
           <div class="opt-row">
             <span class="opt-lbl">Taille</span>
             <select class="wb-select" id="inp-fontsize">
+              <option value="11">11 px</option>
               <option value="12">12 px</option>
               <option value="14">14 px</option>
               <option value="16" selected>16 px</option>
@@ -407,7 +480,71 @@ svg.wb-layer text { user-select: none; }
             </select>
           </div>
         </div>
+        <div class="opt-group" id="opt-dash">
+          <label class="wb-check"><input type="checkbox" id="inp-dash"> Trait pointillé</label>
+        </div>
         <p class="opt-note" id="opt-note"></p>
+      </section>
+
+      <section id="sec-selection">
+        <h3>Sélection</h3>
+        <p class="sel-count" id="sel-count">Aucun objet sélectionné.</p>
+        <div class="sel-actions">
+          <button class="sel-btn" id="btn-sel-dup" title="Dupliquer (Ctrl+D)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Dupliquer
+          </button>
+          <button class="sel-btn sel-btn--danger" id="btn-sel-del" title="Supprimer (Suppr)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Supprimer
+          </button>
+        </div>
+        <div class="sel-actions">
+          <button class="sel-btn" id="btn-sel-front" title="Amener au premier plan (Ctrl+Maj+↑)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M4 21h16"/></svg>
+            Devant
+          </button>
+          <button class="sel-btn" id="btn-sel-back" title="Envoyer à l'arrière-plan (Ctrl+Maj+↓)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8"/><path d="m7 16 5 5 5-5"/><path d="M4 3h16"/></svg>
+            Derrière
+          </button>
+        </div>
+        <div class="align-grid" id="align-grid">
+          <button class="sel-btn" data-align="left" title="Aligner à gauche">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 3v18"/><path d="M8 7h9"/><path d="M8 17h5"/></svg>
+          </button>
+          <button class="sel-btn" data-align="hcenter" title="Centrer horizontalement">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18"/><path d="M7 7h10"/><path d="M9 17h6"/></svg>
+          </button>
+          <button class="sel-btn" data-align="right" title="Aligner à droite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 3v18"/><path d="M7 7h9"/><path d="M11 17h5"/></svg>
+          </button>
+          <button class="sel-btn" data-align="dist-h" title="Répartir horizontalement (3 objets ou plus)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4v16"/><path d="M20 4v16"/><path d="M12 8v8"/></svg>
+          </button>
+          <button class="sel-btn" data-align="top" title="Aligner en haut">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4h18"/><path d="M7 8v9"/><path d="M17 8v5"/></svg>
+          </button>
+          <button class="sel-btn" data-align="vcenter" title="Centrer verticalement">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><path d="M7 7v10"/><path d="M17 9v6"/></svg>
+          </button>
+          <button class="sel-btn" data-align="bottom" title="Aligner en bas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M7 7v9"/><path d="M17 11v5"/></svg>
+          </button>
+          <button class="sel-btn" data-align="dist-v" title="Répartir verticalement (3 objets ou plus)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16"/><path d="M4 20h16"/><path d="M8 12h8"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Réglages</h3>
+        <label class="wb-check" title="Aligne positions et tailles sur un pas de 10 px. Maintenir Ctrl pendant le glissement pour l'ignorer.">
+          <input type="checkbox" id="inp-snap" checked> Aimanter à la grille <span class="kbd">Ctrl = libre</span>
+        </label>
+        <label class="wb-check" title="Enregistre le tableau dans ce navigateur et le restaure à la prochaine ouverture.">
+          <input type="checkbox" id="inp-autosave" checked> Sauvegarde automatique
+        </label>
       </section>
 
       <section>
@@ -449,18 +586,28 @@ svg.wb-layer text { user-select: none; }
         <h3>Raccourcis</h3>
         <p class="opt-note">
           <strong>V</strong> sélection · <strong>H</strong> main · <strong>R/D/O</strong> formes ·
-          <strong>C</strong> connecteur · <strong>P</strong> crayon · <strong>S</strong> surligneur ·
-          <strong>E</strong> gomme · <strong>T</strong> texte · <strong>A</strong> flèche ·
-          <strong>Q</strong> emphase<br>
+          <strong>N</strong> pense-bête · <strong>C</strong> connecteur · <strong>P</strong> crayon ·
+          <strong>S</strong> surligneur · <strong>E</strong> gomme · <strong>T</strong> texte ·
+          <strong>A</strong> flèche · <strong>Q</strong> emphase<br>
           <strong>Ctrl+Z / Ctrl+Y</strong> annuler / rétablir ·
-          <strong>Suppr</strong> supprimer la sélection ·
-          <strong>Échap</strong> désélectionner ·
-          molette : zoom · glisser-molette : déplacer la vue
+          <strong>Ctrl+C / X / V</strong> copier / couper / coller ·
+          <strong>Ctrl+D</strong> dupliquer · <strong>Ctrl+A</strong> tout sélectionner ·
+          <strong>Suppr</strong> supprimer · <strong>Échap</strong> désélectionner<br>
+          <strong>Entrée / F2</strong> éditer le texte · <strong>Flèches</strong> déplacer
+          (<strong>Maj</strong> = pas large) · <strong>Ctrl+Maj+↑/↓</strong> premier / arrière-plan<br>
+          <strong>Maj+clic</strong> ajouter à la sélection · <strong>Alt+glisser</strong> dupliquer ·
+          <strong>Maj+glisser</strong> (poignée) conserver les proportions<br>
+          <strong>Maj+1</strong> ajuster au contenu · <strong>Maj+2</strong> ajuster à la sélection ·
+          <strong>Espace</strong> ou molette pressée : déplacer la vue · molette : zoom ·
+          <strong>Clic droit</strong> : menu
         </p>
       </section>
     </aside>
   </div>
 </div>
+
+<!-- ── Menu contextuel ────────────────────────────────────── -->
+<div class="wb-ctx" id="ctxmenu" role="menu"></div>
 
 <!-- ── Modale de confirmation ─────────────────────────────── -->
 <div class="wb-modal-bg" id="modal-bg" role="dialog" aria-modal="true">
@@ -479,7 +626,7 @@ svg.wb-layer text { user-select: none; }
 <script>
 'use strict';
 /* =============================================================
-   ÉTAT, COUCHES, HISTORIQUE, GÉOMÉTRIE, RENDU
+   ÉTAT, COUCHES, SÉLECTION, HISTORIQUE, GÉOMÉTRIE
    ============================================================= */
 
 var $ = function (sel) { return document.querySelector(sel); };
@@ -497,8 +644,9 @@ var LAYERS = {
 
 /* ── État document (sérialisable en JSON) ────────────────── */
 var state = {
-  diagram: [],   // {id,type:'rect'|'diamond'|'ellipse',x,y,w,h,text,color} | {id,type:'arrow',from,to,color}
-  strokes: [],   // {tool:'pen'|'highlight'|'eraser',color,width,points:[[x,y],...]}
+  diagram: [],   // {id,type:'rect'|'diamond'|'ellipse'|'note',x,y,w,h,text,size,color,fill,dash}
+                 // | {id,type:'arrow',from,to,color,dash,label}
+  strokes: [],   // {id,tool:'pen'|'highlight'|'eraser',color,width,points:[[x,y],...]}
   texts:   [],   // {id,x,y,text,size,color}
   annos:   []    // {id,type:'arrow',x1,y1,x2,y2,color,width} | {id,type:'ellipse',x,y,w,h,color,width}
 };
@@ -509,8 +657,16 @@ function syncUidCounter() {
   var scan = function (o) {
     if (o && o.id) { var n = parseInt(String(o.id).replace(/^o/, ''), 10); if (n > max) { max = n; } }
   };
-  state.diagram.forEach(scan); state.texts.forEach(scan); state.annos.forEach(scan);
+  state.diagram.forEach(scan); state.texts.forEach(scan);
+  state.annos.forEach(scan);  state.strokes.forEach(scan);
   uidCounter = max + 1;
+}
+/* Les traits d'un document v1 n'avaient pas d'identifiant : on leur en donne
+   un à l'import, sinon ils ne seraient ni sélectionnables ni déplaçables. */
+function ensureStrokeIds() {
+  for (var i = 0; i < state.strokes.length; i++) {
+    if (!state.strokes[i].id) { state.strokes[i].id = nid(); }
+  }
 }
 
 /* ── Vue (zoom / pan) : écran = monde * z + (x, y) ───────── */
@@ -523,26 +679,102 @@ function toWorld(clientX, clientY) {
 
 /* ── Réglages par outil ──────────────────────────────────── */
 var PALETTE = ['#0C1A2E', '#0C447C', '#1A7A42', '#C0392B', '#D97706', '#F2C94C', '#6B7A90', '#FFFFFF'];
+var FILL_PALETTE = ['none', '#FFFFFF', '#EAF1F8', '#E7F2EC', '#FBEAE8', '#FEF3C7', '#F4F5F7', '#0C1A2E'];
+var NOTE_FILL = '#FEF3C7';
 var settings = {
   pen:       { color: '#0C1A2E', width: 3 },
   highlight: { color: '#F2C94C', width: 14 },
   eraser:    { color: null,      width: 24 },
-  shape:     { color: '#0C1A2E', width: 2 },
+  shape:     { color: '#0C1A2E', width: 2, fill: '#FFFFFF', size: 14, dash: false },
+  note:      { color: '#0C1A2E', fill: NOTE_FILL, size: 14 },
   text:      { color: '#0C1A2E', size: 16 },
   anno:      { color: '#C0392B', width: 3 }
 };
 var TOOL_LAYER = {
-  rect: 'diagram', diamond: 'diagram', ellipse: 'diagram', connector: 'diagram',
+  rect: 'diagram', diamond: 'diagram', ellipse: 'diagram', note: 'diagram', connector: 'diagram',
   pen: 'draw', highlight: 'draw', eraser: 'draw',
   text: 'text', arrow: 'anno', emphasis: 'anno'
 };
 var TOOL_SET = {
   pen: 'pen', highlight: 'highlight', eraser: 'eraser',
-  rect: 'shape', diamond: 'shape', ellipse: 'shape', connector: 'shape',
+  rect: 'shape', diamond: 'shape', ellipse: 'shape', connector: 'shape', note: 'note',
   text: 'text', arrow: 'anno', emphasis: 'anno'
 };
 var currentTool = 'select';
-var selection = null;   // { layer:'diagram'|'text'|'anno', id } — null si rien
+
+/* ── Réglages d'atelier ─────────────────────────────────── */
+var SNAP_STEP = 10;
+var snapOn = true;         // aimantation à la grille (Ctrl pour l'ignorer le temps d'un geste)
+var autosaveOn = true;
+function snapVal(v, bypass) { return (snapOn && !bypass) ? Math.round(v / SNAP_STEP) * SNAP_STEP : v; }
+
+/* ── Sélection multiple ──────────────────────────────────── */
+/* sel = [{ layer:'diagram'|'draw'|'text'|'anno', id }] */
+var sel = [];
+function layerList(layer) {
+  return layer === 'diagram' ? state.diagram
+       : layer === 'draw'    ? state.strokes
+       : layer === 'text'    ? state.texts
+       : state.annos;
+}
+function findObj(ref) {
+  if (!ref) { return null; }
+  var list = layerList(ref.layer);
+  for (var i = 0; i < list.length; i++) { if (list[i].id === ref.id) { return list[i]; } }
+  return null;
+}
+function isSel(layer, id) {
+  for (var i = 0; i < sel.length; i++) { if (sel[i].layer === layer && sel[i].id === id) { return true; } }
+  return false;
+}
+/* Paires {ref, obj} de la sélection, objets disparus filtrés. */
+function selPairs() {
+  var out = [];
+  for (var i = 0; i < sel.length; i++) {
+    var o = findObj(sel[i]);
+    if (o) { out.push({ ref: sel[i], obj: o }); }
+  }
+  return out;
+}
+function selSingle() {
+  var p = selPairs();
+  return p.length === 1 ? p[0] : null;
+}
+function setSel(refs) { sel = refs ? refs.slice() : []; afterSelChange(); }
+function clearSel() { setSel([]); }
+function toggleSelRef(ref) {
+  if (isSel(ref.layer, ref.id)) {
+    sel = sel.filter(function (r) { return !(r.layer === ref.layer && r.id === ref.id); });
+  } else { sel.push(ref); }
+  afterSelChange();
+}
+/* Retire de la sélection ce qui vit sur une couche masquée ou verrouillée. */
+function pruneSel() {
+  var before = sel.length;
+  sel = sel.filter(function (r) { return layerSelectable(r.layer) && findObj(r); });
+  if (sel.length !== before) { afterSelChange(); }
+}
+function afterSelChange() {
+  renderOverlay();
+  refreshOptions();
+  refreshSelPanel();
+}
+function selectAll() {
+  var refs = [];
+  var push = function (layer, list, skip) {
+    if (!layerSelectable(layer)) { return; }
+    for (var i = 0; i < list.length; i++) {
+      if (skip && skip(list[i])) { continue; }
+      refs.push({ layer: layer, id: list[i].id });
+    }
+  };
+  push('diagram', state.diagram);
+  push('draw', state.strokes, function (s) { return s.tool === 'eraser'; });
+  push('text', state.texts);
+  push('anno', state.annos);
+  setSel(refs);
+  if (!refs.length) { toast('Rien à sélectionner.', true); }
+}
 
 /* ── Historique global (Ctrl+Z / Ctrl+Y) ─────────────────── */
 var undoStack = [], redoStack = [], HISTORY_MAX = 100;
@@ -551,6 +783,18 @@ function snapshot() {          // à appeler AVANT chaque mutation validée
   undoStack.push(JSON.stringify(state));
   if (undoStack.length > HISTORY_MAX) { undoStack.shift(); }
   updateUndoBtns();
+  scheduleAutosave();
+}
+/* Empile un pas d'historique seulement si l'état a réellement changé :
+   évite les entrées vides (clic sans déplacement, réglage inapplicable…). */
+function commitIfChanged(before) {
+  if (JSON.stringify(state) === before) { return false; }
+  redoStack.length = 0;
+  undoStack.push(before);
+  if (undoStack.length > HISTORY_MAX) { undoStack.shift(); }
+  updateUndoBtns();
+  scheduleAutosave();
+  return true;
 }
 function undo() {
   if (!undoStack.length) { return; }
@@ -565,53 +809,44 @@ function redo() {
   afterStateSwap();
 }
 function afterStateSwap() {
-  selection = null;
   syncUidCounter();
+  sel = sel.filter(function (r) { return findObj(r); });
   renderAll();
+  refreshOptions();
+  refreshSelPanel();
   updateUndoBtns();
+  scheduleAutosave();
 }
 function updateUndoBtns() {
   $('#btn-undo').disabled = !undoStack.length;
   $('#btn-redo').disabled = !redoStack.length;
 }
 
-/* ── Accès aux objets ────────────────────────────────────── */
-function getShape(id) {
-  for (var i = 0; i < state.diagram.length; i++) {
-    var o = state.diagram[i];
-    if (o.id === id && o.type !== 'arrow') { return o; }
-  }
-  return null;
-}
-function getSelected() {
-  if (!selection) { return null; }
-  var list = selection.layer === 'diagram' ? state.diagram
-           : selection.layer === 'text'    ? state.texts
-           : state.annos;
-  for (var i = 0; i < list.length; i++) { if (list[i].id === selection.id) { return list[i]; } }
-  return null;
-}
-function deleteSelected() {
-  var obj = getSelected();
-  if (!obj) { return; }
-  if (!guardLayer(selection.layer)) { return; }
+/* ── Suppression ─────────────────────────────────────────── */
+function deleteSelection() {
+  var pairs = selPairs();
+  if (!pairs.length) { return; }
+  var kept = pairs.filter(function (p) { return layerSelectable(p.ref.layer); });
+  if (!kept.length) { toast('Sélection sur une couche masquée ou verrouillée.', true); return; }
   snapshot();
-  if (selection.layer === 'diagram') {
-    state.diagram = state.diagram.filter(function (o) {
-      if (o.id === obj.id) { return false; }
-      if (o.type === 'arrow' && (o.from === obj.id || o.to === obj.id)) { return false; }
-      return true;
-    });
-  } else if (selection.layer === 'text') {
-    state.texts = state.texts.filter(function (o) { return o.id !== obj.id; });
-  } else {
-    state.annos = state.annos.filter(function (o) { return o.id !== obj.id; });
-  }
-  selection = null;
+  var doomed = {};
+  kept.forEach(function (p) { doomed[p.ref.layer + ':' + p.ref.id] = true; });
+  var dead = function (layer, o) { return !!doomed[layer + ':' + o.id]; };
+  /* un connecteur meurt aussi avec l'une de ses deux formes */
+  state.diagram = state.diagram.filter(function (o) {
+    if (dead('diagram', o)) { return false; }
+    if (o.type === 'arrow' && (doomed['diagram:' + o.from] || doomed['diagram:' + o.to])) { return false; }
+    return true;
+  });
+  state.strokes = state.strokes.filter(function (o) { return !dead('draw', o); });
+  state.texts   = state.texts.filter(function (o) { return !dead('text', o); });
+  state.annos   = state.annos.filter(function (o) { return !dead('anno', o); });
+  clearSel();
   renderAll();
 }
 
 /* ── Géométrie ───────────────────────────────────────────── */
+function isShape(o) { return o && o.type !== 'arrow'; }
 function shapeCenter(s) { return { x: s.x + s.w / 2, y: s.y + s.h / 2 }; }
 
 /* Point d'ancrage d'un connecteur : intersection du bord de la
@@ -621,7 +856,7 @@ function boundaryPoint(s, toward) {
   var dx = toward.x - c.x, dy = toward.y - c.y;
   if (!dx && !dy) { return c; }
   var hw = s.w / 2, hh = s.h / 2, t;
-  if (s.type === 'rect') {
+  if (s.type === 'rect' || s.type === 'note') {
     var tx = dx ? hw / Math.abs(dx) : Infinity;
     var ty = dy ? hh / Math.abs(dy) : Infinity;
     t = Math.min(tx, ty);
@@ -639,11 +874,18 @@ function connectorPoints(a) {
   var p2 = boundaryPoint(s2, shapeCenter(s1));
   return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
 }
+function getShape(id) {
+  for (var i = 0; i < state.diagram.length; i++) {
+    var o = state.diagram[i];
+    if (o.id === id && isShape(o)) { return o; }
+  }
+  return null;
+}
 function pointInShape(s, p) {
   var c = shapeCenter(s), hw = s.w / 2, hh = s.h / 2;
   if (hw <= 0 || hh <= 0) { return false; }
   var dx = p.x - c.x, dy = p.y - c.y;
-  if (s.type === 'rect')    { return Math.abs(dx) <= hw && Math.abs(dy) <= hh; }
+  if (s.type === 'rect' || s.type === 'note') { return Math.abs(dx) <= hw && Math.abs(dy) <= hh; }
   if (s.type === 'diamond') { return Math.abs(dx) / hw + Math.abs(dy) / hh <= 1; }
   return (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh) <= 1;
 }
@@ -655,8 +897,33 @@ function distToSegment(p, x1, y1, x2, y2) {
   var px = x1 + t * vx, py = y1 + t * vy;
   return Math.hypot(p.x - px, p.y - py);
 }
+function rectsOverlap(a, b) {
+  return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+}
 
-/* ── Mesure de texte ─────────────────────────────────────── */
+/* ── Couleurs ────────────────────────────────────────────── */
+function hexRgb(hex) {
+  var h = String(hex || '').replace('#', '');
+  if (h.length === 3) { h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; }
+  if (h.length !== 6) { return null; }
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+}
+/* Texte lisible sur un fond donné (pense-bête ou forme remplie). */
+function textColorOn(fill) {
+  var c = hexRgb(fill);
+  if (!c) { return '#0C1A2E'; }
+  var lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
+  return lum > 0.6 ? '#0C1A2E' : '#FFFFFF';
+}
+function shade(hex, amt) {        // amt < 0 assombrit, > 0 éclaircit
+  var c = hexRgb(hex);
+  if (!c) { return '#D9DCE1'; }
+  var f = function (v) { return Math.max(0, Math.min(255, Math.round(v + 255 * amt))); };
+  var hx = function (v) { var s = v.toString(16); return s.length < 2 ? '0' + s : s; };
+  return '#' + hx(f(c.r)) + hx(f(c.g)) + hx(f(c.b));
+}
+
+/* ── Mesure et mise en page du texte ─────────────────────── */
 var measureCtx = document.createElement('canvas').getContext('2d');
 function fontFor(size) { return '600 ' + size + 'px Manrope, sans-serif'; }
 function wrapText(text, maxW, size) {
@@ -684,9 +951,42 @@ function textBBox(t) {
   var lh = Math.round(t.size * 1.3);
   return { x: t.x, y: t.y, w: Math.max(w, 20), h: Math.max(lines.length * lh, lh) };
 }
+/* Mise en page du texte interne d'une forme : rectangle centré,
+   pense-bête aligné en haut à gauche. */
+var NOTE_PAD = 12;
+function shapeFontSize(s) { return s.size || (s.type === 'note' ? 14 : 13.5); }
+function shapeTextLayout(s) {
+  var size = shapeFontSize(s);
+  var lh = Math.round(size * 1.3);
+  if (s.type === 'note') {
+    var lines = wrapText(s.text, Math.max(s.w - NOTE_PAD * 2, 20), size);
+    return { size: size, lh: lh, lines: lines, anchor: 'start',
+             x: s.x + NOTE_PAD, y: s.y + NOTE_PAD + size * 0.85 };
+  }
+  var maxW = s.type === 'rect' ? s.w - 18 : s.w * 0.68;
+  var wrapped = wrapText(s.text, Math.max(maxW, 30), size);
+  var c = shapeCenter(s);
+  return { size: size, lh: lh, lines: wrapped, anchor: 'middle',
+           x: c.x, y: c.y - ((wrapped.length - 1) / 2) * lh };
+}
+function strokeBBox(st) {
+  var pts = st.points || [];
+  if (!pts.length) { return null; }
+  var pad = (st.width || 2) / 2 + 1;
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (var i = 0; i < pts.length; i++) {
+    if (pts[i][0] < minX) { minX = pts[i][0]; }
+    if (pts[i][0] > maxX) { maxX = pts[i][0]; }
+    if (pts[i][1] < minY) { minY = pts[i][1]; }
+    if (pts[i][1] > maxY) { maxY = pts[i][1]; }
+  }
+  return { x: minX - pad, y: minY - pad, w: (maxX - minX) + pad * 2, h: (maxY - minY) + pad * 2 };
+}
 
-/* Boîte englobante d'un objet quelconque (pour sélection / export) */
+/* Boîte englobante d'un objet quelconque (sélection / alignement / export) */
 function objBBox(layer, o) {
+  if (layer === 'draw') { return strokeBBox(o); }
+  if (layer === 'text') { return textBBox(o); }
   if (layer === 'diagram') {
     if (o.type === 'arrow') {
       var pts = connectorPoints(o);
@@ -696,15 +996,33 @@ function objBBox(layer, o) {
     }
     return { x: o.x, y: o.y, w: o.w, h: o.h };
   }
-  if (layer === 'text') { return textBBox(o); }
   if (o.type === 'arrow') {
     return { x: Math.min(o.x1, o.x2), y: Math.min(o.y1, o.y2),
              w: Math.abs(o.x2 - o.x1), h: Math.abs(o.y2 - o.y1) };
   }
   return { x: o.x, y: o.y, w: o.w, h: o.h };
 }
+/* Boîte englobante d'un ensemble de paires {ref, obj}. */
+function pairsBBox(pairs) {
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, has = false;
+  for (var i = 0; i < pairs.length; i++) {
+    var b = objBBox(pairs[i].ref.layer, pairs[i].obj);
+    if (!b) { continue; }
+    has = true;
+    if (b.x < minX) { minX = b.x; }
+    if (b.y < minY) { minY = b.y; }
+    if (b.x + b.w > maxX) { maxX = b.x + b.w; }
+    if (b.y + b.h > maxY) { maxY = b.y + b.h; }
+  }
+  if (!has) { return null; }
+  return { x: minX, y: minY, w: Math.max(maxX - minX, 0.01), h: Math.max(maxY - minY, 0.01) };
+}
+function selBBox() { return pairsBBox(selPairs()); }
 
-/* ── Aides SVG ───────────────────────────────────────────── */
+/* =============================================================
+   RENDU DES COUCHES
+   ============================================================= */
+
 function svgEl(tag, attrs, parent) {
   var el = document.createElementNS(SVGNS, tag);
   for (var k in attrs) { if (attrs[k] !== null && attrs[k] !== undefined) { el.setAttribute(k, attrs[k]); } }
@@ -728,38 +1046,58 @@ function diamondPointsAttr(s) {
   var c = shapeCenter(s);
   return c.x + ',' + s.y + ' ' + (s.x + s.w) + ',' + c.y + ' ' + c.x + ',' + (s.y + s.h) + ' ' + s.x + ',' + c.y;
 }
+function shapeFill(s) {
+  if (s.fill) { return s.fill; }
+  return s.type === 'note' ? NOTE_FILL : '#FFFFFF';
+}
+function shapeStroke(s) {
+  if (s.type === 'note') { return shade(shapeFill(s), -0.16); }
+  return s.color || '#0C1A2E';
+}
+function dashAttr(o, width) { return o.dash ? (width * 3.2) + ' ' + (width * 2.4) : null; }
 
 /* ── Rendu : couche Diagramme ────────────────────────────── */
 function renderShapeInto(g, s) {
-  var attrs = { fill: '#FFFFFF', stroke: s.color || '#0C1A2E', 'stroke-width': 2, 'data-id': s.id };
-  if (s.type === 'rect') {
-    attrs.x = s.x; attrs.y = s.y; attrs.width = s.w; attrs.height = s.h; attrs.rx = 8;
+  var fill = shapeFill(s);
+  var attrs = {
+    fill: fill === 'none' ? 'none' : fill,
+    stroke: shapeStroke(s), 'stroke-width': s.type === 'note' ? 1.5 : 2,
+    'stroke-dasharray': s.type === 'note' ? null : dashAttr(s, 2),
+    'data-id': s.id
+  };
+  if (s.type === 'rect' || s.type === 'note') {
+    attrs.x = s.x; attrs.y = s.y; attrs.width = Math.max(s.w, 0); attrs.height = Math.max(s.h, 0);
+    attrs.rx = s.type === 'note' ? 3 : 8;
     svgEl('rect', attrs, g);
   } else if (s.type === 'diamond') {
     attrs.points = diamondPointsAttr(s);
     svgEl('polygon', attrs, g);
   } else {
     var c = shapeCenter(s);
-    attrs.cx = c.x; attrs.cy = c.y; attrs.rx = s.w / 2; attrs.ry = s.h / 2;
+    attrs.cx = c.x; attrs.cy = c.y; attrs.rx = Math.max(s.w / 2, 0); attrs.ry = Math.max(s.h / 2, 0);
     svgEl('ellipse', attrs, g);
   }
   if (s.text) {
-    var size = 13.5;
-    var maxW = s.type === 'rect' ? s.w - 18 : s.w * 0.68;
-    var lines = wrapText(s.text, Math.max(maxW, 30), size);
-    var lh = Math.round(size * 1.25);
-    var c2 = shapeCenter(s);
-    var y0 = c2.y - ((lines.length - 1) / 2) * lh;
+    var L = shapeTextLayout(s);
     var txt = svgEl('text', {
-      x: c2.x, y: y0, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
-      'font-family': 'Manrope, sans-serif', 'font-size': size, 'font-weight': 600,
-      fill: '#0C1A2E'
+      x: L.x, y: L.y, 'text-anchor': L.anchor,
+      'dominant-baseline': s.type === 'note' ? 'auto' : 'middle',
+      'font-family': 'Manrope, sans-serif', 'font-size': L.size, 'font-weight': 600,
+      fill: textColorOn(fill === 'none' ? '#FFFFFF' : fill)
     }, g);
-    for (var i = 0; i < lines.length; i++) {
-      var ts = svgEl('tspan', { x: c2.x, y: y0 + i * lh }, txt);
-      ts.textContent = lines[i];
+    for (var i = 0; i < L.lines.length; i++) {
+      var ts = svgEl('tspan', { x: L.x, y: L.y + i * L.lh }, txt);
+      ts.textContent = L.lines[i];
     }
   }
+}
+/* Libellé d'un connecteur : pastille blanche au milieu du trait. */
+function connectorLabelBox(a, pts) {
+  var size = 12;
+  measureCtx.font = fontFor(size);
+  var w = measureCtx.measureText(a.label).width + 12;
+  var h = size * 1.55;
+  return { x: (pts.x1 + pts.x2) / 2 - w / 2, y: (pts.y1 + pts.y2) / 2 - h / 2, w: w, h: h, size: size };
 }
 function renderDiagram() {
   var svg = LAYERS.diagram.el, g = $('#g-diagram');
@@ -773,13 +1111,27 @@ function renderDiagram() {
     var color = o.color || '#0C1A2E';
     svgEl('line', {
       x1: pts.x1, y1: pts.y1, x2: pts.x2, y2: pts.y2,
-      stroke: color, 'stroke-width': 2, 'marker-end': ensureMarker(svg, 'd', color),
-      'data-id': o.id
+      stroke: color, 'stroke-width': 2, 'stroke-dasharray': dashAttr(o, 2),
+      'marker-end': ensureMarker(svg, 'd', color), 'data-id': o.id
     }, g);
   }
   for (i = 0; i < state.diagram.length; i++) {
     o = state.diagram[i];
     if (o.type !== 'arrow') { renderShapeInto(g, o); }
+  }
+  for (i = 0; i < state.diagram.length; i++) {         // libellés au-dessus de tout
+    o = state.diagram[i];
+    if (o.type !== 'arrow' || !o.label) { continue; }
+    if (editingTarget && editingTarget.kind === 'connector' && editingTarget.id === o.id) { continue; }
+    var lp = connectorPoints(o);
+    if (!lp) { continue; }
+    var b = connectorLabelBox(o, lp);
+    svgEl('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 3,
+      fill: '#FFFFFF', stroke: 'none' }, g);
+    var lt = svgEl('text', { x: b.x + b.w / 2, y: b.y + b.h / 2, 'text-anchor': 'middle',
+      'dominant-baseline': 'middle', 'font-family': 'Manrope, sans-serif',
+      'font-size': b.size, 'font-weight': 600, fill: o.color || '#0C1A2E' }, g);
+    lt.textContent = o.label;
   }
 }
 
@@ -799,7 +1151,7 @@ function renderTexts() {
     }, g);
     for (var j = 0; j < lines.length; j++) {
       var ts = svgEl('tspan', { x: t.x, y: t.y + Math.round(t.size * 0.95) + j * lh }, txt);
-      ts.textContent = lines[j] || ' ';
+      ts.textContent = lines[j] || ' ';
     }
   }
 }
@@ -818,7 +1170,7 @@ function renderAnnos() {
       }, g);
     } else {
       svgEl('ellipse', {
-        cx: a.x + a.w / 2, cy: a.y + a.h / 2, rx: a.w / 2, ry: a.h / 2,
+        cx: a.x + a.w / 2, cy: a.y + a.h / 2, rx: Math.max(a.w / 2, 0), ry: Math.max(a.h / 2, 0),
         fill: 'none', stroke: a.color, 'stroke-width': a.width, 'data-id': a.id
       }, g);
     }
@@ -864,57 +1216,94 @@ function redrawCanvas() {
 }
 
 /* ── Rendu : overlay de sélection ────────────────────────── */
+/* Une forme seule se redimensionne directement (8 poignées) ; une
+   flèche libre par ses deux extrémités ; tout le reste (groupe,
+   trait, texte) par mise à l'échelle de la boîte englobante. */
+function selMode() {
+  var pairs = selPairs();
+  if (!pairs.length) { return { kind: 'none', pairs: pairs }; }
+  if (pairs.length === 1) {
+    var p = pairs[0];
+    if (p.ref.layer === 'diagram' && isShape(p.obj)) { return { kind: 'shape', pairs: pairs, obj: p.obj }; }
+    if (p.ref.layer === 'diagram') { return { kind: 'connector', pairs: pairs, obj: p.obj }; }
+    if (p.ref.layer === 'anno' && p.obj.type === 'arrow') { return { kind: 'arrow', pairs: pairs, obj: p.obj }; }
+  }
+  /* un groupe de connecteurs seuls n'a rien à mettre à l'échelle */
+  var scalable = pairs.some(function (q) { return !(q.ref.layer === 'diagram' && q.obj.type === 'arrow'); });
+  return { kind: scalable ? 'group' : 'connector', pairs: pairs };
+}
+function boxHandles(b) {
+  return [
+    { name: 'nw', x: b.x,           y: b.y           }, { name: 'n', x: b.x + b.w / 2, y: b.y },
+    { name: 'ne', x: b.x + b.w,     y: b.y           }, { name: 'e', x: b.x + b.w,     y: b.y + b.h / 2 },
+    { name: 'se', x: b.x + b.w,     y: b.y + b.h     }, { name: 's', x: b.x + b.w / 2, y: b.y + b.h },
+    { name: 'sw', x: b.x,           y: b.y + b.h     }, { name: 'w', x: b.x,           y: b.y + b.h / 2 }
+  ];
+}
 function selectionHandles() {
-  var o = getSelected();
-  if (!o) { return []; }
-  if (selection.layer === 'diagram' && o.type !== 'arrow') {
-    var x = o.x, y = o.y, w = o.w, h = o.h;
-    return [
-      { name: 'nw', x: x,         y: y         }, { name: 'n', x: x + w / 2, y: y },
-      { name: 'ne', x: x + w,     y: y         }, { name: 'e', x: x + w,     y: y + h / 2 },
-      { name: 'se', x: x + w,     y: y + h     }, { name: 's', x: x + w / 2, y: y + h },
-      { name: 'sw', x: x,         y: y + h     }, { name: 'w', x: x,         y: y + h / 2 }
-    ];
-  }
-  if (selection.layer === 'anno' && o.type === 'arrow') {
-    return [{ name: 'p1', x: o.x1, y: o.y1 }, { name: 'p2', x: o.x2, y: o.y2 }];
-  }
-  if (selection.layer === 'anno' && o.type === 'ellipse') {
-    return [
-      { name: 'nw', x: o.x,       y: o.y       }, { name: 'ne', x: o.x + o.w, y: o.y },
-      { name: 'se', x: o.x + o.w, y: o.y + o.h }, { name: 'sw', x: o.x,       y: o.y + o.h }
-    ];
+  var m = selMode();
+  if (m.kind === 'shape') { return boxHandles({ x: m.obj.x, y: m.obj.y, w: m.obj.w, h: m.obj.h }); }
+  if (m.kind === 'arrow') { return [{ name: 'p1', x: m.obj.x1, y: m.obj.y1 }, { name: 'p2', x: m.obj.x2, y: m.obj.y2 }]; }
+  if (m.kind === 'group') {
+    var b = pairsBBox(m.pairs);
+    return b ? boxHandles(b) : [];
   }
   return [];
 }
+var marquee = null;     // { x, y, w, h } en coordonnées monde, pendant un encadrement
 function renderOverlay() {
   var g = $('#g-overlay');
   while (g.firstChild) { g.removeChild(g.firstChild); }
-  var o = getSelected();
-  if (!o) { return; }
   var sw = 1.5 / view.z, dash = (5 / view.z) + ' ' + (4 / view.z);
-  if (selection.layer === 'diagram' && o.type === 'arrow') {
-    var pts = connectorPoints(o);
-    if (pts) {
-      svgEl('line', { x1: pts.x1, y1: pts.y1, x2: pts.x2, y2: pts.y2,
-        stroke: '#0C447C', 'stroke-width': 4 / view.z, 'stroke-opacity': 0.35, 'stroke-linecap': 'round' }, g);
+
+  if (marquee) {
+    svgEl('rect', { x: marquee.x, y: marquee.y, width: marquee.w, height: marquee.h,
+      fill: 'rgba(12,68,124,.07)', stroke: '#0C447C', 'stroke-width': sw,
+      'stroke-dasharray': dash }, g);
+  }
+
+  var pairs = selPairs();
+  if (!pairs.length) { return; }
+  var m = selMode();
+  var pad = 4 / view.z;
+
+  /* contour individuel de chaque objet sélectionné */
+  for (var i = 0; i < pairs.length; i++) {
+    var ref = pairs[i].ref, o = pairs[i].obj;
+    if (ref.layer === 'diagram' && o.type === 'arrow') {
+      var cp = connectorPoints(o);
+      if (cp) {
+        svgEl('line', { x1: cp.x1, y1: cp.y1, x2: cp.x2, y2: cp.y2,
+          stroke: '#0C447C', 'stroke-width': 4 / view.z, 'stroke-opacity': 0.35, 'stroke-linecap': 'round' }, g);
+      }
+      continue;
     }
-  } else if (selection.layer === 'anno' && o.type === 'arrow') {
-    svgEl('line', { x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2,
-      stroke: '#0C447C', 'stroke-width': (o.width + 5) / view.z, 'stroke-opacity': 0.25, 'stroke-linecap': 'round' }, g);
-  } else {
-    var b = objBBox(selection.layer, o);
-    if (b) {
-      var pad = 4 / view.z;
-      svgEl('rect', { x: b.x - pad, y: b.y - pad, width: b.w + pad * 2, height: b.h + pad * 2,
-        fill: 'none', stroke: '#0C447C', 'stroke-width': sw, 'stroke-dasharray': dash }, g);
+    if (ref.layer === 'anno' && o.type === 'arrow') {
+      svgEl('line', { x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2,
+        stroke: '#0C447C', 'stroke-width': (o.width + 5) / view.z, 'stroke-opacity': 0.25, 'stroke-linecap': 'round' }, g);
+      continue;
+    }
+    var b = objBBox(ref.layer, o);
+    if (!b) { continue; }
+    svgEl('rect', { x: b.x - pad, y: b.y - pad, width: b.w + pad * 2, height: b.h + pad * 2,
+      fill: 'none', stroke: '#0C447C', 'stroke-width': pairs.length > 1 ? sw * 0.8 : sw,
+      'stroke-dasharray': dash, 'stroke-opacity': pairs.length > 1 ? 0.55 : 1 }, g);
+  }
+
+  /* boîte englobante du groupe */
+  if (m.kind === 'group' && pairs.length > 1) {
+    var gb = pairsBBox(pairs);
+    if (gb) {
+      svgEl('rect', { x: gb.x - pad, y: gb.y - pad, width: gb.w + pad * 2, height: gb.h + pad * 2,
+        fill: 'none', stroke: '#0C447C', 'stroke-width': sw }, g);
     }
   }
+
   var hs = 5 / view.z;
   var handles = selectionHandles();
-  for (var i = 0; i < handles.length; i++) {
-    svgEl('rect', { x: handles[i].x - hs, y: handles[i].y - hs, width: hs * 2, height: hs * 2,
-      fill: '#FFFFFF', stroke: '#0C447C', 'stroke-width': sw, 'data-handle': handles[i].name }, g);
+  for (var j = 0; j < handles.length; j++) {
+    svgEl('rect', { x: handles[j].x - hs, y: handles[j].y - hs, width: hs * 2, height: hs * 2,
+      fill: '#FFFFFF', stroke: '#0C447C', 'stroke-width': sw, 'data-handle': handles[j].name }, g);
   }
 }
 
@@ -966,6 +1355,7 @@ $('#modal-cancel').addEventListener('click', function () { closeModal(false); })
 $('#modal-bg').addEventListener('click', function (e) { if (e.target === this) { closeModal(false); } });
 
 /* ── Garde de couche (visibilité / verrou) ───────────────── */
+function layerSelectable(key) { var L = LAYERS[key]; return !!L && L.visible && !L.locked; }
 function guardLayer(key) {
   var L = LAYERS[key];
   if (!L.visible) { toast('Couche « ' + L.label + ' » masquée — affichez-la pour la modifier.', true); return false; }
@@ -974,21 +1364,24 @@ function guardLayer(key) {
 }
 
 /* =============================================================
-   OUTILS, OPTIONS, PANNEAU DE COUCHES, CLAVIER
+   OUTILS, OPTIONS, ACTIONS SUR LA SÉLECTION, PRESSE-PAPIER
    ============================================================= */
 
 var liveStroke = null;      // trait en cours de dessin (couche Dessin libre)
-var editingTarget = null;   // édition de texte en cours : {kind:'text'|'shape', id?, isNew?, x?, y?}
+var editingTarget = null;   // édition de texte : {kind:'text'|'shape'|'connector', id?, isNew?, x?, y?}
 var drag = null;            // geste pointeur en cours
+var spaceDown = false;      // barre d'espace maintenue → déplacement de la vue
+var lastPointer = null;     // dernière position connue du pointeur (coordonnées client)
 
 var HINTS = {
-  select:    'Sélection : cliquez un objet pour le déplacer, double-clic pour éditer son texte.',
+  select:    'Sélection : cliquez un objet, Maj+clic pour en ajouter, glissez dans le vide pour encadrer. Double-clic = éditer le texte.',
   pan:       'Main : glissez pour déplacer la vue. Molette : zoom.',
-  rect:      'Rectangle : cliquez pour poser une case (taille standard). Double-clic ensuite pour le texte, poignées pour redimensionner.',
-  diamond:   'Losange (décision) : cliquez pour poser une forme de taille standard.',
-  ellipse:   'Cercle / ovale (début, fin) : cliquez pour poser une forme de taille standard.',
-  connector: 'Connecteur : glissez d’une forme vers une autre. La flèche suivra les formes.',
-  pen:       'Crayon : dessinez à main levée. Couleur et épaisseur dans le panneau de droite.',
+  rect:      'Rectangle : cliquez pour une case standard, ou glissez pour la dimensionner.',
+  diamond:   'Losange (décision) : cliquez pour une forme standard, ou glissez pour la dimensionner.',
+  ellipse:   'Cercle / ovale (début, fin) : cliquez ou glissez pour dimensionner.',
+  note:      'Pense-bête : cliquez pour poser un post-it, puis saisissez le texte directement.',
+  connector: 'Connecteur : glissez d’une forme vers une autre. Double-clic sur la flèche pour la libeller.',
+  pen:       'Crayon : dessinez à main levée. Le trait reste sélectionnable et déplaçable.',
   highlight: 'Surligneur : trait semi-transparent, idéal pour mettre en évidence.',
   eraser:    'Gomme : efface le dessin libre uniquement (pas les formes ni le texte).',
   text:      'Texte : cliquez pour placer une zone de texte. Échap pour annuler, cliquez ailleurs pour valider.',
@@ -999,17 +1392,28 @@ var HINTS = {
 function setTool(name) {
   if (editingTarget) { commitTextEditor(false); }
   currentTool = name;
+  /* Choisir un outil de création veut dire « je ne travaille plus sur la
+     sélection » : on la vide pour que le panneau montre sans ambiguïté les
+     réglages du prochain objet posé (et pas ceux de l'objet sélectionné). */
+  if (name !== 'select' && name !== 'pan') { sel = []; }
   document.body.setAttribute('data-tool', name);
   var btns = document.querySelectorAll('.wb-tool');
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.toggle('active', btns[i].getAttribute('data-tool') === name);
   }
-  stage.className = name === 'select' ? 'cur-select'
-                  : name === 'pan'    ? 'cur-pan'
-                  : name === 'text'   ? 'cur-text'
-                  : 'cur-cross';
+  updateCursor();
   $('#hint').textContent = HINTS[name] || '';
+  renderOverlay();
   refreshOptions();
+  refreshSelPanel();
+}
+function updateCursor() {
+  if (drag && drag.kind === 'pan') { stage.className = 'cur-panning'; return; }
+  if (spaceDown) { stage.className = 'cur-pan'; return; }
+  stage.className = currentTool === 'select' ? 'cur-select'
+                  : currentTool === 'pan'    ? 'cur-pan'
+                  : currentTool === 'text'   ? 'cur-text'
+                  : 'cur-cross';
 }
 (function bindToolbar() {
   var btns = document.querySelectorAll('.wb-tool');
@@ -1018,13 +1422,77 @@ function setTool(name) {
   }
 })();
 
-/* ── Panneau d'options ───────────────────────────────────── */
+/* ── Édition « vivante » : un seul pas d'historique par geste ─ */
+var liveEdit = null;
+function beginLiveEdit() { if (liveEdit === null) { liveEdit = JSON.stringify(state); } }
+function endLiveEdit() {
+  if (liveEdit === null) { return; }
+  redoStack.length = 0;
+  undoStack.push(liveEdit);
+  if (undoStack.length > HISTORY_MAX) { undoStack.shift(); }
+  liveEdit = null;
+  updateUndoBtns();
+  scheduleAutosave();
+}
+
+/* ── Quels réglages s'appliquent à la sélection ? ─────────── */
+function selCaps() {
+  var caps = { color: false, fill: false, width: false, size: false, dash: false,
+               colorVal: null, fillVal: null, widthVal: null, sizeVal: null, dashVal: false };
+  var pairs = selPairs();
+  for (var i = 0; i < pairs.length; i++) {
+    var layer = pairs[i].ref.layer, o = pairs[i].obj;
+    if (layer === 'diagram' && isShape(o)) {
+      caps.color = caps.fill = caps.size = caps.dash = true;
+      if (caps.colorVal === null) { caps.colorVal = o.color || '#0C1A2E'; }
+      if (caps.fillVal === null) { caps.fillVal = shapeFill(o); }
+      if (caps.sizeVal === null) { caps.sizeVal = shapeFontSize(o); }
+      caps.dashVal = caps.dashVal || !!o.dash;
+    } else if (layer === 'diagram') {                     // connecteur
+      caps.color = caps.dash = true;
+      if (caps.colorVal === null) { caps.colorVal = o.color || '#0C1A2E'; }
+      caps.dashVal = caps.dashVal || !!o.dash;
+    } else if (layer === 'text') {
+      caps.color = caps.size = true;
+      if (caps.colorVal === null) { caps.colorVal = o.color; }
+      if (caps.sizeVal === null) { caps.sizeVal = o.size; }
+    } else if (layer === 'anno') {
+      caps.color = caps.width = true;
+      if (caps.colorVal === null) { caps.colorVal = o.color; }
+      if (caps.widthVal === null) { caps.widthVal = o.width; }
+    } else if (layer === 'draw') {
+      caps.width = true;
+      if (o.tool !== 'eraser') { caps.color = true; if (caps.colorVal === null) { caps.colorVal = o.color; } }
+      if (caps.widthVal === null) { caps.widthVal = o.width; }
+    }
+  }
+  return caps;
+}
+/* Applique une mutation à tous les objets sélectionnés modifiables.
+   fn rend false pour un objet qui ne sait rien faire du réglage : si aucun
+   objet n'est concerné, ni l'historique ni le rendu ne sont touchés. */
+function applyToSelection(fn, live) {
+  var pairs = selPairs().filter(function (p) { return layerSelectable(p.ref.layer); });
+  if (!pairs.length) { return false; }
+  var before = JSON.stringify(state);
+  var touched = false;
+  for (var i = 0; i < pairs.length; i++) {
+    if (fn(pairs[i].obj, pairs[i].ref.layer) !== false) { touched = true; }
+  }
+  if (!touched) { return false; }
+  if (live) { if (liveEdit === null) { liveEdit = before; } }
+  else { commitIfChanged(before); }
+  renderAll();
+  return true;
+}
+
 function currentSettingsKey() { return TOOL_SET[currentTool] || null; }
 
 function buildSwatches() {
   var box = $('#swatches');
-  for (var i = 0; i < PALETTE.length; i++) {
-    var b = document.createElement('button');
+  var i, b;
+  for (i = 0; i < PALETTE.length; i++) {
+    b = document.createElement('button');
     b.className = 'swatch';
     b.style.background = PALETTE[i];
     b.setAttribute('data-color', PALETTE[i]);
@@ -1032,33 +1500,61 @@ function buildSwatches() {
     b.addEventListener('click', function () { pickColor(this.getAttribute('data-color')); });
     box.appendChild(b);
   }
+  var fbox = $('#fill-swatches');
+  for (i = 0; i < FILL_PALETTE.length; i++) {
+    b = document.createElement('button');
+    var c = FILL_PALETTE[i];
+    b.className = 'swatch' + (c === 'none' ? ' is-none' : '');
+    if (c !== 'none') { b.style.background = c; }
+    b.setAttribute('data-fill', c);
+    b.title = c === 'none' ? 'Sans remplissage' : c;
+    b.addEventListener('click', function () { pickFill(this.getAttribute('data-fill')); });
+    fbox.appendChild(b);
+  }
 }
 function pickColor(c) {
-  var o = getSelected();
-  if (currentTool === 'select' && o) {
-    if (!guardLayer(selection.layer)) { return; }
-    snapshot();
-    o.color = c;
-    renderAll();
-  } else {
-    var key = currentSettingsKey();
-    if (key && key !== 'eraser') { settings[key].color = c; }
+  if (sel.length) {
+    var done = applyToSelection(function (o, layer) {
+      if (layer === 'draw' && o.tool === 'eraser') { return false; }
+      o.color = c;
+      return true;
+    });
+    if (done) { refreshOptions(); return; }
   }
+  var key = currentSettingsKey();
+  if (key && key !== 'eraser') { settings[key].color = c; }
+  refreshOptions();
+}
+function pickFill(c) {
+  if (sel.length) {
+    var done = applyToSelection(function (o, layer) {
+      if (layer !== 'diagram' || !isShape(o)) { return false; }
+      o.fill = c;
+      return true;
+    });
+    if (done) { refreshOptions(); return; }
+  }
+  if (currentTool === 'note') { settings.note.fill = c; }
+  else { settings.shape.fill = c; }
   refreshOptions();
 }
 function refreshOptions() {
-  var showColor = false, showWidth = false, showFont = false;
-  var color = null, width = null, fsize = null, note = '';
-  var o = currentTool === 'select' ? getSelected() : null;
-  if (currentTool === 'select') {
-    if (o) {
-      if (selection.layer === 'text') { showColor = true; showFont = true; color = o.color; fsize = o.size; }
-      else if (selection.layer === 'anno') { showColor = true; showWidth = true; color = o.color; width = o.width; }
-      else { showColor = true; color = o.color || '#0C1A2E'; }
-      note = 'Les réglages s’appliquent à l’objet sélectionné. Suppr pour le supprimer.';
-    } else {
-      note = 'Aucun objet sélectionné.';
-    }
+  var showColor = false, showFill = false, showWidth = false, showFont = false, showDash = false;
+  var color = null, fill = null, width = null, fsize = null, dash = false, note = '';
+  var colorLbl = 'Couleur';
+
+  if (sel.length) {
+    var caps = selCaps();
+    showColor = caps.color; showFill = caps.fill; showWidth = caps.width;
+    showFont = caps.size;   showDash = caps.dash;
+    color = caps.colorVal; fill = caps.fillVal; width = caps.widthVal;
+    fsize = caps.sizeVal;  dash = caps.dashVal;
+    colorLbl = caps.fill ? 'Trait' : 'Couleur';
+    note = sel.length > 1
+      ? 'Les réglages s’appliquent à tous les objets sélectionnés.'
+      : 'Les réglages s’appliquent à l’objet sélectionné.';
+  } else if (currentTool === 'select') {
+    note = 'Aucun objet sélectionné — cliquez un objet ou encadrez-en plusieurs.';
   } else if (currentTool === 'pan') {
     note = 'Glissez pour déplacer la vue.';
   } else {
@@ -1066,49 +1562,406 @@ function refreshOptions() {
     if (key === 'eraser') { showWidth = true; width = settings.eraser.width; }
     else if (key === 'pen' || key === 'highlight' || key === 'anno') {
       showColor = true; showWidth = true; color = settings[key].color; width = settings[key].width;
+    } else if (key === 'shape') {
+      showColor = true; showFill = true; showFont = true; showDash = true;
+      colorLbl = 'Trait';
+      color = settings.shape.color; fill = settings.shape.fill;
+      fsize = settings.shape.size; dash = settings.shape.dash;
+      note = 'Réglages des prochaines formes et connecteurs.';
+    } else if (key === 'note') {
+      showColor = true; showFill = true; showFont = true;
+      colorLbl = 'Trait';
+      color = settings.note.color; fill = settings.note.fill; fsize = settings.note.size;
+      note = 'Le texte s’adapte automatiquement à la couleur du pense-bête.';
+    } else if (key === 'text') {
+      showColor = true; showFont = true; color = settings.text.color; fsize = settings.text.size;
     }
-    else if (key === 'shape') { showColor = true; color = settings.shape.color; note = 'Couleur du contour des formes et connecteurs.'; }
-    else if (key === 'text') { showColor = true; showFont = true; color = settings.text.color; fsize = settings.text.size; }
   }
+
+  $('#color-lbl').textContent = colorLbl;
   $('#opt-color').classList.toggle('shown', showColor);
+  $('#opt-fill').classList.toggle('shown', showFill);
   $('#opt-width').classList.toggle('shown', showWidth);
   $('#opt-fontsize').classList.toggle('shown', showFont);
+  $('#opt-dash').classList.toggle('shown', showDash);
   $('#opt-note').textContent = note;
-  if (showColor) {
-    var sws = document.querySelectorAll('.swatch');
-    for (var i = 0; i < sws.length; i++) {
-      sws[i].classList.toggle('active', sws[i].getAttribute('data-color').toUpperCase() === String(color || '').toUpperCase());
-    }
+
+  var i, sws;
+  sws = document.querySelectorAll('#swatches .swatch');
+  for (i = 0; i < sws.length; i++) {
+    sws[i].classList.toggle('active', showColor &&
+      sws[i].getAttribute('data-color').toUpperCase() === String(color || '').toUpperCase());
+  }
+  sws = document.querySelectorAll('#fill-swatches .swatch');
+  for (i = 0; i < sws.length; i++) {
+    sws[i].classList.toggle('active', showFill &&
+      sws[i].getAttribute('data-fill').toUpperCase() === String(fill || '').toUpperCase());
   }
   if (showWidth && width !== null) { $('#inp-width').value = width; $('#width-val').textContent = width; }
-  if (showFont && fsize !== null) { $('#inp-fontsize').value = String(fsize); }
+  if (showFont && fsize !== null) {
+    var opt = $('#inp-fontsize');
+    var found = false;
+    for (i = 0; i < opt.options.length; i++) {
+      if (parseFloat(opt.options[i].value) === parseFloat(fsize)) { opt.selectedIndex = i; found = true; }
+    }
+    if (!found) { opt.value = '14'; }
+  }
+  $('#inp-dash').checked = !!dash;
 }
 $('#inp-width').addEventListener('input', function () {
-  $('#width-val').textContent = this.value;
-  var key = currentSettingsKey();
-  if (key && currentTool !== 'select') { settings[key].width = parseInt(this.value, 10); }
-});
-$('#inp-width').addEventListener('change', function () {
-  var o = getSelected();
-  if (currentTool === 'select' && o && selection.layer === 'anno') {
-    if (!guardLayer('anno')) { return; }
-    snapshot();
-    o.width = parseInt(this.value, 10);
-    renderAll();
-  }
-});
-$('#inp-fontsize').addEventListener('change', function () {
   var v = parseInt(this.value, 10);
-  var o = getSelected();
-  if (currentTool === 'select' && o && selection.layer === 'text') {
-    if (!guardLayer('text')) { return; }
-    snapshot();
-    o.size = v;
-    renderAll();
-  } else {
-    settings.text.size = v;
+  $('#width-val').textContent = v;
+  if (sel.length) {
+    applyToSelection(function (o, layer) {
+      if (layer === 'anno' || layer === 'draw') { o.width = v; return true; }
+      return false;
+    }, true);
+    return;
   }
+  var key = currentSettingsKey();
+  if (key) { settings[key].width = v; }
 });
+$('#inp-width').addEventListener('change', endLiveEdit);
+$('#inp-fontsize').addEventListener('change', function () {
+  var v = parseFloat(this.value);
+  if (sel.length) {
+    var done = applyToSelection(function (o, layer) {
+      if (layer === 'text') { o.size = v; return true; }
+      if (layer === 'diagram' && isShape(o)) { o.size = v; return true; }
+      return false;
+    });
+    if (done) { return; }
+  }
+  if (currentTool === 'note') { settings.note.size = v; }
+  else if (currentTool === 'rect' || currentTool === 'diamond' || currentTool === 'ellipse' || currentTool === 'connector') { settings.shape.size = v; }
+  else { settings.text.size = v; }
+});
+$('#inp-dash').addEventListener('change', function () {
+  var v = this.checked;
+  if (sel.length) {
+    var done = applyToSelection(function (o, layer) {
+      if (layer !== 'diagram') { return false; }
+      o.dash = v;
+      return true;
+    });
+    if (done) { return; }
+  }
+  settings.shape.dash = v;
+});
+$('#inp-snap').addEventListener('change', function () { snapOn = this.checked; });
+$('#inp-autosave').addEventListener('change', function () {
+  autosaveOn = this.checked;
+  if (autosaveOn) { scheduleAutosave(); } else { clearAutosave(); }
+});
+
+/* ── Panneau « Sélection » ───────────────────────────────── */
+function refreshSelPanel() {
+  var pairs = selPairs();
+  var n = pairs.length;
+  var lbl = $('#sel-count');
+  if (!n) { lbl.innerHTML = 'Aucun objet sélectionné.'; }
+  else {
+    var k = { shape: 0, link: 0, draw: 0, text: 0, anno: 0 };
+    pairs.forEach(function (p) {
+      if (p.ref.layer === 'diagram') { if (isShape(p.obj)) { k.shape++; } else { k.link++; } }
+      else if (p.ref.layer === 'draw') { k.draw++; }
+      else if (p.ref.layer === 'text') { k.text++; }
+      else { k.anno++; }
+    });
+    var parts = [];
+    var add = function (count, one, many) { if (count) { parts.push(count + ' ' + (count > 1 ? many : one)); } };
+    add(k.shape, 'forme', 'formes');
+    add(k.link, 'connecteur', 'connecteurs');
+    add(k.draw, 'trait', 'traits');
+    add(k.text, 'texte', 'textes');
+    add(k.anno, 'annotation', 'annotations');
+    lbl.innerHTML = '<b>' + n + '</b> objet' + (n > 1 ? 's' : '') + ' — ' + parts.join(', ');
+  }
+  $('#btn-sel-dup').disabled = !n;
+  $('#btn-sel-del').disabled = !n;
+  $('#btn-sel-front').disabled = !n;
+  $('#btn-sel-back').disabled = !n;
+  var abtns = document.querySelectorAll('#align-grid .sel-btn');
+  for (var i = 0; i < abtns.length; i++) {
+    var mode = abtns[i].getAttribute('data-align');
+    abtns[i].disabled = mode.indexOf('dist-') === 0 ? n < 3 : n < 2;
+  }
+}
+
+/* ── Déplacement générique d'un objet ────────────────────── */
+function moveObj(layer, o, dx, dy) {
+  if (layer === 'draw') {
+    for (var i = 0; i < o.points.length; i++) { o.points[i][0] += dx; o.points[i][1] += dy; }
+    return;
+  }
+  if (layer === 'diagram' && o.type === 'arrow') { return; }   // suit ses formes
+  if (layer === 'anno' && o.type === 'arrow') {
+    o.x1 += dx; o.y1 += dy; o.x2 += dx; o.y2 += dy;
+    return;
+  }
+  o.x += dx; o.y += dy;
+}
+/* Mise à l'échelle d'un objet depuis une copie d'origine (poignées de groupe). */
+function scaleObjFrom(layer, o, orig, sx, sy, ox, oy) {
+  var mx = function (x) { return ox + (x - ox) * sx; };
+  var my = function (y) { return oy + (y - oy) * sy; };
+  var k = (Math.abs(sx) + Math.abs(sy)) / 2;
+  if (layer === 'draw') {
+    for (var i = 0; i < orig.points.length; i++) {
+      o.points[i][0] = mx(orig.points[i][0]);
+      o.points[i][1] = my(orig.points[i][1]);
+    }
+    o.width = Math.max(1, orig.width * k);
+    return;
+  }
+  if (layer === 'diagram' && o.type === 'arrow') { return; }
+  if (layer === 'anno' && o.type === 'arrow') {
+    o.x1 = mx(orig.x1); o.y1 = my(orig.y1);
+    o.x2 = mx(orig.x2); o.y2 = my(orig.y2);
+    o.width = Math.max(1, orig.width * k);
+    return;
+  }
+  if (layer === 'text') {
+    o.x = mx(orig.x); o.y = my(orig.y);
+    o.size = Math.max(6, Math.round(orig.size * k * 10) / 10);
+    return;
+  }
+  o.x = mx(orig.x); o.y = my(orig.y);
+  o.w = Math.max(4, orig.w * sx); o.h = Math.max(4, orig.h * sy);
+  if (layer === 'diagram' && o.size) { o.size = Math.max(7, Math.round(orig.size * k * 10) / 10); }
+}
+
+/* ── Profondeur (z-order) ────────────────────────────────── */
+function reorderSelection(toFront) {
+  var pairs = selPairs().filter(function (p) { return layerSelectable(p.ref.layer); });
+  if (!pairs.length) { return; }
+  snapshot();
+  ['diagram', 'draw', 'text', 'anno'].forEach(function (layer) {
+    var ids = {}, any = false;
+    pairs.forEach(function (p) { if (p.ref.layer === layer) { ids[p.ref.id] = true; any = true; } });
+    if (!any) { return; }
+    var list = layerList(layer);
+    var moved = list.filter(function (o) { return ids[o.id]; });
+    var rest  = list.filter(function (o) { return !ids[o.id]; });
+    var out = toFront ? rest.concat(moved) : moved.concat(rest);
+    list.length = 0;
+    for (var i = 0; i < out.length; i++) { list.push(out[i]); }
+  });
+  renderAll();
+  toast(toFront ? 'Au premier plan.' : 'À l’arrière-plan.');
+}
+
+/* ── Alignement et répartition ───────────────────────────── */
+function alignableSelection() {
+  return selPairs().filter(function (p) {
+    if (!layerSelectable(p.ref.layer)) { return false; }
+    if (p.ref.layer === 'diagram' && p.obj.type === 'arrow') { return false; }
+    return !!objBBox(p.ref.layer, p.obj);
+  });
+}
+function alignSelection(mode) {
+  var pairs = alignableSelection();
+  var minN = mode.indexOf('dist-') === 0 ? 3 : 2;
+  if (pairs.length < minN) {
+    toast('Sélectionnez au moins ' + minN + ' objets.', true);
+    return;
+  }
+  var boxes = pairs.map(function (p) { return objBBox(p.ref.layer, p.obj); });
+  var gb = pairsBBox(pairs);
+  snapshot();
+  var i, dx, dy;
+  if (mode === 'dist-h' || mode === 'dist-v') {
+    var horiz = mode === 'dist-h';
+    var order = pairs.map(function (p, idx) { return { p: p, b: boxes[idx] }; });
+    order.sort(function (a, b) {
+      return horiz ? (a.b.x + a.b.w / 2) - (b.b.x + b.b.w / 2)
+                   : (a.b.y + a.b.h / 2) - (b.b.y + b.b.h / 2);
+    });
+    var sum = 0;
+    for (i = 0; i < order.length; i++) { sum += horiz ? order[i].b.w : order[i].b.h; }
+    var span = horiz ? gb.w : gb.h;
+    var gapTotal = span - sum;
+    var gap = order.length > 1 ? gapTotal / (order.length - 1) : 0;
+    var cursor = horiz ? gb.x : gb.y;
+    for (i = 0; i < order.length; i++) {
+      var b = order[i].b;
+      if (horiz) { moveObj(order[i].p.ref.layer, order[i].p.obj, cursor - b.x, 0); cursor += b.w + gap; }
+      else       { moveObj(order[i].p.ref.layer, order[i].p.obj, 0, cursor - b.y); cursor += b.h + gap; }
+    }
+  } else {
+    for (i = 0; i < pairs.length; i++) {
+      var bb = boxes[i];
+      dx = 0; dy = 0;
+      if (mode === 'left')    { dx = gb.x - bb.x; }
+      if (mode === 'right')   { dx = (gb.x + gb.w) - (bb.x + bb.w); }
+      if (mode === 'hcenter') { dx = (gb.x + gb.w / 2) - (bb.x + bb.w / 2); }
+      if (mode === 'top')     { dy = gb.y - bb.y; }
+      if (mode === 'bottom')  { dy = (gb.y + gb.h) - (bb.y + bb.h); }
+      if (mode === 'vcenter') { dy = (gb.y + gb.h / 2) - (bb.y + bb.h / 2); }
+      if (dx || dy) { moveObj(pairs[i].ref.layer, pairs[i].obj, dx, dy); }
+    }
+  }
+  renderAll();
+}
+
+/* ── Presse-papier ───────────────────────────────────────── */
+var CLIP_APP = 'whiteboard-gft-clip';
+var clipboard = null;
+function deep(o) { return JSON.parse(JSON.stringify(o)); }
+
+function buildClip() {
+  var pairs = selPairs();
+  if (!pairs.length) { return null; }
+  var inSel = {};
+  pairs.forEach(function (p) { inSel[p.ref.layer + ':' + p.ref.id] = true; });
+  var clip = { app: CLIP_APP, version: 2, diagram: [], strokes: [], texts: [], annos: [] };
+  pairs.forEach(function (p) {
+    var o = p.obj;
+    if (p.ref.layer === 'diagram') {
+      if (o.type === 'arrow') {
+        /* un connecteur n'a de sens que si ses deux formes partent avec lui */
+        if (inSel['diagram:' + o.from] && inSel['diagram:' + o.to]) { clip.diagram.push(deep(o)); }
+      } else { clip.diagram.push(deep(o)); }
+    } else if (p.ref.layer === 'draw')  { clip.strokes.push(deep(o)); }
+    else if (p.ref.layer === 'text')    { clip.texts.push(deep(o)); }
+    else                                { clip.annos.push(deep(o)); }
+  });
+  var b = pairsBBox(pairs);
+  clip.bbox = b || { x: 0, y: 0, w: 0, h: 0 };
+  return clip;
+}
+function clipIsEmpty(clip) {
+  return !clip || (!clip.diagram.length && !clip.strokes.length && !clip.texts.length && !clip.annos.length);
+}
+function copySelection(cut) {
+  var clip = buildClip();
+  if (clipIsEmpty(clip)) { toast('Rien à copier.', true); return; }
+  clipboard = clip;
+  /* interop : le presse-papier système permet de coller dans un autre onglet */
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { navigator.clipboard.writeText(JSON.stringify(clip)).catch(function () {}); }
+    catch (err) { /* refus silencieux du navigateur */ }
+  }
+  var n = clip.diagram.length + clip.strokes.length + clip.texts.length + clip.annos.length;
+  if (cut) { deleteSelection(); toast(n + ' objet' + (n > 1 ? 's' : '') + ' coupé' + (n > 1 ? 's' : '') + '.'); }
+  else { toast(n + ' objet' + (n > 1 ? 's' : '') + ' copié' + (n > 1 ? 's' : '') + '.'); }
+}
+/* Insère un presse-papier dans le document. at = point monde (centre) ou null. */
+function pasteClip(clip, at) {
+  if (clipIsEmpty(clip)) { return false; }
+  var targets = { diagram: 'diagram', strokes: 'draw', texts: 'text', annos: 'anno' };
+  var blocked = [];
+  for (var key in targets) {
+    if (clip[key] && clip[key].length && !layerSelectable(targets[key])) { blocked.push(LAYERS[targets[key]].label); }
+  }
+  if (blocked.length) { toast('Couche « ' + blocked[0] + ' » masquée ou verrouillée.', true); return false; }
+
+  var b = clip.bbox || { x: 0, y: 0, w: 0, h: 0 };
+  var dx, dy;
+  if (at) { dx = at.x - (b.x + b.w / 2); dy = at.y - (b.y + b.h / 2); }
+  else    { dx = 20; dy = 20; }
+  dx = Math.round(dx); dy = Math.round(dy);
+
+  snapshot();
+  var map = {}, refs = [];
+  var clone = function (src, layer, list) {
+    for (var i = 0; i < src.length; i++) {
+      var o = deep(src[i]);
+      var old = o.id;
+      o.id = nid();
+      map[old] = o.id;
+      if (o.type !== 'arrow' || layer !== 'diagram') { moveObj(layer, o, dx, dy); }
+      list.push(o);
+      refs.push({ layer: layer, id: o.id });
+    }
+  };
+  /* formes d'abord : les connecteurs ont besoin de la table de correspondance */
+  var shapes = clip.diagram.filter(function (o) { return o.type !== 'arrow'; });
+  var links  = clip.diagram.filter(function (o) { return o.type === 'arrow'; });
+  clone(shapes, 'diagram', state.diagram);
+  for (var i = 0; i < links.length; i++) {
+    var a = deep(links[i]);
+    if (!map[a.from] || !map[a.to]) { continue; }
+    a.id = nid(); a.from = map[a.from]; a.to = map[a.to];
+    state.diagram.push(a);
+    refs.push({ layer: 'diagram', id: a.id });
+  }
+  clone(clip.strokes, 'draw', state.strokes);
+  clone(clip.texts, 'text', state.texts);
+  clone(clip.annos, 'anno', state.annos);
+
+  renderAll();
+  setSel(refs);
+  return refs.length > 0;
+}
+function pasteFromInternal() {
+  if (clipIsEmpty(clipboard)) { toast('Presse-papier vide.', true); return; }
+  var at = lastPointer ? toWorld(lastPointer.x, lastPointer.y) : null;
+  if (pasteClip(clipboard, at)) { toast('Collé.'); }
+}
+function duplicateSelection() {
+  var clip = buildClip();
+  if (clipIsEmpty(clip)) { return; }
+  if (pasteClip(clip, null)) { toast('Dupliqué.'); }
+}
+/* Texte externe collé dans la scène → zone de texte */
+function pasteExternalText(txt) {
+  if (!layerSelectable('text')) { toast('Couche « Texte » masquée ou verrouillée.', true); return; }
+  var p = lastPointer ? toWorld(lastPointer.x, lastPointer.y) : { x: 40, y: 40 };
+  snapshot();
+  var id = nid();
+  state.texts.push({ id: id, x: Math.round(p.x), y: Math.round(p.y),
+                     text: txt.replace(/\r/g, '').replace(/\s+$/, ''),
+                     size: settings.text.size, color: settings.text.color });
+  renderAll();
+  setSel([{ layer: 'text', id: id }]);
+  toast('Texte collé.');
+}
+/* Le presse-papier système est la source prioritaire (interop inter-onglets) ;
+   le presse-papier interne sert de repli si l'événement n'arrive pas. */
+var pasteEventSeen = false;
+document.addEventListener('paste', function (e) {
+  if (editingTarget) { return; }                     // l'éditeur inline gère son propre collage
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'TEXTAREA' || tag === 'INPUT') { return; }
+  pasteEventSeen = true;
+  var txt = '';
+  try { txt = (e.clipboardData || window.clipboardData).getData('text/plain') || ''; }
+  catch (err) { txt = ''; }
+  e.preventDefault();
+  var parsed = null;
+  if (txt && txt.charAt(0) === '{') {
+    try { var j = JSON.parse(txt); if (j && j.app === CLIP_APP) { parsed = j; } } catch (err2) { parsed = null; }
+  }
+  if (parsed) {
+    parsed.diagram = parsed.diagram || []; parsed.strokes = parsed.strokes || [];
+    parsed.texts = parsed.texts || [];     parsed.annos = parsed.annos || [];
+    clipboard = parsed;
+    var at = lastPointer ? toWorld(lastPointer.x, lastPointer.y) : null;
+    if (pasteClip(parsed, at)) { toast('Collé.'); }
+    return;
+  }
+  if (txt && txt.trim()) { pasteExternalText(txt); return; }
+  pasteFromInternal();
+});
+function requestPaste() {
+  pasteEventSeen = false;
+  /* si le navigateur n'émet pas d'événement paste (focus perdu, Safari…), on
+     retombe sur le presse-papier interne */
+  setTimeout(function () { if (!pasteEventSeen) { pasteFromInternal(); } }, 60);
+}
+
+/* ── Boutons du panneau ──────────────────────────────────── */
+$('#btn-sel-dup').addEventListener('click', duplicateSelection);
+$('#btn-sel-del').addEventListener('click', deleteSelection);
+$('#btn-sel-front').addEventListener('click', function () { reorderSelection(true); });
+$('#btn-sel-back').addEventListener('click', function () { reorderSelection(false); });
+(function bindAlign() {
+  var btns = document.querySelectorAll('#align-grid .sel-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function () { alignSelection(this.getAttribute('data-align')); });
+  }
+})();
 
 /* ── Panneau de couches ──────────────────────────────────── */
 var ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -1139,15 +1992,15 @@ function refreshLayerRow(key) {
       var key = row.getAttribute('data-layer');
       row.querySelector('.eye').addEventListener('click', function () {
         LAYERS[key].visible = !LAYERS[key].visible;
-        if (!LAYERS[key].visible && selection && selection.layer === key) { selection = null; renderOverlay(); }
         refreshLayerRow(key);
+        pruneSel();
       });
       var lock = row.querySelector('.lock');
       if (lock) {
         lock.addEventListener('click', function () {
           LAYERS[key].locked = !LAYERS[key].locked;
-          if (LAYERS[key].locked && selection && selection.layer === key) { selection = null; renderOverlay(); }
           refreshLayerRow(key);
+          pruneSel();
         });
       }
       refreshLayerRow(key);
@@ -1156,35 +2009,85 @@ function refreshLayerRow(key) {
 })();
 
 /* ── Clavier ─────────────────────────────────────────────── */
-var KEY_TOOL = { v: 'select', h: 'pan', r: 'rect', d: 'diamond', o: 'ellipse', c: 'connector',
-                 p: 'pen', s: 'highlight', e: 'eraser', t: 'text', a: 'arrow', q: 'emphasis' };
+var KEY_TOOL = { v: 'select', h: 'pan', r: 'rect', d: 'diamond', o: 'ellipse', n: 'note',
+                 c: 'connector', p: 'pen', s: 'highlight', e: 'eraser', t: 'text',
+                 a: 'arrow', q: 'emphasis' };
+/* Déplacement au clavier : pas fin, ou pas de grille si l'aimant est actif. */
+function nudge(dx, dy, big) {
+  var step = big ? (snapOn ? SNAP_STEP * 4 : 10) : (snapOn ? SNAP_STEP : 1);
+  var pairs = selPairs().filter(function (p) { return layerSelectable(p.ref.layer); });
+  if (!pairs.length) { return; }
+  var before = JSON.stringify(state);
+  for (var i = 0; i < pairs.length; i++) { moveObj(pairs[i].ref.layer, pairs[i].obj, dx * step, dy * step); }
+  if (!commitIfChanged(before)) { return; }     // sélection de connecteurs seuls : rien ne bouge
+  renderAll();
+}
 document.addEventListener('keydown', function (e) {
   var tag = (e.target && e.target.tagName) || '';
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') { return; }
   var k = e.key.toLowerCase();
+
+  if (k === ' ' && !spaceDown) {
+    spaceDown = true;
+    if (!drag) { updateCursor(); }
+    e.preventDefault();
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && !e.altKey) {
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }
+    if (k === 'a') { e.preventDefault(); selectAll(); return; }
+    if (k === 'c') { e.preventDefault(); copySelection(false); return; }
+    if (k === 'x') { e.preventDefault(); copySelection(true); return; }
+    if (k === 'v') { requestPaste(); return; }     // pas de preventDefault : l'événement paste doit suivre
+    if (k === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (k === '0') { e.preventDefault(); var c0 = stageCenter(); zoomAt(c0.x, c0.y, 1); return; }
+    if (k === '+' || k === '=') { e.preventDefault(); var c1 = stageCenter(); zoomAt(c1.x, c1.y, view.z * 1.25); return; }
+    if (k === '-') { e.preventDefault(); var c2 = stageCenter(); zoomAt(c2.x, c2.y, view.z / 1.25); return; }
+    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault(); reorderSelection(e.key === 'ArrowUp'); return;
+    }
     return;
   }
   if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (selection) { e.preventDefault(); deleteSelected(); }
+    if (sel.length) { e.preventDefault(); deleteSelection(); }
     return;
   }
   if (e.key === 'Escape') {
+    closeCtxMenu();
     if (drag) { cancelDrag(); }
-    else if (selection) { selection = null; renderOverlay(); refreshOptions(); }
+    else if (sel.length) { clearSel(); }
     return;
   }
-  if (!e.ctrlKey && !e.metaKey && !e.altKey && KEY_TOOL[k]) { setTool(KEY_TOOL[k]); }
+  if (e.key === 'Enter' || e.key === 'F2') {
+    if (editSelectedText()) { e.preventDefault(); }
+    return;
+  }
+  if (e.key.indexOf('Arrow') === 0) {
+    if (!sel.length) { return; }
+    e.preventDefault();
+    var d = e.key === 'ArrowLeft' ? [-1, 0] : e.key === 'ArrowRight' ? [1, 0]
+          : e.key === 'ArrowUp' ? [0, -1] : [0, 1];
+    nudge(d[0], d[1], e.shiftKey);
+    return;
+  }
+  if (e.shiftKey && (e.key === '1' || e.key === '&')) { e.preventDefault(); fitView(false); return; }
+  if (e.shiftKey && (e.key === '2' || e.key === 'é')) { e.preventDefault(); fitView(true); return; }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && KEY_TOOL[k]) { setTool(KEY_TOOL[k]); }
 });
+document.addEventListener('keyup', function (e) {
+  if (e.key === ' ') {
+    spaceDown = false;
+    if (!drag) { updateCursor(); }
+  }
+});
+window.addEventListener('blur', function () { spaceDown = false; updateCursor(); });
 
 /* =============================================================
    INTERACTIONS POINTEUR (hit-testing manuel en coordonnées monde)
    ============================================================= */
 
-function layerSelectable(key) { var L = LAYERS[key]; return L.visible && !L.locked; }
-
+/* Objet sous le point p, de la couche la plus haute à la plus basse. */
 function hitTest(p) {
   var tol = 6 / view.z;
   var i, a;
@@ -1213,24 +2116,48 @@ function hitTest(p) {
       }
     }
   }
+  if (layerSelectable('draw')) {
+    for (i = state.strokes.length - 1; i >= 0; i--) {
+      var st = state.strokes[i];
+      if (st.tool === 'eraser') { continue; }        // un « trou » ne se sélectionne pas
+      if (pointOnStroke(st, p, tol)) { return { layer: 'draw', id: st.id }; }
+    }
+  }
   if (layerSelectable('diagram')) {
     for (i = state.diagram.length - 1; i >= 0; i--) {
       var o = state.diagram[i];
-      if (o.type !== 'arrow' && pointInShape(o, p)) { return { layer: 'diagram', id: o.id }; }
+      if (isShape(o) && pointInShape(o, p)) { return { layer: 'diagram', id: o.id }; }
     }
     for (i = state.diagram.length - 1; i >= 0; i--) {
       var ar = state.diagram[i];
       if (ar.type !== 'arrow') { continue; }
       var pts = connectorPoints(ar);
-      if (pts && distToSegment(p, pts.x1, pts.y1, pts.x2, pts.y2) <= tol) {
-        return { layer: 'diagram', id: ar.id };
+      if (!pts) { continue; }
+      if (distToSegment(p, pts.x1, pts.y1, pts.x2, pts.y2) <= tol) { return { layer: 'diagram', id: ar.id }; }
+      if (ar.label) {
+        var lb = connectorLabelBox(ar, pts);
+        if (p.x >= lb.x && p.x <= lb.x + lb.w && p.y >= lb.y && p.y <= lb.y + lb.h) {
+          return { layer: 'diagram', id: ar.id };
+        }
       }
     }
   }
   return null;
 }
+function pointOnStroke(st, p, tol) {
+  var pts = st.points || [];
+  var reach = Math.max(tol, (st.width || 2) / 2 + tol / 2);
+  var b = strokeBBox(st);
+  if (!b) { return false; }
+  if (p.x < b.x - reach || p.x > b.x + b.w + reach || p.y < b.y - reach || p.y > b.y + b.h + reach) { return false; }
+  if (pts.length === 1) { return Math.hypot(p.x - pts[0][0], p.y - pts[0][1]) <= reach; }
+  for (var i = 0; i < pts.length - 1; i++) {
+    if (distToSegment(p, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) <= reach) { return true; }
+  }
+  return false;
+}
 function hitHandle(p) {
-  if (!selection) { return null; }
+  if (!sel.length) { return null; }
   var handles = selectionHandles();
   var tol = 9 / view.z;
   for (var i = 0; i < handles.length; i++) {
@@ -1241,9 +2168,34 @@ function hitHandle(p) {
 function shapeAt(p) {
   for (var i = state.diagram.length - 1; i >= 0; i--) {
     var o = state.diagram[i];
-    if (o.type !== 'arrow' && pointInShape(o, p)) { return o; }
+    if (isShape(o) && pointInShape(o, p)) { return o; }
   }
   return null;
+}
+/* Tous les objets qui touchent un rectangle (encadrement). */
+function objectsInRect(box) {
+  var refs = [];
+  var scan = function (layer, list, skip) {
+    if (!layerSelectable(layer)) { return; }
+    for (var i = 0; i < list.length; i++) {
+      if (skip && skip(list[i])) { continue; }
+      var b = objBBox(layer, list[i]);
+      if (b && rectsOverlap(box, b)) { refs.push({ layer: layer, id: list[i].id }); }
+    }
+  };
+  scan('diagram', state.diagram, function (o) { return o.type === 'arrow'; });
+  scan('draw', state.strokes, function (s) { return s.tool === 'eraser'; });
+  scan('text', state.texts);
+  scan('anno', state.annos);
+  /* un connecteur suit si ses deux formes sont encadrées */
+  var got = {};
+  refs.forEach(function (r) { got[r.layer + ':' + r.id] = true; });
+  for (var i = 0; i < state.diagram.length; i++) {
+    var a = state.diagram[i];
+    if (a.type !== 'arrow' || !layerSelectable('diagram')) { continue; }
+    if (got['diagram:' + a.from] && got['diagram:' + a.to]) { refs.push({ layer: 'diagram', id: a.id }); }
+  }
+  return refs;
 }
 
 /* ── Machine à gestes ────────────────────────────────────── */
@@ -1253,32 +2205,42 @@ function beginGesture(kind, extra) {
 }
 function commitGesture() {
   if (!drag) { return; }
-  if (drag.changed) {
-    redoStack.length = 0;
-    undoStack.push(drag.before);
-    if (undoStack.length > HISTORY_MAX) { undoStack.shift(); }
-    updateUndoBtns();
-  }
+  if (drag.changed) { commitIfChanged(drag.before); }
   drag = null;
 }
 function cancelDrag() {
   if (!drag) { return; }
-  if (drag.changed) { state = JSON.parse(drag.before); syncUidCounter(); }
+  if (drag.changed) {
+    state = JSON.parse(drag.before);
+    syncUidCounter();
+    sel = sel.filter(function (r) { return findObj(r); });
+  }
   liveStroke = null;
+  marquee = null;
   drag = null;
+  stage.classList.remove('cur-panning');
+  updateCursor();
   renderAll();
+  refreshOptions();
+  refreshSelPanel();
+}
+/* Copie d'origine de la sélection, pour les gestes de déplacement / échelle. */
+function captureSelOrigins() {
+  return selPairs().map(function (p) { return { ref: p.ref, orig: deep(p.obj) }; });
 }
 
-var DEFAULT_SIZE = { rect: [150, 80], diamond: [130, 95], ellipse: [130, 90] };
+var DEFAULT_SIZE = { rect: [150, 80], diamond: [130, 95], ellipse: [130, 90], note: [170, 130] };
+var DRAG_THRESHOLD = 5;      // px écran : en dessous, un glissement reste un clic
 
 stage.addEventListener('pointerdown', function (e) {
+  closeCtxMenu();
   if (e.button === 2) { return; }
   if (editingTarget) { commitTextEditor(false); }
   var p = toWorld(e.clientX, e.clientY);
   stage.setPointerCapture(e.pointerId);
 
-  /* Molette (bouton du milieu) : pan quel que soit l'outil */
-  if (e.button === 1) {
+  /* Molette pressée ou barre d'espace : déplacement de la vue, quel que soit l'outil */
+  if (e.button === 1 || spaceDown) {
     e.preventDefault();
     beginGesture('pan', { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y });
     stage.classList.add('cur-panning');
@@ -1292,23 +2254,35 @@ stage.addEventListener('pointerdown', function (e) {
   }
 
   if (currentTool === 'select') {
+    /* 1. une poignée de redimensionnement ? */
     var hName = hitHandle(p);
-    if (hName && selection) {
-      var obj = getSelected();
-      beginGesture('handle', { handle: hName, orig: JSON.parse(JSON.stringify(obj)) });
+    if (hName) {
+      var m = selMode();
+      if (m.kind === 'shape') {
+        beginGesture('handle', { handle: hName, orig: deep(m.obj), ref: sel[0] });
+      } else if (m.kind === 'arrow') {
+        beginGesture('handle-arrow', { handle: hName, orig: deep(m.obj), ref: sel[0] });
+      } else {
+        beginGesture('scale', { handle: hName, origins: captureSelOrigins(), box: pairsBBox(m.pairs) });
+      }
       return;
     }
+    /* 2. un objet ? */
     var hit = hitTest(p);
     if (hit) {
-      selection = hit;
-      renderOverlay(); refreshOptions();
-      var o = getSelected();
-      if (selection.layer === 'diagram' && o.type === 'arrow') { return; }  // sélectionnable, non déplaçable
-      beginGesture('move', { p0: p, orig: JSON.parse(JSON.stringify(o)) });
-    } else {
-      selection = null;
-      renderOverlay(); refreshOptions();
+      if (e.shiftKey) {
+        toggleSelRef(hit);
+        if (!isSel(hit.layer, hit.id)) { return; }     // le clic vient de le retirer
+      } else if (!isSel(hit.layer, hit.id)) {
+        setSel([hit]);
+      }
+      beginGesture('move', { p0: p, sx: e.clientX, sy: e.clientY, altKey: e.altKey,
+                             origins: captureSelOrigins(), box: selBBox(), dupDone: false });
+      return;
     }
+    /* 3. le vide : encadrement */
+    if (!e.shiftKey) { clearSel(); }
+    beginGesture('marquee', { p0: p, sx: e.clientX, sy: e.clientY, base: sel.slice() });
     return;
   }
 
@@ -1317,18 +2291,23 @@ stage.addEventListener('pointerdown', function (e) {
 
   if (currentTool === 'pen' || currentTool === 'highlight' || currentTool === 'eraser') {
     var st = settings[TOOL_SET[currentTool]];
-    liveStroke = { tool: currentTool === 'highlight' ? 'highlight' : currentTool,
-                   color: st.color || '#0C1A2E', width: st.width, points: [[p.x, p.y]] };
+    liveStroke = { id: nid(), tool: currentTool, color: st.color || '#0C1A2E',
+                   width: st.width, points: [[p.x, p.y]] };
     beginGesture('draw', {});
     return;
   }
 
-  if (currentTool === 'rect' || currentTool === 'diamond' || currentTool === 'ellipse') {
+  if (currentTool === 'rect' || currentTool === 'diamond' || currentTool === 'ellipse' || currentTool === 'note') {
     var id = nid();
-    beginGesture('shape-create', { id: id, p0: p });   // instantané AVANT l'ajout
-    var d = DEFAULT_SIZE[currentTool];                  // toujours la taille par défaut ; le glissement ne fait que positionner
-    state.diagram.push({ id: id, type: currentTool, x: p.x - d[0] / 2, y: p.y - d[1] / 2,
-                         w: d[0], h: d[1], text: '', color: settings.shape.color });
+    var isNote = currentTool === 'note';
+    var cfg = isNote ? settings.note : settings.shape;
+    var d = DEFAULT_SIZE[currentTool];
+    beginGesture('shape-create', { id: id, p0: p, sx: e.clientX, sy: e.clientY, sized: false, isNote: isNote });
+    state.diagram.push({ id: id, type: currentTool,
+                         x: snapVal(p.x - d[0] / 2, e.ctrlKey), y: snapVal(p.y - d[1] / 2, e.ctrlKey),
+                         w: d[0], h: d[1], text: '', size: cfg.size,
+                         color: cfg.color, fill: cfg.fill,
+                         dash: isNote ? false : !!settings.shape.dash });
     drag.changed = true;
     renderDiagram();
     return;
@@ -1344,7 +2323,7 @@ stage.addEventListener('pointerdown', function (e) {
 
   if (currentTool === 'text') {
     e.preventDefault();          // sinon le focus par défaut vole celui de l'éditeur
-    openTextEditor({ kind: 'text', isNew: true, x: p.x, y: p.y });
+    openTextEditor({ kind: 'text', isNew: true, x: snapVal(p.x, e.ctrlKey), y: snapVal(p.y, e.ctrlKey) });
     return;
   }
 
@@ -1368,8 +2347,10 @@ stage.addEventListener('pointerdown', function (e) {
 });
 
 stage.addEventListener('pointermove', function (e) {
+  lastPointer = { x: e.clientX, y: e.clientY };
   if (!drag) { return; }
   var p = toWorld(e.clientX, e.clientY);
+  var free = e.ctrlKey || e.metaKey;      // Ctrl pendant le geste : ignore l'aimant
 
   if (drag.kind === 'pan') {
     view.x = drag.vx + (e.clientX - drag.sx);
@@ -1385,12 +2366,33 @@ stage.addEventListener('pointermove', function (e) {
     }
     return;
   }
+  if (drag.kind === 'marquee') {
+    marquee = { x: Math.min(drag.p0.x, p.x), y: Math.min(drag.p0.y, p.y),
+                w: Math.abs(p.x - drag.p0.x), h: Math.abs(p.y - drag.p0.y) };
+    var found = objectsInRect(marquee);
+    var merged = drag.base.slice();
+    found.forEach(function (r) { if (!merged.some(function (q) { return q.layer === r.layer && q.id === r.id; })) { merged.push(r); } });
+    sel = merged;
+    refreshOptions(); refreshSelPanel();
+    renderOverlay();
+    return;
+  }
   if (drag.kind === 'shape-create') {
     var s = getShape(drag.id);
-    if (s) {                                   // taille fixe : le glissement recentre la case sur le curseur
-      s.x = p.x - s.w / 2; s.y = p.y - s.h / 2;
-      renderDiagram();
+    if (!s) { return; }
+    var moved = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy);
+    if (moved > DRAG_THRESHOLD) {           // glissement : on dimensionne la forme
+      drag.sized = true;
+      var x1 = snapVal(Math.min(drag.p0.x, p.x), free), y1 = snapVal(Math.min(drag.p0.y, p.y), free);
+      var x2 = snapVal(Math.max(drag.p0.x, p.x), free), y2 = snapVal(Math.max(drag.p0.y, p.y), free);
+      s.x = x1; s.y = y1;
+      s.w = Math.max(x2 - x1, 8); s.h = Math.max(y2 - y1, 8);
+    } else {                                 // simple clic : taille standard centrée
+      var d = DEFAULT_SIZE[s.type];
+      s.w = d[0]; s.h = d[1];
+      s.x = snapVal(p.x - d[0] / 2, free); s.y = snapVal(p.y - d[1] / 2, free);
     }
+    renderDiagram();
     return;
   }
   if (drag.kind === 'connector') {
@@ -1399,44 +2401,146 @@ stage.addEventListener('pointermove', function (e) {
     return;
   }
   if (drag.kind === 'move') {
-    var o = getSelected();
-    if (!o) { return; }
-    var dx = p.x - drag.p0.x, dy = p.y - drag.p0.y;
-    if (Math.abs(dx) + Math.abs(dy) < 0.5 / view.z && !drag.changed) { return; }
+    var moved2 = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy);
+    if (moved2 <= DRAG_THRESHOLD && !drag.changed) { return; }
+    /* Alt enfoncé au départ : on déplace une copie et on laisse l'original */
+    if (drag.altKey && !drag.dupDone) {
+      drag.dupDone = true;
+      var clip = buildClip();
+      if (!clipIsEmpty(clip)) {
+        pasteClipSilent(clip, 0, 0);
+        drag.origins = captureSelOrigins();
+        drag.box = selBBox();
+      }
+    }
     drag.changed = true;
-    if (selection.layer === 'text') { o.x = drag.orig.x + dx; o.y = drag.orig.y + dy; renderTexts(); }
-    else if (selection.layer === 'anno') {
-      if (o.type === 'arrow') {
-        o.x1 = drag.orig.x1 + dx; o.y1 = drag.orig.y1 + dy;
-        o.x2 = drag.orig.x2 + dx; o.y2 = drag.orig.y2 + dy;
-      } else { o.x = drag.orig.x + dx; o.y = drag.orig.y + dy; }
-      renderAnnos();
-    } else { o.x = drag.orig.x + dx; o.y = drag.orig.y + dy; renderDiagram(); }
-    renderOverlay();
+    var dx = p.x - drag.p0.x, dy = p.y - drag.p0.y;
+    if (drag.box) {                     // aimanter la boîte englobante, pas chaque objet
+      dx = snapVal(drag.box.x + dx, free) - drag.box.x;
+      dy = snapVal(drag.box.y + dy, free) - drag.box.y;
+    }
+    for (var i = 0; i < drag.origins.length; i++) {
+      var o = findObj(drag.origins[i].ref);
+      if (!o) { continue; }
+      var og = drag.origins[i].orig;
+      var layer = drag.origins[i].ref.layer;
+      if (layer === 'draw') {
+        for (var j = 0; j < og.points.length; j++) {
+          o.points[j][0] = og.points[j][0] + dx;
+          o.points[j][1] = og.points[j][1] + dy;
+        }
+      } else if (layer === 'anno' && o.type === 'arrow') {
+        o.x1 = og.x1 + dx; o.y1 = og.y1 + dy; o.x2 = og.x2 + dx; o.y2 = og.y2 + dy;
+      } else if (layer === 'diagram' && o.type === 'arrow') {
+        continue;
+      } else {
+        o.x = og.x + dx; o.y = og.y + dy;
+      }
+    }
+    renderAll();
     return;
   }
   if (drag.kind === 'handle') {
-    var obj = getSelected();
+    var obj = findObj(drag.ref);
     if (!obj) { return; }
     drag.changed = true;
-    applyHandle(obj, drag.handle, drag.orig, p);
-    if (selection.layer === 'anno') { renderAnnos(); } else { renderDiagram(); }
+    applyHandle(obj, drag.handle, drag.orig, p, free);
+    renderDiagram();
     renderOverlay();
+    return;
+  }
+  if (drag.kind === 'handle-arrow') {
+    var ar2 = findObj(drag.ref);
+    if (!ar2) { return; }
+    drag.changed = true;
+    if (drag.handle === 'p1') { ar2.x1 = snapVal(p.x, free); ar2.y1 = snapVal(p.y, free); }
+    else { ar2.x2 = snapVal(p.x, free); ar2.y2 = snapVal(p.y, free); }
+    renderAnnos();
+    renderOverlay();
+    return;
+  }
+  if (drag.kind === 'scale') {
+    applyGroupScale(drag, p, free, e.shiftKey);
+    return;
+  }
+  if (drag.kind === 'anno-arrow') {
+    var aobj = findObj({ layer: 'anno', id: drag.id });
+    if (aobj) { aobj.x2 = snapVal(p.x, free); aobj.y2 = snapVal(p.y, free); renderAnnos(); }
+    return;
+  }
+  if (drag.kind === 'anno-ellipse') {
+    var eobj = findObj({ layer: 'anno', id: drag.id });
+    if (eobj) {
+      eobj.x = snapVal(Math.min(drag.p0.x, p.x), free); eobj.y = snapVal(Math.min(drag.p0.y, p.y), free);
+      eobj.w = Math.abs(snapVal(p.x, free) - snapVal(drag.p0.x, free));
+      eobj.h = Math.abs(snapVal(p.y, free) - snapVal(drag.p0.y, free));
+      renderAnnos();
+    }
     return;
   }
 });
 
-function applyHandle(o, name, orig, p) {
+/* Redimensionnement direct d'une forme (8 poignées). */
+function applyHandle(o, name, orig, p, free) {
   var MIN = 24;
-  if (name === 'p1') { o.x1 = p.x; o.y1 = p.y; return; }
-  if (name === 'p2') { o.x2 = p.x; o.y2 = p.y; return; }
-  var minS = (selection && selection.layer === 'anno') ? 12 : MIN;
   var x1 = orig.x, y1 = orig.y, x2 = orig.x + orig.w, y2 = orig.y + orig.h;
-  if (name.indexOf('w') >= 0) { x1 = Math.min(p.x, x2 - minS); }
-  if (name.indexOf('e') >= 0) { x2 = Math.max(p.x, x1 + minS); }
-  if (name.indexOf('n') >= 0) { y1 = Math.min(p.y, y2 - minS); }
-  if (name.indexOf('s') >= 0) { y2 = Math.max(p.y, y1 + minS); }
+  if (name.indexOf('w') >= 0) { x1 = Math.min(snapVal(p.x, free), x2 - MIN); }
+  if (name.indexOf('e') >= 0) { x2 = Math.max(snapVal(p.x, free), x1 + MIN); }
+  if (name.indexOf('n') >= 0) { y1 = Math.min(snapVal(p.y, free), y2 - MIN); }
+  if (name.indexOf('s') >= 0) { y2 = Math.max(snapVal(p.y, free), y1 + MIN); }
   o.x = x1; o.y = y1; o.w = x2 - x1; o.h = y2 - y1;
+}
+/* Mise à l'échelle d'un groupe (ou d'un objet non redimensionnable directement). */
+function applyGroupScale(g, p, free, uniform) {
+  var b = g.box;
+  if (!b) { return; }
+  var MINB = 8;
+  var name = g.handle;
+  var x1 = b.x, y1 = b.y, x2 = b.x + b.w, y2 = b.y + b.h;
+  if (name.indexOf('w') >= 0) { x1 = Math.min(snapVal(p.x, free), x2 - MINB); }
+  if (name.indexOf('e') >= 0) { x2 = Math.max(snapVal(p.x, free), x1 + MINB); }
+  if (name.indexOf('n') >= 0) { y1 = Math.min(snapVal(p.y, free), y2 - MINB); }
+  if (name.indexOf('s') >= 0) { y2 = Math.max(snapVal(p.y, free), y1 + MINB); }
+  var sx = (x2 - x1) / b.w, sy = (y2 - y1) / b.h;
+  if (uniform && name.length === 2) { var u = (sx + sy) / 2; sx = u; sy = u; }
+  /* point fixe : le bord opposé à la poignée tirée */
+  var ox = name.indexOf('w') >= 0 ? b.x + b.w : b.x;
+  var oy = name.indexOf('n') >= 0 ? b.y + b.h : b.y;
+  g.changed = true;
+  for (var i = 0; i < g.origins.length; i++) {
+    var o = findObj(g.origins[i].ref);
+    if (!o) { continue; }
+    scaleObjFrom(g.origins[i].ref.layer, o, g.origins[i].orig, sx, sy, ox, oy);
+  }
+  renderAll();
+}
+/* Collage sans toast ni instantané (utilisé par Alt+glisser). */
+function pasteClipSilent(clip, dx, dy) {
+  var map = {}, refs = [];
+  var shapes = clip.diagram.filter(function (o) { return o.type !== 'arrow'; });
+  var links  = clip.diagram.filter(function (o) { return o.type === 'arrow'; });
+  var clone = function (src, layer, list) {
+    for (var i = 0; i < src.length; i++) {
+      var o = deep(src[i]);
+      map[o.id] = o.id = nid();
+      moveObj(layer, o, dx, dy);
+      list.push(o);
+      refs.push({ layer: layer, id: o.id });
+    }
+  };
+  clone(shapes, 'diagram', state.diagram);
+  for (var i = 0; i < links.length; i++) {
+    var a = deep(links[i]);
+    if (!map[a.from] || !map[a.to]) { continue; }
+    a.id = nid(); a.from = map[a.from]; a.to = map[a.to];
+    state.diagram.push(a);
+    refs.push({ layer: 'diagram', id: a.id });
+  }
+  clone(clip.strokes, 'draw', state.strokes);
+  clone(clip.texts, 'text', state.texts);
+  clone(clip.annos, 'anno', state.annos);
+  sel = refs;
+  return refs;
 }
 
 function renderConnectorPreview(p, targetShape) {
@@ -1465,6 +2569,7 @@ stage.addEventListener('pointerup', function (e) {
   if (drag.kind === 'pan') {
     stage.classList.remove('cur-panning');
     drag = null;
+    updateCursor();
     return;
   }
   if (drag.kind === 'draw') {
@@ -1478,14 +2583,24 @@ stage.addEventListener('pointerup', function (e) {
     } else { drag = null; liveStroke = null; }
     return;
   }
+  if (drag.kind === 'marquee') {
+    marquee = null;
+    var n = sel.length;
+    commitGesture();
+    afterSelChange();
+    if (n > 1) { toast(n + ' objets sélectionnés.'); }
+    return;
+  }
   if (drag.kind === 'shape-create') {
     var s = getShape(drag.id);
-    if (s) {                                   // taille par défaut déjà posée à la création
-      selection = { layer: 'diagram', id: s.id };
-    }
+    var wasNote = drag.isNote;
+    var sid = drag.id;
     commitGesture();
     setTool('select');
+    if (s) { setSel([{ layer: 'diagram', id: sid }]); }
     renderAll();
+    /* un pense-bête vide n'a aucun intérêt : on ouvre la saisie tout de suite */
+    if (s && wasNote && !s.text) { openTextEditor({ kind: 'shape', id: sid }); }
     return;
   }
   if (drag.kind === 'connector') {
@@ -1501,88 +2616,93 @@ stage.addEventListener('pointerup', function (e) {
       if (exists) { toast('Ces deux formes sont déjà connectées dans ce sens.', true); }
       else {
         snapshot();
-        state.diagram.push({ id: nid(), type: 'arrow', from: fromId, to: target.id, color: settings.shape.color });
+        var cid = nid();
+        state.diagram.push({ id: cid, type: 'arrow', from: fromId, to: target.id,
+                             color: settings.shape.color, dash: !!settings.shape.dash, label: '' });
         renderDiagram();
+        setSel([{ layer: 'diagram', id: cid }]);
       }
     }
     renderOverlay();
     return;
   }
   if (drag.kind === 'anno-arrow') {
-    var obj = null;
-    for (var i = 0; i < state.annos.length; i++) { if (state.annos[i].id === drag.id) { obj = state.annos[i]; } }
+    var obj = findObj({ layer: 'anno', id: drag.id });
     if (obj && Math.hypot(obj.x2 - obj.x1, obj.y2 - obj.y1) < 8 / view.z) {
       cancelDrag();                            // trop court : abandon
       return;
     }
-    selection = { layer: 'anno', id: drag.id };
+    var aid2 = drag.id;
     commitGesture();
     setTool('select');
+    setSel([{ layer: 'anno', id: aid2 }]);
     renderAll();
     return;
   }
   if (drag.kind === 'anno-ellipse') {
-    var el = null;
-    for (var j = 0; j < state.annos.length; j++) { if (state.annos[j].id === drag.id) { el = state.annos[j]; } }
+    var el = findObj({ layer: 'anno', id: drag.id });
     if (el && (el.w < 12 || el.h < 12)) { cancelDrag(); return; }
-    selection = { layer: 'anno', id: drag.id };
+    var eid2 = drag.id;
     commitGesture();
     setTool('select');
+    setSel([{ layer: 'anno', id: eid2 }]);
     renderAll();
     return;
   }
-  if (drag.kind === 'move' || drag.kind === 'handle') {
+  if (drag.kind === 'move' || drag.kind === 'handle' || drag.kind === 'handle-arrow' || drag.kind === 'scale') {
     commitGesture();
-    renderOverlay();
+    afterSelChange();
     return;
   }
   drag = null;
 });
 stage.addEventListener('pointercancel', function () { cancelDrag(); });
-
-/* Suivi du pointeur pendant la création d'annotations (flèche / ellipse) */
-stage.addEventListener('pointermove', function (e) {
-  if (!drag) { return; }
-  var p = toWorld(e.clientX, e.clientY);
-  if (drag.kind === 'anno-arrow') {
-    for (var i = 0; i < state.annos.length; i++) {
-      if (state.annos[i].id === drag.id) { state.annos[i].x2 = p.x; state.annos[i].y2 = p.y; }
-    }
-    renderAnnos();
-  } else if (drag.kind === 'anno-ellipse') {
-    for (var j = 0; j < state.annos.length; j++) {
-      var a = state.annos[j];
-      if (a.id === drag.id) {
-        a.x = Math.min(drag.p0.x, p.x); a.y = Math.min(drag.p0.y, p.y);
-        a.w = Math.abs(p.x - drag.p0.x); a.h = Math.abs(p.y - drag.p0.y);
-      }
-    }
-    renderAnnos();
-  }
-});
+stage.addEventListener('pointerleave', function () { lastPointer = null; });
+stage.addEventListener('pointerenter', function (e) { lastPointer = { x: e.clientX, y: e.clientY }; });
 
 /* ── Double-clic : édition de texte ──────────────────────── */
+/* Ouvre l'éditeur sur l'objet sélectionné (Entrée / F2). */
+function editSelectedText() {
+  var s = selSingle();
+  if (!s) { return false; }
+  if (s.ref.layer === 'text') { openTextEditor({ kind: 'text', id: s.obj.id }); return true; }
+  if (s.ref.layer === 'diagram' && isShape(s.obj)) { openTextEditor({ kind: 'shape', id: s.obj.id }); return true; }
+  if (s.ref.layer === 'diagram' && s.obj.type === 'arrow') { openTextEditor({ kind: 'connector', id: s.obj.id }); return true; }
+  return false;
+}
 stage.addEventListener('dblclick', function (e) {
   var p = toWorld(e.clientX, e.clientY);
-  if (layerSelectable('text')) {
-    for (var i = state.texts.length - 1; i >= 0; i--) {
-      var b = textBBox(state.texts[i]);
-      if (p.x >= b.x - 3 && p.x <= b.x + b.w + 3 && p.y >= b.y - 3 && p.y <= b.y + b.h + 3) {
-        openTextEditor({ kind: 'text', id: state.texts[i].id });
-        return;
-      }
-    }
+  var hit = hitTest(p);
+  if (hit) {
+    setSel([hit]);
+    var o = findObj(hit);
+    if (hit.layer === 'text') { openTextEditor({ kind: 'text', id: o.id }); return; }
+    if (hit.layer === 'diagram' && isShape(o)) { openTextEditor({ kind: 'shape', id: o.id }); return; }
+    if (hit.layer === 'diagram' && o.type === 'arrow') { openTextEditor({ kind: 'connector', id: o.id }); return; }
+    return;
   }
-  if (layerSelectable('diagram')) {
-    var s = shapeAt(p);
-    if (s) { openTextEditor({ kind: 'shape', id: s.id }); }
+  /* double-clic dans le vide avec l'outil sélection : nouvelle zone de texte */
+  if (currentTool === 'select' && layerSelectable('text')) {
+    e.preventDefault();
+    openTextEditor({ kind: 'text', isNew: true, x: snapVal(p.x, e.ctrlKey), y: snapVal(p.y, e.ctrlKey) });
   }
 });
 
-/* ── Éditeur de texte inline ─────────────────────────────── */
+/* =============================================================
+   ÉDITEUR DE TEXTE INLINE
+   ============================================================= */
+
 var editor = $('#text-editor');
+var editorInfo = { size: 16, wrap: false, width: 0 };
+
 function autosizeEditor() {
-  var size = editingTarget && editingTarget.kind === 'shape' ? 13.5 : (editorFontSize());
+  var size = editorInfo.size;
+  if (editorInfo.wrap) {
+    editor.style.width = editorInfo.width + 'px';
+    editor.style.height = 'auto';
+    editor.style.height = Math.max(editor.scrollHeight, size * 1.3 * view.z + 10) + 'px';
+    return;
+  }
   measureCtx.font = '600 ' + (size * view.z) + 'px Manrope, sans-serif';
   var lines = editor.value.split('\n');
   var w = 60;
@@ -1590,48 +2710,65 @@ function autosizeEditor() {
   editor.style.width = w + 'px';
   editor.style.height = (lines.length * size * 1.3 * view.z + 10) + 'px';
 }
-function editorFontSize() {
-  if (!editingTarget) { return settings.text.size; }
-  if (editingTarget.kind === 'shape') { return 13.5; }
-  if (editingTarget.isNew) { return settings.text.size; }
-  var t = null;
-  for (var i = 0; i < state.texts.length; i++) { if (state.texts[i].id === editingTarget.id) { t = state.texts[i]; } }
-  return t ? t.size : settings.text.size;
-}
 function openTextEditor(target) {
   if (editingTarget) { commitTextEditor(false); }
-  editingTarget = target;
-  var wx, wy, value = '', color = settings.text.color, size = editorFontSize();
+  var wx, wy, value = '', color = settings.text.color, size = settings.text.size;
+  var align = 'left', wrap = false, width = 0;
+
   if (target.kind === 'shape') {
     var s = getShape(target.id);
-    if (!s) { editingTarget = null; return; }
-    if (!guardLayer('diagram')) { editingTarget = null; return; }
-    var c = shapeCenter(s);
-    wx = s.x + 8; wy = c.y - (13.5 * 1.3) / 2;
+    if (!s) { return; }
+    if (!guardLayer('diagram')) { return; }
+    size = shapeFontSize(s);
     value = s.text || '';
-    editor.style.textAlign = 'center';
+    color = textColorOn(shapeFill(s) === 'none' ? '#FFFFFF' : shapeFill(s));
+    if (s.type === 'note') {
+      wx = s.x + NOTE_PAD - 4; wy = s.y + NOTE_PAD - 3;
+      align = 'left'; wrap = true;
+      width = Math.max((s.w - NOTE_PAD * 2 + 10) * view.z, 40);
+    } else {
+      var c = shapeCenter(s);
+      wx = s.x + 8; wy = c.y - (size * 1.3) / 2;
+      align = 'center';
+    }
+  } else if (target.kind === 'connector') {
+    var a = findObj({ layer: 'diagram', id: target.id });
+    if (!a || a.type !== 'arrow') { return; }
+    if (!guardLayer('diagram')) { return; }
+    var pts = connectorPoints(a);
+    if (!pts) { toast('Connecteur orphelin.', true); return; }
+    size = 12;
+    value = a.label || '';
+    color = a.color || '#0C1A2E';
+    wx = (pts.x1 + pts.x2) / 2 - 24; wy = (pts.y1 + pts.y2) / 2 - size * 0.8;
+    align = 'center';
   } else if (target.isNew) {
-    if (!guardLayer('text')) { editingTarget = null; return; }
+    if (!guardLayer('text')) { return; }
     wx = target.x; wy = target.y;
-    editor.style.textAlign = 'left';
+    color = settings.text.color;
+    size = settings.text.size;
   } else {
-    var t = null;
-    for (var i = 0; i < state.texts.length; i++) { if (state.texts[i].id === target.id) { t = state.texts[i]; } }
-    if (!t) { editingTarget = null; return; }
-    if (!guardLayer('text')) { editingTarget = null; return; }
+    var t = findObj({ layer: 'text', id: target.id });
+    if (!t) { return; }
+    if (!guardLayer('text')) { return; }
     wx = t.x; wy = t.y;
     value = t.text;
     color = t.color;
-    editor.style.textAlign = 'left';
+    size = t.size;
   }
+
+  editingTarget = target;
+  editorInfo = { size: size, wrap: wrap, width: width };
   editor.value = value;
+  editor.style.textAlign = align;
+  editor.style.whiteSpace = wrap ? 'pre-wrap' : 'pre';
   editor.style.left = (wx * view.z + view.x - 5) + 'px';
   editor.style.top = (wy * view.z + view.y - 4) + 'px';
   editor.style.fontSize = (size * view.z) + 'px';
   editor.style.color = color;
   editor.style.display = 'block';
   autosizeEditor();
-  renderTexts();
+  renderAll();
   /* focus différé : pendant un pointerdown, le focus par défaut du
      navigateur (sur la scène) écraserait celui posé de façon synchrone */
   setTimeout(function () {
@@ -1649,26 +2786,33 @@ function commitTextEditor(cancel) {
     if (tgt.kind === 'shape') {
       var s = getShape(tgt.id);
       if (s && val !== (s.text || '')) { snapshot(); s.text = val; }
+    } else if (tgt.kind === 'connector') {
+      var a = findObj({ layer: 'diagram', id: tgt.id });
+      if (a && val !== (a.label || '')) { snapshot(); a.label = val; }
     } else if (tgt.isNew) {
       if (val) {
         snapshot();
         var id = nid();
-        state.texts.push({ id: id, x: tgt.x, y: tgt.y, text: val, size: settings.text.size, color: settings.text.color });
-        selection = { layer: 'text', id: id };
+        state.texts.push({ id: id, x: tgt.x, y: tgt.y, text: val,
+                           size: settings.text.size, color: settings.text.color });
+        sel = [{ layer: 'text', id: id }];
         setTool('select');
       }
     } else {
-      var t = null;
-      for (var i = 0; i < state.texts.length; i++) { if (state.texts[i].id === tgt.id) { t = state.texts[i]; } }
+      var t = findObj({ layer: 'text', id: tgt.id });
       if (t && val !== t.text) {
         snapshot();
         if (val) { t.text = val; }
-        else { state.texts = state.texts.filter(function (o) { return o.id !== tgt.id; }); selection = null; }
+        else {
+          state.texts = state.texts.filter(function (o) { return o.id !== tgt.id; });
+          sel = sel.filter(function (r) { return !(r.layer === 'text' && r.id === tgt.id); });
+        }
       }
     }
   }
   renderAll();
   refreshOptions();
+  refreshSelPanel();
 }
 editor.addEventListener('blur', function () { commitTextEditor(false); });
 editor.addEventListener('input', autosizeEditor);
@@ -1676,10 +2820,100 @@ editor.addEventListener('keydown', function (e) {
   e.stopPropagation();
   if (e.key === 'Escape') { commitTextEditor(true); }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { commitTextEditor(false); }
+  if (e.key === 'Tab') { e.preventDefault(); commitTextEditor(false); }
 });
 
 /* =============================================================
-   ZOOM / PAN, EXPORTS, SESSION JSON, INITIALISATION
+   MENU CONTEXTUEL (clic droit)
+   ============================================================= */
+
+var CTX_ICONS = {
+  edit:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
+  copy:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  cut:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88"/><path d="M14.47 14.48 20 20"/><path d="M8.12 8.12 12 12"/></svg>',
+  paste:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>',
+  dup:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  front:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M4 21h16"/></svg>',
+  back:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8"/><path d="m7 16 5 5 5-5"/><path d="M4 3h16"/></svg>',
+  del:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  all:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
+  fit:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
+};
+var ctxMenu = $('#ctxmenu');
+function closeCtxMenu() { ctxMenu.classList.remove('open'); }
+function buildCtxMenu(items) {
+  ctxMenu.innerHTML = '';
+  items.forEach(function (it) {
+    if (it === '-') {
+      var sp = document.createElement('div');
+      sp.className = 'ctx-sep';
+      ctxMenu.appendChild(sp);
+      return;
+    }
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = it.danger ? 'danger' : '';
+    b.disabled = !!it.disabled;
+    b.innerHTML = (CTX_ICONS[it.icon] || '') + '<span>' + it.label + '</span>' +
+                  (it.key ? '<span class="k">' + it.key + '</span>' : '');
+    b.addEventListener('click', function () {
+      closeCtxMenu();
+      it.run();
+    });
+    ctxMenu.appendChild(b);
+  });
+}
+stage.addEventListener('contextmenu', function (e) {
+  e.preventDefault();
+  if (editingTarget) { commitTextEditor(false); }
+  var p = toWorld(e.clientX, e.clientY);
+  var hit = hitTest(p);
+  if (hit && !isSel(hit.layer, hit.id)) { setSel([hit]); }
+  else if (!hit) { clearSel(); }
+
+  var items;
+  if (sel.length) {
+    var s = selSingle();
+    var canEdit = !!s && (s.ref.layer === 'text' ||
+                          (s.ref.layer === 'diagram' && (isShape(s.obj) || s.obj.type === 'arrow')));
+    items = [
+      { label: s && s.ref.layer === 'diagram' && s.obj.type === 'arrow' ? 'Libeller la flèche' : 'Éditer le texte',
+        icon: 'edit', key: 'Entrée', disabled: !canEdit, run: editSelectedText },
+      '-',
+      { label: 'Copier', icon: 'copy', key: 'Ctrl+C', run: function () { copySelection(false); } },
+      { label: 'Couper', icon: 'cut', key: 'Ctrl+X', run: function () { copySelection(true); } },
+      { label: 'Dupliquer', icon: 'dup', key: 'Ctrl+D', run: duplicateSelection },
+      '-',
+      { label: 'Au premier plan', icon: 'front', key: 'Ctrl+Maj+↑', run: function () { reorderSelection(true); } },
+      { label: 'À l’arrière-plan', icon: 'back', key: 'Ctrl+Maj+↓', run: function () { reorderSelection(false); } },
+      '-',
+      { label: 'Supprimer', icon: 'del', key: 'Suppr', danger: true, run: deleteSelection }
+    ];
+  } else {
+    var at = { x: e.clientX, y: e.clientY };
+    items = [
+      { label: 'Coller ici', icon: 'paste', key: 'Ctrl+V', disabled: clipIsEmpty(clipboard),
+        run: function () { lastPointer = at; pasteFromInternal(); } },
+      { label: 'Tout sélectionner', icon: 'all', key: 'Ctrl+A', run: selectAll },
+      '-',
+      { label: 'Ajuster la vue', icon: 'fit', key: 'Maj+1', run: function () { fitView(false); } }
+    ];
+  }
+  buildCtxMenu(items);
+  ctxMenu.classList.add('open');
+  var r = ctxMenu.getBoundingClientRect();
+  var x = Math.min(e.clientX, window.innerWidth - r.width - 8);
+  var y = Math.min(e.clientY, window.innerHeight - r.height - 8);
+  ctxMenu.style.left = Math.max(6, x) + 'px';
+  ctxMenu.style.top = Math.max(6, y) + 'px';
+});
+document.addEventListener('pointerdown', function (e) {
+  if (ctxMenu.classList.contains('open') && !ctxMenu.contains(e.target)) { closeCtxMenu(); }
+}, true);
+window.addEventListener('resize', closeCtxMenu);
+
+/* =============================================================
+   ZOOM / PAN, EXPORTS, SESSION, SAUVEGARDE AUTO, INITIALISATION
    ============================================================= */
 
 function zoomAt(clientX, clientY, nz) {
@@ -1699,6 +2933,13 @@ function stageCenter() {
 stage.addEventListener('wheel', function (e) {
   e.preventDefault();
   if (editingTarget) { commitTextEditor(false); }
+  closeCtxMenu();
+  /* Maj+molette : défilement horizontal, comme dans les autres tableaux blancs */
+  if (e.shiftKey) {
+    view.x -= e.deltaY;
+    applyView();
+    return;
+  }
   zoomAt(e.clientX, e.clientY, view.z * Math.exp(-e.deltaY * 0.0015));
 }, { passive: false });
 
@@ -1710,16 +2951,12 @@ function contentBBox(diagramOnly) {
   var i;
   for (i = 0; i < state.diagram.length; i++) {
     var o = state.diagram[i];
-    if (o.type !== 'arrow') { addB({ x: o.x, y: o.y, w: o.w, h: o.h }, 3); }
+    if (isShape(o)) { addB({ x: o.x, y: o.y, w: o.w, h: o.h }, 3); }
   }
   if (!diagramOnly) {
     for (i = 0; i < state.strokes.length; i++) {
-      var st = state.strokes[i];
-      if (st.tool === 'eraser') { continue; }
-      for (var j = 0; j < st.points.length; j++) {
-        add(st.points[j][0] - st.width / 2 - 2, st.points[j][1] - st.width / 2 - 2);
-        add(st.points[j][0] + st.width / 2 + 2, st.points[j][1] + st.width / 2 + 2);
-      }
+      if (state.strokes[i].tool === 'eraser') { continue; }
+      addB(strokeBBox(state.strokes[i]), 2);
     }
     for (i = 0; i < state.texts.length; i++) { addB(textBBox(state.texts[i]), 3); }
     for (i = 0; i < state.annos.length; i++) { addB(objBBox('anno', state.annos[i]), state.annos[i].width + 6); }
@@ -1727,13 +2964,14 @@ function contentBBox(diagramOnly) {
   if (!has) { return null; }
   return { x: minX, y: minY, w: Math.max(maxX - minX, 1), h: Math.max(maxY - minY, 1) };
 }
-function fitView() {
-  var b = contentBBox(false);
+function fitView(selectionOnly) {
+  var b = selectionOnly ? selBBox() : contentBBox(false);
+  if (selectionOnly && !b) { toast('Aucune sélection à ajuster.', true); return; }
   var r = stage.getBoundingClientRect();
   if (!b) { view.x = 0; view.y = 0; view.z = 1; applyView(); return; }
-  var pad = 60;
+  var pad = selectionOnly ? 90 : 60;
   var z = Math.min((r.width - pad * 2) / b.w, (r.height - pad * 2) / b.h);
-  z = Math.max(ZMIN, Math.min(z, 1.5));
+  z = Math.max(ZMIN, Math.min(z, selectionOnly ? 2.5 : 1.5));
   view.z = z;
   view.x = (r.width - b.w * z) / 2 - b.x * z;
   view.y = (r.height - b.h * z) / 2 - b.y * z;
@@ -1742,7 +2980,7 @@ function fitView() {
 $('#btn-zoom-in').addEventListener('click', function () { var c = stageCenter(); zoomAt(c.x, c.y, view.z * 1.25); });
 $('#btn-zoom-out').addEventListener('click', function () { var c = stageCenter(); zoomAt(c.x, c.y, view.z / 1.25); });
 $('#zoom-val').addEventListener('click', function () { var c = stageCenter(); zoomAt(c.x, c.y, 1); });
-$('#btn-zoom-fit').addEventListener('click', fitView);
+$('#btn-zoom-fit').addEventListener('click', function () { fitView(sel.length > 0); });
 
 /* ── Rendu canvas des couches vectorielles (pour export PNG) ── */
 function roundRectPath(ctx, x, y, w, h, r) {
@@ -1755,13 +2993,15 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
-function drawArrowC(ctx, x1, y1, x2, y2, width, color) {
+function drawArrowC(ctx, x1, y1, x2, y2, width, color, dashed) {
   var ang = Math.atan2(y2 - y1, x2 - x1);
   var len = Math.max(9, width * 3.2);
   var bx = x2 - len * 0.72 * Math.cos(ang), by = y2 - len * 0.72 * Math.sin(ang);
   ctx.save();
   ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+  if (dashed) { ctx.setLineDash([width * 3.2, width * 2.4]); }
   ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.setLineDash([]);
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(x2, y2);
@@ -1776,15 +3016,18 @@ function drawDiagramC(ctx) {
     o = state.diagram[i];
     if (o.type !== 'arrow') { continue; }
     var pts = connectorPoints(o);
-    if (pts) { drawArrowC(ctx, pts.x1, pts.y1, pts.x2, pts.y2, 2, o.color || '#0C1A2E'); }
+    if (pts) { drawArrowC(ctx, pts.x1, pts.y1, pts.x2, pts.y2, 2, o.color || '#0C1A2E', o.dash); }
   }
   for (i = 0; i < state.diagram.length; i++) {
     o = state.diagram[i];
     if (o.type === 'arrow') { continue; }
     ctx.save();
-    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = o.color || '#0C1A2E'; ctx.lineWidth = 2;
+    var fill = shapeFill(o);
+    ctx.strokeStyle = shapeStroke(o);
+    ctx.lineWidth = o.type === 'note' ? 1.5 : 2;
+    if (o.dash && o.type !== 'note') { ctx.setLineDash([6.4, 4.8]); }
     var c = shapeCenter(o);
-    if (o.type === 'rect') { roundRectPath(ctx, o.x, o.y, o.w, o.h, 8); }
+    if (o.type === 'rect' || o.type === 'note') { roundRectPath(ctx, o.x, o.y, o.w, o.h, o.type === 'note' ? 3 : 8); }
     else if (o.type === 'diamond') {
       ctx.beginPath();
       ctx.moveTo(c.x, o.y); ctx.lineTo(o.x + o.w, c.y); ctx.lineTo(c.x, o.y + o.h); ctx.lineTo(o.x, c.y);
@@ -1793,18 +3036,33 @@ function drawDiagramC(ctx) {
       ctx.beginPath();
       ctx.ellipse(c.x, c.y, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
     }
-    ctx.fill(); ctx.stroke();
+    if (fill !== 'none') { ctx.fillStyle = fill; ctx.fill(); }
+    ctx.stroke();
+    ctx.setLineDash([]);
     if (o.text) {
-      var size = 13.5;
-      var maxW = o.type === 'rect' ? o.w - 18 : o.w * 0.68;
-      var lines = wrapText(o.text, Math.max(maxW, 30), size);
-      var lh = Math.round(size * 1.25);
-      var y0 = c.y - ((lines.length - 1) / 2) * lh;
-      ctx.fillStyle = '#0C1A2E';
-      ctx.font = fontFor(size);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for (var j = 0; j < lines.length; j++) { ctx.fillText(lines[j], c.x, y0 + j * lh); }
+      var L = shapeTextLayout(o);
+      ctx.fillStyle = textColorOn(fill === 'none' ? '#FFFFFF' : fill);
+      ctx.font = fontFor(L.size);
+      ctx.textAlign = L.anchor === 'middle' ? 'center' : 'left';
+      ctx.textBaseline = o.type === 'note' ? 'alphabetic' : 'middle';
+      for (var j = 0; j < L.lines.length; j++) { ctx.fillText(L.lines[j], L.x, L.y + j * L.lh); }
     }
+    ctx.restore();
+  }
+  for (i = 0; i < state.diagram.length; i++) {      // libellés des connecteurs
+    o = state.diagram[i];
+    if (o.type !== 'arrow' || !o.label) { continue; }
+    var lp = connectorPoints(o);
+    if (!lp) { continue; }
+    var b = connectorLabelBox(o, lp);
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    roundRectPath(ctx, b.x, b.y, b.w, b.h, 3);
+    ctx.fill();
+    ctx.fillStyle = o.color || '#0C1A2E';
+    ctx.font = fontFor(b.size);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(o.label, b.x + b.w / 2, b.y + b.h / 2);
     ctx.restore();
   }
 }
@@ -1830,7 +3088,7 @@ function drawAnnosC(ctx) {
       ctx.save();
       ctx.strokeStyle = a.color; ctx.lineWidth = a.width;
       ctx.beginPath();
-      ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2, a.w / 2, a.h / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2, Math.max(a.w / 2, 0), Math.max(a.h / 2, 0), 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -1933,7 +3191,7 @@ function copyImage() {
 
 /* Export SVG : couche Diagramme seule (réutilisable ailleurs) */
 function exportSVG() {
-  var hasShape = state.diagram.some(function (o) { return o.type !== 'arrow'; });
+  var hasShape = state.diagram.some(function (o) { return isShape(o); });
   if (!hasShape) { toast('La couche Diagramme est vide.', true); return; }
   var b = contentBBox(true);
   var pad = 24;
@@ -1953,11 +3211,24 @@ function exportSVG() {
     if (!pts) { continue; }
     var color = o.color || '#0C1A2E';
     svgEl('line', { x1: pts.x1, y1: pts.y1, x2: pts.x2, y2: pts.y2,
-      stroke: color, 'stroke-width': 2, 'marker-end': ensureMarker(svg, 'x', color) }, g);
+      stroke: color, 'stroke-width': 2, 'stroke-dasharray': dashAttr(o, 2),
+      'marker-end': ensureMarker(svg, 'x', color) }, g);
   }
   for (i = 0; i < state.diagram.length; i++) {
     o = state.diagram[i];
-    if (o.type !== 'arrow') { renderShapeInto(g, o); }
+    if (isShape(o)) { renderShapeInto(g, o); }
+  }
+  for (i = 0; i < state.diagram.length; i++) {
+    o = state.diagram[i];
+    if (o.type !== 'arrow' || !o.label) { continue; }
+    var lp = connectorPoints(o);
+    if (!lp) { continue; }
+    var lb = connectorLabelBox(o, lp);
+    svgEl('rect', { x: lb.x, y: lb.y, width: lb.w, height: lb.h, rx: 3, fill: '#FFFFFF' }, g);
+    var lt = svgEl('text', { x: lb.x + lb.w / 2, y: lb.y + lb.h / 2, 'text-anchor': 'middle',
+      'dominant-baseline': 'middle', 'font-size': lb.size, 'font-weight': 600,
+      fill: o.color || '#0C1A2E' }, g);
+    lt.textContent = o.label;
   }
   var src = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
   download('whiteboard-diagramme_' + stamp() + '.svg', new Blob([src], { type: 'image/svg+xml' }));
@@ -1965,18 +3236,51 @@ function exportSVG() {
 }
 
 /* ── Session JSON (sauvegarde / reprise) ─────────────────── */
-function saveJSON() {
+var DOC_APP = 'whiteboard-gft';
+function buildDoc() {
   var layers = {};
   for (var k in LAYERS) { layers[k] = { visible: LAYERS[k].visible, locked: LAYERS[k].locked }; }
-  var doc = {
-    app: 'whiteboard-gft', version: 1,
+  return {
+    app: DOC_APP, version: 2,
     savedAt: new Date().toISOString(),
     view: { x: view.x, y: view.y, z: view.z },
     layers: layers,
     state: state
   };
-  download('whiteboard-session_' + stamp() + '.json', new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
+}
+function saveJSON() {
+  download('whiteboard-session_' + stamp() + '.json',
+           new Blob([JSON.stringify(buildDoc(), null, 2)], { type: 'application/json' }));
   toast('Session sauvegardée (fichier JSON).');
+}
+/* Charge un document (fichier ou sauvegarde auto) dans l'état courant. */
+function loadDoc(doc, restoreView) {
+  state = {
+    diagram: Array.isArray(doc.state.diagram) ? doc.state.diagram : [],
+    strokes: Array.isArray(doc.state.strokes) ? doc.state.strokes : [],
+    texts:   Array.isArray(doc.state.texts)   ? doc.state.texts   : [],
+    annos:   Array.isArray(doc.state.annos)   ? doc.state.annos   : []
+  };
+  sel = [];
+  syncUidCounter();
+  ensureStrokeIds();
+  if (doc.layers) {
+    for (var k in LAYERS) {
+      if (doc.layers[k]) {
+        LAYERS[k].visible = doc.layers[k].visible !== false;
+        LAYERS[k].locked = !!doc.layers[k].locked && LAYERS[k].lockable;
+      }
+      refreshLayerRow(k);
+    }
+  }
+  if (restoreView && doc.view && typeof doc.view.z === 'number') {
+    view.x = doc.view.x || 0; view.y = doc.view.y || 0;
+    view.z = Math.max(ZMIN, Math.min(ZMAX, doc.view.z));
+  }
+  renderAll();
+  applyView();
+  refreshOptions();
+  refreshSelPanel();
 }
 function importJSON(file) {
   var reader = new FileReader();
@@ -1984,40 +3288,52 @@ function importJSON(file) {
     var doc;
     try { doc = JSON.parse(String(reader.result)); }
     catch (err) { toast('Fichier illisible — JSON invalide.', true); return; }
-    if (!doc || doc.app !== 'whiteboard-gft' || !doc.state) {
+    if (!doc || doc.app !== DOC_APP || !doc.state) {
       toast('Ce fichier n’est pas une session Whiteboard.', true);
       return;
     }
     snapshot();
-    state = {
-      diagram: Array.isArray(doc.state.diagram) ? doc.state.diagram : [],
-      strokes: Array.isArray(doc.state.strokes) ? doc.state.strokes : [],
-      texts:   Array.isArray(doc.state.texts)   ? doc.state.texts   : [],
-      annos:   Array.isArray(doc.state.annos)   ? doc.state.annos   : []
-    };
-    selection = null;
-    syncUidCounter();
-    if (doc.layers) {
-      for (var k in LAYERS) {
-        if (doc.layers[k]) {
-          LAYERS[k].visible = doc.layers[k].visible !== false;
-          LAYERS[k].locked = !!doc.layers[k].locked && LAYERS[k].lockable;
-        }
-        refreshLayerRow(k);
-      }
-    }
-    if (doc.view && typeof doc.view.z === 'number') {
-      view.x = doc.view.x || 0; view.y = doc.view.y || 0;
-      view.z = Math.max(ZMIN, Math.min(ZMAX, doc.view.z));
-    }
-    renderAll();
-    applyView();
-    refreshOptions();
+    loadDoc(doc, true);
     toast('Session importée (Ctrl+Z pour revenir en arrière).');
   };
   reader.onerror = function () { toast('Lecture du fichier impossible.', true); };
   reader.readAsText(file);
 }
+
+/* ── Sauvegarde automatique (localStorage) ───────────────── */
+var AUTOSAVE_KEY = 'whiteboard-gft:autosave';
+var autosaveTimer = null;
+function docIsEmpty() {
+  return !state.diagram.length && !state.strokes.length && !state.texts.length && !state.annos.length;
+}
+function scheduleAutosave() {
+  if (!autosaveOn) { return; }
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(writeAutosave, 700);
+}
+function writeAutosave() {
+  if (!autosaveOn) { return; }
+  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildDoc())); }
+  catch (err) { /* quota atteint ou stockage refusé : la sauvegarde manuelle reste disponible */ }
+}
+function clearAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch (err) { /* rien à faire */ }
+}
+function restoreAutosave() {
+  var raw = null;
+  try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (err) { return false; }
+  if (!raw) { return false; }
+  var doc;
+  try { doc = JSON.parse(raw); } catch (err) { return false; }
+  if (!doc || doc.app !== DOC_APP || !doc.state) { return false; }
+  loadDoc(doc, true);
+  if (docIsEmpty()) { return false; }
+  return true;
+}
+window.addEventListener('beforeunload', function () {
+  clearTimeout(autosaveTimer);
+  writeAutosave();
+});
 
 /* ── Effacer tout ────────────────────────────────────────── */
 function clearAll() {
@@ -2029,7 +3345,7 @@ function clearAll() {
     if (!ok) { return; }
     snapshot();
     state = { diagram: [], strokes: [], texts: [], annos: [] };
-    selection = null;
+    clearSel();
     renderAll();
     toast('Tableau effacé.');
   });
@@ -2071,7 +3387,11 @@ setTool('select');
 resizeCanvas();
 applyView();
 updateUndoBtns();
+refreshSelPanel();
 renderAll();
+if (restoreAutosave()) {
+  toast('Session précédente restaurée.');
+}
 </script>
 </body>
 </html>
