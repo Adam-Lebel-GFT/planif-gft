@@ -160,6 +160,12 @@ compte depuis le début de la version, le delta depuis l'analyse précédente, e
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
 
+La fiche des **retirés** porte une colonne de plus, **« Vu la dernière fois »** : l'instant de la
+dernière photo où le ticket portait encore cette Target date, c'est-à-dire le moment où on l'a vu
+dans la version avant qu'il en sorte. Elle se trie et part dans l'export CSV comme les autres. Les
+fiches apportent ainsi leurs propres colonnes quand elles ont quelque chose de particulier à dire
+(`extraCols` du drill-down).
+
 Les filtres **État**, **Équipes**, **Origine** et **Priorité** de la barre s'appliquent à ces
 graphiques :
 chaque photo est recalculée sur ce périmètre, ses tickets étant conservés un par un. La liste des
@@ -174,6 +180,18 @@ l'avancement et la vue globale, **barres groupées** par statut et par équipe (
 séries), **barres empilées** par priorité et pour la Fix Version (composition d'un total),
 **bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
 graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
+
+**« Ouverts / terminés (nombre) »** empile les deux états en barres : terminés en vert **en bas**,
+pour que le vert monte au fil de la version comme une jauge qui se remplit, ouverts en bleu
+au-dessus — les couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le plan
+connaît les dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes
+week-ends grisés, mêmes heures fermées comprimées, une barre par photo posée à sa date réelle et
+dont la **hauteur est le nombre de tickets**. Le rythme des analyses et le périmètre qui bouge — 48
+tickets un soir, 42 le lendemain — s'y lisent d'un coup, là où une barre par photo régulièrement
+espacée les efface. Sans plan publié pour cette Target date, la mesure retombe sur la forme photo
+par photo. Un **trait pointillé** marque le plafond de tickets qu'on se donne (40 par défaut,
+réglable dans Configurer → Règles → Évolution ; **0** retire la ligne) ; il apparaît sous les deux
+formes, et l'échelle s'élargit pour le contenir quand il dépasse la plus haute barre.
 
 Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizontal devient le
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une

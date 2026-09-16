@@ -155,6 +155,15 @@
     (item.tickets || []).forEach(function (t) { if ((t.td || 'none') === td) out[t.k] = t; });
     return out;
   }
+  // Colonne propre à la fiche des retirés : le dernier moment où le ticket a
+  // été vu dans la version. Elle trie sur l'instant et s'exporte en clair.
+  var LAST_SEEN_COL = {
+    id: 'lastSeen', label: 'Vu la dernière fois',
+    get: function (t) { return t.lastSeen ? new Date(t.lastSeen).getTime() : 0; },
+    csv: function (t) { return t.lastSeen ? fmtWhen(t.lastSeen) : ''; },
+    render: function (t) { return t.lastSeen ? '<span title="' + esc(new Date(t.lastSeen).toLocaleString('fr-CH')) + '">' + esc(fmtWhen(t.lastSeen)) + '</span>' : '<span class="dd-empty">—</span>'; }
+  };
+
   APP.hooks.extraTiles.push(function (vis) {
     // Les photos du journal ne sont pas filtrées : comparer un extrait filtré
     // ferait passer pour « retirés » des tickets simplement masqués.
@@ -171,12 +180,16 @@
     if (!olders.length) return []; // première photo de cette version : rien à comparer
     var first = olders[0], last = olders[olders.length - 1];
     var now = {}; mine.forEach(function (t) { now[t.key] = t; });
+    // Dernière photo où le ticket portait encore cette Target date : c'est le
+    // moment où on l'a vu dans la version pour la dernière fois, avant qu'il
+    // change de cible ou disparaisse de l'extrait.
+    var lastSeen = {};
+    olders.forEach(function (i) { Object.keys(ticketsAt(i, td)).forEach(function (k) { lastSeen[k] = i.at; }); });
     var diff = function (ref) {
       var was = ticketsAt(ref, td);
-      return {
-        added: mine.filter(function (t) { return !was[t.key]; }),
-        removed: inflate(Object.keys(was).filter(function (k) { return !now[k]; }).map(function (k) { return was[k]; }))
-      };
+      var gone = inflate(Object.keys(was).filter(function (k) { return !now[k]; }).map(function (k) { return was[k]; }));
+      gone.forEach(function (t) { t.lastSeen = lastSeen[t.key] || ref.at; });
+      return { added: mine.filter(function (t) { return !was[t.key]; }), removed: gone };
     };
     var since = diff(first), prev = diff(last);
     var depuis = 'depuis la 1re photo de la version (' + shortWhen(first.at) + ')';
@@ -187,7 +200,7 @@
         drill: function () { return { title: 'Tickets ajoutés à la version', subtitle: 'Absents de la photo du ' + fmtWhen(first.at) + ', présents aujourd\'hui', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.added }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.added }] }; } },
       { id: 'scopeRemoved', label: 'Retirés de la version', value: since.removed.length, sub: depuis + ' — Target date modifiée ou ticket disparu de l\'extrait',
         tone: since.removed.length ? 'good' : 'neutral', delta: deltaOf(prev.removed.length),
-        drill: function () { return { title: 'Tickets retirés de la version', subtitle: 'Présents dans la photo du ' + fmtWhen(first.at) + ', absents aujourd\'hui — état au moment de cette photo', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.removed }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.removed }] }; } }
+        drill: function () { return { title: 'Tickets retirés de la version', subtitle: 'Présents dans la photo du ' + fmtWhen(first.at) + ', absents aujourd\'hui — état au moment de cette photo', extraCols: [LAST_SEEN_COL], tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.removed }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.removed }] }; } }
     ];
   });
 
@@ -309,7 +322,7 @@
   function officialIdx() { return versionsIndex().filter(function (v) { return v.official != null; }).map(function (v) { return v.official; }); }
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
-  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['state', 'Ouverts / terminés (nombre)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
   // Burn-up : rend null si le plan ne connaît pas cette Target date (pas de
   // début ni de gel à opposer aux photos) — on retombe alors sur la courbe.
   // Fenêtre ouvrée du burn-up (Configurer → Règles). Tout ce qui parle de
@@ -396,6 +409,29 @@
     });
   }
 
+  // Sur une version, « Ouverts / terminés » se lit sur le calendrier, comme le
+  // burn-up : une barre par photo posée à sa date, hauteur = nombre de tickets.
+  // Le rythme des analyses et le périmètre qui bouge apparaissent alors, là où
+  // une barre par photo régulièrement espacée les efface.
+  function stateTimeFor(sel, pts2, photos) {
+    if (!root.BDV2Plan || !root.BDV2Plan.versionForDate) return null;
+    var cfg = CFG.get(), pv = root.BDV2Plan.versionForDate(sel.td, cfg);
+    var gate = pv && (pv.deadline || pv.freeze);
+    if (!pv || !pv.start || !gate) return null;
+    var items = H.items;
+    var points = pts2.map(function (p, i) {
+      var it = items[photos[i]];
+      return { t: new Date(it.at), label: fmtWhen(it.at), values: { done: p.st.done, open: p.st.open } };
+    }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
+    if (!points.length) return null;
+    return CH.barTimeChart({
+      start: pv.start, end: pv.deploy || pv.end || gate, today: C.startOfDay(S.refDate),
+      openFrom: openWin().a, openTo: openWin().z, points: points,
+      series: [{ key: 'done', label: 'Terminés', color: '#008300' }, { key: 'open', label: 'Ouverts', color: '#2a78d6' }],
+      threshold: cfg.history.threshold, thresholdLabel: 'tickets'
+    });
+  }
+
   function scopeNote() {
     return scopeOn()
       ? ' <b>Périmètre : ' + esc(scopeLabel()) + '</b> — chaque photo est recalculée sur ce filtre (état, équipes, origine, priorité).'
@@ -406,7 +442,7 @@
   // (groupées pour comparer des séries, empilées pour une composition, en
   // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
   // mesure vraiment continue.
-  var CHART_KIND = { global: 'line', progress: 'line', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
+  var CHART_KIND = { global: 'line', progress: 'line', state: 'stack', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
   function chartFrom(metric, points) {
     var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
     var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
@@ -417,6 +453,12 @@
     };
     if (metric === 'global') return lines([{ label: 'Total', color: P.NEUTRAL, values: g('total') }, { label: 'Ouverts', color: P.CATEGORICAL[0], values: g('open') }, { label: 'Terminés', color: P.CATEGORICAL[5], values: g('done') }, { label: 'Blockers ouverts', color: P.CATEGORICAL[7], values: g('blockersOpen') }, { label: 'PRJ301 ouverts', color: '#4a3aa7', values: g('prj301Open') }]);
     if (metric === 'progress') return lines([{ label: 'Avancement pondéré', color: P.CATEGORICAL[0], values: g('progress') }], { unit: '%', max: 100, area: true });
+    // Ouverts / terminés, photo par photo : terminé en bas pour que le vert
+    // monte au fil de la version, comme une jauge qui se remplit. Les couleurs
+    // sont celles de « Terminé / en cours » partout ailleurs, et la ligne de
+    // repère rappelle le plafond qu'on se donne.
+    if (metric === 'state') return lines([{ label: 'Terminés', color: '#008300', values: g('done') }, { label: 'Ouverts', color: '#2a78d6', values: g('open') }],
+      { threshold: cfg.history.threshold, thresholdLabel: 'tickets' });
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
     var field = metric === 'status' ? 'byStatus' : metric === 'priority' ? 'byPriority' : 'byTeam';
@@ -461,11 +503,17 @@
       title = 'Version ' + versionLabel(sel, true) + ' — ' + photos.length + ' photo' + (photos.length > 1 ? 's' : '');
       sub = (ui.metric === 'progress'
         ? 'Avancement de la version sur son calendrier : chaque photo se place à sa date, la rampe grise dit où l\'on devrait être, le nombre coloré donne l\'écart à la dernière photo.'
+        : ui.metric === 'state'
+        ? 'Ouverts et terminés sur le calendrier de la version : une barre par photo, posée à sa date, dont la hauteur est le nombre de tickets — le périmètre qui bouge se voit autant que la progression.'
         : 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).') + scopeNote();
       // L'avancement d'une version se lit en burn-up quand le plan donne ses
       // dates : axe de dates réel, rampe attendue, écart à la rampe.
-      var bu = ui.metric === 'progress' && sel.td !== 'none' ? burnupFor(sel, pts2, photos) : null;
-      chart = bu || chartFrom(ui.metric, pts2);
+      // Deux mesures se lisent sur le vrai calendrier quand le plan connaît les
+      // dates de la version ; sinon on retombe sur la forme photo par photo.
+      var timed = sel.td === 'none' ? null
+        : ui.metric === 'progress' ? burnupFor(sel, pts2, photos)
+        : ui.metric === 'state' ? stateTimeFor(sel, pts2, photos) : null;
+      chart = timed || chartFrom(ui.metric, pts2);
       // rythme
       if (pts2.length >= 2) {
         var f = pts2[0], l = pts2[pts2.length - 1];

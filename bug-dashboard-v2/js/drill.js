@@ -23,7 +23,10 @@
     { id: 'labels', label: 'Labels', get: function (t) { return t.labels; }, render: function (t) { return '<span class="dd-sum" title="' + esc(t.labels) + '">' + (t.labels ? esc(t.labels) : '<span class="dd-empty">—</span>') + '</span>'; } }
   ];
 
-  var state = { tabs: [], active: 0, sort: { col: 'key', dir: 1 }, title: '', subtitle: '', pick: null };
+  // Colonnes affichées : celles ci-dessus, plus celles que la fiche apporte
+  // (`extraCols`) — la date de dernière apparition d'un ticket retiré, par
+  // exemple, n'a de sens que dans cette fiche-là.
+  var state = { tabs: [], active: 0, sort: { col: 'key', dir: 1 }, title: '', subtitle: '', pick: null, cols: COLS };
 
   function open(opts) {
     state.tabs = opts.tabs || [{ label: 'Tickets', tickets: opts.tickets || [] }];
@@ -33,6 +36,8 @@
     // `pick` : ce que « Filtrer le radar » appliquera. Absent, le bouton
     // n'apparaît pas — toutes les fiches ne se transforment pas en filtre.
     state.pick = opts.pick || null;
+    state.cols = COLS.concat(opts.extraCols || []);
+    if (!state.cols.some(function (c) { return c.id === state.sort.col; })) state.sort = { col: 'key', dir: 1 };
     render();
     var ov = document.getElementById('ddOverlay');
     ov.classList.add('is-open'); ov.setAttribute('aria-hidden', 'false');
@@ -53,18 +58,18 @@
       return '<button type="button" class="dd-tab' + (i === state.active ? ' is-on' : '') + '" data-tab="' + i + '">' + esc(tb.label) + ' <span class="dd-count">' + tb.tickets.length + '</span></button>';
     }).join('');
     var tickets = state.tabs[state.active].tickets.slice();
-    var col = COLS.find(function (c) { return c.id === state.sort.col; }) || COLS[0];
+    var col = state.cols.find(function (c) { return c.id === state.sort.col; }) || state.cols[0];
     tickets.sort(function (a, b) {
       var va = col.get(a), vb = col.get(b);
       if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * state.sort.dir;
       return String(va).localeCompare(String(vb), 'fr', { numeric: true }) * state.sort.dir;
     });
-    var thead = '<tr>' + COLS.map(function (c) {
+    var thead = '<tr>' + state.cols.map(function (c) {
       var on = c.id === state.sort.col;
       return '<th data-sort="' + c.id + '" class="' + (on ? 'is-sorted' : '') + '">' + esc(c.label) + (on ? (state.sort.dir === 1 ? ' ▲' : ' ▼') : '') + '</th>';
     }).join('') + '</tr>';
     var tbody = tickets.map(function (t) {
-      return '<tr>' + COLS.map(function (c) { return '<td class="dd-' + c.id + '">' + (c.render ? c.render(t) : esc(c.get(t) || '—')) + '</td>'; }).join('') + '</tr>';
+      return '<tr>' + state.cols.map(function (c) { return '<td class="dd-' + c.id + '">' + (c.render ? c.render(t) : esc(c.get(t) || '—')) + '</td>'; }).join('') + '</tr>';
     }).join('');
     document.getElementById('ddThead').innerHTML = thead;
     document.getElementById('ddTbody').innerHTML = tbody;
@@ -86,10 +91,11 @@
   }
 
   function toCSV(tickets) {
-    var head = COLS.map(function (c) { return c.label; });
+    var head = state.cols.map(function (c) { return c.label; });
     var lines = [head.join(';')].concat(tickets.map(function (t) {
-      return COLS.map(function (c) {
-        var v = c.id === 'target' ? (t.targetDate ? C.fmtDate(t.targetDate) : t.targetRaw) : c.get(t);
+      return state.cols.map(function (c) {
+        // `csv` quand la colonne trie sur autre chose que ce qu'elle affiche.
+        var v = c.csv ? c.csv(t) : c.id === 'target' ? (t.targetDate ? C.fmtDate(t.targetDate) : t.targetRaw) : c.get(t);
         v = v == null ? '' : String(v);
         return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
       }).join(';');
