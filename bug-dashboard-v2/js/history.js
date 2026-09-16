@@ -520,21 +520,50 @@
         '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="' + (official ? 'Retirer des versions officielles' : 'Marquer comme version officielle') + '">' + (official ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
     };
     var off = officialIdx();
-    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Photos épinglées, une par Target date (la plus récente fait foi), dans l\'ordre des Target dates. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div></div>' +
-      (off.length ? '<ul class="hist-list" style="margin-top:12px">' + off.map(function (k) { return row(k, true); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune version officielle : épinglez (📍) une analyse pour la faire apparaître ici.</p>') + '</div>';
+    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Photos épinglées, une par Target date (la plus récente fait foi), dans l\'ordre des Target dates. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div>' + foldBtn('histOff') + '</div>' +
+      '<div id="histOffBody"' + (isFolded('histOff') ? ' class="hidden"' : '') + '>' +
+      (off.length ? '<ul class="hist-list" style="margin-top:12px">' + off.map(function (k) { return row(k, true); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune version officielle : épinglez (📍) une analyse pour la faire apparaître ici.</p>') + '</div></div>';
     var groups = {};
     items.forEach(function (it, k) { if (it.epingle) return; var td = mainTd(it); (groups[td] = groups[td] || []).push(k); });
     var gkeys = Object.keys(groups).sort(function (a, b) { if (a === 'none') return 1; if (b === 'none') return -1; return b.localeCompare(a); });
     var nWork = items.filter(function (i) { return !i.epingle; }).length;
-    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + nWork + '</span></h2><div class="sub">Les sous-versions, regroupées par version (Target date), de la plus récente à la plus ancienne.</div></div></div>' +
+    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + nWork + '</span></h2><div class="sub">Les sous-versions, regroupées par version (Target date), de la plus récente à la plus ancienne.</div></div>' + foldBtn('histWork') + '</div>' +
+      '<div id="histWorkBody"' + (isFolded('histWork') ? ' class="hidden"' : '') + '>' +
       (gkeys.length ? gkeys.map(function (td) {
         var v = versions.find(function (x) { return x.td === td; });
         return '<h4 style="margin:14px 0 6px;font-size:12.5px;color:var(--navy)">' + esc(v ? versionLabel(v, true) : tdLabel(td, true)) + ' <span class="tk-badge tk-badge--muted">' + groups[td].length + '</span></h4><ul class="hist-list">' + groups[td].reverse().map(function (k) { return row(k, false); }).join('') + '</ul>';
       }).join('') : '<p class="sub" style="margin-top:10px">Aucune analyse de travail.</p>') +
-      '<div id="histCompare">' + compareHtml(items) + '</div></div>';
+      '<div id="histCompare">' + compareHtml(items) + '</div></div></div>';
     rootEl.innerHTML = h;
+    bindFolds(rootEl);
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
     $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; ui.touched = true; renderHistory(); });
+  }
+
+  // ── Repli des journaux ─────────────────────────────────────────────
+  // Repliés par défaut : on ouvre cette section pour le graphique d'évolution,
+  // la liste des analyses ne se consulte qu'à l'occasion. Le choix est conservé
+  // dans ce navigateur, comme les autres replis du tableau de bord.
+  var FOLD_KEY = 'bdv2:histFold', folds = null;
+  function foldState() {
+    if (!folds) { try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) || 'null'); } catch (e) {} if (!folds) folds = {}; }
+    return folds;
+  }
+  function isFolded(id) { var f = foldState()[id]; return f === undefined ? true : !!f; }
+  function setFolded(id, v) { foldState()[id] = v; try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) {} }
+  function foldBtn(id) {
+    return '<button type="button" class="collapse-btn' + (isFolded(id) ? ' is-collapsed' : '') + '" data-fold="' + id + '"><span class="chev">▾</span><span class="lbl">' + (isFolded(id) ? 'Afficher' : 'Réduire') + '</span></button>';
+  }
+  function bindFolds(rootEl) {
+    rootEl.querySelectorAll('[data-fold]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.fold, body = document.getElementById(id + 'Body'), v = !body.classList.contains('hidden');
+        body.classList.toggle('hidden', v);
+        b.classList.toggle('is-collapsed', v);
+        b.querySelector('.lbl').textContent = v ? 'Afficher' : 'Réduire';
+        setFolded(id, v);
+      });
+    });
   }
 
   // ── Comparateur ────────────────────────────────────────────────────
