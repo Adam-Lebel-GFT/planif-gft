@@ -76,6 +76,9 @@
 .wb-tool:hover { background: var(--bg); }
 .wb-tool.active { background: var(--navy); color: var(--white); }
 .wb-tool svg { width: 19px; height: 19px; pointer-events: none; }
+/* Bouton d'action (importer une image) : il ne devient pas l'outil courant */
+.wb-tool--action { color: var(--accent); }
+.wb-tool--action:hover { background: #EAF1F8; }
 
 /* Scène */
 .wb-stage-wrap { flex: 1; position: relative; min-width: 0; background: var(--white); }
@@ -130,6 +133,20 @@ svg.wb-layer text { user-select: none; }
   padding: 6px 2px;
 }
 .wb-zoomctl .zval:hover { background: var(--bg); }
+
+/* Voile de dépôt : glisser une image ou une session sur la scène */
+.wb-drop {
+  position: absolute; inset: 0; z-index: 28; display: none;
+  background: rgba(12, 68, 124, .06);
+  border: 2.5px dashed var(--accent); border-radius: 4px;
+  align-items: center; justify-content: center; pointer-events: none;
+}
+.wb-drop.on { display: flex; }
+.wb-drop span {
+  background: var(--white); border: 1.5px solid var(--accent); border-radius: var(--radius);
+  padding: 10px 18px; font-size: 13px; font-weight: 700; color: var(--accent);
+  box-shadow: var(--shadow-hover);
+}
 
 /* Astuce outil courant (bas gauche) */
 .wb-hint {
@@ -364,6 +381,7 @@ svg.wb-layer text { user-select: none; }
       </button>
     </div>
     <input type="file" id="file-json" accept=".json,application/json" style="display:none">
+    <input type="file" id="file-img" accept="image/*" multiple style="display:none">
   </header>
 
   <div class="wb-main">
@@ -388,6 +406,9 @@ svg.wb-layer text { user-select: none; }
       </button>
       <button class="wb-tool" data-tool="note" title="Pense-bête — post-it de rétro ou d'atelier (N)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 4h16v10l-6 6H4z"/><path d="M20 14h-6v6"/></svg>
+      </button>
+      <button class="wb-tool wb-tool--action" id="btn-image" title="Insérer une image — ou collez-la (Ctrl+V), ou déposez le fichier sur le tableau (I)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.6-4.6a2 2 0 0 0-2.8 0L4 20"/></svg>
       </button>
       <button class="wb-tool" data-tool="connector" title="Connecteur — relier deux formes, suit leurs déplacements (C)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="15" y="15" width="7" height="7" rx="1.5"/><path d="M8.5 8.5 13 13"/><path d="M13 9.5V13H9.5"/></svg>
@@ -424,6 +445,7 @@ svg.wb-layer text { user-select: none; }
         <svg    id="layer-anno"    class="wb-layer" xmlns="http://www.w3.org/2000/svg"><g id="g-anno"></g></svg>
         <svg    id="layer-overlay" class="wb-layer" xmlns="http://www.w3.org/2000/svg"><g id="g-overlay"></g></svg>
         <textarea id="text-editor" spellcheck="false"></textarea>
+        <div class="wb-drop" id="dropzone"><span>Déposer l’image ou la session</span></div>
       </div>
 
       <button class="wb-panel-toggle" id="btn-panel" title="Options et couches" aria-label="Options et couches">
@@ -586,11 +608,11 @@ svg.wb-layer text { user-select: none; }
         <h3>Raccourcis</h3>
         <p class="opt-note">
           <strong>V</strong> sélection · <strong>H</strong> main · <strong>R/D/O</strong> formes ·
-          <strong>N</strong> pense-bête · <strong>C</strong> connecteur · <strong>P</strong> crayon ·
+          <strong>N</strong> pense-bête · <strong>I</strong> image · <strong>C</strong> connecteur · <strong>P</strong> crayon ·
           <strong>S</strong> surligneur · <strong>E</strong> gomme · <strong>T</strong> texte ·
           <strong>A</strong> flèche · <strong>Q</strong> emphase<br>
           <strong>Ctrl+Z / Ctrl+Y</strong> annuler / rétablir ·
-          <strong>Ctrl+C / X / V</strong> copier / couper / coller ·
+          <strong>Ctrl+C / X / V</strong> copier / couper / coller (images incluses) ·
           <strong>Ctrl+D</strong> dupliquer · <strong>Ctrl+A</strong> tout sélectionner ·
           <strong>Suppr</strong> supprimer · <strong>Échap</strong> désélectionner<br>
           <strong>Entrée / F2</strong> éditer le texte · <strong>Flèches</strong> déplacer
@@ -645,6 +667,7 @@ var LAYERS = {
 /* ── État document (sérialisable en JSON) ────────────────── */
 var state = {
   diagram: [],   // {id,type:'rect'|'diamond'|'ellipse'|'note',x,y,w,h,text,size,color,fill,dash}
+                 // | {id,type:'image',x,y,w,h,src,natW,natH,name}
                  // | {id,type:'arrow',from,to,color,dash,label}
   strokes: [],   // {id,tool:'pen'|'highlight'|'eraser',color,width,points:[[x,y],...]}
   texts:   [],   // {id,x,y,text,size,color}
@@ -846,7 +869,13 @@ function deleteSelection() {
 }
 
 /* ── Géométrie ───────────────────────────────────────────── */
+/* « forme » = tout objet du diagramme posé par sa boîte (x,y,w,h), donc les
+   images aussi : elles se déplacent, s'alignent et se connectent comme les
+   autres. isTextual distingue celles qui portent un texte interne. */
 function isShape(o) { return o && o.type !== 'arrow'; }
+function isImage(o) { return !!o && o.type === 'image'; }
+function isTextual(o) { return isShape(o) && !isImage(o); }
+function isBoxy(o) { return o.type === 'rect' || o.type === 'note' || o.type === 'image'; }
 function shapeCenter(s) { return { x: s.x + s.w / 2, y: s.y + s.h / 2 }; }
 
 /* Point d'ancrage d'un connecteur : intersection du bord de la
@@ -856,7 +885,7 @@ function boundaryPoint(s, toward) {
   var dx = toward.x - c.x, dy = toward.y - c.y;
   if (!dx && !dy) { return c; }
   var hw = s.w / 2, hh = s.h / 2, t;
-  if (s.type === 'rect' || s.type === 'note') {
+  if (isBoxy(s)) {
     var tx = dx ? hw / Math.abs(dx) : Infinity;
     var ty = dy ? hh / Math.abs(dy) : Infinity;
     t = Math.min(tx, ty);
@@ -885,7 +914,7 @@ function pointInShape(s, p) {
   var c = shapeCenter(s), hw = s.w / 2, hh = s.h / 2;
   if (hw <= 0 || hh <= 0) { return false; }
   var dx = p.x - c.x, dy = p.y - c.y;
-  if (s.type === 'rect' || s.type === 'note') { return Math.abs(dx) <= hw && Math.abs(dy) <= hh; }
+  if (isBoxy(s)) { return Math.abs(dx) <= hw && Math.abs(dy) <= hh; }
   if (s.type === 'diamond') { return Math.abs(dx) / hw + Math.abs(dy) / hh <= 1; }
   return (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh) <= 1;
 }
@@ -955,6 +984,7 @@ function textBBox(t) {
    pense-bête aligné en haut à gauche. */
 var NOTE_PAD = 12;
 function shapeFontSize(s) { return s.size || (s.type === 'note' ? 14 : 13.5); }
+var IMG_MAX_PX = 2400;        // au-delà, l'image est réduite avant stockage
 function shapeTextLayout(s) {
   var size = shapeFontSize(s);
   var lh = Math.round(size * 1.3);
@@ -1050,6 +1080,40 @@ function shapeFill(s) {
   if (s.fill) { return s.fill; }
   return s.type === 'note' ? NOTE_FILL : '#FFFFFF';
 }
+
+/* ── Cache des images ────────────────────────────────────── */
+/* Le SVG affiche directement la data URL ; le canvas d'export, lui, a besoin
+   d'un HTMLImageElement décodé. On le garde par objet et on expose une
+   promesse pour attendre les décodages avant un export. */
+var imgCache = {};
+function imageRec(o) {
+  var rec = imgCache[o.id];
+  if (rec && rec.src === o.src) { return rec; }
+  rec = { src: o.src, el: new Image(), ready: false, failed: false };
+  rec.promise = new Promise(function (resolve) {
+    rec.el.onload  = function () { rec.ready = true; resolve(rec); };
+    rec.el.onerror = function () {
+      rec.failed = true;
+      /* l'échec arrive après le rendu : sans ce rappel, une source cassée
+         resterait un trou invisible au lieu d'afficher son cadre */
+      renderDiagram();
+      resolve(rec);
+    };
+  });
+  rec.el.src = o.src;
+  imgCache[o.id] = rec;
+  return rec;
+}
+function imagesReady() {
+  var pending = [];
+  for (var i = 0; i < state.diagram.length; i++) {
+    var o = state.diagram[i];
+    if (!isImage(o) || !o.src) { continue; }
+    var rec = imageRec(o);
+    if (!rec.ready && !rec.failed) { pending.push(rec.promise); }
+  }
+  return Promise.all(pending);
+}
 function shapeStroke(s) {
   if (s.type === 'note') { return shade(shapeFill(s), -0.16); }
   return s.color || '#0C1A2E';
@@ -1058,6 +1122,7 @@ function dashAttr(o, width) { return o.dash ? (width * 3.2) + ' ' + (width * 2.4
 
 /* ── Rendu : couche Diagramme ────────────────────────────── */
 function renderShapeInto(g, s) {
+  if (isImage(s)) { renderImageInto(g, s); return; }
   var fill = shapeFill(s);
   var attrs = {
     fill: fill === 'none' ? 'none' : fill,
@@ -1091,6 +1156,28 @@ function renderShapeInto(g, s) {
     }
   }
 }
+/* Une image se rend telle quelle ; si la source est illisible, on montre un
+   cadre explicite plutôt qu'un trou invisible. */
+function renderImageInto(g, s) {
+  var rec = s.src ? imageRec(s) : null;
+  if (!s.src || (rec && rec.failed)) {
+    svgEl('rect', { x: s.x, y: s.y, width: Math.max(s.w, 0), height: Math.max(s.h, 0), rx: 4,
+      fill: '#FBEAE8', stroke: '#C0392B', 'stroke-width': 1.5, 'stroke-dasharray': '6 4',
+      'data-id': s.id }, g);
+    var t = svgEl('text', { x: s.x + s.w / 2, y: s.y + s.h / 2, 'text-anchor': 'middle',
+      'dominant-baseline': 'middle', 'font-family': 'Manrope, sans-serif',
+      'font-size': 12, 'font-weight': 600, fill: '#C0392B' }, g);
+    t.textContent = 'Image illisible';
+    return;
+  }
+  var el = svgEl('image', {
+    x: s.x, y: s.y, width: Math.max(s.w, 0), height: Math.max(s.h, 0),
+    preserveAspectRatio: 'none', 'data-id': s.id
+  }, g);
+  el.setAttribute('href', s.src);
+  el.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', s.src);
+}
+
 /* Libellé d'un connecteur : pastille blanche au milieu du trait. */
 function connectorLabelBox(a, pts) {
   var size = 12;
@@ -1397,7 +1484,7 @@ function setTool(name) {
      réglages du prochain objet posé (et pas ceux de l'objet sélectionné). */
   if (name !== 'select' && name !== 'pan') { sel = []; }
   document.body.setAttribute('data-tool', name);
-  var btns = document.querySelectorAll('.wb-tool');
+  var btns = document.querySelectorAll('.wb-tool[data-tool]');
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.toggle('active', btns[i].getAttribute('data-tool') === name);
   }
@@ -1416,7 +1503,7 @@ function updateCursor() {
                   : 'cur-cross';
 }
 (function bindToolbar() {
-  var btns = document.querySelectorAll('.wb-tool');
+  var btns = document.querySelectorAll('.wb-tool[data-tool]');
   for (var i = 0; i < btns.length; i++) {
     btns[i].addEventListener('click', function () { setTool(this.getAttribute('data-tool')); });
   }
@@ -1437,12 +1524,14 @@ function endLiveEdit() {
 
 /* ── Quels réglages s'appliquent à la sélection ? ─────────── */
 function selCaps() {
-  var caps = { color: false, fill: false, width: false, size: false, dash: false,
+  var caps = { color: false, fill: false, width: false, size: false, dash: false, image: false,
                colorVal: null, fillVal: null, widthVal: null, sizeVal: null, dashVal: false };
   var pairs = selPairs();
   for (var i = 0; i < pairs.length; i++) {
     var layer = pairs[i].ref.layer, o = pairs[i].obj;
-    if (layer === 'diagram' && isShape(o)) {
+    if (layer === 'diagram' && isImage(o)) {
+      caps.image = true;                                  // rien à régler sur une image
+    } else if (layer === 'diagram' && isShape(o)) {
       caps.color = caps.fill = caps.size = caps.dash = true;
       if (caps.colorVal === null) { caps.colorVal = o.color || '#0C1A2E'; }
       if (caps.fillVal === null) { caps.fillVal = shapeFill(o); }
@@ -1516,6 +1605,7 @@ function pickColor(c) {
   if (sel.length) {
     var done = applyToSelection(function (o, layer) {
       if (layer === 'draw' && o.tool === 'eraser') { return false; }
+      if (isImage(o)) { return false; }
       o.color = c;
       return true;
     });
@@ -1528,7 +1618,7 @@ function pickColor(c) {
 function pickFill(c) {
   if (sel.length) {
     var done = applyToSelection(function (o, layer) {
-      if (layer !== 'diagram' || !isShape(o)) { return false; }
+      if (layer !== 'diagram' || !isTextual(o)) { return false; }
       o.fill = c;
       return true;
     });
@@ -1550,9 +1640,15 @@ function refreshOptions() {
     color = caps.colorVal; fill = caps.fillVal; width = caps.widthVal;
     fsize = caps.sizeVal;  dash = caps.dashVal;
     colorLbl = caps.fill ? 'Trait' : 'Couleur';
-    note = sel.length > 1
-      ? 'Les réglages s’appliquent à tous les objets sélectionnés.'
-      : 'Les réglages s’appliquent à l’objet sélectionné.';
+    if (caps.image && !showColor && !showWidth && !showFont) {
+      note = sel.length > 1
+        ? 'Images — poignées d’angle pour redimensionner en conservant les proportions.'
+        : 'Image — poignées d’angle pour redimensionner en conservant les proportions, poignées de bord pour étirer.';
+    } else {
+      note = sel.length > 1
+        ? 'Les réglages s’appliquent à tous les objets sélectionnés.'
+        : 'Les réglages s’appliquent à l’objet sélectionné.';
+    }
   } else if (currentTool === 'select') {
     note = 'Aucun objet sélectionné — cliquez un objet ou encadrez-en plusieurs.';
   } else if (currentTool === 'pan') {
@@ -1627,7 +1723,7 @@ $('#inp-fontsize').addEventListener('change', function () {
   if (sel.length) {
     var done = applyToSelection(function (o, layer) {
       if (layer === 'text') { o.size = v; return true; }
-      if (layer === 'diagram' && isShape(o)) { o.size = v; return true; }
+      if (layer === 'diagram' && isTextual(o)) { o.size = v; return true; }
       return false;
     });
     if (done) { return; }
@@ -1640,7 +1736,7 @@ $('#inp-dash').addEventListener('change', function () {
   var v = this.checked;
   if (sel.length) {
     var done = applyToSelection(function (o, layer) {
-      if (layer !== 'diagram') { return false; }
+      if (layer !== 'diagram' || isImage(o)) { return false; }
       o.dash = v;
       return true;
     });
@@ -1661,9 +1757,11 @@ function refreshSelPanel() {
   var lbl = $('#sel-count');
   if (!n) { lbl.innerHTML = 'Aucun objet sélectionné.'; }
   else {
-    var k = { shape: 0, link: 0, draw: 0, text: 0, anno: 0 };
+    var k = { shape: 0, image: 0, link: 0, draw: 0, text: 0, anno: 0 };
     pairs.forEach(function (p) {
-      if (p.ref.layer === 'diagram') { if (isShape(p.obj)) { k.shape++; } else { k.link++; } }
+      if (p.ref.layer === 'diagram') {
+        if (isImage(p.obj)) { k.image++; } else if (isShape(p.obj)) { k.shape++; } else { k.link++; }
+      }
       else if (p.ref.layer === 'draw') { k.draw++; }
       else if (p.ref.layer === 'text') { k.text++; }
       else { k.anno++; }
@@ -1671,6 +1769,7 @@ function refreshSelPanel() {
     var parts = [];
     var add = function (count, one, many) { if (count) { parts.push(count + ' ' + (count > 1 ? many : one)); } };
     add(k.shape, 'forme', 'formes');
+    add(k.image, 'image', 'images');
     add(k.link, 'connecteur', 'connecteurs');
     add(k.draw, 'trait', 'traits');
     add(k.text, 'texte', 'textes');
@@ -1806,6 +1905,7 @@ function alignSelection(mode) {
 
 /* ── Presse-papier ───────────────────────────────────────── */
 var CLIP_APP = 'whiteboard-gft-clip';
+var CLIP_TEXT_MAX = 1000000;
 var clipboard = null;
 function deep(o) { return JSON.parse(JSON.stringify(o)); }
 
@@ -1837,10 +1937,14 @@ function copySelection(cut) {
   var clip = buildClip();
   if (clipIsEmpty(clip)) { toast('Rien à copier.', true); return; }
   clipboard = clip;
-  /* interop : le presse-papier système permet de coller dans un autre onglet */
+  /* Interop : le presse-papier système permet de coller dans un autre onglet.
+     Un lot contenant des images pèse lourd (data URL) : au-delà d'un mégaoctet
+     on reste sur le presse-papier interne plutôt que de figer le navigateur. */
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    try { navigator.clipboard.writeText(JSON.stringify(clip)).catch(function () {}); }
-    catch (err) { /* refus silencieux du navigateur */ }
+    try {
+      var txt = JSON.stringify(clip);
+      if (txt.length <= CLIP_TEXT_MAX) { navigator.clipboard.writeText(txt).catch(function () {}); }
+    } catch (err) { /* refus silencieux du navigateur */ }
   }
   var n = clip.diagram.length + clip.strokes.length + clip.texts.length + clip.annos.length;
   if (cut) { deleteSelection(); toast(n + ' objet' + (n > 1 ? 's' : '') + ' coupé' + (n > 1 ? 's' : '') + '.'); }
@@ -1925,8 +2029,17 @@ document.addEventListener('paste', function (e) {
   var tag = (e.target && e.target.tagName) || '';
   if (tag === 'TEXTAREA' || tag === 'INPUT') { return; }
   pasteEventSeen = true;
+  var dt = e.clipboardData || window.clipboardData;
+  /* Une image copiée depuis un navigateur ou un outil de capture arrive aussi
+     accompagnée de HTML et de texte : on regarde donc l'image en premier. */
+  var files = clipboardImageFiles(dt);
+  if (files.length) {
+    e.preventDefault();
+    addImageFiles(files, lastPointer ? toWorld(lastPointer.x, lastPointer.y) : null);
+    return;
+  }
   var txt = '';
-  try { txt = (e.clipboardData || window.clipboardData).getData('text/plain') || ''; }
+  try { txt = dt ? (dt.getData('text/plain') || '') : ''; }
   catch (err) { txt = ''; }
   e.preventDefault();
   var parsed = null;
@@ -2058,6 +2171,9 @@ document.addEventListener('keydown', function (e) {
     if (drag) { cancelDrag(); }
     else if (sel.length) { clearSel(); }
     return;
+  }
+  if (k === 'i' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+    e.preventDefault(); $('#file-img').click(); return;
   }
   if (e.key === 'Enter' || e.key === 'F2') {
     if (editSelectedText()) { e.preventDefault(); }
@@ -2488,6 +2604,18 @@ function applyHandle(o, name, orig, p, free) {
   if (name.indexOf('e') >= 0) { x2 = Math.max(snapVal(p.x, free), x1 + MIN); }
   if (name.indexOf('n') >= 0) { y1 = Math.min(snapVal(p.y, free), y2 - MIN); }
   if (name.indexOf('s') >= 0) { y2 = Math.max(snapVal(p.y, free), y1 + MIN); }
+  /* Une image tirée par un angle garde ses proportions d'origine (déformer une
+     capture d'écran par accident est le défaut classique) ; les poignées de
+     bord restent libres pour qui veut vraiment étirer. */
+  if (isImage(o) && name.length === 2) {
+    var ratio = (orig.natW && orig.natH) ? orig.natW / orig.natH : (orig.w / orig.h);
+    if (ratio > 0) {
+      var w = x2 - x1, h = y2 - y1;
+      if (w / h > ratio) { h = w / ratio; } else { w = h * ratio; }
+      if (name.indexOf('w') >= 0) { x1 = x2 - w; } else { x2 = x1 + w; }
+      if (name.indexOf('n') >= 0) { y1 = y2 - h; } else { y2 = y1 + h; }
+    }
+  }
   o.x = x1; o.y = y1; o.w = x2 - x1; o.h = y2 - y1;
 }
 /* Mise à l'échelle d'un groupe (ou d'un objet non redimensionnable directement). */
@@ -2660,13 +2788,155 @@ stage.addEventListener('pointercancel', function () { cancelDrag(); });
 stage.addEventListener('pointerleave', function () { lastPointer = null; });
 stage.addEventListener('pointerenter', function (e) { lastPointer = { x: e.clientX, y: e.clientY }; });
 
+/* =============================================================
+   IMAGES : collage, import, glisser-déposer
+   ============================================================= */
+
+/* Fichiers image présents dans un presse-papier ou un glisser-déposer. */
+function clipboardImageFiles(dt) {
+  var out = [];
+  if (!dt) { return out; }
+  var i, f;
+  if (dt.files && dt.files.length) {
+    for (i = 0; i < dt.files.length; i++) {
+      if (dt.files[i] && /^image\//.test(dt.files[i].type)) { out.push(dt.files[i]); }
+    }
+    if (out.length) { return out; }
+  }
+  if (dt.items && dt.items.length) {
+    for (i = 0; i < dt.items.length; i++) {
+      if (dt.items[i].kind === 'file' && /^image\//.test(dt.items[i].type)) {
+        f = dt.items[i].getAsFile();
+        if (f) { out.push(f); }
+      }
+    }
+  }
+  return out;
+}
+/* Lit un fichier en data URL, en réduisant les très grandes images : une
+   capture de 5000 px ferait exploser la taille du JSON de session. */
+function readImageFile(file, cb) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      var nw = img.naturalWidth, nh = img.naturalHeight;
+      if (!nw || !nh) { cb(null); return; }
+      if (nw <= IMG_MAX_PX && nh <= IMG_MAX_PX) { cb(String(reader.result), nw, nh); return; }
+      var k = Math.min(IMG_MAX_PX / nw, IMG_MAX_PX / nh);
+      var w = Math.max(1, Math.round(nw * k)), h = Math.max(1, Math.round(nh * k));
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(cv.toDataURL('image/png'), w, h);
+    };
+    img.onerror = function () { cb(null); };
+    img.src = String(reader.result);
+  };
+  reader.onerror = function () { cb(null); };
+  reader.readAsDataURL(file);
+}
+/* Taille de pose : au plus 55 % de la scène visible, jamais agrandie. */
+function imagePlacement(natW, natH, at, index) {
+  var r = stage.getBoundingClientRect();
+  var maxW = (r.width * 0.55) / view.z, maxH = (r.height * 0.55) / view.z;
+  var k = Math.min(1, maxW / natW, maxH / natH);
+  var w = Math.max(8, Math.round(natW * k)), h = Math.max(8, Math.round(natH * k));
+  var c = at || toWorld(r.left + r.width / 2, r.top + r.height / 2);
+  var off = (index || 0) * 24;
+  return { x: Math.round(c.x - w / 2) + off, y: Math.round(c.y - h / 2) + off, w: w, h: h };
+}
+/* Ajoute une liste de fichiers image au tableau (un seul pas d'historique). */
+function addImageFiles(files, at) {
+  if (!files || !files.length) { return; }
+  if (!guardLayer('diagram')) { return; }
+  var before = JSON.stringify(state);
+  var pending = files.length, added = [], failed = 0;
+  var finish = function () {
+    if (pending > 0) { return; }
+    if (!added.length) { toast('Image illisible.', true); return; }
+    commitIfChanged(before);
+    renderAll();
+    setSel(added);
+    if (failed) { toast(added.length + ' image(s) ajoutée(s), ' + failed + ' illisible(s).', true); }
+    else { toast(added.length > 1 ? added.length + ' images ajoutées.' : 'Image ajoutée.'); }
+  };
+  for (var i = 0; i < files.length; i++) {
+    (function (file, index) {
+      readImageFile(file, function (src, nw, nh) {
+        pending--;
+        if (!src) { failed++; finish(); return; }
+        var box = imagePlacement(nw, nh, at, index);
+        var id = nid();
+        state.diagram.push({ id: id, type: 'image', x: box.x, y: box.y, w: box.w, h: box.h,
+                             src: src, natW: nw, natH: nh, name: file.name || 'image' });
+        added.push({ layer: 'diagram', id: id });
+        /* rendu immédiat pour que la première image apparaisse sans attendre
+           le décodage des suivantes */
+        renderDiagram();
+        finish();
+      });
+    })(files[i], i);
+  }
+}
+$('#btn-image').addEventListener('click', function () { $('#file-img').click(); });
+$('#file-img').addEventListener('change', function () {
+  if (this.files && this.files.length) {
+    addImageFiles(Array.prototype.slice.call(this.files),
+                  lastPointer ? toWorld(lastPointer.x, lastPointer.y) : null);
+  }
+  this.value = '';
+});
+
+/* Glisser-déposer : une image se pose là où on la lâche, un .json reprend
+   la session. */
+var dropDepth = 0;
+function showDrop(on) {
+  $('#dropzone').classList.toggle('on', on);
+  if (!on) { dropDepth = 0; }
+}
+function dtHasFiles(dt) {
+  if (!dt) { return false; }
+  if (dt.types) {
+    for (var i = 0; i < dt.types.length; i++) { if (dt.types[i] === 'Files') { return true; } }
+  }
+  return false;
+}
+stage.addEventListener('dragenter', function (e) {
+  if (!dtHasFiles(e.dataTransfer)) { return; }
+  e.preventDefault();
+  dropDepth++;
+  showDrop(true);
+});
+stage.addEventListener('dragover', function (e) {
+  if (!dtHasFiles(e.dataTransfer)) { return; }
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  lastPointer = { x: e.clientX, y: e.clientY };
+});
+stage.addEventListener('dragleave', function () {
+  dropDepth--;
+  if (dropDepth <= 0) { showDrop(false); }
+});
+stage.addEventListener('drop', function (e) {
+  if (!dtHasFiles(e.dataTransfer)) { return; }
+  e.preventDefault();
+  showDrop(false);
+  var imgs = clipboardImageFiles(e.dataTransfer);
+  if (imgs.length) { addImageFiles(imgs, toWorld(e.clientX, e.clientY)); return; }
+  var files = e.dataTransfer.files;
+  if (files && files.length && /\.json$/i.test(files[0].name)) { importJSON(files[0]); return; }
+  toast('Déposez une image ou un fichier de session .json.', true);
+});
+window.addEventListener('dragend', function () { showDrop(false); });
+
 /* ── Double-clic : édition de texte ──────────────────────── */
 /* Ouvre l'éditeur sur l'objet sélectionné (Entrée / F2). */
 function editSelectedText() {
   var s = selSingle();
   if (!s) { return false; }
   if (s.ref.layer === 'text') { openTextEditor({ kind: 'text', id: s.obj.id }); return true; }
-  if (s.ref.layer === 'diagram' && isShape(s.obj)) { openTextEditor({ kind: 'shape', id: s.obj.id }); return true; }
+  if (s.ref.layer === 'diagram' && isTextual(s.obj)) { openTextEditor({ kind: 'shape', id: s.obj.id }); return true; }
   if (s.ref.layer === 'diagram' && s.obj.type === 'arrow') { openTextEditor({ kind: 'connector', id: s.obj.id }); return true; }
   return false;
 }
@@ -2677,7 +2947,7 @@ stage.addEventListener('dblclick', function (e) {
     setSel([hit]);
     var o = findObj(hit);
     if (hit.layer === 'text') { openTextEditor({ kind: 'text', id: o.id }); return; }
-    if (hit.layer === 'diagram' && isShape(o)) { openTextEditor({ kind: 'shape', id: o.id }); return; }
+    if (hit.layer === 'diagram' && isTextual(o)) { openTextEditor({ kind: 'shape', id: o.id }); return; }
     if (hit.layer === 'diagram' && o.type === 'arrow') { openTextEditor({ kind: 'connector', id: o.id }); return; }
     return;
   }
@@ -2875,7 +3145,7 @@ stage.addEventListener('contextmenu', function (e) {
   if (sel.length) {
     var s = selSingle();
     var canEdit = !!s && (s.ref.layer === 'text' ||
-                          (s.ref.layer === 'diagram' && (isShape(s.obj) || s.obj.type === 'arrow')));
+                          (s.ref.layer === 'diagram' && (isTextual(s.obj) || s.obj.type === 'arrow')));
     items = [
       { label: s && s.ref.layer === 'diagram' && s.obj.type === 'arrow' ? 'Libeller la flèche' : 'Éditer le texte',
         icon: 'edit', key: 'Entrée', disabled: !canEdit, run: editSelectedText },
@@ -3010,6 +3280,23 @@ function drawArrowC(ctx, x1, y1, x2, y2, width, color, dashed) {
   ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+function drawImageC(ctx, o) {
+  var rec = o.src ? imageRec(o) : null;
+  if (rec && rec.ready) {
+    try { ctx.drawImage(rec.el, o.x, o.y, Math.max(o.w, 1), Math.max(o.h, 1)); return; }
+    catch (err) { /* source refusée par le canvas : on tombe sur le cadre */ }
+  }
+  ctx.save();
+  ctx.fillStyle = '#FBEAE8'; ctx.strokeStyle = '#C0392B'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  roundRectPath(ctx, o.x, o.y, o.w, o.h, 4);
+  ctx.fill(); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#C0392B'; ctx.font = fontFor(12);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('Image illisible', o.x + o.w / 2, o.y + o.h / 2);
+  ctx.restore();
+}
 function drawDiagramC(ctx) {
   var i, o;
   for (i = 0; i < state.diagram.length; i++) {
@@ -3021,6 +3308,7 @@ function drawDiagramC(ctx) {
   for (i = 0; i < state.diagram.length; i++) {
     o = state.diagram[i];
     if (o.type === 'arrow') { continue; }
+    if (isImage(o)) { drawImageC(ctx, o); continue; }
     ctx.save();
     var fill = shapeFill(o);
     ctx.strokeStyle = shapeStroke(o);
@@ -3157,27 +3445,37 @@ function download(filename, blob) {
   setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
 }
 
+/* Les images doivent être décodées avant d'être peintes dans le canvas. */
 function exportPNG() {
-  var cv = buildExportCanvas(2);
-  if (!cv) { toast('Rien à exporter — le tableau est vide.', true); return; }
-  cv.toBlob(function (blob) {
-    if (!blob) { toast('Export PNG impossible.', true); return; }
-    download('whiteboard_' + stamp() + '.png', blob);
-    toast('Image PNG exportée.');
-  }, 'image/png');
+  if (!contentBBox(false)) { toast('Rien à exporter — le tableau est vide.', true); return; }
+  imagesReady().then(function () {
+    var cv = buildExportCanvas(2);
+    if (!cv) { toast('Rien à exporter — le tableau est vide.', true); return; }
+    cv.toBlob(function (blob) {
+      if (!blob) { toast('Export PNG impossible.', true); return; }
+      download('whiteboard_' + stamp() + '.png', blob);
+      toast('Image PNG exportée.');
+    }, 'image/png');
+  });
 }
 
 function copyImage() {
-  var cv = buildExportCanvas(2);
-  if (!cv) { toast('Rien à copier — le tableau est vide.', true); return; }
+  if (!contentBBox(false)) { toast('Rien à copier — le tableau est vide.', true); return; }
   if (!navigator.clipboard || !window.ClipboardItem) {
     toast('Presse-papier indisponible ici — utilisez l’export PNG.', true);
     return;
   }
   try {
+    /* La promesse est confiée à ClipboardItem sans attendre : le geste
+       utilisateur reste « frais » pour le navigateur pendant que les images
+       se décodent. */
     var item = new ClipboardItem({
-      'image/png': new Promise(function (resolve, reject) {
-        cv.toBlob(function (blob) { if (blob) { resolve(blob); } else { reject(new Error('toBlob')); } }, 'image/png');
+      'image/png': imagesReady().then(function () {
+        return new Promise(function (resolve, reject) {
+          var cv = buildExportCanvas(2);
+          if (!cv) { reject(new Error('vide')); return; }
+          cv.toBlob(function (blob) { if (blob) { resolve(blob); } else { reject(new Error('toBlob')); } }, 'image/png');
+        });
       })
     });
     navigator.clipboard.write([item]).then(
@@ -3197,6 +3495,7 @@ function exportSVG() {
   var pad = 24;
   var svg = document.createElementNS(SVGNS, 'svg');
   svg.setAttribute('xmlns', SVGNS);
+  svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');   // <image> lisible par les vieux rendus
   svg.setAttribute('viewBox', (b.x - pad) + ' ' + (b.y - pad) + ' ' + (b.w + pad * 2) + ' ' + (b.h + pad * 2));
   svg.setAttribute('width', Math.round(b.w + pad * 2));
   svg.setAttribute('height', Math.round(b.h + pad * 2));
@@ -3311,10 +3610,20 @@ function scheduleAutosave() {
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(writeAutosave, 700);
 }
+var autosaveWarned = false;
 function writeAutosave() {
   if (!autosaveOn) { return; }
-  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildDoc())); }
-  catch (err) { /* quota atteint ou stockage refusé : la sauvegarde manuelle reste disponible */ }
+  try {
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildDoc()));
+    autosaveWarned = false;
+  } catch (err) {
+    /* quota atteint (souvent à cause des images) ou stockage refusé : on le
+       dit une fois, la sauvegarde manuelle reste disponible */
+    if (!autosaveWarned) {
+      autosaveWarned = true;
+      toast('Tableau trop volumineux pour la sauvegarde automatique — utilisez « Sauver ».', true);
+    }
+  }
 }
 function clearAutosave() {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch (err) { /* rien à faire */ }
