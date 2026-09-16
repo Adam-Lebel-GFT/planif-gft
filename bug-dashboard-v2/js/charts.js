@@ -142,7 +142,7 @@
     var gAttr = function (r, g) { return attr({ dd: 'hmgroup', card: ctx.card.id, rdim: pv.rowDim, rkey: r || '', group: g }); };
 
     var cols = 'minmax(110px,1.3fr) repeat(' + gOpen.length + ', minmax(52px,1fr)) 68px 14px repeat(' + gDone.length + ', minmax(52px,1fr)) 68px 54px';
-    var head = function (c, cls) { return '<div class="hm-colhead ' + cls + '"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + ' title="' + esc(c) + '">' + esc(c) + '</div>'; };
+    var head = function (c) { return '<div class="hm-colhead"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + ' title="' + esc(c) + '">' + esc(c) + '</div>'; };
     var band = function (cls, label, n, span) {
       return '<div class="hm-band ' + cls + '" style="grid-column:span ' + span + '"><span class="dot"></span>' + label +
         '<b>' + esc(fmt(n, measure === 'count' ? 'count' : measure)) + '</b></div>';
@@ -150,10 +150,10 @@
     var h = '<div class="hm hm-split" style="grid-template-columns:' + cols + '">';
     h += '<div class="hm-corner"></div>' + band('g-open', 'En cours', groupVal(null, gOpen), gOpen.length + 1) +
       '<div class="hm-gap"></div>' + band('g-done', 'Terminé', groupVal(null, gDone), gDone.length + 1) + '<div class="hm-corner"></div>';
-    h += '<div class="hm-corner"></div>' + gOpen.map(function (c) { return head(c, 'g-open'); }).join('') +
-      '<div class="hm-colhead g-open">Σ en cours</div><div class="hm-gap"></div>' +
-      gDone.map(function (c) { return head(c, 'g-done'); }).join('') +
-      '<div class="hm-colhead g-done">Σ terminé</div><div class="hm-colhead">Total</div>';
+    h += '<div class="hm-corner"></div>' + gOpen.map(head).join('') +
+      '<div class="hm-colhead">Σ en cours</div><div class="hm-gap"></div>' +
+      gDone.map(head).join('') +
+      '<div class="hm-colhead">Σ terminé</div><div class="hm-colhead">Total</div>';
     var cellOf = function (r, c, ramp) {
       var cell = pv.cell(r, c), v = vals[r][c];
       var bg = P.seqColor(v, max, ramp), color = P.textOn(bg);
