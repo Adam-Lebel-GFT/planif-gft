@@ -155,6 +155,15 @@
     (item.tickets || []).forEach(function (t) { if ((t.td || 'none') === td) out[t.k] = t; });
     return out;
   }
+  // Colonne propre à la fiche des retirés : le dernier moment où le ticket a
+  // été vu dans la version. Elle trie sur l'instant et s'exporte en clair.
+  var LAST_SEEN_COL = {
+    id: 'lastSeen', label: 'Vu la dernière fois',
+    get: function (t) { return t.lastSeen ? new Date(t.lastSeen).getTime() : 0; },
+    csv: function (t) { return t.lastSeen ? fmtWhen(t.lastSeen) : ''; },
+    render: function (t) { return t.lastSeen ? '<span title="' + esc(new Date(t.lastSeen).toLocaleString('fr-CH')) + '">' + esc(fmtWhen(t.lastSeen)) + '</span>' : '<span class="dd-empty">—</span>'; }
+  };
+
   APP.hooks.extraTiles.push(function (vis) {
     // Les photos du journal ne sont pas filtrées : comparer un extrait filtré
     // ferait passer pour « retirés » des tickets simplement masqués.
@@ -171,12 +180,16 @@
     if (!olders.length) return []; // première photo de cette version : rien à comparer
     var first = olders[0], last = olders[olders.length - 1];
     var now = {}; mine.forEach(function (t) { now[t.key] = t; });
+    // Dernière photo où le ticket portait encore cette Target date : c'est le
+    // moment où on l'a vu dans la version pour la dernière fois, avant qu'il
+    // change de cible ou disparaisse de l'extrait.
+    var lastSeen = {};
+    olders.forEach(function (i) { Object.keys(ticketsAt(i, td)).forEach(function (k) { lastSeen[k] = i.at; }); });
     var diff = function (ref) {
       var was = ticketsAt(ref, td);
-      return {
-        added: mine.filter(function (t) { return !was[t.key]; }),
-        removed: inflate(Object.keys(was).filter(function (k) { return !now[k]; }).map(function (k) { return was[k]; }))
-      };
+      var gone = inflate(Object.keys(was).filter(function (k) { return !now[k]; }).map(function (k) { return was[k]; }));
+      gone.forEach(function (t) { t.lastSeen = lastSeen[t.key] || ref.at; });
+      return { added: mine.filter(function (t) { return !was[t.key]; }), removed: gone };
     };
     var since = diff(first), prev = diff(last);
     var depuis = 'depuis la 1re photo de la version (' + shortWhen(first.at) + ')';
@@ -187,7 +200,7 @@
         drill: function () { return { title: 'Tickets ajoutés à la version', subtitle: 'Absents de la photo du ' + fmtWhen(first.at) + ', présents aujourd\'hui', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.added }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.added }] }; } },
       { id: 'scopeRemoved', label: 'Retirés de la version', value: since.removed.length, sub: depuis + ' — Target date modifiée ou ticket disparu de l\'extrait',
         tone: since.removed.length ? 'good' : 'neutral', delta: deltaOf(prev.removed.length),
-        drill: function () { return { title: 'Tickets retirés de la version', subtitle: 'Présents dans la photo du ' + fmtWhen(first.at) + ', absents aujourd\'hui — état au moment de cette photo', tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.removed }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.removed }] }; } }
+        drill: function () { return { title: 'Tickets retirés de la version', subtitle: 'Présents dans la photo du ' + fmtWhen(first.at) + ', absents aujourd\'hui — état au moment de cette photo', extraCols: [LAST_SEEN_COL], tabs: [{ label: 'Depuis le début (' + shortWhen(first.at) + ')', tickets: since.removed }, { label: 'Depuis l\'analyse du ' + shortWhen(last.at), tickets: prev.removed }] }; } }
     ];
   });
 

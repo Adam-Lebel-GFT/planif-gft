@@ -160,6 +160,12 @@ compte depuis le début de la version, le delta depuis l'analyse précédente, e
 les deux listes. Un ticket dont la Target date a changé compte comme retiré. Les tuiles
 disparaissent quand un filtre est actif — les photos du journal, elles, ne sont pas filtrées.
 
+La fiche des **retirés** porte une colonne de plus, **« Vu la dernière fois »** : l'instant de la
+dernière photo où le ticket portait encore cette Target date, c'est-à-dire le moment où on l'a vu
+dans la version avant qu'il en sorte. Elle se trie et part dans l'export CSV comme les autres. Les
+fiches apportent ainsi leurs propres colonnes quand elles ont quelque chose de particulier à dire
+(`extraCols` du drill-down).
+
 Les filtres **État**, **Équipes**, **Origine** et **Priorité** de la barre s'appliquent à ces
 graphiques :
 chaque photo est recalculée sur ce périmètre, ses tickets étant conservés un par un. La liste des
