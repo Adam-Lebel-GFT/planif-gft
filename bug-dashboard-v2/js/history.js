@@ -309,7 +309,7 @@
   function officialIdx() { return versionsIndex().filter(function (v) { return v.official != null; }).map(function (v) { return v.official; }); }
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
-  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['state', 'Ouverts / terminés (part du total)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
   // Burn-up : rend null si le plan ne connaît pas cette Target date (pas de
   // début ni de gel à opposer aux photos) — on retombe alors sur la courbe.
   // Fenêtre ouvrée du burn-up (Configurer → Règles). Tout ce qui parle de
@@ -406,7 +406,7 @@
   // (groupées pour comparer des séries, empilées pour une composition, en
   // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
   // mesure vraiment continue.
-  var CHART_KIND = { global: 'line', progress: 'line', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
+  var CHART_KIND = { global: 'line', progress: 'line', state: 'percent', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
   function chartFrom(metric, points) {
     var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
     var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
@@ -417,6 +417,10 @@
     };
     if (metric === 'global') return lines([{ label: 'Total', color: P.NEUTRAL, values: g('total') }, { label: 'Ouverts', color: P.CATEGORICAL[0], values: g('open') }, { label: 'Terminés', color: P.CATEGORICAL[5], values: g('done') }, { label: 'Blockers ouverts', color: P.CATEGORICAL[7], values: g('blockersOpen') }, { label: 'PRJ301 ouverts', color: '#4a3aa7', values: g('prj301Open') }]);
     if (metric === 'progress') return lines([{ label: 'Avancement pondéré', color: P.CATEGORICAL[0], values: g('progress') }], { unit: '%', max: 100, area: true });
+    // Part des terminés, photo par photo : bandes pleines, terminé en bas pour
+    // que le vert monte au fil de la version, comme une jauge qui se remplit.
+    // Les couleurs sont celles de « Terminé / en cours » partout ailleurs.
+    if (metric === 'state') return lines([{ label: 'Terminés', color: '#008300', values: g('done') }, { label: 'Ouverts', color: '#2a78d6', values: g('open') }]);
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
     var field = metric === 'status' ? 'byStatus' : metric === 'priority' ? 'byPriority' : 'byTeam';

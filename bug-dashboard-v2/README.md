@@ -172,8 +172,12 @@ La section s'ouvre sur l'**avancement pondéré de la version en cours** ; les p
 sélecteur de mesure restent libres ensuite. Chaque mesure a la forme qui lui va : courbe pour
 l'avancement et la vue globale, **barres groupées** par statut et par équipe (comparer des
 séries), **barres empilées** par priorité et pour la Fix Version (composition d'un total),
-**bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
-graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
+**bandes empilées à 100 %** pour l'origine et pour **« Ouverts / terminés (part du total) »**
+(une part). Cette dernière donne l'avancement en surface : une bande pleine par photo, terminés en
+vert **en bas** pour que le vert monte au fil de la version comme une jauge qui se remplit, ouverts
+en bleu au-dessus — les couleurs de « Terminé / en cours » partout ailleurs. L'infobulle donne le
+compte et la part. Au-delà d'une douzaine de photos, le graphique s'élargit et défile plutôt que
+d'aligner des barres illisibles.
 
 Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizontal devient le
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une
