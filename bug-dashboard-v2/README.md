@@ -79,9 +79,11 @@ cours, vert terminé, les couleurs que l'outil donne déjà à « Terminé / en 
 d'intensité reste commune aux deux rampes, donc un 5 bleu et un 5 vert pèsent pareil. Le partage
 suit la liste **« terminés »** de Configurer → Statuts, et la carte porte la distinction
 elle-même : le filtre État de la barre n'est pas touché, et le détail par statut reste entier. Les
-sous-totaux s'ouvrent au clic comme les cellules. Sur une carte dont les colonnes ne sont pas les
-statuts — ou dont tous les statuts sont du même côté — l'affichage retombe sur la heatmap
-ordinaire plutôt que d'inventer une séparation.
+sous-totaux s'ouvrent au clic comme les cellules. Quand un bloc est vide — un extrait où tout est
+terminé, par exemple — les deux blocs restent en place et celui qui est vide affiche un franc
+zéro : « rien en cours » est une information, pas une panne d'affichage. Sur une carte dont les
+colonnes ne sont pas les statuts, en revanche, l'affichage retombe sur la heatmap ordinaire plutôt
+que d'inventer une séparation.
 
 La **largeur** d'une carte vaut *1 colonne*, *2 colonnes*, *pleine largeur* ou *auto*. En auto,
 les tableaux larges (heatmap de plus de 5 colonnes, tableau de plus de 4, empilé vertical de plus

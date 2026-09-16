@@ -118,7 +118,6 @@
     var isDone = function (c) { return doneKeys.indexOf(C.normalize(c)) !== -1; };
     var gOpen = pv.cols.filter(function (c) { return !isDone(c); });
     var gDone = pv.cols.filter(isDone);
-    if (!gOpen.length || !gDone.length) return heatmap(ctx);   // rien à séparer
     ctx.split = { open: gOpen, done: gDone };
 
     var vals = {}, max = 0;
@@ -141,7 +140,12 @@
     }
     var gAttr = function (r, g) { return attr({ dd: 'hmgroup', card: ctx.card.id, rdim: pv.rowDim, rkey: r || '', group: g }); };
 
-    var cols = 'minmax(110px,1.3fr) repeat(' + gOpen.length + ', minmax(52px,1fr)) 68px 14px repeat(' + gDone.length + ', minmax(52px,1fr)) 68px 54px';
+    // Un bloc peut être vide — un extrait où tout est terminé, par exemple. On
+    // garde alors les deux blocs, celui qui est vide affichant un franc zéro :
+    // « rien en cours » est une information, pas une panne d'affichage.
+    var track = function (n) { return n ? 'repeat(' + n + ', minmax(52px,1fr)) ' : ''; };
+    var subW = function (n) { return n ? '68px ' : '96px '; };   // bloc vide : la bande a besoin d'une ligne
+    var cols = 'minmax(110px,1.3fr) ' + track(gOpen.length) + subW(gOpen.length) + '14px ' + track(gDone.length) + subW(gDone.length) + '54px';
     var head = function (c) { return '<div class="hm-colhead"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + ' title="' + esc(c) + '">' + esc(c) + '</div>'; };
     var band = function (cls, label, n, span) {
       return '<div class="hm-band ' + cls + '" style="grid-column:span ' + span + '"><span class="dot"></span>' + label +
