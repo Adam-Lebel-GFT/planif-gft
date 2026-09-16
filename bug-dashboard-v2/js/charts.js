@@ -54,9 +54,12 @@
     var pv = ctx.pivot;
     if (!pv.rows.length) return '<div class="empty">Aucun ticket dans la sélection.</div>';
     var oneD = !pv.colDim;
-    var fn = { hstack: hstack, vstack: vstack, heatmap: heatmap, bars: bars, donut: donut, table: table }[ctx.style] || hstack;
-    if (oneD && (ctx.style === 'hstack' || ctx.style === 'vstack' || ctx.style === 'heatmap')) fn = bars;
+    var fn = { hstack: hstack, vstack: vstack, heatmap: heatmap, split: splitHeatmap, bars: bars, donut: donut, table: table }[ctx.style] || hstack;
+    if (oneD && (ctx.style === 'hstack' || ctx.style === 'vstack' || ctx.style === 'heatmap' || ctx.style === 'split')) fn = bars;
     if (!oneD && ctx.style === 'donut') fn = hstack;
+    // Séparer en cours et terminé n'a de sens que sur des statuts : ailleurs,
+    // la carte retombe sur la heatmap ordinaire plutôt que de mentir.
+    if (fn === splitHeatmap && pv.colDim !== 'status') fn = heatmap;
     return fn(ctx, oneD);
   }
 
@@ -101,6 +104,84 @@
       return '<div class="vs-col"><div class="vs-total">' + rowVal + '</div><div class="vs-track"><div class="vs-fill" style="height:' + fill + '%">' + segs + '</div></div><div class="vs-label"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + '>' + esc(r) + '</div></div>';
     }).join('') + '</div>';
     return h + legend(pv.cols, colors, pv.colDim);
+  }
+
+  // Heatmap scindée : les statuts en cours à gauche, les terminés à droite,
+  // séparés par un filet, chaque bloc avec sa colonne de sous-total, et une
+  // rampe par bloc — bleu « en cours », vert « terminé », les couleurs que
+  // l'outil donne déjà à ces deux états. L'échelle d'intensité reste commune :
+  // un 5 bleu et un 5 vert pèsent pareil. La carte porte donc la distinction
+  // elle-même, sans rien demander au filtre d'état de la barre.
+  function splitHeatmap(ctx) {
+    var pv = ctx.pivot, measure = ctx.measure, cfg = root.BDV2Config.get();
+    var doneKeys = (cfg.statuses.done || []).map(C.normalize);
+    var isDone = function (c) { return doneKeys.indexOf(C.normalize(c)) !== -1; };
+    var gOpen = pv.cols.filter(function (c) { return !isDone(c); });
+    var gDone = pv.cols.filter(isDone);
+    if (!gOpen.length || !gDone.length) return heatmap(ctx);   // rien à séparer
+    ctx.split = { open: gOpen, done: gDone };
+
+    var vals = {}, max = 0;
+    pv.rows.forEach(function (r) {
+      vals[r] = {};
+      pv.cols.forEach(function (c) { var v = C.measureValue(pv.cell(r, c), measure, pv, r, c); vals[r][c] = v; if (v > max) max = v; });
+    });
+    // Cellules d'un bloc, agrégées : le sous-total parle la même mesure que les
+    // cellules. Deux mesures n'ont pas de sens ici et deviennent « % du total »,
+    // la seule lecture qui en garde un : « % de la colonne », faute de colonne
+    // unique, et « % de la ligne » sur la ligne Total, faute de ligne.
+    function groupCell(r, cols) {
+      var g = { count: 0, pctSum: 0, tickets: [] };
+      cols.forEach(function (c) { var cell = r == null ? pv.colTotal(c) : pv.cell(r, c); g.count += cell.count; g.pctSum += cell.pctSum; });
+      return g;
+    }
+    function groupVal(r, cols) {
+      var m = measure === 'shareCol' || (r == null && measure === 'shareRow') ? 'shareTotal' : measure;
+      return C.measureValue(groupCell(r, cols), m, pv, r, null);
+    }
+    var gAttr = function (r, g) { return attr({ dd: 'hmgroup', card: ctx.card.id, rdim: pv.rowDim, rkey: r || '', group: g }); };
+
+    var cols = 'minmax(110px,1.3fr) repeat(' + gOpen.length + ', minmax(52px,1fr)) 68px 14px repeat(' + gDone.length + ', minmax(52px,1fr)) 68px 54px';
+    var head = function (c, cls) { return '<div class="hm-colhead ' + cls + '"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + ' title="' + esc(c) + '">' + esc(c) + '</div>'; };
+    var band = function (cls, label, n, span) {
+      return '<div class="hm-band ' + cls + '" style="grid-column:span ' + span + '"><span class="dot"></span>' + label +
+        '<b>' + esc(fmt(n, measure === 'count' ? 'count' : measure)) + '</b></div>';
+    };
+    var h = '<div class="hm hm-split" style="grid-template-columns:' + cols + '">';
+    h += '<div class="hm-corner"></div>' + band('g-open', 'En cours', groupVal(null, gOpen), gOpen.length + 1) +
+      '<div class="hm-gap"></div>' + band('g-done', 'Terminé', groupVal(null, gDone), gDone.length + 1) + '<div class="hm-corner"></div>';
+    h += '<div class="hm-corner"></div>' + gOpen.map(function (c) { return head(c, 'g-open'); }).join('') +
+      '<div class="hm-colhead g-open">Σ en cours</div><div class="hm-gap"></div>' +
+      gDone.map(function (c) { return head(c, 'g-done'); }).join('') +
+      '<div class="hm-colhead g-done">Σ terminé</div><div class="hm-colhead">Total</div>';
+    var cellOf = function (r, c, ramp) {
+      var cell = pv.cell(r, c), v = vals[r][c];
+      var bg = P.seqColor(v, max, ramp), color = P.textOn(bg);
+      var tip = r + ' · ' + c + ' : ' + cell.count + ' ticket' + (cell.count > 1 ? 's' : '') + (measure !== 'count' ? ' — ' + fmt(v, measure) : '');
+      return '<div class="hm-cell' + (cell.count ? '' : ' zero') + '" style="background:' + bg + ';color:' + (cell.count ? color : '') + '"' + cellAttrs(ctx, r, c) + tipAttr(tip) + '>' + (cell.count ? fmt(v, measure) : '·') + '</div>';
+    };
+    var sub = function (r, cols2, cls, g) {
+      var n = groupCell(r, cols2).count, v = groupVal(r, cols2);
+      return '<div class="hm-sub ' + cls + '"' + gAttr(r, g) + tipAttr(r + ' · ' + (g === 'done' ? 'terminés' : 'en cours') + ' : ' + n + ' ticket' + (n > 1 ? 's' : '')) + '>' + fmt(v, measure) + '</div>';
+    };
+    pv.rows.forEach(function (r) {
+      h += '<div class="hm-rowhead"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + ' title="' + esc(r) + '">' + esc(r) + '</div>' +
+        gOpen.map(function (c) { return cellOf(r, c, P.SEQ_BLUE); }).join('') + sub(r, gOpen, 'g-open', 'open') +
+        '<div class="hm-gap"></div>' + gDone.map(function (c) { return cellOf(r, c, P.SEQ_GREEN); }).join('') + sub(r, gDone, 'g-done', 'done');
+      var rt = pv.rowTotal(r);
+      h += '<div class="hm-tot"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + '>' + (measure === 'progress' ? fmt(rt.count ? rt.pctSum / rt.count : 0, 'progress') : rt.count) + '</div>';
+    });
+    var colTot = function (c) { var ct = pv.colTotal(c); return '<div class="hm-tot"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + '>' + (measure === 'progress' ? fmt(ct.count ? ct.pctSum / ct.count : 0, 'progress') : ct.count) + '</div>'; };
+    h += '<div class="hm-rowhead">Total</div>' + gOpen.map(colTot).join('') +
+      '<div class="hm-tot strong"' + gAttr('', 'open') + '>' + fmt(groupVal(null, gOpen), measure) + '</div><div class="hm-gap"></div>' +
+      gDone.map(colTot).join('') + '<div class="hm-tot strong"' + gAttr('', 'done') + '>' + fmt(groupVal(null, gDone), measure) + '</div>' +
+      '<div class="hm-tot"><b>' + pv.total + '</b></div>';
+    h += '</div>';
+    var scale = function (ramp, label) {
+      return '<span class="hm-scale">0 <span class="steps">' + ramp.map(function (c) { return '<span style="background:' + c + '"></span>'; }).join('') + '</span> ' + fmt(max, measure) + ' <span class="muted">— ' + label + '</span></span>';
+    };
+    h += '<div class="hm-scales">' + scale(P.SEQ_BLUE, 'en cours') + scale(P.SEQ_GREEN, 'terminé') + '</div>';
+    return h;
   }
 
   function heatmap(ctx) {

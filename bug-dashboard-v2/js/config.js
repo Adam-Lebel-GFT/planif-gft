@@ -139,7 +139,15 @@
   function importJSON(text) { var o = JSON.parse(text); cfg = merge(deepClone(DEFAULTS), migrate(o)); saveLocal(); saveRemote(); notify(); }
 
   // ── Tiroir de configuration ────────────────────────────────────────
-  var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', bars: 'Barres', donut: 'Donut', table: 'Tableau' };
+  var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', split: 'Heatmap ouverts / terminés', bars: 'Barres', donut: 'Donut', table: 'Tableau' };
+  // « split » ne veut rien dire sans statuts en colonnes : il sépare les
+  // colonnes en deux blocs selon la liste « terminés » de la configuration.
+  function stylesFor(card) {
+    return Object.keys(STYLE_LABELS).filter(function (s) {
+      if (s === 'split') return card.cols === 'status';
+      return card.cols ? s !== 'donut' : (s === 'bars' || s === 'donut' || s === 'table');
+    });
+  }
   var MEASURE_LABELS = { count: 'Nombre de tickets', progress: '% avancement pondéré', shareRow: '% de la ligne', shareCol: '% de la colonne', shareTotal: '% du total' };
   // Largeur d'une carte dans la grille du cube. « auto » : pleine largeur quand
   // le tableau est large (beaucoup de colonnes ou de lignes), sinon une colonne.
@@ -280,7 +288,7 @@
           '<span class="cfg-x">×</span>' +
           '<select class="cfg-select" data-card-cols="' + esc(c.id) + '">' + dimOpts(c.cols, true) + '</select>' +
           '<select class="cfg-select" data-card-measure="' + esc(c.id) + '">' + Object.keys(MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (c.measure === m ? ' selected' : '') + '>' + MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
-          '<select class="cfg-select" data-card-style="' + esc(c.id) + '">' + Object.keys(STYLE_LABELS).map(function (s) { return '<option value="' + s + '"' + (c.style === s ? ' selected' : '') + '>' + STYLE_LABELS[s] + '</option>'; }).join('') + '</select>' +
+          '<select class="cfg-select" data-card-style="' + esc(c.id) + '">' + stylesFor(c).map(function (s) { return '<option value="' + s + '"' + (c.style === s ? ' selected' : '') + '>' + STYLE_LABELS[s] + '</option>'; }).join('') + '</select>' +
           '<button type="button" class="icon-btn" data-move="up" data-card="' + esc(c.id) + '">↑</button>' +
           '<button type="button" class="icon-btn" data-move="down" data-card="' + esc(c.id) + '">↓</button>' +
           '<button type="button" class="icon-btn" data-card-del="' + esc(c.id) + '" title="Supprimer">🗑</button>' +
@@ -451,7 +459,7 @@
   }
 
   root.BDV2Config = {
-    DEFAULTS: DEFAULTS, LEVELS: LEVELS, tiers: tiersOf, pctHint: pctHint, STYLE_LABELS: STYLE_LABELS, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
+    DEFAULTS: DEFAULTS, LEVELS: LEVELS, tiers: tiersOf, pctHint: pctHint, STYLE_LABELS: STYLE_LABELS, stylesFor: stylesFor, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
     get: get, update: update, onChange: onChange, reset: reset, exportJSON: exportJSON, importJSON: importJSON,
     loadLocal: loadLocal, loadRemote: loadRemote,
     open: open, close: close, renderDrawer: renderDrawer

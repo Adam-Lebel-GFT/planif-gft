@@ -16,6 +16,9 @@
   var CATEGORICAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
   var PRIORITY_RAMP = ['#7a1a1a', '#a52a2a', '#c9463f', '#e46a5f', '#f39a8c'];   // sévère → léger
   var SEQ_BLUE = ['#eef4fc', '#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#2a78d6', '#1c5cab', '#0d366b'];
+  // Même construction en vert, pour les heatmaps qui séparent en cours et
+  // terminé : le vert est déjà la couleur de « Terminé » dans l'outil.
+  var SEQ_GREEN = ['#eff7ef', '#d2ebd2', '#a8d8a8', '#79c179', '#40a640', '#008300', '#046a04', '#033f03'];
   var STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
   var NEUTRAL = '#8d94a3';
   var SWATCHES = CATEGORICAL.concat(PRIORITY_RAMP, ['#0d366b', '#5b8def', '#14b8a6', '#c026d3', '#6366f1', NEUTRAL]);
@@ -28,11 +31,12 @@
   // Texte posé DANS une teinte : blanc ou encre selon la luminance de la teinte.
   function textOn(hex) { return luminance(hex) > 0.36 ? '#0b1a2e' : '#ffffff'; }
 
-  function seqColor(v, max) {
-    if (!max || v <= 0) return SEQ_BLUE[0];
-    var i = Math.min(SEQ_BLUE.length - 1, 1 + Math.floor((v / max) * (SEQ_BLUE.length - 2) + 0.0001));
-    if (v >= max) i = SEQ_BLUE.length - 1;
-    return SEQ_BLUE[i];
+  function seqColor(v, max, ramp) {
+    ramp = ramp || SEQ_BLUE;
+    if (!max || v <= 0) return ramp[0];
+    var i = Math.min(ramp.length - 1, 1 + Math.floor((v / max) * (ramp.length - 2) + 0.0001));
+    if (v >= max) i = ramp.length - 1;
+    return ramp[i];
   }
   function progressColor(p) { return p >= 90 ? STATUS.good : p >= 50 ? CATEGORICAL[0] : STATUS.serious; }
 
@@ -80,6 +84,6 @@
 
   root.BDV2Palette = {
     CATEGORICAL: CATEGORICAL, PRIORITY_RAMP: PRIORITY_RAMP, SEQ_BLUE: SEQ_BLUE, STATUS: STATUS, NEUTRAL: NEUTRAL, SWATCHES: SWATCHES,
-    textOn: textOn, seqColor: seqColor, progressColor: progressColor, colorsForDim: colorsForDim, luminance: luminance
+    SEQ_GREEN: SEQ_GREEN, textOn: textOn, seqColor: seqColor, progressColor: progressColor, colorsForDim: colorsForDim, luminance: luminance
   };
 })(window);
