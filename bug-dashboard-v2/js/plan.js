@@ -183,20 +183,38 @@
     var cfg = CFG.get(), ref = C.startOfDay(S.refDate), refAt = C.atHalf(S.refDate, S.refHalf), out = [];
     var lateReal = vis.filter(function (t) { return t.versionState === 'deployed' && !t.isDone; });
     if (lateReal.length) out.push({ level: 'critical', icon: '⚠', html: '<b>' + lateReal.length + ' ticket' + (lateReal.length > 1 ? 's' : '') + ' ouvert' + (lateReal.length > 1 ? 's' : '') + ' sur des versions déjà déployées</b> — retard réel, à replanifier ou à livrer en correctif.', tickets: lateReal, title: 'Retard réel' });
-    // Temps restant avant le jalon d'alerte (Code freeze par défaut), compté en
-    // demi-journées : lundi matin → mercredi soir = 5 demi-journées, soit 2,5 j.
-    var maxHalves = Math.round((cfg.alerts.daysBefore || 3) * 2);
-    var minPct = cfg.alerts.minPct || 50;
-    var soon = vis.filter(function (t) { return t.versionState === 'planned' && !t.isDone && t.versionAlertAt && C.halvesLeft(refAt, t.versionAlertAt) <= maxHalves && t.pct < minPct; });
-    if (soon.length) {
+    // Paliers de risque. Le temps restant avant le jalon d'alerte (Code freeze
+    // par défaut) est compté en demi-journées : lundi matin → mercredi soir = 5
+    // demi-journées, soit 2,5 j. Les paliers sont parcourus du plus serré au
+    // plus large et chacun retire ses tickets des suivants : un ticket à 60 % la
+    // veille du gel est « en risque », pas « peu avancé ».
+    var taken = {};
+    CFG.tiers(cfg).forEach(function (tier) {
+      var halves = Math.round((tier.days || 0) * 2), minPct = tier.pct || 50;
+      var soon = vis.filter(function (t) {
+        return t.versionState === 'planned' && !t.isDone && t.versionAlertAt && !taken[APP.ticketId(t)] &&
+          C.halvesLeft(refAt, t.versionAlertAt) <= halves && t.pct < minPct;
+      });
+      if (!soon.length) return;
+      soon.forEach(function (t) { taken[APP.ticketId(t)] = 1; });
       var byV = {};
       soon.forEach(function (t) { var v = byV[t.version] = byV[t.version] || { n: 0, halves: C.halvesLeft(refAt, t.versionAlertAt) }; v.n++; });
       var detail = Object.keys(byV).map(function (v) {
         var h = byV[v].halves;
         return esc(v) + ' : ' + byV[v].n + ' ticket' + (byV[v].n > 1 ? 's' : '') + ', ' + (h < 0 ? 'jalon dépassé' : h === 0 ? 'plus une demi-journée' : 'reste ' + C.fmtHalfDays(h) + ' j');
       }).join(' · ');
-      out.push({ level: 'serious', icon: '⏳', html: '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' sous ' + minPct + '% d\'avancement</b> alors qu\'il reste ' + C.fmtHalfDays(maxHalves) + ' jour' + (maxHalves > 2 ? 's' : '') + ' ou moins de travail avant le jalon « ' + esc(alertBoundaryLabel(cfg)) + ' » de leur version — ' + detail + '.', tickets: soon, title: 'Jalon imminent, ticket peu avancé' });
-    }
+      var risky = tier.level === 'critical', hint = CFG.pctHint(minPct, cfg);
+      var bar = 'sous ' + minPct + ' % d\'avancement' + (hint ? ' (niveau « ' + esc(hint) + ' »)' : '');
+      var head = risky
+        ? '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' en risque pour la version</b> — ' + bar
+        : '<b>' + soon.length + ' ticket' + (soon.length > 1 ? 's' : '') + ' ' + bar + '</b>';
+      out.push({
+        level: tier.level || 'serious', icon: risky ? '⚠' : '⏳',
+        html: head + ' alors qu\'il reste ' + C.fmtHalfDays(halves) + ' jour' + (halves > 2 ? 's' : '') + ' ou moins de travail avant le jalon « ' + esc(alertBoundaryLabel(cfg)) + ' » de leur version — ' + detail + '.',
+        tickets: soon,
+        title: (risky ? 'En risque pour la version' : 'Jalon imminent, ticket peu avancé') + ' — sous ' + minPct + ' % à ' + C.fmtHalfDays(halves) + ' j du jalon'
+      });
+    });
     var beyond = vis.filter(function (t) { return t.versionState === 'none' && t.targetDate && !t.isDone; });
     if (beyond.length) out.push({ level: 'info', icon: '→', html: '<b>' + beyond.length + ' ticket' + (beyond.length > 1 ? 's' : '') + ' avec une Target date au-delà du plan publié</b> — ajoutez des versions dans le plan de livraisons ou avancez la Target date.', tickets: beyond, title: 'Au-delà du plan' });
     return out;

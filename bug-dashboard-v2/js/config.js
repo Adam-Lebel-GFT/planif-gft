@@ -24,7 +24,7 @@
 
   // Version du schéma de configuration : incrémentée quand un défaut livré doit
   // primer sur une valeur déjà enregistrée (localStorage / Supabase) — voir migrate().
-  var SCHEMA = 2;
+  var SCHEMA = 3;
 
   var DEFAULTS = {
     schema:     SCHEMA,
@@ -32,7 +32,11 @@
     priorities: { order: C.PRIORITY_ORDER_DEFAULT.slice(), colors: {}, groups: {}, blockerKeys: ['blocker', 'highest'] },
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
-    alerts:     { boundary: 'freeze', daysBefore: 3, minPct: 50 },
+    // Paliers de risque : plus le jalon approche, plus la barre monte. Un
+    // ticket ouvert sous `pct` d'avancement alors qu'il reste `days` jours
+    // ouvrés ou moins avant le jalon tombe dans le palier ; il n'est compté que
+    // dans le plus serré de ceux qu'il déclenche.
+    alerts:     { boundary: 'freeze', tiers: [{ days: 3, pct: 50, level: 'serious' }, { days: 1, pct: 70, level: 'critical' }] },
     burnup:     { startPct: 25, openFrom: 8, openTo: 19 },
     cards:      DEFAULT_CARDS,
     views: {
@@ -79,6 +83,16 @@
     var from = Number(stored.schema) || 1;
     // v2 : « version imminente, ticket peu avancé » passe de 7 à 3 jours.
     if (from < 2 && stored.alerts && Number(stored.alerts.daysBefore) === 7) delete stored.alerts.daysBefore;
+    // v3 : le seuil unique devient une échelle de paliers. Le réglage enregistré
+    // devient le premier palier — on ne perd pas un seuil choisi à la main — et
+    // le palier serré (1 jour, 70 % = code review terminée) vient s'y ajouter.
+    if (from < 3 && stored.alerts && !Array.isArray(stored.alerts.tiers)) {
+      stored.alerts.tiers = [
+        { days: Number(stored.alerts.daysBefore) || 3, pct: Number(stored.alerts.minPct) || 50, level: 'serious' },
+        { days: 1, pct: 70, level: 'critical' }
+      ];
+      delete stored.alerts.daysBefore; delete stored.alerts.minPct;
+    }
     stored.schema = SCHEMA;
     return stored;
   }
@@ -149,6 +163,21 @@
     return '<select class="cfg-select" data-' + attr + '="boundary">' + boundaryChoices(current).map(function (o) {
       return '<option value="' + esc(o[0]) + '"' + (current === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
     }).join('') + '</select>';
+  }
+
+  // Niveaux d'alerte, du plus grave au plus anodin.
+  var LEVELS = [['critical', 'Critique'], ['serious', 'Sérieux'], ['warning', 'Attention'], ['info', 'Information']];
+  // Paliers de risque, du plus serré au plus large : c'est l'ordre dans lequel
+  // ils réclament les tickets.
+  function tiersOf(c) {
+    return ((c || cfg).alerts.tiers || []).slice().sort(function (a, b) { return (a.days - b.days) || (b.pct - a.pct); });
+  }
+  // Statut qui vaut exactement ce pourcentage, quand il y en a un : « 70 % » se
+  // lit mieux avec « Code review - completed » à côté. Rend '' sinon.
+  function pctHint(pct, c) {
+    var pcts = (c || cfg).statuses.pct || {};
+    var m = Object.keys(pcts).filter(function (k) { return Number(pcts[k]) === Number(pct); }).sort();
+    return m.length ? m[0].charAt(0).toUpperCase() + m[0].slice(1) : '';
   }
 
   var drawerTab = 'teams';
@@ -275,10 +304,18 @@
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
         '<label>Jalon surveillé ' + boundarySelect('alert', cfg.alerts.boundary || 'freeze') + '</label>' +
-        '<label>… atteint dans <input type="number" step="0.5" min="0" class="cfg-input num" data-alert="daysBefore" value="' + cfg.alerts.daysBefore + '"> jours ou moins</label>' +
-        '<label>… et avancement du ticket sous <input type="number" class="cfg-input num" data-alert="minPct" value="' + cfg.alerts.minPct + '"> %</label>' +
         '</div>' +
-        '<p class="cfg-help">Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (choisie en haut de page, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
+        '<table class="cfg-table"><thead><tr><th>Jours ouvrés restants, au plus</th><th>… et ticket sous</th><th>Niveau d\'alerte</th><th></th></tr></thead><tbody>' +
+        tiersOf(cfg).map(function (tr, i) {
+          return '<tr><td><input type="number" step="0.5" min="0" class="cfg-input num" data-tier="' + i + '" data-tier-field="days" value="' + tr.days + '"></td>' +
+            '<td><input type="number" min="1" max="100" class="cfg-input num" data-tier="' + i + '" data-tier-field="pct" value="' + tr.pct + '"> %' + (pctHint(tr.pct, cfg) ? ' <span class="muted">— niveau ' + esc(pctHint(tr.pct, cfg)) + '</span>' : '') + '</td>' +
+            '<td><select class="cfg-select" data-tier="' + i + '" data-tier-field="level">' + LEVELS.map(function (l) {
+              return '<option value="' + l[0] + '"' + (tr.level === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
+            }).join('') + '</select></td>' +
+            '<td class="num"><button type="button" class="icon-btn" data-tier-del="' + i + '" title="Supprimer ce palier">🗑</button></td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div class="cfg-actions"><button type="button" class="ghost small" id="cfgAddTier">Ajouter un palier</button></div>' +
+        '<p class="cfg-help">Chaque palier se lit « à tant de jours du jalon, tout ce qui est sous tant de pour cent est en risque ». Un ticket n\'est compté que dans le palier le plus serré qu\'il déclenche, jamais deux fois. Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (choisie en haut de page, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
     } else if (drawerTab === 'views') {
       h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
       h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
@@ -338,6 +375,15 @@
         if (c.burnup.openTo <= c.burnup.openFrom) c.burnup.openTo = Math.min(24, c.burnup.openFrom + 1);
       });
       else if (d.alert !== undefined) update(function (c) { c.alerts[d.alert] = t.type === 'number' ? (Number(t.value) || 0) : t.value; });
+      else if (d.tier !== undefined) {
+        update(function (c) {
+          var tr = tiersOf(c)[Number(d.tier)]; if (!tr) return;
+          if (d.tierField === 'level') tr.level = t.value;
+          else if (d.tierField === 'days') tr.days = Math.max(0, Number(t.value) || 0);
+          else tr.pct = Math.max(1, Math.min(100, Number(t.value) || 0));
+        });
+        renderDrawer();
+      }
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
       else if (d.viewSection !== undefined) update(function (c) { c.views[d.viewSection].sections[d.section] = t.checked; });
@@ -356,6 +402,22 @@
       if (d.move && d.card !== undefined) { update(function (c) { moveIn(c.cards, findCard(c, d.card), d.move); }); renderDrawer(); return; }
       if (d.cardDel !== undefined) { if (!confirm('Supprimer cette carte ?')) return; update(function (c) { c.cards = c.cards.filter(function (x) { return x.id !== d.cardDel; }); }); renderDrawer(); return; }
       if (b.id === 'cfgAddCard') { update(function (c) { c.cards.push({ id: 'card_' + Date.now().toString(36), title: 'Nouvelle carte', rows: 'team', cols: 'status', measure: 'count', style: 'hstack', visible: true }); }); renderDrawer(); return; }
+      if (d.tierDel !== undefined) {
+        update(function (c) { var tr = tiersOf(c)[Number(d.tierDel)]; c.alerts.tiers = (c.alerts.tiers || []).filter(function (x) { return x !== tr; }); });
+        renderDrawer(); return;
+      }
+      if (b.id === 'cfgAddTier') {
+        // Le nouveau palier se place plus serré que le plus serré : moitié moins
+        // de temps, barre dix points plus haut. Sans quoi on ajoute un doublon.
+        update(function (c) {
+          var top = tiersOf(c)[0];
+          (c.alerts.tiers = c.alerts.tiers || []).push({
+            days: top ? Math.max(0, Math.round(top.days * 10) / 20) : 1,
+            pct: top ? Math.min(100, top.pct + 10) : 70, level: 'critical'
+          });
+        });
+        renderDrawer(); return;
+      }
       if (b.id === 'cfgExport') { var blob = new Blob([exportJSON()], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'bug-dashboard-v2-config.json'; a.click(); return; }
       if (b.id === 'cfgReset') { if (confirm('Réinitialiser toute la configuration (ordre des équipes, couleurs, pondérations, cartes) ?')) { reset(); renderDrawer(); } return; }
     });
@@ -389,7 +451,7 @@
   }
 
   root.BDV2Config = {
-    DEFAULTS: DEFAULTS, STYLE_LABELS: STYLE_LABELS, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
+    DEFAULTS: DEFAULTS, LEVELS: LEVELS, tiers: tiersOf, pctHint: pctHint, STYLE_LABELS: STYLE_LABELS, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
     get: get, update: update, onChange: onChange, reset: reset, exportJSON: exportJSON, importJSON: importJSON,
     loadLocal: loadLocal, loadRemote: loadRemote,
     open: open, close: close, renderDrawer: renderDrawer
