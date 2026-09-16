@@ -128,6 +128,19 @@ le bandeau, courbes d'évolution (global, avancement, stock à livrer par versio
 origine), comparateur entre deux analyses (nouveaux, disparus, terminés, changements de
 statut/équipe/version, stock par version). Sans session : journal local (30 dernières).
 
+Le **Journal des versions** tient en une carte, **une ligne par version** (Target date), de la
+plus récente à la plus ancienne : sa photo officielle (📌, la plus récente fait foi) au premier
+plan, et en dessous, **dépliables**, les analyses de travail qui y ont mené — une version, c'est
+la photo officielle plus le travail qui l'a produite. Chaque analyse est rangée sous sa Target
+date **dominante**, donc n'apparaît qu'une fois. Une version sans photo épinglée est marquée
+« pas encore officialisée » et montre quand même son travail ; les analyses sans Target date
+finissent dans une ligne « Sans Target date » ; une ancienne officielle détrônée par une plus
+récente réapparaît dans la sous-liste de sa version, son épingle rouge intacte, au lieu de
+disparaître. La carte et chaque version arrivent **repliées** — on ouvre la section pour le
+graphique, la liste se consulte à l'occasion — et chaque repli est conservé dans ce navigateur.
+Le comparateur reste en bas de la carte : ses cases à cocher fonctionnent à travers les
+sous-listes.
+
 Deux tuiles du bandeau, **Ajoutés à la version** et **Retirés de la version**, comparent
 l'extrait courant à la première photo de la version (même Target date) : le grand chiffre
 compte depuis le début de la version, le delta depuis l'analyse précédente, et le clic ouvre

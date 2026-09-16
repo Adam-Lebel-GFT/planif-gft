@@ -517,22 +517,34 @@
       var i = items[real], checked = H.compare.indexOf(real) !== -1, cur = i.hash === H.currentHash, d = bizDate(i);
       return '<li class="hist-item' + (cur ? ' is-current' : '') + '"><input type="checkbox" data-cmp="' + real + '" ' + (checked ? 'checked' : '') + ' title="Comparer"><span class="when" title="Journalisée le ' + fmtWhen(i.at) + '">' + (official ? C.fmtDate(d) : fmtWhen(i.at)) + '</span><span class="name">' + esc(i.nom || 'Analyse n°' + (real + 1)) + (cur ? ' <span class="tk-badge tk-badge--preview">courante</span>' : '') + '</span><span class="meta">' + i.nb + ' tickets · ' + (i.resume.kpis ? i.resume.kpis.open + ' ouverts · ' + i.resume.kpis.progress + '%' : '') + (i.byName ? ' · ' + esc(i.byName) : '') + '</span>' +
         '<button type="button" class="ghost small" data-hist-open="' + real + '" ' + (i.tickets && i.tickets.length ? '' : 'disabled title="Tickets non conservés"') + '>' + (S.archived && S.archived.index === real ? 'Ouverte' : 'Ouvrir') + '</button>' +
-        '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="' + (official ? 'Retirer des versions officielles' : 'Marquer comme version officielle') + '">' + (official ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
+        '<button type="button" class="icon-btn" data-hist-rename="' + real + '" title="Renommer">✎</button><button type="button" class="icon-btn" data-hist-pin="' + real + '" title="' + (i.epingle ? 'Retirer des versions officielles' : 'Marquer comme version officielle') + '">' + (i.epingle ? '📌' : '📍') + '</button><button type="button" class="icon-btn" data-hist-del="' + real + '" title="Supprimer">🗑</button></li>';
     };
-    var off = officialIdx();
-    h += '<div class="card"><div class="card-head"><div><h2>📌 Versions officielles <span class="tk-badge tk-badge--preview">' + off.length + '</span></h2><div class="sub">Photos épinglées, une par Target date (la plus récente fait foi), dans l\'ordre des Target dates. Cochez deux analyses (ici ou ci-dessous) pour les comparer.</div></div>' + foldBtn('histOff') + '</div>' +
-      '<div id="histOffBody"' + (isFolded('histOff') ? ' class="hidden"' : '') + '>' +
-      (off.length ? '<ul class="hist-list" style="margin-top:12px">' + off.map(function (k) { return row(k, true); }).join('') + '</ul>' : '<p class="sub" style="margin-top:10px">Aucune version officielle : épinglez (📍) une analyse pour la faire apparaître ici.</p>') + '</div></div>';
-    var groups = {};
-    items.forEach(function (it, k) { if (it.epingle) return; var td = mainTd(it); (groups[td] = groups[td] || []).push(k); });
-    var gkeys = Object.keys(groups).sort(function (a, b) { if (a === 'none') return 1; if (b === 'none') return -1; return b.localeCompare(a); });
-    var nWork = items.filter(function (i) { return !i.epingle; }).length;
-    h += '<div class="card"><div class="card-head"><div><h2>Analyses de travail <span class="tk-badge tk-badge--muted">' + nWork + '</span></h2><div class="sub">Les sous-versions, regroupées par version (Target date), de la plus récente à la plus ancienne.</div></div>' + foldBtn('histWork') + '</div>' +
-      '<div id="histWorkBody"' + (isFolded('histWork') ? ' class="hidden"' : '') + '>' +
-      (gkeys.length ? gkeys.map(function (td) {
-        var v = versions.find(function (x) { return x.td === td; });
-        return '<h4 style="margin:14px 0 6px;font-size:12.5px;color:var(--navy)">' + esc(v ? versionLabel(v, true) : tdLabel(td, true)) + ' <span class="tk-badge tk-badge--muted">' + groups[td].length + '</span></h4><ul class="hist-list">' + groups[td].reverse().map(function (k) { return row(k, false); }).join('') + '</ul>';
-      }).join('') : '<p class="sub" style="margin-top:10px">Aucune analyse de travail.</p>') +
+    // Une version, c'est sa photo officielle plus le travail qui y a mené : les
+    // analyses de travail se déplient sous leur version, au lieu de vivre dans
+    // une seconde liste où le libellé de version était répété. Une analyse est
+    // rangée sous sa Target date dominante, donc n'apparaît qu'une fois.
+    var work = {};
+    items.forEach(function (it, k) { var td = mainTd(it); (work[td] = work[td] || []).push(k); });
+    var ordered = versions.slice().sort(function (a, b) {
+      if (a.td === 'none') return 1; if (b.td === 'none') return -1; return b.td.localeCompare(a.td);
+    });
+    var blocks = ordered.map(function (v) {
+      var mine = (work[v.td] || []).filter(function (k) { return k !== v.official; }).slice().reverse();
+      if (v.official == null && !mine.length) return '';
+      var fid = 'histV' + v.td.replace(/[^0-9a-z]/gi, '');
+      var head = '<div class="ver-head"><span class="ver-name">' + (v.official != null ? '📌 ' : '') + esc(versionLabel(v, true)) + '</span>' +
+        (v.official == null && v.td !== 'none' ? '<span class="tk-badge tk-badge--muted">pas encore officialisée</span>' : '') +
+        (mine.length ? foldBtn(fid, mine.length + ' analyse' + (mine.length > 1 ? 's' : '') + ' de travail') : '<span class="sub">aucune analyse de travail</span>') + '</div>';
+      return '<div class="ver-block">' + head +
+        (v.official != null ? '<ul class="hist-list">' + row(v.official, true) + '</ul>' : '') +
+        (mine.length ? '<div id="' + fid + 'Body"' + (isFolded(fid) ? ' class="hidden"' : '') + '><ul class="hist-list ver-sub">' + mine.map(function (k) { return row(k, false); }).join('') + '</ul></div>' : '') +
+        '</div>';
+    }).join('');
+    var nOff = officialIdx().length;
+    h += '<div class="card"><div class="card-head"><div><h2>📌 Journal des versions <span class="tk-badge tk-badge--preview">' + nOff + ' officielle' + (nOff > 1 ? 's' : '') + '</span></h2>' +
+      '<div class="sub">Une ligne par version : sa photo officielle (📌, la plus récente fait foi) et, dépliables, les analyses de travail qui y ont mené. Cochez deux analyses, où qu\'elles soient, pour les comparer.</div></div>' + foldBtn('histLog') + '</div>' +
+      '<div id="histLogBody"' + (isFolded('histLog') ? ' class="hidden"' : '') + '>' +
+      (blocks || '<p class="sub" style="margin-top:10px">Aucune analyse journalisée.</p>') +
       '<div id="histCompare">' + compareHtml(items) + '</div></div></div>';
     rootEl.innerHTML = h;
     bindFolds(rootEl);
@@ -551,8 +563,11 @@
   }
   function isFolded(id) { var f = foldState()[id]; return f === undefined ? true : !!f; }
   function setFolded(id, v) { foldState()[id] = v; try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) {} }
-  function foldBtn(id) {
-    return '<button type="button" class="collapse-btn' + (isFolded(id) ? ' is-collapsed' : '') + '" data-fold="' + id + '"><span class="chev">▾</span><span class="lbl">' + (isFolded(id) ? 'Afficher' : 'Réduire') + '</span></button>';
+  // `label` fixe : le chevron dit déjà l'état, inutile de renommer le bouton
+  // quand il porte un décompte (« 3 analyses de travail »).
+  function foldBtn(id, label) {
+    return '<button type="button" class="collapse-btn' + (isFolded(id) ? ' is-collapsed' : '') + '" data-fold="' + id + '"' + (label ? ' data-fold-fixed="1"' : '') +
+      '><span class="chev">▾</span><span class="lbl">' + esc(label || (isFolded(id) ? 'Afficher' : 'Réduire')) + '</span></button>';
   }
   function bindFolds(rootEl) {
     rootEl.querySelectorAll('[data-fold]').forEach(function (b) {
@@ -560,7 +575,7 @@
         var id = b.dataset.fold, body = document.getElementById(id + 'Body'), v = !body.classList.contains('hidden');
         body.classList.toggle('hidden', v);
         b.classList.toggle('is-collapsed', v);
-        b.querySelector('.lbl').textContent = v ? 'Afficher' : 'Réduire';
+        if (!b.dataset.foldFixed) b.querySelector('.lbl').textContent = v ? 'Afficher' : 'Réduire';
         setFolded(id, v);
       });
     });
