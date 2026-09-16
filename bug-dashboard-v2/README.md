@@ -82,10 +82,27 @@ de large, « 2 colonnes » retombe sur une colonne.
 
 Déterministes, calculées à chaque rendu et cliquables (drill-down) : blockers sans équipe,
 terminés sans Fix Version, Target date dépassée, sans Target date, blockers PRJ301, retard réel
-(versions déjà déployées), au-delà du plan, et **« Version imminente, ticket peu avancé »** —
-tickets ouverts rattachés à une version à venir dont l'avancement pondéré est sous le seuil
-alors que le jalon surveillé approche. Seuils dans Configurer → Règles → Alertes : jalon
-**Code freeze**, atteint dans **3 jours ou moins**, avancement **sous 50 %**. Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,
+(versions déjà déployées), au-delà du plan, et les **paliers de risque** — tickets ouverts
+rattachés à une version à venir dont l'avancement pondéré est trop bas pour le temps qui reste
+avant le jalon surveillé.
+
+Un palier se lit « à tant de jours ouvrés du jalon, tout ce qui est sous tant de pour cent est en
+risque ». Deux sont livrés (Configurer → Règles → Alertes, modifiables et extensibles) :
+
+| Reste au plus | Ticket sous | Niveau | Alerte |
+| --- | --- | --- | --- |
+| 3 jours ouvrés | 50 % | Sérieux | « N tickets sous 50 % d'avancement » |
+| 1 jour ouvré | 70 % — le niveau *Code review - completed* | Critique | « N tickets **en risque pour la version** » |
+
+Les paliers sont parcourus **du plus serré au plus large** et chacun retire ses tickets des
+suivants : un ticket à 60 % la veille du gel est « en risque », pas « peu avancé », et n'est
+jamais compté deux fois. Quand un seuil tombe pile sur une pondération de statut, l'alerte le
+nomme (« sous 70 % d'avancement (niveau « Code review - completed ») ») — c'est le langage de
+l'équipe, pas un pourcentage abstrait. Une configuration enregistrée avant ce changement est
+migrée (`schema` 3) : le seuil unique devient le premier palier, un réglage choisi à la main est
+donc conservé, et le palier serré vient s'y ajouter.
+
+Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,
 avec leurs libellés réels — un jalon renommé (« Déploiement sur l'environnement IAT ») ou
 supprimé s'y voit tel quel ; un jalon configuré mais absent du plan reste listé, marqué
 « absent du plan », plutôt que de retomber silencieusement sur le déploiement. Le jalon surveillé
@@ -100,8 +117,8 @@ se choisit à côté de la date de référence (pré-remplie sur l'heure courant
 demi-journée en cours — à 11h30 le lundi, le matin est derrière nous — ni celle du jalon : un
 Code freeze le jeudi vers 7h ferme déjà le jeudi matin, personne ne travaillant avant. Lundi
 matin, gel le jeudi matin : lundi après-midi (0,5) + mardi (1) + mercredi (1) = **2,5 jours**.
-Le seuil accepte les demi-journées (2,5). Un plan publié avant cette évolution (date nue) vaut
-« matin », comme avant.
+Les seuils des paliers acceptent les demi-journées (2,5). Un plan publié avant cette évolution
+(date nue) vaut « matin », comme avant.
 
 ## Journal des analyses
 
