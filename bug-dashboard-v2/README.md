@@ -72,6 +72,17 @@ L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle auss
 glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
 absentes de la vue gardent leur place dans la liste.
 
+La **heatmap ouverts / terminés** (icône ◫, proposée seulement quand les colonnes de la carte
+sont les statuts) sépare la grille en deux blocs — en cours à gauche, terminé à droite, filet
+entre les deux — chacun avec sa colonne de sous-total, et colore les cellules par état : bleu en
+cours, vert terminé, les couleurs que l'outil donne déjà à « Terminé / en cours ». L'échelle
+d'intensité reste commune aux deux rampes, donc un 5 bleu et un 5 vert pèsent pareil. Le partage
+suit la liste **« terminés »** de Configurer → Statuts, et la carte porte la distinction
+elle-même : le filtre État de la barre n'est pas touché, et le détail par statut reste entier. Les
+sous-totaux s'ouvrent au clic comme les cellules. Sur une carte dont les colonnes ne sont pas les
+statuts — ou dont tous les statuts sont du même côté — l'affichage retombe sur la heatmap
+ordinaire plutôt que d'inventer une séparation.
+
 La **largeur** d'une carte vaut *1 colonne*, *2 colonnes*, *pleine largeur* ou *auto*. En auto,
 les tableaux larges (heatmap de plus de 5 colonnes, tableau de plus de 4, empilé vertical de plus
 de 7 lignes) prennent toute la largeur. Ce calcul porte sur l'**extrait complet**, jamais sur les

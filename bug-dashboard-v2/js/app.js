@@ -279,7 +279,7 @@
       var auto = card.style === 'heatmap' && nCol > 5 || card.style === 'table' && nCol > 4 || card.style === 'vstack' && allRow.length > 7;
       var width = card.width || 'auto';
       var wcls = width === 'full' || (width === 'auto' && auto) ? ' wide' : width === '2' ? ' w2' : '';
-      var styles = Object.keys(CFG.STYLE_LABELS).filter(function (s) { return card.cols ? s !== 'donut' : (s === 'bars' || s === 'donut' || s === 'table'); });
+      var styles = CFG.stylesFor(card);
       var dimOpts = function (sel, allowNone) { var o = allowNone ? '<option value=""' + (!sel ? ' selected' : '') + '>× —</option>' : ''; Object.keys(CFG.DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + (allowNone ? '× ' : '') + CFG.DIM_LABELS[k] + '</option>'; }); return o; };
       return '<div class="card' + wcls + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div>' +
         '<div class="card-ident"><span class="grip" data-card-drag="' + esc(card.id) + '" title="Glisser pour réordonner les cartes">⠿</span>' +
@@ -359,7 +359,7 @@
       ids.forEach(function (id, n) { if (slots[n] != null && byId[id]) c.cards[slots[n]] = byId[id]; });
     });
   }
-  var STYLE_ICONS = { hstack: '▬', vstack: '▮', heatmap: '▦', bars: '≡', donut: '◔', table: '⊞' };
+  var STYLE_ICONS = { hstack: '▬', vstack: '▮', heatmap: '▦', split: '◫', bars: '≡', donut: '◔', table: '⊞' };
 
   // ── Drill-down ─────────────────────────────────────────────────────
   function resolveDrill(el) {
@@ -372,6 +372,16 @@
       var cell = pv.cell(d.rkey, d.cdim ? d.ckey : '_');
       var doneT = cell.tickets.filter(function (t) { return t.isDone; }), openT = cell.tickets.filter(function (t) { return !t.isDone; });
       return { title: ctx.card.title, subtitle: C.DIMS[d.rdim].label + ' : ' + d.rkey + (d.cdim ? ' · ' + C.DIMS[d.cdim].label + ' : ' + d.ckey : ''), tabs: [{ label: 'Tous', tickets: cell.tickets }, { label: 'Ouverts', tickets: openT }, { label: 'Terminés', tickets: doneT }] };
+    }
+    // Sous-total d'un bloc de la heatmap scindée : tous les tickets de la ligne
+    // (ou de la carte entière depuis la ligne Total) pour les statuts du bloc.
+    if (d.dd === 'hmgroup') {
+      var gc = S.cardCtx[d.card]; if (!gc || !gc.split) return null;
+      var gpv = gc.pivot, gcols = gc.split[d.group] || [], grows = d.rkey ? [d.rkey] : gpv.rows, glist = [];
+      grows.forEach(function (r) { gcols.forEach(function (c) { glist = glist.concat(gpv.cell(r, c).tickets); }); });
+      var glabel = d.group === 'done' ? 'Terminés' : 'En cours';
+      return { title: gc.card.title, subtitle: (d.rkey ? C.DIMS[d.rdim].label + ' : ' + d.rkey + ' · ' : '') + glabel + ' — ' + gcols.join(', '),
+        tabs: [{ label: glabel, tickets: glist }] };
     }
     if (d.dd === 'row' || d.dd === 'col') {
       var dim = C.DIMS[d.dim]; if (!dim) return null;
