@@ -45,7 +45,9 @@
       scrum:     { label: 'Scrum',          cards: ['team_status', 'team_priority', 'status', 'team', 'done_fix'], sections: { kpis: true, ai: false, train: true, cube: true, history: false, alerts: true } }
     },
     ai:         { model: 'claude-haiku-4-5', auto: true, tone: 'direction' },
-    history:    { keepTickets: true, sparkPoints: 10 }
+    // threshold : plafond de tickets tracé en pointillé sur l'évolution
+    // « Ouverts / terminés ». 0 = pas de ligne.
+    history:    { keepTickets: true, sparkPoints: 10, threshold: 40 }
   };
 
   var cfg = deepClone(DEFAULTS);
@@ -309,6 +311,11 @@
         '<label>Journée de travail de <input type="number" min="0" max="23" class="cfg-input num" data-burnup="openFrom" value="' + (cfg.burnup ? cfg.burnup.openFrom : 8) + '"> h à <input type="number" min="1" max="24" class="cfg-input num" data-burnup="openTo" value="' + (cfg.burnup ? cfg.burnup.openTo : 19) + '"> h</label>' +
         '</div>' +
         '<p class="cfg-help">Hors de ces heures et le week-end, la rampe reste plate et l\'axe du graphique est comprimé — une analyse saisie la nuit reste visible, dans un couloir étroit.</p>' +
+        '<h4>Évolution</h4>' +
+        '<div class="cfg-grid">' +
+        '<label>Ligne de repère à <input type="number" min="0" max="9999" class="cfg-input num" data-hist="threshold" value="' + (cfg.history.threshold == null ? 40 : cfg.history.threshold) + '"> tickets</label>' +
+        '</div>' +
+        '<p class="cfg-help">Trait pointillé constant sur la mesure « Ouverts / terminés » de la section Évolution — le plafond de tickets qu\'on se donne pour une version. <strong>0</strong> retire la ligne.</p>' +
         '<h4>Alertes</h4>' +
         '<div class="cfg-grid">' +
         '<label>Jalon surveillé ' + boundarySelect('alert', cfg.alerts.boundary || 'freeze') + '</label>' +
@@ -392,6 +399,7 @@
         });
         renderDrawer();
       }
+      else if (d.hist !== undefined) update(function (c) { c.history[d.hist] = Math.max(0, Number(t.value) || 0); });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
       else if (d.viewSection !== undefined) update(function (c) { c.views[d.viewSection].sections[d.section] = t.checked; });

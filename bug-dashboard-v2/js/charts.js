@@ -326,6 +326,10 @@
     else if (stacked) totals.forEach(function (t) { if (t > max) max = t; });
     else series.forEach(function (s) { s.values.forEach(function (v) { if (v != null && v > max) max = v; }); });
     if (!max) max = 1;
+    // Ligne de repère : un plafond en tickets. Sans objet sur une échelle en
+    // pourcentage, où rien ne se compte en tickets.
+    var thr = (!pct && opts.threshold > 0) ? opts.threshold : 0;
+    if (thr > max) max = thr;
     var nice = pct ? 100 : niceMax(max), steps = 4;
     // Largeur : on s'élargit et on laisse défiler plutôt que d'aligner des
     // barres illisibles quand le journal compte beaucoup de photos.
@@ -370,8 +374,14 @@
         });
       }
     });
+    var thrEl = '';
+    if (thr) {
+      var ty = yOf(thr);
+      thrEl = '<line class="thr" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>' +
+        '<text class="thr-l" x="' + (w - padR - 2) + '" y="' + (ty - 5).toFixed(1) + '" text-anchor="end">' + fmtTick(thr, opts.unit) + esc(opts.thresholdLabel ? ' ' + opts.thresholdLabel : '') + '</text>';
+    }
     var svg = '<svg class="lc bc" viewBox="0 0 ' + w + ' ' + h + '"' + (scroll ? ' width="' + w + '" height="' + h + '"' : '') + ' role="img">' +
-      g + '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' + lx + bars + '</svg>';
+      g + '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' + lx + bars + thrEl + '</svg>';
     if (scroll) svg = '<div class="chart-scroll">' + svg + '</div>';
     return svg + (k >= 2 ? '<div class="legend">' + series.map(function (s) {
       return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + esc(s.label) + '</span>';
@@ -400,14 +410,10 @@
     // fermé compte pour 1/SQUASH de sa durée — plutôt qu'effacés.
     var OPEN_A = opts.openFrom == null ? 8 : opts.openFrom;
     var OPEN_B = opts.openTo == null ? 19 : opts.openTo;
-    var SQUASH = 6;
-    // Heures ouvertes d'un intervalle (celles du noyau : lundi-vendredi, de
-    // OPEN_A à OPEN_B) et sa largeur visuelle (ouvert + fermé/SQUASH).
+    // Heures ouvertes d'un intervalle et sa largeur visuelle (voir visualSpan).
     function spans(a, b) {
       if (!(b > a)) return { open: 0, visual: 0 };
-      var open = C.openHours(a, b, OPEN_A, OPEN_B);
-      var closed = (b - a) / 3600000 - open;
-      return { open: open, visual: open + closed / SQUASH };
+      return { open: C.openHours(a, b, OPEN_A, OPEN_B), visual: visualSpan(a, b, OPEN_A, OPEN_B) };
     }
     var vTotal = spans(t0, t1).visual || 1;
     var xOf = function (t) { return padL + spans(t0, Math.max(t0, Math.min(t, t1))).visual / vTotal * plotW; };
@@ -558,6 +564,87 @@
       '</div>';
   }
 
+  // ── Barres empilées sur le calendrier ──────────────────────────────
+  // Même fenêtre et même échelle de temps que le burn-up : une barre par photo,
+  // posée à sa date réelle, hauteur = nombre de tickets. On y lit d'un coup le
+  // rythme des analyses (les rafales, les week-ends vides) et le périmètre qui
+  // bouge — ce qu'une barre par photo régulièrement espacée efface.
+  function barTimeChart(opts) {
+    var pts = (opts.points || []).slice().sort(function (a, b) { return a.t - b.t; });
+    if (!pts.length) return '';
+    var series = opts.series || [];
+    var h = opts.height || 260, w = opts.width || 720;
+    var padL = 40, padR = 16, padT = 14, padB = 28;
+    var t0 = opts.start.getTime(), t1 = opts.end.getTime();
+    pts.forEach(function (p) { var t = p.t.getTime(); if (t < t0) t0 = t; if (t > t1) t1 = t; });
+    if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
+    if (t1 <= t0) t1 = t0 + 86400000;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+    var OPEN_A = opts.openFrom == null ? 8 : opts.openFrom, OPEN_B = opts.openTo == null ? 19 : opts.openTo;
+    var vTotal = visualSpan(t0, t1, OPEN_A, OPEN_B) || 1;
+    var xOf = function (t) { return padL + visualSpan(t0, Math.max(t0, Math.min(t, t1)), OPEN_A, OPEN_B) / vTotal * plotW; };
+    var totalOf = function (p) { var n = 0; series.forEach(function (sr) { n += p.values[sr.key] || 0; }); return n; };
+    var maxTot = 0; pts.forEach(function (p) { var n = totalOf(p); if (n > maxTot) maxTot = n; });
+    var thr = opts.threshold > 0 ? opts.threshold : 0;
+    var nice = niceMax(Math.max(maxTot, thr) || 1), steps = 4;
+    var yOf = function (v) { return padT + (1 - v / nice) * plotH; };
+    // Largeur des barres : la plus petite distance entre deux photos, bornée —
+    // quatre analyses dans la même journée ne doivent pas se chevaucher.
+    var gapMin = plotW;
+    for (var i = 1; i < pts.length; i++) gapMin = Math.min(gapMin, xOf(pts[i].t.getTime()) - xOf(pts[i - 1].t.getTime()));
+    var bw = Math.max(5, Math.min(20, (pts.length > 1 ? gapMin : 40) * 0.8));
+
+    var bands = weekendBands(t0, t1, xOf, padL, w - padR, padT, plotH);
+    var g = '';
+    for (var k = 0; k <= steps; k++) {
+      var gv = nice * k / steps, gy = yOf(gv);
+      g += '<line class="grid" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
+        '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + fmtTick(gv, opts.unit) + '</text>';
+    }
+    var days = Math.max(1, Math.round((t1 - t0) / 86400000)), stepD = Math.ceil(days / 8), lx = '';
+    for (var d = 0; d <= days; d += stepD) {
+      var td = t0 + d * 86400000;
+      lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
+    }
+    var marks = '';
+    if (opts.today) {
+      var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
+      var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
+      if (bx1 > bx0) marks += '<rect class="today-band" x="' + bx0.toFixed(1) + '" y="' + padT + '" width="' + (bx1 - bx0).toFixed(1) +
+        '" height="' + plotH.toFixed(1) + '"/>';
+      // Le libellé va en haut : en bas, les barres lui passeraient dessus.
+      marks += '<line class="today" x1="' + bx0.toFixed(1) + '" x2="' + bx0.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l" x="' + (bx0 + 5).toFixed(1) + '" y="' + (padT + 11) + '">réf. ' + fmtDay(opts.today) + '</text>';
+    }
+    // Ligne de repère : un plafond de tickets qu'on se donne, constant sur toute
+    // la fenêtre. Réglable (Configurer → Règles), 0 = pas de ligne.
+    var thrEl = '';
+    if (thr) {
+      var ty = yOf(thr);
+      thrEl = '<line class="thr" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>' +
+        '<text class="thr-l" x="' + (w - padR - 2) + '" y="' + (ty - 5).toFixed(1) + '" text-anchor="end">' + fmtTick(thr, opts.unit) + esc(opts.thresholdLabel ? ' ' + opts.thresholdLabel : '') + '</text>';
+    }
+    var bars = '';
+    pts.forEach(function (p) {
+      var x = xOf(p.t.getTime()) - bw / 2, acc = 0;
+      var stack = series.map(function (sr) { return { s: sr, v: p.values[sr.key] || 0 }; }).filter(function (o) { return o.v > 0; });
+      stack.forEach(function (o, j) {
+        var y0 = yOf(acc), y1 = yOf(acc + o.v), hh = y0 - y1, top = j === stack.length - 1;
+        var tip = p.label + ' — ' + o.s.label + ' : ' + fmtTick(o.v, opts.unit) + ' sur ' + totalOf(p);
+        bars += '<path class="bar" d="' + barPath(x, y1, bw, Math.max(hh - (top ? 0 : 2), 0), top ? 4 : 0) + '" fill="' + o.s.color + '" data-tip="' + esc(tip) + '"/>';
+        acc += o.v;
+      });
+    });
+    var svg = '<svg class="lc bc bt" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
+      '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+      lx + marks + bars + thrEl + '</svg>';
+    return svg + '<div class="legend">' +
+      series.map(function (sr) { return '<span class="legend-item"><span class="dot" style="background:' + sr.color + '"></span>' + esc(sr.label) + '</span>'; }).join('') +
+      (thr ? '<span class="legend-item"><span class="dot dash thr-dot"></span>Repère — ' + fmtTick(thr, opts.unit) + esc(opts.thresholdLabel ? ' ' + opts.thresholdLabel : '') + '</span>' : '') +
+      '<span class="legend-item"><span class="dot" style="background:#8d94a3;opacity:.35"></span>Week-end</span>' +
+      '</div>';
+  }
+
   function lineChart(opts) {
     var series = opts.series, labels = opts.labels, w = opts.width || 720, h = opts.height || 220;
     var padL = 36, padR = 14, padT = 12, padB = 26;
@@ -584,9 +671,35 @@
     var colors = {}; series.forEach(function (s) { colors[s.label] = s.color; });
     return svg + (series.length >= 2 ? '<div class="legend">' + series.map(function (s) { return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + esc(s.label) + '</span>'; }).join('') + '</div>' : '');
   }
+  // ── Échelle de temps de l'outil ────────────────────────────────────
+  // Les nuits et les week-ends ne portent presque jamais de données : les
+  // supprimer les rendrait invisibles, alors qu'une analyse saisie à 22 h
+  // existe. Ils sont donc comprimés — un temps fermé compte pour 1/SQUASH de
+  // sa durée. Le burn-up et les barres d'évolution la partagent, pour que les
+  // deux graphiques racontent exactement le même calendrier.
+  var SQUASH = 6;
+  function visualSpan(a, b, from, to) {
+    if (!(b > a)) return 0;
+    var open = C.openHours(a, b, from, to);
+    return open + ((b - a) / 3600000 - open) / SQUASH;
+  }
+  // Bandes de week-end et graduations de dates, dans la géométrie de l'appelant.
+  function weekendBands(t0, t1, xOf, x0, x1, yTop, hh) {
+    var out = '', cur = new Date(t0); cur.setHours(0, 0, 0, 0);
+    for (var g = 0; cur.getTime() <= t1 && g < 400; g++) {
+      if (!C.isWorkday(cur)) {
+        var nx = new Date(cur); nx.setDate(nx.getDate() + 1);
+        var a = Math.max(xOf(cur.getTime()), x0), b = Math.min(xOf(nx.getTime()), x1);
+        if (b > a) out += '<rect class="weekend" x="' + a.toFixed(1) + '" y="' + yTop + '" width="' + (b - a).toFixed(1) + '" height="' + hh.toFixed(1) + '"/>';
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  }
+
   function niceMax(v) { var p = Math.pow(10, Math.floor(Math.log10(v))); var f = v / p; var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 4 ? 4 : f <= 5 ? 5 : f <= 8 ? 8 : 10; return nf * p; }
   function fmtDay(d) { return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); }
   function fmtTick(v, unit) { return (Number.isInteger(v) ? v : v.toFixed(1)) + (unit || ''); }
 
-  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, burnupChart: burnupChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
+  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, barTimeChart: barTimeChart, burnupChart: burnupChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
 })(window);

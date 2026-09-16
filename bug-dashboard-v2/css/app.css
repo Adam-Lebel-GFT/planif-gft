@@ -346,6 +346,15 @@ body.dd-open{overflow:hidden;}
 .bu .mark{stroke:#C3C8D2; stroke-width:1; stroke-dasharray:3 3;}
 .bu .today{stroke:var(--navy); stroke-width:1.5; stroke-dasharray:4 3; opacity:.5;}
 .bu .today-band{fill:#fa8072; opacity:.20;}
+/* Ligne de repère (plafond de tickets) des graphiques d'évolution. */
+.lc .thr{stroke:#C0392B; stroke-width:1.5; stroke-dasharray:5 4; opacity:.8;}
+.lc .thr-l{fill:#C0392B; font-size:10.5px; font-weight:700;}
+.legend .dot.thr-dot{background:transparent; border-top:2px dashed #C0392B; height:0; width:12px; border-radius:0;}
+.bt .today-band{fill:#fa8072; opacity:.14;}
+.bt .today{stroke:#8d94a3; stroke-dasharray:4 3;}
+.bt .mark-l{fill:#6B7A90; font-size:10.5px; font-weight:700; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round;}
+.bt .thr-l{paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round;}
+.bt .weekend{fill:#8d94a3; opacity:.09;}
 .bu .weekend{fill:#8d94a3; opacity:.09;}
 .bu .tick{stroke:#A8B0BE; stroke-width:1;}
 .bu .tick.half{stroke:#CFD5DE;}
