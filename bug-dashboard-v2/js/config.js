@@ -19,12 +19,13 @@
     { id: 'team',            title: 'Répartition par équipe',        rows: 'team',       cols: null,       measure: 'count',    style: 'donut',   visible: true },
     { id: 'priority_origin', title: 'Priorités × origine',           rows: 'priority',   cols: 'origin',   measure: 'count',    style: 'vstack',  visible: true },
     { id: 'team_progress',   title: 'Avancement pondéré par équipe', rows: 'team',       cols: null,       measure: 'progress', style: 'table',   visible: true },
-    { id: 'done_fix',        title: 'Résolutions × Fix Version',     rows: 'resolution', cols: 'fixState', measure: 'count',    style: 'table',   visible: true }
+    { id: 'done_fix',        title: 'Résolutions × Fix Version',     rows: 'resolution', cols: 'fixState', measure: 'count',    style: 'table',   visible: true },
+    { id: 'origin_res_fix',  title: 'Résolutions par origine',       rows: 'origin',     cols: 'resolution', split: 'fixState', measure: 'count', style: 'nest', visible: true }
   ];
 
   // Version du schéma de configuration : incrémentée quand un défaut livré doit
   // primer sur une valeur déjà enregistrée (localStorage / Supabase) — voir migrate().
-  var SCHEMA = 3;
+  var SCHEMA = 4;
 
   var DEFAULTS = {
     schema:     SCHEMA,
@@ -141,14 +142,31 @@
   function importJSON(text) { var o = JSON.parse(text); cfg = merge(deepClone(DEFAULTS), migrate(o)); saveLocal(); saveRemote(); notify(); }
 
   // ── Tiroir de configuration ────────────────────────────────────────
-  var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', split: 'Heatmap ouverts / terminés', bars: 'Barres', donut: 'Donut', table: 'Tableau' };
+  var STYLE_LABELS = { hstack: 'Empilé horizontal', vstack: 'Empilé vertical', heatmap: 'Heatmap', split: 'Heatmap ouverts / terminés', bars: 'Barres', donut: 'Donut', table: 'Tableau',
+    nest: 'Sous-lignes', subcols: 'Sous-colonnes', nestbars: 'Sous-lignes à barres' };
+  // Les trois placements du découpage, dans l'ordre où l'outil les propose.
+  var THREE_STYLES = ['nest', 'subcols', 'nestbars'];
   // « split » ne veut rien dire sans statuts en colonnes : il sépare les
   // colonnes en deux blocs selon la liste « terminés » de la configuration.
+  // Une carte qui porte un découpage bascule entièrement sur les styles à trois
+  // niveaux : les styles à deux n'auraient nulle part où le montrer.
   function stylesFor(card) {
+    if (card.cols && card.split) return THREE_STYLES.slice();
     return Object.keys(STYLE_LABELS).filter(function (s) {
+      if (THREE_STYLES.indexOf(s) !== -1) return false;
       if (s === 'split') return card.cols === 'status';
       return card.cols ? s !== 'donut' : (s === 'bars' || s === 'donut' || s === 'table');
     });
+  }
+  // Un découpage n'existe que sous des colonnes, et jamais sur une dimension
+  // déjà en ligne ou en colonne — ce serait une diagonale, pas un croisement.
+  // Après chaque changement de dimension la carte se remet d'aplomb : son style
+  // revient dans la liste qu'elle propose plutôt que de rendre un tableau vide.
+  function normalizeCard(card) {
+    if (!card.cols || card.split === card.cols || card.split === card.rows) card.split = null;
+    var ok = stylesFor(card);
+    if (ok.indexOf(card.style) === -1) card.style = ok[0] || 'hstack';
+    return card;
   }
   var MEASURE_LABELS = { count: 'Nombre de tickets', progress: '% avancement pondéré', shareRow: '% de la ligne', shareCol: '% de la colonne', shareTotal: '% du total' };
   // Largeur d'une carte dans la grille du cube. « auto » : pleine largeur quand
@@ -275,11 +293,14 @@
           '<td><details class="cfg-color"><summary title="Choisir la couleur"><span class="dot" style="background:' + (cfg.statuses.colors[s.key] || P.CATEGORICAL[i % 8]) + '"></span>' + (cfg.statuses.colors[s.key] ? '' : 'auto') + '</summary>' + swatchPicker(cfg.statuses.colors[s.key] || '', 'data-status-color="' + esc(s.key) + '"') + '</details></td></tr>';
       }).join('') + '</tbody></table>';
     } else if (drawerTab === 'cards') {
-      h += '<p class="cfg-help">Chaque carte du cube croise deux dimensions (ou une seule) avec une mesure et un style de graphique. Réordonnez avec ↑/↓, décochez pour masquer. Le style se change aussi directement sur la carte.</p>';
+      h += '<p class="cfg-help">Chaque carte du cube croise une, deux ou trois dimensions avec une mesure et un style de graphique. Le troisième axe — le <b>découpage</b>, après le ‹ — vient se poser sous les colonnes et bascule la carte sur les styles à trois niveaux. Réordonnez avec ↑/↓, décochez pour masquer. Tout se change aussi directement sur la carte.</p>';
       h += '<ul class="cfg-list cfg-cards" id="cfgCardList">' + cfg.cards.map(function (c) {
-        var dimOpts = function (sel, allowNone) {
+        var dimOpts = function (sel, allowNone, skip) {
           var o = allowNone ? '<option value=""' + (!sel ? ' selected' : '') + '>— aucune —</option>' : '';
-          Object.keys(DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + DIM_LABELS[k] + '</option>'; });
+          Object.keys(DIM_LABELS).forEach(function (k) {
+            if (skip && skip.indexOf(k) !== -1) return;   // déjà en ligne ou en colonne : ce serait une diagonale
+            o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + DIM_LABELS[k] + '</option>';
+          });
           return o;
         };
         return '<li class="cfg-item cfg-card" draggable="true" data-card="' + esc(c.id) + '">' +
@@ -287,8 +308,10 @@
           '<label class="cfg-check" title="Visible"><input type="checkbox" data-card-visible="' + esc(c.id) + '" ' + (c.visible ? 'checked' : '') + '></label>' +
           '<input type="text" class="cfg-input cfg-title" value="' + esc(c.title) + '" data-card-title="' + esc(c.id) + '">' +
           '<select class="cfg-select" data-card-rows="' + esc(c.id) + '">' + dimOpts(c.rows, false) + '</select>' +
-          '<span class="cfg-x">×</span>' +
-          '<select class="cfg-select" data-card-cols="' + esc(c.id) + '">' + dimOpts(c.cols, true) + '</select>' +
+          '<span class="cfg-pair"><span class="cfg-x">×</span>' +
+          '<select class="cfg-select" data-card-cols="' + esc(c.id) + '">' + dimOpts(c.cols, true) + '</select></span>' +
+          '<span class="cfg-pair"><span class="cfg-x">›</span>' +
+          '<select class="cfg-select" data-card-split="' + esc(c.id) + '"' + (c.cols ? '' : ' disabled title="Un d\u00e9coupage a besoin de colonnes"') + '>' + dimOpts(c.split, true, [c.rows, c.cols]) + '</select></span>' +
           '<select class="cfg-select" data-card-measure="' + esc(c.id) + '">' + Object.keys(MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (c.measure === m ? ' selected' : '') + '>' + MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
           '<select class="cfg-select" data-card-style="' + esc(c.id) + '">' + stylesFor(c).map(function (s) { return '<option value="' + s + '"' + (c.style === s ? ' selected' : '') + '>' + STYLE_LABELS[s] + '</option>'; }).join('') + '</select>' +
           '<button type="button" class="icon-btn" data-move="up" data-card="' + esc(c.id) + '">↑</button>' +
@@ -379,8 +402,9 @@
       else if (d.done !== undefined) update(function (c) { c.statuses.done = c.statuses.done.filter(function (x) { return x !== d.done; }); if (t.checked) c.statuses.done.push(d.done); });
       else if (d.cardVisible !== undefined) update(function (c) { var card = findCard(c, d.cardVisible); if (card) card.visible = t.checked; });
       else if (d.cardTitle !== undefined) update(function (c) { var card = findCard(c, d.cardTitle); if (card) card.title = t.value; });
-      else if (d.cardRows !== undefined) update(function (c) { var card = findCard(c, d.cardRows); if (card) card.rows = t.value; });
-      else if (d.cardCols !== undefined) update(function (c) { var card = findCard(c, d.cardCols); if (card) card.cols = t.value || null; });
+      else if (d.cardRows !== undefined) { update(function (c) { var card = findCard(c, d.cardRows); if (card) normalizeCard((card.rows = t.value, card)); }); renderDrawer(); }
+      else if (d.cardCols !== undefined) { update(function (c) { var card = findCard(c, d.cardCols); if (card) normalizeCard((card.cols = t.value || null, card)); }); renderDrawer(); }
+      else if (d.cardSplit !== undefined) { update(function (c) { var card = findCard(c, d.cardSplit); if (card) normalizeCard((card.split = t.value || null, card)); }); renderDrawer(); }
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
       else if (d.rule !== undefined) update(function (c) { c.version[d.rule] = t.type === 'checkbox' ? t.checked : (t.type === 'number' ? Number(t.value) || 0 : t.value); });
@@ -417,7 +441,7 @@
       if (d.move && d.prio !== undefined) { update(function (c) { ensurePrioOrder(); moveIn(c.priorities.order, d.prio, d.move); }); renderDrawer(); return; }
       if (d.move && d.card !== undefined) { update(function (c) { moveIn(c.cards, findCard(c, d.card), d.move); }); renderDrawer(); return; }
       if (d.cardDel !== undefined) { if (!confirm('Supprimer cette carte ?')) return; update(function (c) { c.cards = c.cards.filter(function (x) { return x.id !== d.cardDel; }); }); renderDrawer(); return; }
-      if (b.id === 'cfgAddCard') { update(function (c) { c.cards.push({ id: 'card_' + Date.now().toString(36), title: 'Nouvelle carte', rows: 'team', cols: 'status', measure: 'count', style: 'hstack', visible: true }); }); renderDrawer(); return; }
+      if (b.id === 'cfgAddCard') { update(function (c) { c.cards.push({ id: 'card_' + Date.now().toString(36), title: 'Nouvelle carte', rows: 'team', cols: 'status', split: null, measure: 'count', style: 'hstack', visible: true }); }); renderDrawer(); return; }
       if (d.tierDel !== undefined) {
         update(function (c) { var tr = tiersOf(c)[Number(d.tierDel)]; c.alerts.tiers = (c.alerts.tiers || []).filter(function (x) { return x !== tr; }); });
         renderDrawer(); return;
@@ -467,7 +491,7 @@
   }
 
   root.BDV2Config = {
-    DEFAULTS: DEFAULTS, LEVELS: LEVELS, tiers: tiersOf, pctHint: pctHint, STYLE_LABELS: STYLE_LABELS, stylesFor: stylesFor, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
+    DEFAULTS: DEFAULTS, LEVELS: LEVELS, tiers: tiersOf, pctHint: pctHint, STYLE_LABELS: STYLE_LABELS, stylesFor: stylesFor, normalizeCard: normalizeCard, MEASURE_LABELS: MEASURE_LABELS, WIDTH_LABELS: WIDTH_LABELS, DIM_LABELS: DIM_LABELS,
     get: get, update: update, onChange: onChange, reset: reset, exportJSON: exportJSON, importJSON: importJSON,
     loadLocal: loadLocal, loadRemote: loadRemote,
     open: open, close: close, renderDrawer: renderDrawer

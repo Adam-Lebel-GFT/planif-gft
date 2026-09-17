@@ -68,8 +68,8 @@ comparaison serait fausse.
 ## Cube multidimensionnel
 
 Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
-doigt), le titre s'édite en place, les quatre sélecteurs changent lignes, colonnes, mesure et
-largeur, les icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
+doigt), le titre s'édite en place, les cinq sélecteurs changent lignes, colonnes, découpage,
+mesure et largeur, les icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
 avec des réglages par défaut, visible dans la vue courante, et place le curseur dans son titre.
 L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle aussi réordonnable au
 glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
@@ -88,9 +88,44 @@ zéro : « rien en cours » est une information, pas une panne d'affichage. Sur 
 colonnes ne sont pas les statuts, en revanche, l'affichage retombe sur la heatmap ordinaire plutôt
 que d'inventer une séparation.
 
+### Trois niveaux : le découpage
+
+Une carte croise deux dimensions ; le **découpage** — le sélecteur marqué « › », dans la barre de
+la carte comme dans la liste du tiroir — en ajoute une troisième. Il ne remplace ni les lignes ni
+les colonnes : il vient toujours se poser au niveau le plus fin, ce qui donne le tableau croisé
+d'un tableur. N'importe quelle dimension fait l'affaire — équipe, statut, priorité, version,
+responsable — sauf celles déjà en ligne ou en colonne, que la liste retire : ce serait une
+diagonale, pas un croisement. Un découpage a besoin de colonnes ; sans elles le sélecteur est
+inactif, et retirer les colonnes retire le découpage avec elles.
+
+Une carte qui porte un découpage bascule entièrement sur les **trois placements** ci-dessous — les
+styles à deux dimensions n'auraient nulle part où le montrer — et retrouve sa liste habituelle dès
+qu'on le retire.
+
+| Icône | Placement | Ce qu'il fait |
+| --- | --- | --- |
+| ⊟ | **Sous-lignes** | Les colonnes descendent en sous-lignes sous chaque ligne, le découpage prend les colonnes. Une ligne de groupe porte ses totaux, les sous-lignes rentrent d'un cran. Tient quel que soit le nombre de lignes ou de colonnes. |
+| ▥ | **Sous-colonnes** | Les colonnes restent des bandeaux, que le découpage scinde en sous-colonnes teintées comme une heatmap, chaque bandeau avec sa colonne Σ. Dense, mais chaque colonne de plus ajoute autant de sous-colonnes. |
+| ▤ | **Sous-lignes à barres** | Même imbriquement qu'en sous-lignes, la paire découpée devenant une barre empilée : largeur = volume, coupe = répartition. La barre compte toujours des tickets, à une seule échelle pour les lignes et leurs sous-lignes ; les colonnes chiffrées, elles, suivent la mesure choisie. |
+
+Les croisements sans ticket ne sont pas listés : un tableau croisé omet les sous-lignes vides
+plutôt que d'aligner des points. Tout est cliquable — cellule fine, sous-total de ligne, total de
+colonne, total général — et ouvre la fiche des tickets correspondants. Un découpage large dépasse
+la carte même en pleine largeur : le tableau défile alors horizontalement plutôt que de perdre ses
+dernières colonnes hors champ.
+
+Côté mesures, **« % de la ligne »** se lit sur la ligne la plus fine — la paire ligne × colonne,
+dont les cellules du découpage font 100 %. **« % de la colonne »** n'a plus de colonne unique à quoi
+se rapporter et devient « % du total », la seule lecture qui en garde un, comme dans la heatmap
+scindée. Dans les colonnes et lignes de total, où « % de la ligne » vaudrait 100 % partout, la
+valeur se rapporte au total général.
+
+La carte livrée **« Résolutions par origine »** en est un exemple prêt à l'emploi : origine ×
+résolution, découpé par Fix Version, pour comparer ce qui est livré à l'interne et au projet.
+
 La **largeur** d'une carte vaut *1 colonne*, *2 colonnes*, *pleine largeur* ou *auto*. En auto,
 les tableaux larges (heatmap de plus de 5 colonnes, tableau de plus de 4, empilé vertical de plus
-de 7 lignes) prennent toute la largeur. Ce calcul porte sur l'**extrait complet**, jamais sur les
+de 7 lignes, sous-colonnes de plus de 5 sous-colonnes en tout) prennent toute la largeur. Ce calcul porte sur l'**extrait complet**, jamais sur les
 tickets filtrés : filtrer ne rétrécit donc plus une carte ni ne réorganise la grille. Sous 1000 px
 de large, « 2 colonnes » retombe sur une colonne.
 

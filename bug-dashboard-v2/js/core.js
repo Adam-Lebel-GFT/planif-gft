@@ -470,32 +470,55 @@
   // ── Pivot ──────────────────────────────────────────────────────────
   // pivot(tickets, 'team', 'priority') →
   //   { rows:[...], cols:[...], cell(r,c) → {count,pctSum,tickets}, rowTotal, colTotal, total, max }
-  function pivot(tickets, rowDim, colDim, cfg) {
+  // Une quatrième dimension facultative — le « découpage » — ajoute un troisième
+  // axe : splits, cell3(r,c,s), rowSplit(r,s), colSplit(c,s), splitTotal(s). Elle
+  // ne remplace jamais les colonnes, elle se pose dessous ; sans colonnes elle
+  // n'a rien à découper et reste ignorée.
+  function bucket() { return { count: 0, pctSum: 0, tickets: [] }; }
+  function pivot(tickets, rowDim, colDim, cfg, splitDim) {
     var rd = DIMS[rowDim], cd = colDim ? DIMS[colDim] : null;
+    var sd = colDim && splitDim && DIMS[splitDim] ? DIMS[splitDim] : null;
     var cells = {}, rowKeys = {}, colKeys = {};
     var rowTot = {}, colTot = {};
+    var cells3 = {}, splitKeys = {}, rowSplitTot = {}, colSplitTot = {}, splitTot = {};
+    var add = function (bag, k, t) { var x = bag[k] = bag[k] || bucket(); x.count++; x.pctSum += t.pct; x.tickets.push(t); };
     tickets.forEach(function (t) {
       var r = rd.keyOf(t), c = cd ? cd.keyOf(t) : '_';
       rowKeys[r] = true; colKeys[c] = true;
       cells[r] = cells[r] || {};
-      var cell = cells[r][c] = cells[r][c] || { count: 0, pctSum: 0, tickets: [] };
+      var cell = cells[r][c] = cells[r][c] || bucket();
       cell.count++; cell.pctSum += t.pct; cell.tickets.push(t);
-      rowTot[r] = rowTot[r] || { count: 0, pctSum: 0, tickets: [] };
+      rowTot[r] = rowTot[r] || bucket();
       rowTot[r].count++; rowTot[r].pctSum += t.pct; rowTot[r].tickets.push(t);
-      colTot[c] = colTot[c] || { count: 0, pctSum: 0, tickets: [] };
+      colTot[c] = colTot[c] || bucket();
       colTot[c].count++; colTot[c].pctSum += t.pct; colTot[c].tickets.push(t);
+      if (sd) {
+        var s = sd.keyOf(t);
+        splitKeys[s] = true;
+        cells3[r] = cells3[r] || {}; cells3[r][c] = cells3[r][c] || {};
+        add(cells3[r][c], s, t);
+        rowSplitTot[r] = rowSplitTot[r] || {}; add(rowSplitTot[r], s, t);
+        colSplitTot[c] = colSplitTot[c] || {}; add(colSplitTot[c], s, t);
+        add(splitTot, s, t);
+      }
     });
     var rows = rd.order(Object.keys(rowKeys), cfg, tickets);
     var cols = cd ? cd.order(Object.keys(colKeys), cfg, tickets) : ['_'];
+    var splits = sd ? sd.order(Object.keys(splitKeys), cfg, tickets) : [];
     var max = 0;
     rows.forEach(function (r) { cols.forEach(function (c) { var v = cells[r] && cells[r][c] ? cells[r][c].count : 0; if (v > max) max = v; }); });
     var rowMax = 0;
     rows.forEach(function (r) { if (rowTot[r].count > rowMax) rowMax = rowTot[r].count; });
     return {
-      rowDim: rowDim, colDim: colDim, rows: rows, cols: cols,
-      cell: function (r, c) { return (cells[r] && cells[r][c]) || { count: 0, pctSum: 0, tickets: [] }; },
-      rowTotal: function (r) { return rowTot[r] || { count: 0, pctSum: 0, tickets: [] }; },
-      colTotal: function (c) { return colTot[c] || { count: 0, pctSum: 0, tickets: [] }; },
+      rowDim: rowDim, colDim: colDim, splitDim: sd ? splitDim : null,
+      rows: rows, cols: cols, splits: splits,
+      cell: function (r, c) { return (cells[r] && cells[r][c]) || bucket(); },
+      rowTotal: function (r) { return rowTot[r] || bucket(); },
+      colTotal: function (c) { return colTot[c] || bucket(); },
+      cell3: function (r, c, s) { return (cells3[r] && cells3[r][c] && cells3[r][c][s]) || bucket(); },
+      rowSplit: function (r, s) { return (rowSplitTot[r] && rowSplitTot[r][s]) || bucket(); },
+      colSplit: function (c, s) { return (colSplitTot[c] && colSplitTot[c][s]) || bucket(); },
+      splitTotal: function (s) { return splitTot[s] || bucket(); },
       total: tickets.length, max: max, rowMax: rowMax
     };
   }

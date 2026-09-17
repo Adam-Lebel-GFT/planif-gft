@@ -211,6 +211,55 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .hm-split .hm-sub:hover{box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--accent);}
 .hm-split .hm-tot.strong{font-weight:700; color:var(--navy);}
 .hm-split .hm-gap{border-left:1px dashed #D8DDE6; width:1px; justify-self:center;}
+/* ── Cartes à trois niveaux ─────────────────────────────────────────
+   « nest » / « nestbars » : les colonnes descendent en sous-lignes sous chaque
+   ligne, le découpage prend les colonnes. Les lignes de groupe sont posées sur
+   un fond clair, les sous-lignes rentrent d'un cran. « subcols » réutilise la
+   grille de la heatmap scindée, avec un bandeau neutre par colonne — bleu et
+   vert y sont déjà pris par la rampe et par les couleurs du découpage. */
+/* Un découpage large (5 priorités × 4 résolutions, par exemple) dépasse la
+   carte même en pleine largeur : le tableau défile alors horizontalement plutôt
+   que de perdre ses dernières colonnes hors champ. */
+/* Le « × » et le « › » restent collés à leur sélecteur quand la ligne passe
+   à la ligne suivante : un chevron orphelin en fin de ligne ne veut rien dire. */
+.cfg-pair{display:inline-flex; align-items:center; gap:6px; min-width:0;}
+.hm-scroll{overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; padding-bottom:2px;}
+.nst{display:grid; gap:3px; font-size:12px;}
+.nst-corner{}
+/* En-tête du découpage : peu de colonnes, mais des libellés qui peuvent être
+   longs — ils reviennent à la ligne plutôt que de finir en points de suspension,
+   et la ligne d'en-tête s'aligne sur le bas. */
+.nst-colhead{font-size:10.5px; font-weight:700; color:var(--muted); letter-spacing:.2px; text-align:center; padding:0 4px 5px; line-height:1.3; align-self:end; cursor:pointer;}
+.nst-colhead .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; vertical-align:1px;}
+.nst-colhead:hover{color:var(--accent);}
+.nst-grp{background:#F5F8FC; border-radius:6px; height:31px; display:flex; align-items:center; gap:7px; padding:0 9px; font-weight:800; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;}
+.nst-grp:hover{color:var(--accent);}
+.nst-grp .cnt{font-family:var(--font-mono); font-size:10.5px; font-weight:500; color:var(--muted); flex:none;}
+.nst-gnum{background:#F5F8FC; border-radius:6px; height:31px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; font-weight:800; color:var(--navy); cursor:pointer;}
+.nst-sub{height:28px; display:flex; align-items:center; gap:6px; padding-left:17px; font-size:11.5px; font-weight:600; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;}
+.nst-sub:hover{color:var(--accent);}
+.nst-sub .tick{color:#C3CAD5; font-size:10px; flex:none;}
+.nst-snum{height:28px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--ink-2); cursor:pointer;}
+.nst-gnum:hover, .nst-snum:hover, .nst-tnum:hover{box-shadow:inset 0 0 0 2px var(--accent); border-radius:6px;}
+.nst-gnum.zero, .nst-snum.zero, .nst-tnum.zero{color:#C3CAD5; font-weight:500;}
+.nst-snum.strong{color:var(--navy); font-weight:800;}
+.nst-rule{height:1px; background:var(--border); margin:4px 0;}
+.nst-totl{height:30px; display:flex; align-items:center; font-weight:800; color:var(--navy);}
+.nst-tnum{height:30px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12.5px; font-weight:800; color:var(--navy); cursor:pointer;}
+.nst-bar{display:flex; align-items:center; padding:0 7px; min-width:0;}
+.nst-grp + .nst-bar{background:#F5F8FC; border-radius:6px; height:31px;}
+.nst-track{display:flex; height:15px; border-radius:5px; overflow:hidden; min-width:2px;}
+.nst-seg{display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10.5px; font-weight:700; line-height:1; white-space:nowrap; min-width:0; overflow:hidden; cursor:pointer;}
+.nst-seg:hover{filter:brightness(1.1); box-shadow:inset 0 0 0 2px rgba(255,255,255,.7);}
+.hm-split .hm-band.g-flat{background:#F1F3F7; color:var(--ink-2); cursor:pointer;}
+.hm-split .hm-band.g-flat .dot{background:var(--muted);}
+.hm-split .hm-sub.g-flat{background:#F7F9FC; color:var(--navy); border:1px solid #E4E8EE;}
+.hm-split .hm-sub.g-flat.zero{color:#C3CAD5; font-weight:500;}
+.hm-subcols .hm-colhead{display:flex; align-items:center; justify-content:center; gap:4px; min-width:0;}
+.hm-subcols .hm-colhead .dot{width:7px; height:7px; border-radius:50%; flex:none;}
+.hm-subcols .hm-colhead .t{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.hm-subcols .hm-tot.zero{color:#C3CAD5;}
+.chart-note{margin-top:8px; font-size:11px; color:var(--muted);}
 .hm-scales{display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-top:10px;}
 .hm-scales .hm-scale{margin-top:0;}
 .hm-scale{display:flex; align-items:center; gap:6px; margin-top:10px; font-size:11px; color:var(--muted);}
