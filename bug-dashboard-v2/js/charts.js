@@ -239,7 +239,6 @@
     var pv = ctx.pivot, measure = ctx.measure, sc = ctx.splitColors || {};
     var nS = pv.splits.length;
     var tpl = 'minmax(140px,1.4fr) ' + (withBar ? 'minmax(90px,1.5fr) ' : '') + 'repeat(' + nS + ', minmax(62px,1fr)) 58px';
-    var word = (C.DIMS[pv.colDim].label || '').toLowerCase();
     var tot = function (cell) { return totVal(measure, cell, pv.total); };
     var num = function (cls, cell, v, at, tip) {
       return '<div class="' + cls + (cell.count ? '' : ' zero') + '"' + at + tipAttr(tip) + '>' + (cell.count ? fmt(v, measure) : '·') + '</div>';
@@ -273,9 +272,7 @@
       // Sous-lignes vides passées sous silence : un tableau croisé ne liste pas
       // les croisements sans ticket, il les omet.
       var subs = pv.cols.filter(function (c) { return pv.cell(r, c).count; });
-      h += '<div class="nst-grp"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + ' title="' + esc(r) + '">' + esc(r) +
-        (withBar ? '' : '<span class="cnt">' + subs.length + ' ' + esc(word) + (subs.length > 1 ? 's' : '') + '</span>') +
-        '</div>' + bar(r, '', rt);
+      h += '<div class="nst-grp"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + ' title="' + esc(r) + '">' + esc(r) + '</div>' + bar(r, '', rt);
       pv.splits.forEach(function (s) {
         var g = pv.rowSplit(r, s), v = val3(measure, g, rt, pv.total);
         h += num('nst-gnum', g, v, c3Attrs(ctx, r, '', s), tip3(r, '', s, g, measure, v));
