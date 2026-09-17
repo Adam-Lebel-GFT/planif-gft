@@ -121,7 +121,7 @@
     var idx = -1; H.items.forEach(function (i, k) { if (i.hash === H.currentHash) idx = k; });
     return idx === -1 ? H.items.slice() : H.items.slice(0, idx);
   }
-  function filtersActive() { var f = S.filters; return !!S.pick || f.state !== 'all' || f.origin !== 'all' || f.version !== 'all' || f.teams.length > 0 || (f.priorities || []).length > 0; }
+  function filtersActive() { var f = S.filters; return !!S.pick || f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || f.version !== 'all' || f.teams.length > 0 || (f.priorities || []).length > 0; }
 
   // ── Deltas + sparklines sur les tuiles ────────────────────────────
   var TILE_METRIC = { total: ['total', false], progress: ['progress', true], done: ['done', true], fix: ['hasFix', true], doneNoFix: ['doneNoFix', false], blockers: ['blockersOpen', false], overdue: ['overdue', false], prj301: ['prj301', false], noVersion: ['noVersion', false], deployedOpen: ['deployedOpen', false] };
@@ -219,19 +219,20 @@
   function versionNum(i) { var m = (i.nom || '').match(/\d+(?:\.\d+)+/); return m ? m[0] : ''; }
 
   // ── Stats d'une analyse, par Target date (une Target date = une version) ──
-  // Les photos gardent chaque ticket avec son état, son équipe, son origine et
-  // sa priorité : l'évolution peut donc se recalculer sur le périmètre choisi
+  // Les photos gardent chaque ticket avec son état, son équipe, son origine, sa
+  // priorité et sa Fix Version : l'évolution peut donc se recalculer sur le périmètre choisi
   // dans la barre de filtres. La version n'en fait pas partie (la section est
   // déjà rangée par version), ni la sélection issue d'une alerte (figée sur
   // l'extrait courant).
   var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
     pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
-  function scopeKey() { var f = S.filters; return [f.state, f.origin, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
-  function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
+  function scopeKey() { var f = S.filters; return [f.state, f.origin, f.fix, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
+  function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
   function scopeLabel() {
     var f = S.filters, out = [];
     if (f.state !== 'all') out.push(f.state === 'open' ? 'Ouverts' : 'Terminés');
     if (f.origin !== 'all') out.push(f.origin === 'prj301' ? 'PRJ301' : 'Interne');
+    if (f.fix !== 'all') out.push(f.fix === 'with' ? 'Avec Fix Version' : 'Sans Fix Version');
     (f.teams || []).forEach(function (t) { out.push(t); });
     (f.priorities || []).forEach(function (p) { out.push(p); });
     return out.join(' · ');
@@ -247,6 +248,8 @@
     if (f.state === 'done' && !c.d) return false;
     if (f.origin === 'prj301' && c.o !== 'PRJ301') return false;
     if (f.origin === 'internal' && c.o === 'PRJ301') return false;
+    if (f.fix === 'with' && !c.fx) return false;
+    if (f.fix === 'without' && c.fx) return false;
     if ((f.teams || []).length && f.teams.indexOf(c.tm) === -1) return false;
     if ((f.priorities || []).length && f.priorities.indexOf(prioLabel(c)) === -1) return false;
     return true;
@@ -434,8 +437,8 @@
 
   function scopeNote() {
     return scopeOn()
-      ? ' <b>Périmètre : ' + esc(scopeLabel()) + '</b> — chaque photo est recalculée sur ce filtre (état, équipes, origine, priorité).'
-      : ' Les filtres d\'état, d\'équipe, d\'origine et de priorité de la barre s\'appliquent à ces graphiques.';
+      ? ' <b>Périmètre : ' + esc(scopeLabel()) + '</b> — chaque photo est recalculée sur ce filtre (état, équipes, origine, priorité, Fix Version).'
+      : ' Les filtres d\'état, d\'équipe, d\'origine, de priorité et de Fix Version de la barre s\'appliquent à ces graphiques.';
   }
 
   // Forme par vue : des comptages photo par photo se lisent mieux en barres

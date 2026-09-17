@@ -13,7 +13,7 @@
 
   var S = {
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
-    filters: { state: 'all', origin: 'all', version: 'all', teams: [], priorities: [] },
+    filters: { state: 'all', origin: 'all', fix: 'all', version: 'all', teams: [], priorities: [] },
     view: 'projet', session: null, client: null, profil: null,
     alerts: [], cardCtx: {}, kpiDrills: {}, analysisId: null, analysisName: '',
     // Sélection issue d'une alerte : une liste de tickets figée au moment du
@@ -47,6 +47,8 @@
       if (f.state === 'done' && !t.isDone) return false;
       if (f.origin === 'prj301' && !t.isPrj301) return false;
       if (f.origin === 'internal' && t.isPrj301) return false;
+      if (f.fix === 'with' && !t.hasFix) return false;
+      if (f.fix === 'without' && t.hasFix) return false;
       if (f.version !== 'all') {
         var vk = C.DIMS.version.keyOf(t);
         if (f.version === '__none' ? t.versionState !== 'none' : f.version === '__deployed' ? t.versionState !== 'deployed' : vk !== f.version) return false;
@@ -75,6 +77,7 @@
     try { localStorage.setItem(LS.raw, raw); localStorage.setItem(LS.name, S.analysisName); } catch (e) {}
     renderColumnChips(cols);
     if (cols.labels === -1 && S.filters.origin !== 'all') S.filters.origin = 'all';
+    if (cols.fixVersion === -1 && S.filters.fix !== 'all') S.filters.fix = 'all';
     rerender();
     $('emptyState').classList.add('hidden');
     $('dashboard').classList.remove('hidden');
@@ -159,6 +162,12 @@
     }).join('');
     $('fOrigin').innerHTML = [['all', 'Tous'], ['prj301', 'PRJ301'], ['internal', 'Interne']].map(function (o) {
       return '<button type="button" data-origin="' + o[0] + '" class="' + (S.filters.origin === o[0] ? 'is-on' : '') + '" ' + (!hasLabels && o[0] !== 'all' ? 'disabled title="Colonne Labels introuvable"' : '') + '>' + o[1] + '</button>';
+    }).join('');
+    // Fix Version : renseignée = le correctif est mergé. Les comptes évitent de
+    // cliquer à vide, comme sur l'état.
+    var hasFixCol = S.cols.fixVersion !== -1, nFix = all.filter(function (t) { return t.hasFix; }).length;
+    $('fFix').innerHTML = [['all', 'Tous', all.length], ['with', 'Avec', nFix], ['without', 'Sans', all.length - nFix]].map(function (o) {
+      return '<button type="button" data-fix="' + o[0] + '" class="' + (S.filters.fix === o[0] ? 'is-on' : '') + '" ' + (!hasFixCol && o[0] !== 'all' ? 'disabled title="Colonne Fix Version introuvable"' : '') + '>' + o[1] + ' <span class="seg-n">' + o[2] + '</span></button>';
     }).join('');
     // versions : fournies par le lot "plan" ; sinon le groupe est masqué
     var vopts = [];
@@ -457,12 +466,14 @@
     // Filtres enregistrés avant l'arrivée d'une dimension : on rétablit le tableau vide.
     if (!Array.isArray(S.filters.teams)) S.filters.teams = [];
     if (!Array.isArray(S.filters.priorities)) S.filters.priorities = [];
+    if (!S.filters.fix) S.filters.fix = 'all';
     $('fState').addEventListener('click', function (e) { var b = e.target.closest('[data-state]'); if (b) { S.filters.state = b.dataset.state; rerender(); } });
     $('fOrigin').addEventListener('click', function (e) { var b = e.target.closest('[data-origin]'); if (b && !b.disabled) { S.filters.origin = b.dataset.origin; rerender(); } });
+    $('fFix').addEventListener('click', function (e) { var b = e.target.closest('[data-fix]'); if (b && !b.disabled) { S.filters.fix = b.dataset.fix; rerender(); } });
     $('fVersion').addEventListener('click', function (e) { var b = e.target.closest('[data-version]'); if (b) { S.filters.version = b.dataset.version; rerender(); } });
     $('fTeams').addEventListener('click', function (e) { var b = e.target.closest('[data-team]'); if (!b) return; var i = S.filters.teams.indexOf(b.dataset.team); if (i === -1) S.filters.teams.push(b.dataset.team); else S.filters.teams.splice(i, 1); rerender(); });
     $('fPriority').addEventListener('click', function (e) { var b = e.target.closest('[data-priority]'); if (!b) return; var i = S.filters.priorities.indexOf(b.dataset.priority); if (i === -1) S.filters.priorities.push(b.dataset.priority); else S.filters.priorities.splice(i, 1); rerender(); });
-    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', version: 'all', teams: [], priorities: [] }; S.pick = null; rerender(); });
+    $('filterReset').addEventListener('click', function () { S.filters = { state: 'all', origin: 'all', fix: 'all', version: 'all', teams: [], priorities: [] }; S.pick = null; rerender(); });
     $('fPick').addEventListener('click', function (e) { if (e.target.closest('#fPickDrop')) { S.pick = null; rerender(); } });
     // « Filtrer le radar » depuis la fiche d'une alerte : on fige la liste des
     // tickets telle qu'elle était au clic, les alertes se recalculant ensuite
