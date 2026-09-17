@@ -54,9 +54,14 @@
     var pv = ctx.pivot;
     if (!pv.rows.length) return '<div class="empty">Aucun ticket dans la sélection.</div>';
     var oneD = !pv.colDim;
-    var fn = { hstack: hstack, vstack: vstack, heatmap: heatmap, split: splitHeatmap, bars: bars, donut: donut, table: table }[ctx.style] || hstack;
+    var fn = { hstack: hstack, vstack: vstack, heatmap: heatmap, split: splitHeatmap, bars: bars, donut: donut, table: table,
+      nest: nest, subcols: subcols, nestbars: nestbars }[ctx.style] || hstack;
     if (oneD && (ctx.style === 'hstack' || ctx.style === 'vstack' || ctx.style === 'heatmap' || ctx.style === 'split')) fn = bars;
     if (!oneD && ctx.style === 'donut') fn = hstack;
+    // Les trois placements à trois niveaux n'ont rien à poser tant que la carte
+    // n'a pas de découpage : sans lui, la carte retombe sur l'empilé horizontal
+    // plutôt que d'afficher un tableau à une seule colonne.
+    if ((fn === nest || fn === subcols || fn === nestbars) && !pv.splitDim) fn = hstack;
     // Séparer en cours et terminé n'a de sens que sur des statuts : ailleurs,
     // la carte retombe sur la heatmap ordinaire plutôt que de mentir.
     if (fn === splitHeatmap && pv.colDim !== 'status') fn = heatmap;
@@ -186,6 +191,182 @@
     };
     h += '<div class="hm-scales">' + scale(P.SEQ_BLUE, 'en cours') + scale(P.SEQ_GREEN, 'terminé') + '</div>';
     return h;
+  }
+
+  // ── Cartes à trois niveaux ─────────────────────────────────────────
+  // Le « découpage » d'une carte est toujours le niveau le plus fin : il ne
+  // remplace ni les lignes ni les colonnes, il vient se poser dessous. Trois
+  // placements, dans l'ordre où l'outil les propose :
+  //   nest     — les colonnes descendent en sous-lignes sous chaque ligne et le
+  //              découpage prend les colonnes : le tableau croisé, à la lettre ;
+  //   subcols  — les colonnes restent des bandeaux, que le découpage scinde en
+  //              sous-colonnes, teintées comme une heatmap ;
+  //   nestbars — même imbriquement que « nest », la ligne devenant une barre
+  //              empilée (largeur = volume, coupe = répartition du découpage).
+  //
+  // Mesures : « % de la ligne » se lit sur la ligne la plus fine — la paire
+  // ligne × colonne, dont les cellules du découpage font 100 %. « % de la
+  // colonne » n'a plus de colonne unique à quoi se rapporter et devient « % du
+  // total », la seule lecture qui en garde un — même parti pris que la heatmap
+  // scindée.
+  function val3(measure, cell, line, total) {
+    if (measure === 'progress') return cell.count ? cell.pctSum / cell.count : 0;
+    if (measure === 'count') return cell.count;
+    if (measure === 'shareRow') return line && line.count ? cell.count / line.count * 100 : 0;
+    return total ? cell.count / total * 100 : 0;
+  }
+  // Colonnes et lignes de total : « % de la ligne » y vaudrait 100 % partout,
+  // on le rapporte donc au total général — la seule référence qui reste.
+  function totVal(measure, cell, total) { return val3(measure === 'shareRow' ? 'shareTotal' : measure, cell, null, total); }
+  function grandTotal(pv) {
+    var g = { count: 0, pctSum: 0, tickets: [] };
+    pv.rows.forEach(function (r) { var rt = pv.rowTotal(r); g.count += rt.count; g.pctSum += rt.pctSum; });
+    return g;
+  }
+  // Une clé vide = « toutes » : la même cellule sert au détail, au sous-total
+  // et au total, et app.js n'a qu'un seul drill à résoudre.
+  function c3Attrs(ctx, r, c, s) { return attr({ dd: 'cell3', card: ctx.card.id, rkey: r || '', ckey: c || '', skey: s || '' }); }
+  function tip3(r, c, s, cell, measure, v) {
+    var parts = [r, c, s].filter(Boolean);
+    return (parts.join(' · ') || 'Total') + ' : ' + cell.count + ' ticket' + (cell.count > 1 ? 's' : '') +
+      (measure !== 'count' ? ' — ' + fmt(v, measure) : '');
+  }
+
+  function nest(ctx) { return nestTable(ctx, false); }
+  function nestbars(ctx) { return nestTable(ctx, true); }
+
+  function nestTable(ctx, withBar) {
+    var pv = ctx.pivot, measure = ctx.measure, sc = ctx.splitColors || {};
+    var nS = pv.splits.length;
+    var tpl = 'minmax(140px,1.4fr) ' + (withBar ? 'minmax(90px,1.5fr) ' : '') + 'repeat(' + nS + ', minmax(62px,1fr)) 58px';
+    var word = (C.DIMS[pv.colDim].label || '').toLowerCase();
+    var tot = function (cell) { return totVal(measure, cell, pv.total); };
+    var num = function (cls, cell, v, at, tip) {
+      return '<div class="' + cls + (cell.count ? '' : ' zero') + '"' + at + tipAttr(tip) + '>' + (cell.count ? fmt(v, measure) : '·') + '</div>';
+    };
+    // La barre compte toujours des tickets, à une seule échelle pour les lignes
+    // et leurs sous-lignes : c'est un volume, pas la mesure choisie, que les
+    // colonnes chiffrées portent déjà.
+    var bar = function (r, c, line) {
+      if (!withBar) return '';
+      var w = pv.rowMax ? line.count / pv.rowMax * 100 : 0;
+      var segs = pv.splits.map(function (s) {
+        var cell = c ? pv.cell3(r, c, s) : pv.rowSplit(r, s);
+        if (!cell.count) return '';
+        var col = sc[s] || P.NEUTRAL;
+        return '<div class="nst-seg" style="flex:' + cell.count + ';background:' + col + ';color:' + P.textOn(col) + '"' +
+          c3Attrs(ctx, r, c, s) + tipAttr(tip3(r, c, s, cell, measure, val3(measure, cell, line, pv.total))) +
+          '><span class="seg-txt">' + segLabel(cell.count, pv.rowMax ? cell.count / pv.rowMax * 180 : 0) + '</span></div>';
+      }).join('');
+      return '<div class="nst-bar"><div class="nst-track" style="width:' + w.toFixed(1) + '%">' + segs + '</div></div>';
+    };
+
+    var h = '<div class="hm-scroll"><div class="nst" style="grid-template-columns:' + tpl + '">';
+    h += '<div class="nst-corner"></div>' + (withBar ? '<div class="nst-corner"></div>' : '') +
+      pv.splits.map(function (s) {
+        return '<div class="nst-colhead"' + attr({ dd: 'col', dim: pv.splitDim, key: s }) + ' title="' + esc(s) + '">' +
+          '<span class="dot" style="background:' + (sc[s] || P.NEUTRAL) + '"></span><span class="t">' + esc(s) + '</span></div>';
+      }).join('') + '<div class="nst-colhead">Total</div>';
+
+    pv.rows.forEach(function (r) {
+      var rt = pv.rowTotal(r);
+      // Sous-lignes vides passées sous silence : un tableau croisé ne liste pas
+      // les croisements sans ticket, il les omet.
+      var subs = pv.cols.filter(function (c) { return pv.cell(r, c).count; });
+      h += '<div class="nst-grp"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + ' title="' + esc(r) + '">' + esc(r) +
+        (withBar ? '' : '<span class="cnt">' + subs.length + ' ' + esc(word) + (subs.length > 1 ? 's' : '') + '</span>') +
+        '</div>' + bar(r, '', rt);
+      pv.splits.forEach(function (s) {
+        var g = pv.rowSplit(r, s), v = val3(measure, g, rt, pv.total);
+        h += num('nst-gnum', g, v, c3Attrs(ctx, r, '', s), tip3(r, '', s, g, measure, v));
+      });
+      h += '<div class="nst-gnum strong"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + '>' + fmt(tot(rt), measure) + '</div>';
+      subs.forEach(function (c) {
+        var line = pv.cell(r, c);
+        h += '<div class="nst-sub"' + cellAttrs(ctx, r, c) + ' title="' + esc(c) + '"><span class="tick">└</span>' + esc(c) + '</div>' + bar(r, c, line);
+        pv.splits.forEach(function (s) {
+          var cell = pv.cell3(r, c, s), v = val3(measure, cell, line, pv.total);
+          h += num('nst-snum', cell, v, c3Attrs(ctx, r, c, s), tip3(r, c, s, cell, measure, v));
+        });
+        h += '<div class="nst-snum strong"' + cellAttrs(ctx, r, c) + '>' + fmt(tot(line), measure) + '</div>';
+      });
+    });
+
+    var g = grandTotal(pv);
+    h += '<div class="nst-rule" style="grid-column:span ' + (nS + (withBar ? 3 : 2)) + '"></div>';
+    h += '<div class="nst-totl">Total</div>' + (withBar ? '<div class="nst-totl"></div>' : '') +
+      pv.splits.map(function (s) {
+        var st = pv.splitTotal(s);
+        return '<div class="nst-tnum' + (st.count ? '' : ' zero') + '"' + attr({ dd: 'col', dim: pv.splitDim, key: s }) + '>' +
+          (st.count ? fmt(tot(st), measure) : '·') + '</div>';
+      }).join('') + '<div class="nst-tnum">' + fmt(tot(g), measure) + '</div>';
+    h += '</div></div>';
+    if (withBar) h += legend(pv.splits, sc, pv.splitDim) +
+      (measure === 'count' ? '' : '<div class="chart-note">La barre compte des tickets ; les colonnes suivent la mesure choisie.</div>');
+    return h;
+  }
+
+  function subcols(ctx) {
+    var pv = ctx.pivot, measure = ctx.measure, sc = ctx.splitColors || {}, cc = ctx.colors || {};
+    var nS = pv.splits.length;
+    var tot = function (cell) { return totVal(measure, cell, pv.total); };
+    var max = 0;
+    pv.rows.forEach(function (r) {
+      pv.cols.forEach(function (c) {
+        var line = pv.cell(r, c);
+        pv.splits.forEach(function (s) { var v = val3(measure, pv.cell3(r, c, s), line, pv.total); if (v > max) max = v; });
+      });
+    });
+    var band = 'repeat(' + nS + ', minmax(58px,1fr)) 54px ';
+    var tpl = 'minmax(104px,1.2fr) ' + pv.cols.map(function (c, i) { return (i ? '14px ' : '') + band; }).join('') + '54px';
+    var gap = function (i) { return i ? '<div class="hm-gap"></div>' : ''; };
+
+    var h = '<div class="hm-scroll"><div class="hm hm-split hm-subcols" style="grid-template-columns:' + tpl + '">';
+    h += '<div class="hm-corner"></div>';
+    pv.cols.forEach(function (c, i) {
+      h += gap(i) + '<div class="hm-band g-flat" style="grid-column:span ' + (nS + 1) + '"' +
+        attr({ dd: 'col', dim: pv.colDim, key: c }) + ' title="' + esc(c) + '">' +
+        '<span class="dot" style="background:' + (cc[c] || P.NEUTRAL) + '"></span>' + esc(c) +
+        '<b>' + fmt(tot(pv.colTotal(c)), measure) + '</b></div>';
+    });
+    h += '<div class="hm-corner"></div>';
+    h += '<div class="hm-corner"></div>';
+    pv.cols.forEach(function (c, i) {
+      h += gap(i) + pv.splits.map(function (s) {
+        return '<div class="hm-colhead"' + attr({ dd: 'col', dim: pv.splitDim, key: s }) + ' title="' + esc(s) + '">' +
+          '<span class="dot" style="background:' + (sc[s] || P.NEUTRAL) + '"></span><span class="t">' + esc(s) + '</span></div>';
+      }).join('') + '<div class="hm-colhead">Σ</div>';
+    });
+    h += '<div class="hm-colhead">Total</div>';
+
+    pv.rows.forEach(function (r) {
+      h += '<div class="hm-rowhead"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + ' title="' + esc(r) + '">' + esc(r) + '</div>';
+      pv.cols.forEach(function (c, i) {
+        var line = pv.cell(r, c);
+        h += gap(i) + pv.splits.map(function (s) {
+          var cell = pv.cell3(r, c, s), v = val3(measure, cell, line, pv.total);
+          var bg = P.seqColor(v, max);
+          return '<div class="hm-cell' + (cell.count ? '' : ' zero') + '" style="background:' + bg + ';color:' + (cell.count ? P.textOn(bg) : '') + '"' +
+            c3Attrs(ctx, r, c, s) + tipAttr(tip3(r, c, s, cell, measure, v)) + '>' + (cell.count ? fmt(v, measure) : '·') + '</div>';
+        }).join('') +
+          '<div class="hm-sub g-flat' + (line.count ? '' : ' zero') + '"' + cellAttrs(ctx, r, c) +
+          tipAttr(tip3(r, c, '', line, measure, tot(line))) + '>' + (line.count ? fmt(tot(line), measure) : '·') + '</div>';
+      });
+      h += '<div class="hm-tot strong"' + attr({ dd: 'row', dim: pv.rowDim, key: r }) + '>' + fmt(tot(pv.rowTotal(r)), measure) + '</div>';
+    });
+
+    h += '<div class="hm-rowhead">Total</div>';
+    pv.cols.forEach(function (c, i) {
+      h += gap(i) + pv.splits.map(function (s) {
+        var cs = pv.colSplit(c, s);
+        return '<div class="hm-tot' + (cs.count ? '' : ' zero') + '"' + c3Attrs(ctx, '', c, s) + '>' + (cs.count ? fmt(tot(cs), measure) : '·') + '</div>';
+      }).join('') + '<div class="hm-tot strong"' + attr({ dd: 'col', dim: pv.colDim, key: c }) + '>' + fmt(tot(pv.colTotal(c)), measure) + '</div>';
+    });
+    h += '<div class="hm-tot"><b>' + fmt(tot(grandTotal(pv)), measure) + '</b></div></div></div>';
+    h += '<div class="hm-scales"><span class="hm-scale">0 <span class="steps">' +
+      P.SEQ_BLUE.map(function (c) { return '<span style="background:' + c + '"></span>'; }).join('') +
+      '</span> ' + fmt(max, measure) + ' <span class="muted">— intensité = ' + esc(root.BDV2Config.MEASURE_LABELS[measure] || measure).toLowerCase() + '</span></span></div>';
+    return h + legend(pv.splits, sc, pv.splitDim);
   }
 
   function heatmap(ctx) {

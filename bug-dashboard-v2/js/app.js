@@ -273,31 +273,43 @@
     S.cardCtx = {};
     var grid = $('cubeGrid');
     grid.innerHTML = cards.map(function (card) {
-      var pv = C.pivot(vis, card.rows, card.cols, conf);
+      var pv = C.pivot(vis, card.rows, card.cols, conf, card.split);
       var allRow = []; base.forEach(function (t) { var k = C.DIMS[card.rows].keyOf(t); if (allRow.indexOf(k) === -1) allRow.push(k); });
       var rowColors = P.colorsForDim(card.rows, allRow, conf, base);
       var colors = {}, allCol = [];
       if (card.cols) { base.forEach(function (t) { var k = C.DIMS[card.cols].keyOf(t); if (allCol.indexOf(k) === -1) allCol.push(k); }); colors = P.colorsForDim(card.cols, allCol, conf, base); }
-      var ctx = { pivot: pv, style: card.style, measure: card.measure, colors: colors, rowColors: rowColors, card: card };
+      var splitColors = {}, allSplit = [];
+      if (pv.splitDim) { base.forEach(function (t) { var k = C.DIMS[pv.splitDim].keyOf(t); if (allSplit.indexOf(k) === -1) allSplit.push(k); }); splitColors = P.colorsForDim(pv.splitDim, allSplit, conf, base); }
+      // Une configuration enregistrée peut porter un style que la carte ne
+      // propose plus (un découpage ajouté ou retiré ailleurs, une autre onglet
+      // resté ouvert) : on rend alors le premier style valide, sans réécrire la
+      // configuration sous les pieds de l'autre onglet.
+      var styles = CFG.stylesFor(card);
+      var style = styles.indexOf(card.style) !== -1 ? card.style : styles[0] || 'hstack';
+      var ctx = { pivot: pv, style: style, measure: card.measure, colors: colors, rowColors: rowColors, splitColors: splitColors, card: card };
       S.cardCtx[card.id] = ctx;
       // Largeur : réglage de la carte, « auto » par défaut. L'automatisme compte
       // les lignes et colonnes de l'extrait complet, jamais celles des tickets
       // filtrés : sinon un filtre rétrécirait les cartes et réorganiserait toute
       // la grille sous les yeux de l'utilisateur.
       var nCol = card.cols ? allCol.length : 0;
-      var auto = card.style === 'heatmap' && nCol > 5 || card.style === 'table' && nCol > 4 || card.style === 'vstack' && allRow.length > 7;
+      var nSplit = pv.splitDim ? Math.max(allSplit.length, 1) : 1;
+      var auto = style === 'heatmap' && nCol > 5 || style === 'table' && nCol > 4 || style === 'vstack' && allRow.length > 7 ||
+        style === 'subcols' && nCol * nSplit > 5 || style === 'nest' && nSplit > 4 || style === 'nestbars' && nSplit > 3;
       var width = card.width || 'auto';
       var wcls = width === 'full' || (width === 'auto' && auto) ? ' wide' : width === '2' ? ' w2' : '';
-      var styles = CFG.stylesFor(card);
       var dimOpts = function (sel, allowNone) { var o = allowNone ? '<option value=""' + (!sel ? ' selected' : '') + '>× —</option>' : ''; Object.keys(CFG.DIM_LABELS).forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>' + (allowNone ? '× ' : '') + CFG.DIM_LABELS[k] + '</option>'; }); return o; };
+      // Le découpage se lit « › » : il n'est pas un troisième croisement à plat,
+      // il descend d'un cran sous les colonnes.
+      var splitOpts = function (sel) { var o = '<option value=""' + (!sel ? ' selected' : '') + '>› —</option>'; Object.keys(CFG.DIM_LABELS).forEach(function (k) { if (k === card.rows || k === card.cols) return; o += '<option value="' + k + '"' + (sel === k ? ' selected' : '') + '>› ' + CFG.DIM_LABELS[k] + '</option>'; }); return o; };
       return '<div class="card' + wcls + '" data-card-el="' + esc(card.id) + '"><div class="card-head"><div>' +
         '<div class="card-ident"><span class="grip" data-card-drag="' + esc(card.id) + '" title="Glisser pour réordonner les cartes">⠿</span>' +
         '<input type="text" class="card-title" value="' + esc(card.title) + '" data-card-title="' + esc(card.id) + '" title="Renommer la carte" aria-label="Titre de la carte">' +
         '<button type="button" class="icon-btn" data-card-del="' + esc(card.id) + '" title="Supprimer la carte">🗑</button></div>' +
-        '<div class="sub">' + esc(CFG.DIM_LABELS[card.rows]) + (card.cols ? ' × ' + esc(CFG.DIM_LABELS[card.cols]) : '') + ' · ' + esc(CFG.MEASURE_LABELS[card.measure]) + '</div></div>' +
-        '<div class="card-tools"><select class="dim-select" data-card-rows="' + esc(card.id) + '" title="Lignes">' + dimOpts(card.rows, false) + '</select><select class="dim-select" data-card-cols="' + esc(card.id) + '" title="Colonnes">' + dimOpts(card.cols, true) + '</select><select class="dim-select" data-card-measure="' + esc(card.id) + '" title="Mesure">' + Object.keys(CFG.MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (card.measure === m ? ' selected' : '') + '>' + CFG.MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
+        '<div class="sub">' + esc(CFG.DIM_LABELS[card.rows]) + (card.cols ? ' × ' + esc(CFG.DIM_LABELS[card.cols]) : '') + (pv.splitDim ? ' › ' + esc(CFG.DIM_LABELS[pv.splitDim]) : '') + ' · ' + esc(CFG.MEASURE_LABELS[card.measure]) + '</div></div>' +
+        '<div class="card-tools"><select class="dim-select" data-card-rows="' + esc(card.id) + '" title="Lignes">' + dimOpts(card.rows, false) + '</select><select class="dim-select" data-card-cols="' + esc(card.id) + '" title="Colonnes">' + dimOpts(card.cols, true) + '</select><select class="dim-select" data-card-split="' + esc(card.id) + '" title="Découpage — la troisième dimension, sous les colonnes"' + (card.cols ? '' : ' disabled') + '>' + splitOpts(card.split) + '</select><select class="dim-select" data-card-measure="' + esc(card.id) + '" title="Mesure">' + Object.keys(CFG.MEASURE_LABELS).map(function (m) { return '<option value="' + m + '"' + (card.measure === m ? ' selected' : '') + '>' + CFG.MEASURE_LABELS[m] + '</option>'; }).join('') + '</select>' +
         '<select class="dim-select" data-card-width="' + esc(card.id) + '" title="Largeur de la carte">' + Object.keys(CFG.WIDTH_LABELS).map(function (w) { return '<option value="' + w + '"' + (width === w ? ' selected' : '') + '>' + CFG.WIDTH_LABELS[w] + '</option>'; }).join('') + '</select>' +
-        '<span class="style-seg">' + styles.map(function (s) { return '<button type="button" data-card-style="' + esc(card.id) + '" data-style="' + s + '" class="' + (card.style === s ? 'is-on' : '') + '" title="' + CFG.STYLE_LABELS[s] + '">' + STYLE_ICONS[s] + '</button>'; }).join('') + '</span></div></div>' +
+        '<span class="style-seg">' + styles.map(function (s) { return '<button type="button" data-card-style="' + esc(card.id) + '" data-style="' + s + '" class="' + (style === s ? 'is-on' : '') + '" title="' + CFG.STYLE_LABELS[s] + '">' + STYLE_ICONS[s] + '</button>'; }).join('') + '</span></div></div>' +
         '<div class="chart-body">' + CH.renderPivot(ctx) + '</div></div>';
     }).join('') || '<div class="empty">Aucune carte visible dans cette vue — ajoutez-en une avec la carte « + ».</div>';
     // Tout se règle sur la carte elle-même : elle naît avec des réglages par
@@ -368,7 +380,8 @@
       ids.forEach(function (id, n) { if (slots[n] != null && byId[id]) c.cards[slots[n]] = byId[id]; });
     });
   }
-  var STYLE_ICONS = { hstack: '▬', vstack: '▮', heatmap: '▦', split: '◫', bars: '≡', donut: '◔', table: '⊞' };
+  var STYLE_ICONS = { hstack: '▬', vstack: '▮', heatmap: '▦', split: '◫', bars: '≡', donut: '◔', table: '⊞',
+    nest: '⊟', subcols: '▥', nestbars: '▤' };
 
   // ── Drill-down ─────────────────────────────────────────────────────
   function resolveDrill(el) {
@@ -391,6 +404,22 @@
       var glabel = d.group === 'done' ? 'Terminés' : 'En cours';
       return { title: gc.card.title, subtitle: (d.rkey ? C.DIMS[d.rdim].label + ' : ' + d.rkey + ' · ' : '') + glabel + ' — ' + gcols.join(', '),
         tabs: [{ label: glabel, tickets: glist }] };
+    }
+    // Carte à trois niveaux : une clé vide vaut « toutes », si bien que la même
+    // résolution sert au détail (ligne × colonne × découpage), aux sous-totaux
+    // et aux totaux de bord.
+    if (d.dd === 'cell3') {
+      var c3 = S.cardCtx[d.card]; if (!c3) return null;
+      var p3 = c3.pivot;
+      var rs = d.rkey ? [d.rkey] : p3.rows, cs = d.ckey ? [d.ckey] : p3.cols, ss = d.skey ? [d.skey] : p3.splits;
+      var list = [];
+      rs.forEach(function (r) { cs.forEach(function (c) { ss.forEach(function (sk) { list = list.concat(p3.cell3(r, c, sk).tickets); }); }); });
+      var say = function (dim, key) { return key ? C.DIMS[dim].label + ' : ' + key : null; };
+      var sub = [say(p3.rowDim, d.rkey), say(p3.colDim, d.ckey), say(p3.splitDim, d.skey)].filter(Boolean).join(' · ') || 'Tous les tickets de la carte';
+      return { title: c3.card.title, subtitle: sub,
+        tabs: [{ label: 'Tous', tickets: list },
+          { label: 'Ouverts', tickets: list.filter(function (t) { return !t.isDone; }) },
+          { label: 'Terminés', tickets: list.filter(function (t) { return t.isDone; }) }] };
     }
     if (d.dd === 'row' || d.dd === 'col') {
       var dim = C.DIMS[d.dim]; if (!dim) return null;
@@ -516,8 +545,9 @@
     document.addEventListener('change', function (e) {
       var t = e.target, d = t.dataset;
       if (d.cardTitle !== undefined && t.classList.contains('card-title')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardTitle; }); if (card) card.title = t.value; });
-      else if (d.cardRows !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardRows; }); if (card) card.rows = t.value; });
-      else if (d.cardCols !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardCols; }); if (card) card.cols = t.value || null; });
+      else if (d.cardRows !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardRows; }); if (card) CFG.normalizeCard((card.rows = t.value, card)); });
+      else if (d.cardCols !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardCols; }); if (card) CFG.normalizeCard((card.cols = t.value || null, card)); });
+      else if (d.cardSplit !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardSplit; }); if (card) CFG.normalizeCard((card.split = t.value || null, card)); });
       else if (d.cardMeasure !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardMeasure; }); if (card) card.measure = t.value; });
       else if (d.cardWidth !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardWidth; }); if (card) card.width = t.value; });
     });
