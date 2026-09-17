@@ -47,7 +47,10 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 ## Filtres
 
 La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le
-nombre de tickets de chaque choix), **Origine**, **Version**, **Équipes** et **Priorité**. Équipes
+nombre de tickets de chaque choix), **Origine**, **Fix Version** (tous / avec / sans, avec les
+comptes — « avec » veut dire le correctif mergé), **Version**, **Équipes** et **Priorité**.
+Le groupe Fix Version se grise quand la colonne est absente du collage, et un choix enregistré
+retombe alors sur « tous » plutôt que de vider le tableau de bord. Équipes
 et Priorité sont des puces multi-sélection (plusieurs valeurs = une union) ; la priorité est celle
 affichée par le radar, c'est-à-dire le regroupement défini dans Configurer → Priorités. Les filtres
 sont conservés dans ce navigateur.
@@ -166,8 +169,8 @@ dans la version avant qu'il en sorte. Elle se trie et part dans l'export CSV com
 fiches apportent ainsi leurs propres colonnes quand elles ont quelque chose de particulier à dire
 (`extraCols` du drill-down).
 
-Les filtres **État**, **Équipes**, **Origine** et **Priorité** de la barre s'appliquent à ces
-graphiques :
+Les filtres **État**, **Équipes**, **Origine**, **Priorité** et **Fix Version** de la barre
+s'appliquent à ces graphiques :
 chaque photo est recalculée sur ce périmètre, ses tickets étant conservés un par un. La liste des
 versions et de leurs photos, elle, reste complète. Deux exceptions volontaires : la prévision
 disparaît sous un filtre d'état (les 100 % d'avancement ne sont plus atteignables si l'on exclut
