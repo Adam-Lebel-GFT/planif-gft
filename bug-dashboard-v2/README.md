@@ -44,6 +44,24 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 4. **Accès** : outil `bug-dashboard-v2` dans l'écran Rôles (attribué automatiquement aux rôles
    qui avaient le v1). Tous les rôles connectés partagent configuration et journal.
 
+## Collage d'un extrait Jira
+
+L'outil accepte le copier-coller direct d'une vue Jira, où le résumé et les étiquettes occupent
+leurs propres lignes : ce n'est pas un TSV régulier, chaque ticket tient sur cinq ou six lignes.
+Les colonnes du début — tout ce qui précède le résumé — sont lues **d'après la ligne d'en-tête
+de l'extrait**, jamais à des positions figées : ajouter une colonne dans Jira (« Reporter » entre
+l'assigné et le statut, par exemple) décalerait sinon tout d'un cran et l'outil lirait des noms de
+personnes comme des statuts. Sans en-tête reconnaissable, il retombe sur l'ordre habituel.
+
+L'**avancement par statut** suit une échelle livrée avec l'outil, de *Open* à *Closed*, où les
+variantes « … Completed » valent l'étape franchie et non l'étape en cours (*In Progress* 30 %,
+*In Progress - Completed* 45 % ; *Code Review* 65 %, *Code Review - Completed* 80 % ;
+*Ready for Testing* 85 %, *Quality Assurance Testing* 90 %, *Quality Assurance Test Completed* et
+*Dev done* 95 %). Un statut absent de cette échelle vaut 50 %, ce qui est un mensonge pour un
+statut de fin de chaîne : quand Jira en ajoute un, il se règle dans **Configurer → Statuts**, qui
+l'emporte sur les défauts, et la liste « terminés » du même onglet décide de ce qui compte comme
+terminé.
+
 ## Filtres
 
 La barre collante filtre tout le tableau de bord : **État** (tous / ouverts / terminés, avec le

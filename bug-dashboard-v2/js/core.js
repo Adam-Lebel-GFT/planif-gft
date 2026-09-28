@@ -134,6 +134,36 @@
     var head = (text.split('\n')[0].match(/\t/g) || []).length, first = (recs[0].match(/\t/g) || []).length;
     return head !== first;
   }
+  // La vue Jira donne l'ordre réel de ses colonnes dans sa ligne d'en-tête, et
+  // la première ligne d'un enregistrement porte tout ce qui précède le résumé.
+  // On s'y fie plutôt que sur des positions figées : ajouter une colonne au
+  // début — « Reporter » entre l'assigné et le statut, par exemple — décalait
+  // sinon tout d'un cran, et l'outil lisait des noms de personnes comme des
+  // statuts. Sans en-tête reconnaissable, on retombe sur l'ordre habituel.
+  var NAV_LEAD_NAMES = {
+    't': 'Issue Type', 'issue type': 'Issue Type', 'type': 'Issue Type', 'type de ticket': 'Issue Type',
+    'key': 'Issue key', 'issue key': 'Issue key', 'cle': 'Issue key',
+    'p': 'Priority', 'priority': 'Priority', 'priorite': 'Priority',
+    'story points': 'Story Points',
+    'assignee': 'Assignee', 'assigne': 'Assignee', 'responsable': 'Assignee',
+    'status': 'Status', 'statut': 'Status', 'etat': 'Status'
+  };
+  var NAV_LEAD_FALLBACK = { 'Issue Type': 0, 'Issue key': 1, 'Priority': 2, 'Story Points': 3, 'Assignee': 4, 'Status': 5 };
+  function navLeadMap(lines) {
+    for (var i = 0; i < lines.length; i++) {
+      var cells = lines[i].split('\t').map(normalize);
+      if (cells.length < 4) continue;
+      var stop = cells.findIndex(function (c) { return c === 'summary' || c === 'resume' || c === 'titre'; });
+      if (stop < 2) continue;
+      var map = {};
+      cells.slice(0, stop).forEach(function (c, k) {
+        var name = NAV_LEAD_NAMES[c];
+        if (name && map[name] == null) map[name] = k;   // première occurrence : un doublon ne recouvre pas l'original
+      });
+      if (map['Issue key'] != null && map['Status'] != null) return map;
+    }
+    return null;
+  }
   function parseJiraNavigator(raw) {
     var lines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
     var blocks = [], cur = null;
@@ -142,11 +172,11 @@
       else if (cur) cur.push(l);
     });
     var headers = ['Issue Type', 'Issue key', 'Priority', 'Story Points', 'Assignee', 'Status', 'Summary', 'Team code', 'Due Date', 'Created', 'Updated', 'Sprint', 'Labels', 'Time Spent', 'Target date', 'Fix Version/s', 'Last Time Status Changed', 'Resolution'];
+    var lead = navLeadMap(lines) || NAV_LEAD_FALLBACK;
     var rows = blocks.map(function (b) {
       var r = {}; headers.forEach(function (h) { r[h] = ''; });
       var first = b[0].split('\t');
-      r['Issue Type'] = first[0].trim(); r['Issue key'] = first[1].trim(); r['Priority'] = (first[2] || '').trim();
-      r['Story Points'] = (first[3] || '').trim(); r['Assignee'] = (first[4] || '').trim(); r['Status'] = (first[5] || '').trim();
+      Object.keys(lead).forEach(function (h) { r[h] = (first[lead[h]] || '').trim(); });
       var i = 1, summary = [];
       while (i < b.length && b[i].trim() !== '' && b[i].indexOf('\t') === -1) { summary.push(b[i].trim()); i++; }
       r['Summary'] = summary.join(' ');
@@ -363,11 +393,16 @@
     var d = DEFAULT_STATUS_PCT[statusKey];
     return d !== undefined ? d : 50;
   }
+  // Échelle d'avancement par statut. Un statut absent d'ici retombe à 50 %, ce
+  // qui est un mensonge pour les statuts de fin de chaîne : ils sont listés.
+  // Les variantes « … Completed » valent l'étape franchie, pas l'étape en cours.
+  // Tout se régle dans Configurer → Statuts, qui l'emporte sur ces défauts.
   var DEFAULT_STATUS_PCT = {
     'open': 0, 'to do': 5, 'backlog': 5, 'in analyze': 10, 'in analysis': 10, 'ready for development': 20,
-    'under review': 25, 'in progress': 30, 'code review': 65, 'code review - completed': 80,
-    'quality assurance testing': 90, 'qa': 90, 'dev done': 95, 'done': 100, 'closed': 100,
-    'decline': 100, 'declined': 100, 'resolved': 100, "won't do": 100, 'wont do': 100
+    'under review': 25, 'in progress': 30, 'in progress - completed': 45,
+    'code review': 65, 'code review - completed': 80, 'ready for testing': 85,
+    'quality assurance testing': 90, 'qa': 90, 'quality assurance test completed': 95, 'dev done': 95,
+    'done': 100, 'closed': 100, 'decline': 100, 'declined': 100, 'resolved': 100, "won't do": 100, 'wont do': 100
   };
 
   function priorityDisplay(key, label, cfg) {
