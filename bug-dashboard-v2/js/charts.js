@@ -65,7 +65,22 @@
     // Séparer en cours et terminé n'a de sens que sur des statuts : ailleurs,
     // la carte retombe sur la heatmap ordinaire plutôt que de mentir.
     if (fn === splitHeatmap && pv.colDim !== 'status') fn = heatmap;
-    return fn(ctx, oneD);
+    return fn(ctx, oneD) + multiNote(pv);
+  }
+
+  // Dimension à plusieurs valeurs par ticket (les étiquettes) : la somme des
+  // lignes peut dépasser le nombre de tickets. On le dit plutôt que de laisser
+  // croire à un total faux — et seulement quand ça arrive vraiment, une liste
+  // d'étiquettes bien choisie partitionnant le plus souvent sans recouvrement.
+  function multiNote(pv) {
+    if (!pv.multi) return '';
+    var somme = 0;
+    pv.rows.forEach(function (r) { somme += pv.rowTotal(r).count; });
+    if (somme <= pv.total) return '';
+    var dim = [pv.rowDim, pv.colDim, pv.splitDim].filter(function (d) { return d && C.DIMS[d] && C.DIMS[d].multi; })
+      .map(function (d) { return C.DIMS[d].label.toLowerCase(); }).join(' et ');
+    return '<div class="chart-note">Un ticket peut porter plusieurs valeurs de « ' + esc(dim) + ' » : les lignes totalisent ' +
+      somme + ' pour ' + pv.total + ' tickets.</div>';
   }
 
   function cellAttrs(ctx, r, c) {

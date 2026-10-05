@@ -274,12 +274,12 @@
     var grid = $('cubeGrid');
     grid.innerHTML = cards.map(function (card) {
       var pv = C.pivot(vis, card.rows, card.cols, conf, card.split);
-      var allRow = []; base.forEach(function (t) { var k = C.DIMS[card.rows].keyOf(t); if (allRow.indexOf(k) === -1) allRow.push(k); });
+      var allRow = []; base.forEach(function (t) { C.dimKeys(C.DIMS[card.rows], t).forEach(function (k) { if (allRow.indexOf(k) === -1) allRow.push(k); }); });
       var rowColors = P.colorsForDim(card.rows, allRow, conf, base);
       var colors = {}, allCol = [];
-      if (card.cols) { base.forEach(function (t) { var k = C.DIMS[card.cols].keyOf(t); if (allCol.indexOf(k) === -1) allCol.push(k); }); colors = P.colorsForDim(card.cols, allCol, conf, base); }
+      if (card.cols) { base.forEach(function (t) { C.dimKeys(C.DIMS[card.cols], t).forEach(function (k) { if (allCol.indexOf(k) === -1) allCol.push(k); }); }); colors = P.colorsForDim(card.cols, allCol, conf, base); }
       var splitColors = {}, allSplit = [];
-      if (pv.splitDim) { base.forEach(function (t) { var k = C.DIMS[pv.splitDim].keyOf(t); if (allSplit.indexOf(k) === -1) allSplit.push(k); }); splitColors = P.colorsForDim(pv.splitDim, allSplit, conf, base); }
+      if (pv.splitDim) { base.forEach(function (t) { C.dimKeys(C.DIMS[pv.splitDim], t).forEach(function (k) { if (allSplit.indexOf(k) === -1) allSplit.push(k); }); }); splitColors = P.colorsForDim(pv.splitDim, allSplit, conf, base); }
       // Une configuration enregistrée peut porter un style que la carte ne
       // propose plus (un découpage ajouté ou retiré ailleurs, une autre onglet
       // resté ouvert) : on rend alors le premier style valide, sans réécrire la
@@ -423,7 +423,7 @@
     }
     if (d.dd === 'row' || d.dd === 'col') {
       var dim = C.DIMS[d.dim]; if (!dim) return null;
-      var list = vis.filter(function (t) { return dim.keyOf(t) === d.key; });
+      var list = vis.filter(function (t) { return C.dimKeys(dim, t).indexOf(d.key) !== -1; });
       return { title: dim.label + ' : ' + d.key, tabs: [{ label: 'Tous', tickets: list }, { label: 'Ouverts', tickets: list.filter(function (t) { return !t.isDone; }) }, { label: 'Terminés', tickets: list.filter(function (t) { return t.isDone; }) }] };
     }
     var custom = hooks.drill[d.dd];
@@ -554,13 +554,19 @@
   }
 
   function configCtx() {
-    var teams = [], prios = {}, statuses = {};
+    var teams = [], prios = {}, statuses = {}, labels = {};
     S.tickets.forEach(function (t) {
       if (teams.indexOf(t.team) === -1) teams.push(t.team);
       prios[t.priorityKey] = t.priority;
       statuses[t.statusKey] = statuses[t.statusKey] || { key: t.statusKey, label: t.status, count: 0 }; statuses[t.statusKey].count++;
+      // Étiquettes brutes du collage, pas les clés dérivées : le tiroir doit
+      // proposer celles que la configuration regroupe, pas seulement celles
+      // qu'elle garde déjà.
+      (t.labelList || []).forEach(function (l) { labels[l] = (labels[l] || 0) + 1; });
     });
-    return { teams: teams.sort(), priorities: Object.keys(prios).map(function (k) { return { key: k, label: prios[k] }; }), statuses: Object.keys(statuses).map(function (k) { return statuses[k]; }) };
+    return { teams: teams.sort(), priorities: Object.keys(prios).map(function (k) { return { key: k, label: prios[k] }; }),
+      statuses: Object.keys(statuses).map(function (k) { return statuses[k]; }),
+      labels: Object.keys(labels).map(function (k) { return { name: k, count: labels[k] }; }) };
   }
 
   async function init() {

@@ -78,6 +78,8 @@
       var keys = C.DIMS[dim].order(allKeys, cfg, tickets);
       keys.forEach(function (k, i) { map[k] = CATEGORICAL[i % CATEGORICAL.length]; });
       if (dim === 'version') map['Sans version'] = NEUTRAL;
+      // Les deux fourre-tout des étiquettes ne sont pas des entités : gris.
+      if (dim === 'labels') { map['(autres)'] = NEUTRAL; map['(sans étiquette)'] = '#C3CAD5'; }
     }
     return map;
   }

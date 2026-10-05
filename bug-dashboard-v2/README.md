@@ -141,6 +141,26 @@ valeur se rapporte au total général.
 La carte livrée **« Résolutions par origine »** en est un exemple prêt à l'emploi : origine ×
 résolution, découpé par Fix Version, pour comparer ce qui est livré à l'interne et au projet.
 
+### Étiquettes
+
+La dimension **Étiquette** se choisit comme les autres, en lignes, en colonnes ou en découpage.
+Elle est la seule dont un ticket porte **plusieurs valeurs** à la fois, et la seule dont la queue
+est longue : sur un extrait de 37 tickets, 38 étiquettes distinctes dont 24 vues une seule fois.
+Deux réponses à cela, dans **Configurer → Étiquettes**, qui liste les étiquettes du collage avec
+leur nombre de tickets :
+
+- **Une liste d'étiquettes suivies** — celles qu'on coche. La carte ne montre que celles-là ; un
+  ticket qui n'en porte aucune va dans **(autres)**, et un ticket sans la moindre étiquette dans
+  **(sans étiquette)**. Tant qu'un ticket ne porte qu'une seule étiquette suivie — le cas normal
+  d'une liste courte — les lignes partitionnent exactement le périmètre. `SM-RK` est suivie
+  d'origine, et la carte livrée **« Étiquettes suivies »** la croise avec terminé / en cours.
+- **Sans aucune coche**, l'outil garde celles qui portent au moins N tickets (2 par défaut) et
+  regroupe le reste : utile pour découvrir ce que contient un collage, verbeux pour s'en servir.
+
+Quand un ticket compte dans plusieurs lignes, la somme des lignes dépasse le nombre de tickets.
+La carte le dit alors sous le graphique, avec les deux nombres — et se tait quand la question ne
+se pose pas. Le total général de la carte reste, lui, le nombre de tickets distincts.
+
 La **largeur** d'une carte vaut *1 colonne*, *2 colonnes*, *pleine largeur* ou *auto*. En auto,
 les tableaux larges (heatmap de plus de 5 colonnes, tableau de plus de 4, empilé vertical de plus
 de 7 lignes, sous-colonnes de plus de 5 sous-colonnes en tout) prennent toute la largeur. Ce calcul porte sur l'**extrait complet**, jamais sur les
