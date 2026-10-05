@@ -20,18 +20,23 @@
     { id: 'priority_origin', title: 'Priorités × origine',           rows: 'priority',   cols: 'origin',   measure: 'count',    style: 'vstack',  visible: true },
     { id: 'team_progress',   title: 'Avancement pondéré par équipe', rows: 'team',       cols: null,       measure: 'progress', style: 'table',   visible: true },
     { id: 'done_fix',        title: 'Résolutions × Fix Version',     rows: 'resolution', cols: 'fixState', measure: 'count',    style: 'table',   visible: true },
-    { id: 'origin_res_fix',  title: 'Résolutions par origine',       rows: 'origin',     cols: 'resolution', split: 'fixState', measure: 'count', style: 'nest', visible: true }
+    { id: 'origin_res_fix',  title: 'Résolutions par origine',       rows: 'origin',     cols: 'resolution', split: 'fixState', measure: 'count', style: 'nest', visible: true },
+    { id: 'labels_state',    title: 'Étiquettes suivies',          rows: 'labels',     cols: 'doneState', measure: 'count',    style: 'hstack',  visible: true }
   ];
 
   // Version du schéma de configuration : incrémentée quand un défaut livré doit
   // primer sur une valeur déjà enregistrée (localStorage / Supabase) — voir migrate().
-  var SCHEMA = 4;
+  var SCHEMA = 5;
 
   var DEFAULTS = {
     schema:     SCHEMA,
     teams:      { order: [], alias: {}, hidden: [], colors: {} },
     priorities: { order: C.PRIORITY_ORDER_DEFAULT.slice(), colors: {}, groups: {}, blockerKeys: ['blocker', 'highest'] },
     statuses:   { pct: {}, colors: {}, done: ['closed', 'decline', 'declined', 'done', 'resolved', "won't do", 'wont do'] },
+    // Étiquettes : peu sont utiles. « suivies » les nomme, tout le reste va au
+    // fourre-tout ; liste vide, on retombe sur celles qui portent au moins
+    // « min » tickets, ce qui reste lisible sans configuration.
+    labels:     { suivies: ['SM-RK'], min: 2 },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
     // Paliers de risque : plus le jalon approche, plus la barre monte. Un
     // ticket ouvert sous `pct` d'avancement alors qu'il reste `days` jours
@@ -233,7 +238,7 @@
 
   function renderDrawer() {
     var el = document.getElementById('cfgBody');
-    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['cards', 'Cartes'], ['rules', 'Règles'], ['views', 'Vues'], ['ai', 'IA'], ['data', 'Sauvegarde']]
+    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['labels', 'Étiquettes'], ['cards', 'Cartes'], ['rules', 'Règles'], ['views', 'Vues'], ['ai', 'IA'], ['data', 'Sauvegarde']]
       .filter(function (t) { return t[0] !== 'ai' || aiLoaded(); });
     if (drawerTab === 'ai' && !aiLoaded()) drawerTab = 'teams';
     document.getElementById('cfgTabs').innerHTML = tabs.map(function (t) {
@@ -292,6 +297,20 @@
           '<td><input type="checkbox" data-done="' + esc(s.key) + '" ' + (done ? 'checked' : '') + '></td>' +
           '<td><details class="cfg-color"><summary title="Choisir la couleur"><span class="dot" style="background:' + (cfg.statuses.colors[s.key] || P.CATEGORICAL[i % 8]) + '"></span>' + (cfg.statuses.colors[s.key] ? '' : 'auto') + '</summary>' + swatchPicker(cfg.statuses.colors[s.key] || '', 'data-status-color="' + esc(s.key) + '"') + '</details></td></tr>';
       }).join('') + '</tbody></table>';
+    } else if (drawerTab === 'labels') {
+      var suivies = cfg.labels.suivies || [];
+      var labSeen = (ctxRef.labels || []).slice();                       // [{name,count}]
+      suivies.forEach(function (n) { if (!labSeen.some(function (l) { return l.name === n; })) labSeen.push({ name: n, count: 0, missing: true }); });
+      labSeen.sort(function (a, b) { return (b.count || 0) - (a.count || 0) || a.name.localeCompare(b.name); });
+      h += '<p class="cfg-help">Une étiquette n\'est pas exclusive : un ticket en porte souvent plusieurs, et la plupart n\'apparaissent qu\'une fois. Cochez celles qui vous intéressent — la dimension <b>Étiquette</b> du cube n\'affichera que celles-là, tout le reste allant dans <b>(autres)</b> et les tickets sans étiquette dans <b>(sans étiquette)</b>. Sans aucune coche, l\'outil garde celles qui portent au moins le nombre de tickets ci-dessous.</p>';
+      h += '<div class="cfg-grid"><label>Sans aucune coche, garder celles portant au moins <input type="number" min="1" max="99" class="cfg-input num" value="' + (Number(cfg.labels.min) || 1) + '" data-labmin="1"> ticket(s)</label></div>';
+      h += labSeen.length
+        ? '<table class="cfg-table"><thead><tr><th>Suivie</th><th>Étiquette</th><th class="num">Tickets</th></tr></thead><tbody>' + labSeen.map(function (l) {
+            return '<tr><td><input type="checkbox" data-lab="' + esc(l.name) + '" ' + (suivies.indexOf(l.name) !== -1 ? 'checked' : '') + '></td>' +
+              '<td>' + esc(l.name) + (l.missing ? ' <em class="cfg-muted">(absente du collage)</em>' : '') + '</td>' +
+              '<td class="num">' + (l.count || 0) + '</td></tr>';
+          }).join('') + '</tbody></table>'
+        : '<p class="cfg-help">Aucune étiquette dans le collage courant.</p>';
     } else if (drawerTab === 'cards') {
       h += '<p class="cfg-help">Chaque carte du cube croise une, deux ou trois dimensions avec une mesure et un style de graphique. Le troisième axe — le <b>découpage</b>, après le ‹ — vient se poser sous les colonnes et bascule la carte sur les styles à trois niveaux. Réordonnez avec ↑/↓, décochez pour masquer. Tout se change aussi directement sur la carte.</p>';
       h += '<ul class="cfg-list cfg-cards" id="cfgCardList">' + cfg.cards.map(function (c) {
@@ -407,6 +426,12 @@
       else if (d.cardSplit !== undefined) { update(function (c) { var card = findCard(c, d.cardSplit); if (card) normalizeCard((card.split = t.value || null, card)); }); renderDrawer(); }
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
+      else if (d.lab !== undefined) update(function (c) {
+        var l = c.labels.suivies || (c.labels.suivies = []);
+        var i = l.indexOf(d.lab);
+        if (t.checked && i === -1) l.push(d.lab); else if (!t.checked && i !== -1) l.splice(i, 1);
+      });
+      else if (d.labmin !== undefined) update(function (c) { c.labels.min = Math.max(1, Number(t.value) || 1); });
       else if (d.rule !== undefined) update(function (c) { c.version[d.rule] = t.type === 'checkbox' ? t.checked : (t.type === 'number' ? Number(t.value) || 0 : t.value); });
       else if (d.burnup !== undefined) update(function (c) {
         var v = Number(t.value) || 0;

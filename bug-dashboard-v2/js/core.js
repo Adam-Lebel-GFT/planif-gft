@@ -28,6 +28,19 @@
   };
 
   var PRJ301_LABEL = 'sourceproject_prj301';
+  var NO_LABEL = '(sans \u00e9tiquette)', OTHER_LABELS = '(autres)';
+  // Les étiquettes arrivent séparées par des virgules ou des espaces selon la
+  // vue Jira ; « None » veut dire aucune. On dédoublonne : une même étiquette
+  // deux fois ne doit pas compter le ticket deux fois.
+  function splitLabels(raw) {
+    var out = [];
+    String(raw || '').split(/[,\s]+/).forEach(function (l) {
+      l = l.trim();
+      if (!l || l === 'None' || out.indexOf(l) !== -1) return;
+      out.push(l);
+    });
+    return out;
+  }
 
   function normalize(s) {
     return (s == null ? '' : String(s)).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -355,6 +368,7 @@
         team: team,
         priority: priority, priorityKey: normalize(priority),
         labels: labels,
+        labelList: splitLabels(labels),
         isPrj301: normalize(labels).indexOf(PRJ301_LABEL) !== -1,
         targetRaw: targetRaw, targetDate: parseDate(targetRaw),
         dueRaw: dueRaw, dueDate: parseDate(dueRaw),
@@ -372,6 +386,27 @@
   function enrich(tickets, cfg, refDate) {
     var doneSet = {};
     (cfg.statuses.done || []).forEach(function (s) { doneSet[normalize(s)] = true; });
+    // Étiquettes : la seule dimension dont un ticket porte plusieurs valeurs,
+    // et dont la queue est longue — l'essentiel n'apparaît qu'une fois. Deux
+    // régimes, selon la configuration : une liste d'étiquettes suivies, et
+    // tout le reste au fourre-tout ; ou, liste vide, celles qui portent au
+    // moins N tickets. Les clés sont dérivées ici, avec tout le jeu sous la
+    // main : un changement de liste ou de seuil est immédiat.
+    var suivies = (cfg.labels && cfg.labels.suivies) || [];
+    var minLab = Math.max(1, Number(cfg.labels && cfg.labels.min) || 1);
+    var freq = {};
+    tickets.forEach(function (t) { (t.labelList || []).forEach(function (l) { freq[l] = (freq[l] || 0) + 1; }); });
+    var garde = suivies.length
+      ? function (l) { return suivies.indexOf(l) !== -1; }
+      : function (l) { return freq[l] >= minLab; };
+    tickets.forEach(function (t) {
+      var list = t.labelList || [];
+      if (!list.length) { t.labelKeys = [NO_LABEL]; return; }
+      var keys = list.filter(garde);
+      // Un ticket qui ne porte aucune étiquette suivie va au fourre-tout — et
+      // y va une seule fois : il est étiqueté, juste pas de ce qui est suivi.
+      t.labelKeys = keys.length ? keys : [OTHER_LABELS];
+    });
     tickets.forEach(function (t) {
       t.pct = pctForStatus(t.statusKey, cfg);
       t.isDone = !!doneSet[t.statusKey];
@@ -499,8 +534,29 @@
     assignee: {
       label: 'Responsable', keyOf: function (t) { return t.assignee || '(non assigné)'; },
       order: function (keys) { return keys.slice().sort(function (a, b) { return a.localeCompare(b); }); }
+    },
+    // Seule dimension à plusieurs valeurs par ticket : un ticket étiqueté
+    // « SM-RK » et « stabilisation-test » compte dans les deux lignes. La somme
+    // des lignes dépasse donc le nombre de tickets, et les cartes le disent.
+    labels: {
+      label: 'Étiquette', multi: true,
+      keysOf: function (t) { return t.labelKeys || [NO_LABEL]; },
+      order: function (keys, cfg, tickets) {
+        var n = {};
+        (tickets || []).forEach(function (t) { (t.labelKeys || []).forEach(function (l) { n[l] = (n[l] || 0) + 1; }); });
+        var rank = function (k) { return k === NO_LABEL ? 2 : k === OTHER_LABELS ? 1 : 0; };
+        return keys.slice().sort(function (a, b) {
+          var ra = rank(a), rb = rank(b);
+          if (ra !== rb) return ra - rb;                       // les fourre-tout en fin de liste
+          return (n[b] || 0) - (n[a] || 0) || a.localeCompare(b);
+        });
+      }
     }
   };
+
+  // Clés d'un ticket pour une dimension. Une seule, sauf pour les dimensions
+  // à plusieurs valeurs : tout appelant passe par ici plutôt que par keyOf.
+  function dimKeys(dim, t) { return dim.keysOf ? dim.keysOf(t) : [dim.keyOf(t)]; }
 
   // ── Pivot ──────────────────────────────────────────────────────────
   // pivot(tickets, 'team', 'priority') →
@@ -517,25 +573,26 @@
     var rowTot = {}, colTot = {};
     var cells3 = {}, splitKeys = {}, rowSplitTot = {}, colSplitTot = {}, splitTot = {};
     var add = function (bag, k, t) { var x = bag[k] = bag[k] || bucket(); x.count++; x.pctSum += t.pct; x.tickets.push(t); };
+    // Un ticket peut porter plusieurs clés sur une dimension (les étiquettes) :
+    // il compte alors dans chacune. Les totaux de lignes dépassent donc le
+    // nombre de tickets, que `total` garde distinct — les cartes le disent.
     tickets.forEach(function (t) {
-      var r = rd.keyOf(t), c = cd ? cd.keyOf(t) : '_';
-      rowKeys[r] = true; colKeys[c] = true;
-      cells[r] = cells[r] || {};
-      var cell = cells[r][c] = cells[r][c] || bucket();
-      cell.count++; cell.pctSum += t.pct; cell.tickets.push(t);
-      rowTot[r] = rowTot[r] || bucket();
-      rowTot[r].count++; rowTot[r].pctSum += t.pct; rowTot[r].tickets.push(t);
-      colTot[c] = colTot[c] || bucket();
-      colTot[c].count++; colTot[c].pctSum += t.pct; colTot[c].tickets.push(t);
-      if (sd) {
-        var s = sd.keyOf(t);
-        splitKeys[s] = true;
-        cells3[r] = cells3[r] || {}; cells3[r][c] = cells3[r][c] || {};
-        add(cells3[r][c], s, t);
-        rowSplitTot[r] = rowSplitTot[r] || {}; add(rowSplitTot[r], s, t);
-        colSplitTot[c] = colSplitTot[c] || {}; add(colSplitTot[c], s, t);
-        add(splitTot, s, t);
-      }
+      var rs = dimKeys(rd, t), cs = cd ? dimKeys(cd, t) : ['_'];
+      var ss = sd ? dimKeys(sd, t) : null;
+      rs.forEach(function (r) { rowKeys[r] = true; add(rowTot, r, t); });
+      cs.forEach(function (c) { colKeys[c] = true; add(colTot, c, t); });
+      if (ss) ss.forEach(function (s) { splitKeys[s] = true; add(splitTot, s, t); });
+      rs.forEach(function (r) {
+        cells[r] = cells[r] || {};
+        if (ss) { rowSplitTot[r] = rowSplitTot[r] || {}; ss.forEach(function (s) { add(rowSplitTot[r], s, t); }); }
+        cs.forEach(function (c) {
+          add(cells[r], c, t);
+          if (!ss) return;
+          cells3[r] = cells3[r] || {}; cells3[r][c] = cells3[r][c] || {};
+          ss.forEach(function (s) { add(cells3[r][c], s, t); });
+        });
+      });
+      if (ss) cs.forEach(function (c) { colSplitTot[c] = colSplitTot[c] || {}; ss.forEach(function (s) { add(colSplitTot[c], s, t); }); });
     });
     var rows = rd.order(Object.keys(rowKeys), cfg, tickets);
     var cols = cd ? cd.order(Object.keys(colKeys), cfg, tickets) : ['_'];
@@ -547,6 +604,7 @@
     return {
       rowDim: rowDim, colDim: colDim, splitDim: sd ? splitDim : null,
       rows: rows, cols: cols, splits: splits,
+      multi: !!(rd.multi || (cd && cd.multi) || (sd && sd.multi)),
       cell: function (r, c) { return (cells[r] && cells[r][c]) || bucket(); },
       rowTotal: function (r) { return rowTot[r] || bucket(); },
       colTotal: function (c) { return colTot[c] || bucket(); },
@@ -597,6 +655,6 @@
     normalize: normalize, detectColumns: detectColumns, parsePastedData: parsePastedData, parseTSV: parseTSV,
     parseDate: parseDate, toISO: toISO, fixMojibake: fixMojibake, parseJiraNavigator: parseJiraNavigator, isJiraNavigator: isJiraNavigator, detectDelimiter: detectDelimiter, parseDelimited: parseDelimited, fmtDate: fmtDate, dayDiff: dayDiff, startOfDay: startOfDay, halfOf: halfOf, halfDiff: halfDiff, fmtHalfDays: fmtHalfDays, atHalf: atHalf, halvesLeft: halvesLeft, isWorkday: isWorkday, openHours: openHours, addOpenHours: addOpenHours,
     buildTickets: buildTickets, enrich: enrich, pctForStatus: pctForStatus,
-    DIMS: DIMS, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
+    DIMS: DIMS, dimKeys: dimKeys, pivot: pivot, measureValue: measureValue, formatMeasure: formatMeasure, computeKpis: computeKpis
   };
 })(window);
