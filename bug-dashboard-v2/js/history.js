@@ -382,6 +382,12 @@
         '<b style="color:var(--critical)">' + d(miss) + ' pts</b>' + (o.ppd > 0 ? ', soit ' + d(miss / o.ppd) + ' j ouvré' + (miss / o.ppd >= 2 ? 's' : '') : '') + tail };
   }
 
+  // Fin de fenêtre d'une version : sa date de fin, et non son jalon de
+  // déploiement. Les versions se suivent au même rythme, leurs calendriers ont
+  // donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au
+  // déploiement les rendait inégales selon que le jalon est renseigné ou non.
+  function versionEnd(pv, gate) { return pv.end || pv.deploy || gate; }
+
   function gateLabel(pv) {
     return root.BDV2Plan && root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(pv.deadlineKey || 'freeze') : 'Code freeze';
   }
@@ -404,7 +410,7 @@
       if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
     }
     return CH.burnupChart({
-      start: pv.start, end: pv.deploy || pv.end || gate, deadline: gate,
+      start: pv.start, end: versionEnd(pv, gate), deadline: gate,
       deadlineLabel: gateLabel(pv),
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
       openFrom: openWin().a, openTo: openWin().z,
@@ -416,21 +422,53 @@
   // burn-up : une barre par photo posée à sa date, hauteur = nombre de tickets.
   // Le rythme des analyses et le périmètre qui bouge apparaissent alors, là où
   // une barre par photo régulièrement espacée les efface.
-  function stateTimeFor(sel, pts2, photos) {
-    if (!root.BDV2Plan || !root.BDV2Plan.versionForDate) return null;
+  // Lecture sur calendrier de toute mesure qui partitionne les tickets : un
+  // ticket est dans exactement un état, donc les aires s'empilent et leur
+  // sommet est le périmètre. Les statuts en sont le détail — empilés dans
+  // l'ordre du flux, ils donnent un diagramme de flux cumulé.
+  var STATE_SERIES = [{ key: 'done', label: 'Terminés', color: '#008300' }, { key: 'open', label: 'Ouverts', color: '#2a78d6' }];
+  function stateValue(p, sr) { return p.st[sr.key]; }
+  function statusValue(p, sr) {
+    if (!sr.keys) return p.st.byStatus[sr.key];
+    var n = 0; sr.keys.forEach(function (k) { n += p.st.byStatus[k] || 0; }); return n;
+  }
+
+  // Statuts vus dans ces photos, du plus avancé en bas au moins avancé en haut :
+  // la version se remplit par le bas, comme sur « ouverts / terminés ». Au-delà
+  // de huit bandes, les moins avancées sont regroupées plutôt que retirées —
+  // les retirer ferait mentir le sommet, qui doit rester le périmètre. Elles
+  // sont les premières du flux : leur place groupée est donc bien en haut.
+  var MAX_BANDES = 8;
+  function statusSeries(pts2) {
+    var cfg = CFG.get(), keys = [];
+    pts2.forEach(function (p) { if (p.st) Object.keys(p.st.byStatus || {}).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); });
+    if (!keys.length) return [];
+    var fake = keys.map(function (k) { return { status: k }; });
+    keys = C.DIMS.status.order(keys, cfg, fake);          // du moins avancé au plus avancé
+    var colors = P.colorsForDim('status', keys, cfg, fake);
+    var reste = keys.length > MAX_BANDES ? keys.slice(0, keys.length - MAX_BANDES) : [];
+    var out = (reste.length ? keys.slice(-MAX_BANDES) : keys).slice().reverse()
+      .map(function (k) { return { key: k, label: k, color: colors[k] }; });
+    if (reste.length) out.push({ key: '\u00a7autres', label: 'Autres statuts (' + reste.length + ')', color: P.NEUTRAL, keys: reste });
+    return out;
+  }
+
+  function stackTimeFor(sel, pts2, photos, series, valueOf) {
+    if (!root.BDV2Plan || !root.BDV2Plan.versionForDate || !series.length) return null;
     var cfg = CFG.get(), pv = root.BDV2Plan.versionForDate(sel.td, cfg);
     var gate = pv && (pv.deadline || pv.freeze);
     if (!pv || !pv.start || !gate) return null;
     var items = H.items;
     var points = pts2.map(function (p, i) {
-      var it = items[photos[i]];
-      return { t: new Date(it.at), label: fmtWhen(it.at), values: { done: p.st.done, open: p.st.open } };
+      var it = items[photos[i]], vals = {};
+      series.forEach(function (sr) { vals[sr.key] = (p.st && valueOf(p, sr)) || 0; });
+      return { t: new Date(it.at), label: fmtWhen(it.at), values: vals };
     }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
     if (!points.length) return null;
     return CH.areaTimeChart({
-      start: pv.start, end: pv.deploy || pv.end || gate, today: C.startOfDay(S.refDate),
-      openFrom: openWin().a, openTo: openWin().z, points: points,
-      series: [{ key: 'done', label: 'Terminés', color: '#008300' }, { key: 'open', label: 'Ouverts', color: '#2a78d6' }],
+      start: pv.start, end: versionEnd(pv, gate), today: C.startOfDay(S.refDate),
+      deadline: gate, deadlineLabel: gateLabel(pv),
+      openFrom: openWin().a, openTo: openWin().z, points: points, series: series,
       threshold: cfg.history.threshold, thresholdLabel: 'tickets'
     });
   }
@@ -445,7 +483,7 @@
   // (groupées pour comparer des séries, empilées pour une composition, en
   // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
   // mesure vraiment continue.
-  var CHART_KIND = { global: 'line', progress: 'line', state: 'stack', status: 'group', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
+  var CHART_KIND = { global: 'line', progress: 'line', state: 'stack', status: 'stack', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
   function chartFrom(metric, points) {
     var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
     var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
@@ -507,7 +545,9 @@
       sub = (ui.metric === 'progress'
         ? 'Avancement de la version sur son calendrier : chaque photo se place à sa date, la rampe grise dit où l\'on devrait être, le nombre coloré donne l\'écart à la dernière photo.'
         : ui.metric === 'state'
-        ? 'Ouverts et terminés sur le calendrier de la version : une barre par photo, posée à sa date, dont la hauteur est le nombre de tickets — le périmètre qui bouge se voit autant que la progression.'
+        ? 'Ouverts et terminés sur le calendrier de la version : aires empilées, un point par photo posé à sa date — le périmètre qui bouge se voit autant que la progression.'
+        : ui.metric === 'status'
+        ? 'Les statuts sur le calendrier de la version, empilés du plus avancé en bas au moins avancé en haut : un diagramme de flux cumulé, dont le sommet est le périmètre.'
         : 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).') + scopeNote();
       // L'avancement d'une version se lit en burn-up quand le plan donne ses
       // dates : axe de dates réel, rampe attendue, écart à la rampe.
@@ -515,7 +555,9 @@
       // dates de la version ; sinon on retombe sur la forme photo par photo.
       var timed = sel.td === 'none' ? null
         : ui.metric === 'progress' ? burnupFor(sel, pts2, photos)
-        : ui.metric === 'state' ? stateTimeFor(sel, pts2, photos) : null;
+        : ui.metric === 'state' ? stackTimeFor(sel, pts2, photos, STATE_SERIES, stateValue)
+        : ui.metric === 'status' ? stackTimeFor(sel, pts2, photos, statusSeries(pts2), statusValue)
+        : null;
       chart = timed || chartFrom(ui.metric, pts2);
       // rythme
       if (pts2.length >= 2) {

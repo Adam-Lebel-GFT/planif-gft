@@ -263,8 +263,16 @@ couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le 
 dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes week-ends
 grisés, mêmes heures fermées comprimées.
 
-La fenêtre, sur les deux formes, est **le calendrier de la version**, étendu aux seules photos qui
-tombent en dehors — jamais jusqu'à la date de référence. Une version déployée il y a trois semaines
+Les trois mesures qui se lisent sur le calendrier — burn-up, « ouverts / terminés » et « par
+statut » — partagent **exactement la même fenêtre** : du début de la version à sa **date de fin**,
+et non à son jalon de déploiement. Les versions se suivant au même rythme, leurs calendriers ont
+donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au déploiement les rendait
+inégales selon que le jalon est renseigné ou non. Le **jalon qui fait foi** (gel de code par
+défaut) y est toujours tracé en pointillé, sur les trois formes, à une ligne du repère de la date
+de référence pour que les deux libellés ne se chevauchent pas.
+
+Cette fenêtre est **le calendrier de la version**, étendu aux seules photos qui tombent en dehors
+— jamais jusqu'à la date de référence. Une version déployée il y a trois semaines
 traînerait sinon trois semaines de calendrier vide à droite de ses données. Pour la même raison, le
 repère de la date de référence n'est tracé **que s'il tombe dans la fenêtre** : hors d'elle, il se
 collait au bord et son libellé était coupé.
@@ -277,6 +285,15 @@ porte donc **un point sur le sommet**, et la pente entre deux points se lit pour
 une interpolation entre deux mesures. Le survol d'une photo donne ses chiffres exacts, et la
 dernière est étiquetée à même les bandes. Une version qui n'a qu'une photo garde un petit plateau
 plutôt qu'une aire large de zéro.
+
+**« Par statut (nombre) »** se lit de la même façon, et devient alors un **diagramme de flux
+cumulé** : un ticket est dans exactement un statut, donc les aires s'empilent et leur sommet est le
+périmètre. Elles vont du plus avancé en bas au moins avancé en haut, comme « ouverts / terminés »
+dont elles sont le détail. Au-delà de **huit bandes**, les moins avancées sont **regroupées**
+plutôt que retirées — les retirer ferait mentir le sommet ; comme ce sont les premières du flux,
+leur place groupée est bien en haut de la pile. Les couleurs sont celles que Configurer → Statuts
+donne à chaque statut partout ailleurs. Une bande trop mince ne porte pas son chiffre : le survol
+d'une photo les donne tous.
 
 Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
 pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →

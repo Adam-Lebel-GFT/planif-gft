@@ -819,6 +819,18 @@
       lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
     }
     var marks = '';
+    // Jalon qui fait foi (gel de code par défaut) : il est la date qui compte
+    // sur ce calendrier, il se trace donc ici comme sur le burn-up.
+    if (opts.deadline) {
+      var fz = opts.deadline.getTime();
+      if (fz >= t0 && fz <= t1) marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) +
+        '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        // Une ligne plus bas que le repère de la date de référence : les deux
+        // jalons tombent souvent à quelques jours l'un de l'autre, et leurs
+        // libellés se chevauchaient.
+        '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (padT + 24) + '" text-anchor="end">' +
+        esc(opts.deadlineLabel || 'Code freeze') + '</text>';
+    }
     if (opts.today && dansFenetre(opts.today, t0, t1)) {
       var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
       var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
@@ -883,7 +895,9 @@
     var aGauche = xd > w - padR - 78;
     series.forEach(function (sr) {
       var v = dern.values[sr.key] || 0;
-      if (!v) { acc2 += v; return; }
+      // Une bande trop mince ne porte pas son chiffre : neuf statuts empilés
+      // donneraient neuf étiquettes collées. Le survol les donne toutes.
+      if (!v || yOf(acc2) - yOf(acc2 + v) < 13) { acc2 += v; return; }
       var ym = yOf(acc2 + v / 2) + 4;
       acc2 += v;
       // Basculée à gauche, l'étiquette tombe dans l'aire : elle y prend l'encre
