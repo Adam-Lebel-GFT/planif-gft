@@ -257,17 +257,25 @@ séries), **barres empilées** par priorité et pour la Fix Version (composition
 **bandes empilées à 100 %** pour l'origine (une part). Au-delà d'une douzaine de photos, le
 graphique s'élargit et défile plutôt que d'aligner des barres illisibles.
 
-**« Ouverts / terminés (nombre) »** empile les deux états en barres : terminés en vert **en bas**,
-pour que le vert monte au fil de la version comme une jauge qui se remplit, ouverts en bleu
-au-dessus — les couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le plan
-connaît les dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes
-week-ends grisés, mêmes heures fermées comprimées, une barre par photo posée à sa date réelle et
-dont la **hauteur est le nombre de tickets**. Le rythme des analyses et le périmètre qui bouge — 48
-tickets un soir, 42 le lendemain — s'y lisent d'un coup, là où une barre par photo régulièrement
-espacée les efface. Sans plan publié pour cette Target date, la mesure retombe sur la forme photo
-par photo. Un **trait pointillé** marque le plafond de tickets qu'on se donne (40 par défaut,
-réglable dans Configurer → Règles → Évolution ; **0** retire la ligne) ; il apparaît sous les deux
-formes, et l'échelle s'élargit pour le contenir quand il dépasse la plus haute barre.
+**« Ouverts / terminés (nombre) »** empile les deux états : terminés en vert **en bas**, pour que
+le vert monte au fil de la version comme une jauge qui se remplit, ouverts en bleu au-dessus — les
+couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le plan connaît les
+dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes week-ends
+grisés, mêmes heures fermées comprimées.
+
+Les deux états y sont des **aires empilées**, non des barres. Des analyses prises par à-coups —
+sept dans une matinée, puis rien pendant trois jours — donnaient un peigne de barres fines séparées
+de larges blancs ; l'aire rend la forme continue et laisse le périmètre qui bouge se lire au
+sommet. Elle a sa contrepartie : une aire pleine laisse croire à une mesure continue. Chaque photo
+porte donc **un point sur le sommet**, et la pente entre deux points se lit pour ce qu'elle est,
+une interpolation entre deux mesures. Le survol d'une photo donne ses chiffres exacts, et la
+dernière est étiquetée à même les bandes. Une version qui n'a qu'une photo garde un petit plateau
+plutôt qu'une aire large de zéro.
+
+Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
+pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →
+Règles → Évolution ; **0** retire la ligne) ; il apparaît sous les deux formes, et l'échelle
+s'élargit pour le contenir quand il dépasse le plus haut total.
 
 Sur une version, **« Avancement pondéré » se lit en burn-up** : l'axe horizontal devient le
 calendrier de la version (début → déploiement), chaque photo se place à sa date réelle, et une

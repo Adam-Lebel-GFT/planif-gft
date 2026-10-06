@@ -427,7 +427,7 @@
       return { t: new Date(it.at), label: fmtWhen(it.at), values: { done: p.st.done, open: p.st.open } };
     }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
     if (!points.length) return null;
-    return CH.barTimeChart({
+    return CH.areaTimeChart({
       start: pv.start, end: pv.deploy || pv.end || gate, today: C.startOfDay(S.refDate),
       openFrom: openWin().a, openTo: openWin().z, points: points,
       series: [{ key: 'done', label: 'Terminés', color: '#008300' }, { key: 'open', label: 'Ouverts', color: '#2a78d6' }],
