@@ -496,7 +496,7 @@ const STATUS_COLOR_SWATCHES = [
 
 // Même instance Jira que les autres outils du toolkit (sprint-planning) : permet de
 // rouvrir directement un ticket depuis le drill-down.
-const JIRA_BASE_URL = 'https://vaudoise.atlassian.net/browse/';
+const JIRA_BASE_URL = 'https://di.vaudoise.ch/browse/';
 
 function escHtml(s){
   return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
