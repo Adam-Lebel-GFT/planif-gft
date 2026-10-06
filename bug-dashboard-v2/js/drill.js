@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   var C = root.BDV2Core;
-  var JIRA_BASE_URL = 'https://vaudoise.atlassian.net/browse/';
+  var JIRA_BASE_URL = 'https://di.vaudoise.ch/browse/';
   var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
   var COLS = [
