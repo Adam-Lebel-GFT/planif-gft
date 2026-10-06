@@ -762,7 +762,12 @@
   // posée à sa date réelle, hauteur = nombre de tickets. On y lit d'un coup le
   // rythme des analyses (les rafales, les week-ends vides) et le périmètre qui
   // bouge — ce qu'une barre par photo régulièrement espacée efface.
-  function barTimeChart(opts) {
+  // Aires empilées sur le calendrier de la version. Les analyses sont prises par
+  // à-coups — sept dans une matinée, puis rien pendant trois jours — si bien
+  // qu'une aire pleine laisserait croire à une mesure continue : chaque photo
+  // porte donc un point sur le sommet, et la pente entre deux points se lit pour
+  // ce qu'elle est, une interpolation.
+  function areaTimeChart(opts) {
     var pts = (opts.points || []).slice().sort(function (a, b) { return a.t - b.t; });
     if (!pts.length) return '';
     var series = opts.series || [];
@@ -817,24 +822,68 @@
       thrEl = '<line class="thr" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) + '"/>' +
         '<text class="thr-l" x="' + (w - padR - 2) + '" y="' + (ty - 5).toFixed(1) + '" text-anchor="end">' + fmtTick(thr, opts.unit) + esc(opts.thresholdLabel ? ' ' + opts.thresholdLabel : '') + '</text>';
     }
-    var bars = '';
-    pts.forEach(function (p) {
-      var x = xOf(p.t.getTime()) - bw / 2, acc = 0;
-      var stack = series.map(function (sr) { return { s: sr, v: p.values[sr.key] || 0 }; }).filter(function (o) { return o.v > 0; });
-      stack.forEach(function (o, j) {
-        var y0 = yOf(acc), y1 = yOf(acc + o.v), hh = y0 - y1, top = j === stack.length - 1;
-        var tip = p.label + ' — ' + o.s.label + ' : ' + fmtTick(o.v, opts.unit) + ' sur ' + totalOf(p);
-        bars += '<path class="bar" d="' + barPath(x, y1, bw, Math.max(hh - (top ? 0 : 2), 0), top ? 4 : 0) + '" fill="' + o.s.color + '" data-tip="' + esc(tip) + '"/>';
-        acc += o.v;
-      });
+    // Une seule photo ne fait pas une aire : on lui donne un petit plateau,
+    // sans quoi la bande serait large de zéro et donc invisible.
+    var xs = pts.map(function (p) { return xOf(p.t.getTime()); });
+    var seul = pts.length === 1;
+    if (seul) xs = [xs[0] - 7, xs[0] + 7];
+    var vAt = function (sr, i) { return pts[seul ? 0 : i].values[sr.key] || 0; };
+    var n = xs.length;
+
+    var cum = [], i2;
+    for (i2 = 0; i2 < n; i2++) cum.push(0);
+    var aires = '', filets = '', pointsTop = '';
+    series.forEach(function (sr, si) {
+      var bas = [], haut = [];
+      for (var i = 0; i < n; i++) {
+        bas.push([xs[i], yOf(cum[i])]);
+        cum[i] += vAt(sr, i);
+        haut.push([xs[i], yOf(cum[i])]);
+      }
+      var trace = function (list) { return list.map(function (q, i) { return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(' '); };
+      aires += '<path class="ar" d="' + trace(haut) +
+        bas.slice().reverse().map(function (q) { return ' L' + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('') + ' Z" fill="' + sr.color + '"/>';
+      // Filet de surface entre deux bandes empilées : elles ne doivent pas se toucher.
+      if (si) filets += '<path class="ar-sep" d="' + trace(bas) + '"/>';
+      if (si === series.length - 1) {
+        filets += '<path class="ar-top" d="' + trace(haut) + '" stroke="' + sr.color + '"/>';
+        pointsTop = haut.map(function (q) {
+          return '<circle class="ar-pt" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3.5" stroke="' + sr.color + '"/>';
+        }).join('');
+      }
     });
-    var svg = '<svg class="lc bc bt" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
+
+    // Une zone de survol par photo, sur toute la hauteur : l'infobulle donne la
+    // photo entière plutôt qu'une bande, ce qu'une aire ne sait pas désigner.
+    var hits = pts.map(function (p, i) {
+      var x = xOf(p.t.getTime());
+      var tip = p.label + ' — ' + series.map(function (sr) { return sr.label + ' : ' + fmtTick(p.values[sr.key] || 0, opts.unit); }).join(' · ') +
+        ' — total ' + fmtTick(totalOf(p), opts.unit);
+      return '<rect class="ar-hit" x="' + (x - bw / 2).toFixed(1) + '" y="' + padT + '" width="' + bw.toFixed(1) +
+        '" height="' + plotH.toFixed(1) + '" data-tip="' + esc(tip) + '"/>';
+    }).join('');
+
+    // Étiquettes directes de la dernière photo : l'identité ne tient pas qu'à la
+    // couleur. Elles basculent à gauche du point quand il frôle le bord droit.
+    var dern = pts[pts.length - 1], xd = xOf(dern.t.getTime()), acc2 = 0, etiqs = '';
+    var aGauche = xd > w - padR - 78;
+    series.forEach(function (sr) {
+      var v = dern.values[sr.key] || 0;
+      if (!v) { acc2 += v; return; }
+      var ym = yOf(acc2 + v / 2) + 4;
+      acc2 += v;
+      etiqs += '<text class="ar-lab" x="' + (aGauche ? xd - 8 : xd + 8).toFixed(1) + '" y="' + ym.toFixed(1) +
+        '" text-anchor="' + (aGauche ? 'end' : 'start') + '" fill="' + sr.color + '">' + fmtTick(v, opts.unit) + '</text>';
+    });
+
+    var svg = '<svg class="lc bc bt ba" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
       '<line class="axis" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yOf(0).toFixed(1) + '" y2="' + yOf(0).toFixed(1) + '"/>' +
-      lx + marks + bars + thrEl + '</svg>';
+      lx + marks + aires + filets + pointsTop + thrEl + etiqs + hits + '</svg>';
     return svg + '<div class="legend">' +
       series.map(function (sr) { return '<span class="legend-item"><span class="dot" style="background:' + sr.color + '"></span>' + esc(sr.label) + '</span>'; }).join('') +
       (thr ? '<span class="legend-item"><span class="dot dash thr-dot"></span>Repère — ' + fmtTick(thr, opts.unit) + esc(opts.thresholdLabel ? ' ' + opts.thresholdLabel : '') + '</span>' : '') +
       '<span class="legend-item"><span class="dot" style="background:#8d94a3;opacity:.35"></span>Week-end</span>' +
+      '<span class="legend-item"><span class="dot ring"></span>Une photo</span>' +
       '</div>';
   }
 
@@ -894,5 +943,5 @@
   function fmtDay(d) { return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); }
   function fmtTick(v, unit) { return (Number.isInteger(v) ? v : v.toFixed(1)) + (unit || ''); }
 
-  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, barTimeChart: barTimeChart, burnupChart: burnupChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
+  root.BDV2Charts = { renderTiles: renderTiles, barChart: barChart, areaTimeChart: areaTimeChart, burnupChart: burnupChart, renderPivot: renderPivot, legend: legend, sparkline: sparkline, initTooltip: initTooltip, lineChart: lineChart };
 })(window);

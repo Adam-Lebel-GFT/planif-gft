@@ -395,12 +395,15 @@
     var suivies = (cfg.labels && cfg.labels.suivies) || [];
     var minLab = Math.max(1, Number(cfg.labels && cfg.labels.min) || 1);
     var freq = {};
-    tickets.forEach(function (t) { (t.labelList || []).forEach(function (l) { freq[l] = (freq[l] || 0) + 1; }); });
+    // Un ticket relu d'une photo archivée n'a que la chaîne brute : on la
+    // découpe ici, sinon toute une analyse rouverte serait « sans étiquette ».
+    tickets.forEach(function (t) { if (!t.labelList) t.labelList = splitLabels(t.labels); });
+    tickets.forEach(function (t) { t.labelList.forEach(function (l) { freq[l] = (freq[l] || 0) + 1; }); });
     var garde = suivies.length
       ? function (l) { return suivies.indexOf(l) !== -1; }
       : function (l) { return freq[l] >= minLab; };
     tickets.forEach(function (t) {
-      var list = t.labelList || [];
+      var list = t.labelList;
       if (!list.length) { t.labelKeys = [NO_LABEL]; return; }
       var keys = list.filter(garde);
       // Un ticket qui ne porte aucune étiquette suivie va au fourre-tout — et
