@@ -400,6 +400,7 @@ body.dd-open{overflow:hidden;}
 .legend .dot.thr-dot{background:transparent; border-top:2px dashed #C0392B; height:0; width:12px; border-radius:0;}
 .bt .today-band{fill:#fa8072; opacity:.14;}
 .bt .today{stroke:#8d94a3; stroke-dasharray:4 3;}
+.bt .mark{stroke:#9AA6B6; stroke-width:1.5; stroke-dasharray:4 3;}
 .bt .mark-l{fill:#6B7A90; font-size:10.5px; font-weight:700; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round;}
 .bt .thr-l{paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round;}
 .bt .weekend{fill:#8d94a3; opacity:.09;}

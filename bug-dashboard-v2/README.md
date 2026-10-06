@@ -263,8 +263,16 @@ couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le 
 dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes week-ends
 grisés, mêmes heures fermées comprimées.
 
-La fenêtre, sur les deux formes, est **le calendrier de la version**, étendu aux seules photos qui
-tombent en dehors — jamais jusqu'à la date de référence. Une version déployée il y a trois semaines
+Les trois mesures qui se lisent sur le calendrier — burn-up, « ouverts / terminés » et « par
+statut » — partagent **exactement la même fenêtre** : du début de la version à sa **date de fin**,
+et non à son jalon de déploiement. Les versions se suivant au même rythme, leurs calendriers ont
+donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au déploiement les rendait
+inégales selon que le jalon est renseigné ou non. Le **jalon qui fait foi** (gel de code par
+défaut) y est toujours tracé en pointillé, sur les trois formes, à une ligne du repère de la date
+de référence pour que les deux libellés ne se chevauchent pas.
+
+Cette fenêtre est **le calendrier de la version**, étendu aux seules photos qui tombent en dehors
+— jamais jusqu'à la date de référence. Une version déployée il y a trois semaines
 traînerait sinon trois semaines de calendrier vide à droite de ses données. Pour la même raison, le
 repère de la date de référence n'est tracé **que s'il tombe dans la fenêtre** : hors d'elle, il se
 collait au bord et son libellé était coupé.

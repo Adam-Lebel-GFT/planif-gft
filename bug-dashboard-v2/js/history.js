@@ -382,6 +382,12 @@
         '<b style="color:var(--critical)">' + d(miss) + ' pts</b>' + (o.ppd > 0 ? ', soit ' + d(miss / o.ppd) + ' j ouvré' + (miss / o.ppd >= 2 ? 's' : '') : '') + tail };
   }
 
+  // Fin de fenêtre d'une version : sa date de fin, et non son jalon de
+  // déploiement. Les versions se suivent au même rythme, leurs calendriers ont
+  // donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au
+  // déploiement les rendait inégales selon que le jalon est renseigné ou non.
+  function versionEnd(pv, gate) { return pv.end || pv.deploy || gate; }
+
   function gateLabel(pv) {
     return root.BDV2Plan && root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(pv.deadlineKey || 'freeze') : 'Code freeze';
   }
@@ -404,7 +410,7 @@
       if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
     }
     return CH.burnupChart({
-      start: pv.start, end: pv.deploy || pv.end || gate, deadline: gate,
+      start: pv.start, end: versionEnd(pv, gate), deadline: gate,
       deadlineLabel: gateLabel(pv),
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
       openFrom: openWin().a, openTo: openWin().z,
@@ -460,7 +466,8 @@
     }).filter(function (p) { return p.t && !isNaN(p.t.getTime()); });
     if (!points.length) return null;
     return CH.areaTimeChart({
-      start: pv.start, end: pv.deploy || pv.end || gate, today: C.startOfDay(S.refDate),
+      start: pv.start, end: versionEnd(pv, gate), today: C.startOfDay(S.refDate),
+      deadline: gate, deadlineLabel: gateLabel(pv),
       openFrom: openWin().a, openTo: openWin().z, points: points, series: series,
       threshold: cfg.history.threshold, thresholdLabel: 'tickets'
     });
