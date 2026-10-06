@@ -263,6 +263,12 @@ couleurs de « Terminé / en cours » partout ailleurs. Sur une version dont le 
 dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre, mêmes week-ends
 grisés, mêmes heures fermées comprimées.
 
+La fenêtre, sur les deux formes, est **le calendrier de la version**, étendu aux seules photos qui
+tombent en dehors — jamais jusqu'à la date de référence. Une version déployée il y a trois semaines
+traînerait sinon trois semaines de calendrier vide à droite de ses données. Pour la même raison, le
+repère de la date de référence n'est tracé **que s'il tombe dans la fenêtre** : hors d'elle, il se
+collait au bord et son libellé était coupé.
+
 Les deux états y sont des **aires empilées**, non des barres. Des analyses prises par à-coups —
 sept dans une matinée, puis rien pendant trois jours — donnaient un peigne de barres fines séparées
 de larges blancs ; l'aire rend la forme continue et laisse le périmètre qui bouge se lire au

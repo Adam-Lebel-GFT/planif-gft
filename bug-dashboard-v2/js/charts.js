@@ -498,6 +498,12 @@
   // séries entre elles), empilées (composition d'un total), et bandes empilées
   // à 100 % (part de chaque série). Extrémité arrondie côté valeur, 2 px de
   // fond entre deux remplissages — les segments restent distincts sans trait.
+  // La journée de référence chevauche-t-elle la fenêtre affichée ?
+  function dansFenetre(jour, t0, t1) {
+    var d0 = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate()).getTime();
+    return d0 <= t1 && d0 + 86400000 >= t0;
+  }
+
   function barPath(x, y, w, h, r) {
     if (h <= 0.2) return '';
     r = Math.min(r || 0, w / 2, h);
@@ -593,7 +599,10 @@
     var t0 = opts.start.getTime(), t1 = opts.end.getTime();
     // Une photo hors des bornes du plan élargit le domaine plutôt que d'être rognée.
     pts.forEach(function (p) { var t = p.t.getTime(); if (t < t0) t0 = t; if (t > t1) t1 = t; });
-    if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
+    // La fenêtre est le calendrier de la version, étendu aux seules photos qui
+    // tombent en dehors. Jamais jusqu'à la date de référence : une version
+    // close depuis trois semaines traînerait trois semaines de calendrier vide
+    // à droite de ses données.
     if (t1 <= t0) t1 = t0 + 86400000;
     var plotW = w - padL - padR;
     // Journée de travail (8 h – 19 h par défaut) et compression. Les nuits et
@@ -689,7 +698,9 @@
 
     // La date de référence est une journée, pas un instant : on la surligne en
     // entier plutôt que de tirer un trait au milieu de rien.
-    if (opts.today) {
+    // Hors de la fenêtre, le repère viendrait se coller au bord et son libellé
+    // serait coupé : sur une version close, il n'a rien à y faire.
+    if (opts.today && dansFenetre(opts.today, t0, t1)) {
       var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
       var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
       if (bx1 > bx0) marks += '<rect class="today-band" x="' + bx0.toFixed(1) + '" y="' + padT + '" width="' + (bx1 - bx0).toFixed(1) +
@@ -775,7 +786,10 @@
     var padL = 40, padR = 16, padT = 14, padB = 28;
     var t0 = opts.start.getTime(), t1 = opts.end.getTime();
     pts.forEach(function (p) { var t = p.t.getTime(); if (t < t0) t0 = t; if (t > t1) t1 = t; });
-    if (opts.today) { var tt = opts.today.getTime(); if (tt > t1) t1 = tt; if (tt < t0) t0 = tt; }
+    // La fenêtre est le calendrier de la version, étendu aux seules photos qui
+    // tombent en dehors. Jamais jusqu'à la date de référence : une version
+    // close depuis trois semaines traînerait trois semaines de calendrier vide
+    // à droite de ses données.
     if (t1 <= t0) t1 = t0 + 86400000;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var OPEN_A = opts.openFrom == null ? 8 : opts.openFrom, OPEN_B = opts.openTo == null ? 19 : opts.openTo;
@@ -805,7 +819,7 @@
       lx += '<text x="' + xOf(td).toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + fmtDay(new Date(td)) + '</text>';
     }
     var marks = '';
-    if (opts.today) {
+    if (opts.today && dansFenetre(opts.today, t0, t1)) {
       var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
       var bx0 = Math.max(xOf(d0), padL), bx1 = Math.min(xOf(d0 + 86400000), w - padR);
       if (bx1 > bx0) marks += '<rect class="today-band" x="' + bx0.toFixed(1) + '" y="' + padT + '" width="' + (bx1 - bx0).toFixed(1) +
@@ -872,8 +886,13 @@
       if (!v) { acc2 += v; return; }
       var ym = yOf(acc2 + v / 2) + 4;
       acc2 += v;
+      // Basculée à gauche, l'étiquette tombe dans l'aire : elle y prend l'encre
+      // qui se lit sur cette teinte, et son halo la couleur du fond. Dehors,
+      // sur le blanc de la page, elle garde la couleur de sa série.
+      var dedans = aGauche;
       etiqs += '<text class="ar-lab" x="' + (aGauche ? xd - 8 : xd + 8).toFixed(1) + '" y="' + ym.toFixed(1) +
-        '" text-anchor="' + (aGauche ? 'end' : 'start') + '" fill="' + sr.color + '">' + fmtTick(v, opts.unit) + '</text>';
+        '" text-anchor="' + (aGauche ? 'end' : 'start') + '" fill="' + (dedans ? P.textOn(sr.color) : sr.color) +
+        '" stroke="' + (dedans ? sr.color : '#fff') + '">' + fmtTick(v, opts.unit) + '</text>';
     });
 
     var svg = '<svg class="lc bc bt ba" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +
