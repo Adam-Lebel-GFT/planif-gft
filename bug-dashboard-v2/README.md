@@ -264,10 +264,10 @@ dates, la mesure se lit **sur le calendrier**, comme le burn-up : même fenêtre
 grisés, mêmes heures fermées comprimées.
 
 Les trois mesures qui se lisent sur le calendrier — burn-up, « ouverts / terminés » et « par
-statut » — partagent **exactement la même fenêtre** : du début de la version à sa **date de fin**,
-et non à son jalon de déploiement. Les versions se suivant au même rythme, leurs calendriers ont
-donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au déploiement les rendait
-inégales selon que le jalon est renseigné ou non. Le **jalon qui fait foi** (gel de code par
+statut » — partagent **exactement la même fenêtre** : du début de la version à son **déploiement**.
+Au-delà, la version est partie ; aller jusqu'à sa date de fin traînerait une semaine de calendrier
+sans objet. Le plan posant ce jalon sur chaque version au même décalage, tous les calendriers
+gardent la même longueur et se comparent d'un onglet à l'autre. Le **jalon qui fait foi** (gel de code par
 défaut) y est toujours tracé en pointillé, sur les trois formes, à une ligne du repère de la date
 de référence pour que les deux libellés ne se chevauchent pas.
 
