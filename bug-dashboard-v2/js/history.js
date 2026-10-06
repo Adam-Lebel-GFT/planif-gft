@@ -382,11 +382,12 @@
         '<b style="color:var(--critical)">' + d(miss) + ' pts</b>' + (o.ppd > 0 ? ', soit ' + d(miss / o.ppd) + ' j ouvré' + (miss / o.ppd >= 2 ? 's' : '') : '') + tail };
   }
 
-  // Fin de fenêtre d'une version : sa date de fin, et non son jalon de
-  // déploiement. Les versions se suivent au même rythme, leurs calendriers ont
-  // donc la même longueur et se comparent d'un onglet à l'autre ; s'arrêter au
-  // déploiement les rendait inégales selon que le jalon est renseigné ou non.
-  function versionEnd(pv, gate) { return pv.end || pv.deploy || gate; }
+  // Fin de fenêtre d'une version : son déploiement. Au-delà, la version est
+  // partie, et sa date de fin traînerait une semaine de calendrier sans objet.
+  // Le plan pose ce jalon sur chaque version au même décalage, si bien que tous
+  // les calendriers gardent la même longueur et se comparent d'un onglet à
+  // l'autre. Sans jalon, on retombe sur la fin de version puis sur le gel.
+  function versionEnd(pv, gate) { return pv.deploy || pv.end || gate; }
 
   function gateLabel(pv) {
     return root.BDV2Plan && root.BDV2Plan.boundaryLabel ? root.BDV2Plan.boundaryLabel(pv.deadlineKey || 'freeze') : 'Code freeze';
