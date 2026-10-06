@@ -278,6 +278,15 @@ une interpolation entre deux mesures. Le survol d'une photo donne ses chiffres e
 dernière est étiquetée à même les bandes. Une version qui n'a qu'une photo garde un petit plateau
 plutôt qu'une aire large de zéro.
 
+**« Par statut (nombre) »** se lit de la même façon, et devient alors un **diagramme de flux
+cumulé** : un ticket est dans exactement un statut, donc les aires s'empilent et leur sommet est le
+périmètre. Elles vont du plus avancé en bas au moins avancé en haut, comme « ouverts / terminés »
+dont elles sont le détail. Au-delà de **huit bandes**, les moins avancées sont **regroupées**
+plutôt que retirées — les retirer ferait mentir le sommet ; comme ce sont les premières du flux,
+leur place groupée est bien en haut de la pile. Les couleurs sont celles que Configurer → Statuts
+donne à chaque statut partout ailleurs. Une bande trop mince ne porte pas son chiffre : le survol
+d'une photo les donne tous.
+
 Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
 pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →
 Règles → Évolution ; **0** retire la ligne) ; il apparaît sous les deux formes, et l'échelle

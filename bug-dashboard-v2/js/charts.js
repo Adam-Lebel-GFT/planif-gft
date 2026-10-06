@@ -883,7 +883,9 @@
     var aGauche = xd > w - padR - 78;
     series.forEach(function (sr) {
       var v = dern.values[sr.key] || 0;
-      if (!v) { acc2 += v; return; }
+      // Une bande trop mince ne porte pas son chiffre : neuf statuts empilés
+      // donneraient neuf étiquettes collées. Le survol les donne toutes.
+      if (!v || yOf(acc2) - yOf(acc2 + v) < 13) { acc2 += v; return; }
       var ym = yOf(acc2 + v / 2) + 4;
       acc2 += v;
       // Basculée à gauche, l'étiquette tombe dans l'aire : elle y prend l'encre
