@@ -24,7 +24,6 @@
     { slug: 'analyse-capacite',  label: 'Analyse de capacité' },
     { slug: 'whiteboard',        label: 'Whiteboard' },
     { slug: 'releases-planning', label: 'Plan de livraisons' },
-    { slug: 'bug-dashboard',     label: 'Bug Dashboard (lite)' },
     { slug: 'bug-dashboard-v2',  label: 'Bug Dashboard v2 (radar)' },
     { slug: 'admin',             label: 'Administration (accès dynamique)' }
   ];
