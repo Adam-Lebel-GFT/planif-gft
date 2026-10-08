@@ -145,7 +145,33 @@
     renderAlerts(vis);
     renderCube(vis);
     hooks.render.forEach(function (fn) { try { fn(vis, S); } catch (e) { console.error(e); } });
-    $('filterSummary').textContent = vis.length === baseTickets().length ? vis.length + ' tickets' : vis.length + ' tickets affichés sur ' + baseTickets().length;
+    renderFilterSummary(vis);
+  }
+
+  // La barre étant repliée la plupart du temps, le résumé doit dire non
+  // seulement combien de tickets restent, mais sur quoi : un filtre oublié
+  // fausse tous les chiffres de la page et doit se voir sans déplier.
+  function renderFilterSummary(vis) {
+    var f = S.filters, base = baseTickets(), parts = [];
+    // Les libellés viennent des boutons qui viennent d'être rendus : le résumé
+    // ne peut pas nommer un filtre autrement que la barre elle-même.
+    var seg = function (id) {
+      var b = $(id) && $(id).querySelector('button.is-on');
+      if (!b) return '';
+      return ((b.firstChild ? b.firstChild.textContent : b.textContent) || '').trim();
+    };
+    if (f.state !== 'all') parts.push(seg('fState').toLowerCase());
+    if (f.origin !== 'all') parts.push('origine ' + seg('fOrigin'));
+    if (f.fix !== 'all') parts.push(f.fix === 'with' ? 'avec Fix Version' : 'sans Fix Version');
+    if (f.version !== 'all') parts.push('version ' + seg('fVersion'));
+    if (f.teams.length) parts.push(f.teams.length + (f.teams.length > 1 ? ' équipes' : ' équipe'));
+    if (f.priorities.length) parts.push(f.priorities.length + (f.priorities.length > 1 ? ' priorités' : ' priorité'));
+    var restreint = vis.length !== base.length || parts.length > 0;
+    var el = $('filterSummary');
+    el.textContent = restreint
+      ? vis.length + ' sur ' + base.length + ' tickets' + (parts.length ? ' · ' + parts.join(' · ') : '')
+      : vis.length + ' tickets';
+    el.classList.toggle('is-filtered', restreint);
   }
 
   function applyView() {
@@ -518,7 +544,12 @@
     document.querySelectorAll('.collapse-btn[data-target]').forEach(function (b) {
       var target = $(b.dataset.target);
       var apply = function (isC) { target.classList.toggle('hidden', isC); b.classList.toggle('is-collapsed', isC); b.querySelector('.lbl').textContent = isC ? 'Afficher' : 'Réduire'; };
-      apply(!!collapsed[b.dataset.target]);
+      // data-collapsed-default : pour une section qui sert peu, replié est le
+      // bon état de départ. Un choix déjà fait l'emporte. On fixe l'état dans
+      // `collapsed` plutôt que de le laisser indéfini, sans quoi le premier
+      // clic calcule !undefined = true et replie une section déjà repliée.
+      if (collapsed[b.dataset.target] === undefined) collapsed[b.dataset.target] = b.dataset.collapsedDefault === '1';
+      apply(collapsed[b.dataset.target]);
       b.addEventListener('click', function () { collapsed[b.dataset.target] = !collapsed[b.dataset.target]; apply(collapsed[b.dataset.target]); try { localStorage.setItem(LS.collapsed, JSON.stringify(collapsed)); } catch (e) {} });
     });
     // délégation : drill-down + outils de carte

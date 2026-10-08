@@ -63,16 +63,26 @@
 
   <div id="archiveBanner" class="archive-banner hidden"></div>
 
+  <!-- La barre reste repliée par défaut : les filtres servent peu. Ce qui
+       restreint l'affichage ne se cache jamais pour autant — le compte des
+       tickets, la sélection issue d'un clic et « Réinitialiser » tiennent dans
+       l'en-tête, visibles pliée comme dépliée. -->
   <div class="filterbar" id="filterbar">
-    <div class="filter-group"><span class="filter-label">État</span><div class="seg" id="fState"></div></div>
-    <div class="filter-group"><span class="filter-label">Origine</span><div class="seg" id="fOrigin"></div></div>
-    <div class="filter-group"><span class="filter-label">Fix Version</span><div class="seg" id="fFix"></div></div>
-    <div class="filter-group hidden" id="fVersionGroup"><span class="filter-label">Version</span><div class="seg" id="fVersion"></div></div>
-    <div class="filter-group"><span class="filter-label">Équipes</span><div id="fTeams" class="filter-group"></div></div>
-    <div class="filter-group"><span class="filter-label">Priorité</span><div id="fPriority" class="filter-group"></div></div>
-    <span id="fPick"></span>
-    <span class="filter-summary" id="filterSummary"></span>
-    <button type="button" class="ghost small filter-reset" id="filterReset">Réinitialiser</button>
+    <div class="filter-head">
+      <span class="filter-label">Filtres</span>
+      <span id="fPick"></span>
+      <span class="filter-summary" id="filterSummary"></span>
+      <button type="button" class="ghost small filter-reset" id="filterReset">Réinitialiser</button>
+      <button type="button" class="collapse-btn" data-target="filterBody" data-collapsed-default="1"><span class="chev">▾</span><span class="lbl">Afficher</span></button>
+    </div>
+    <div class="filter-body" id="filterBody">
+      <div class="filter-group"><span class="filter-label">État</span><div class="seg" id="fState"></div></div>
+      <div class="filter-group"><span class="filter-label">Origine</span><div class="seg" id="fOrigin"></div></div>
+      <div class="filter-group"><span class="filter-label">Fix Version</span><div class="seg" id="fFix"></div></div>
+      <div class="filter-group hidden" id="fVersionGroup"><span class="filter-label">Version</span><div class="seg" id="fVersion"></div></div>
+      <div class="filter-group"><span class="filter-label">Équipes</span><div id="fTeams" class="filter-group"></div></div>
+      <div class="filter-group"><span class="filter-label">Priorité</span><div id="fPriority" class="filter-group"></div></div>
+    </div>
   </div>
 
   <section id="sec-kpis">
