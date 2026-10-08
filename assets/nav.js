@@ -10,9 +10,9 @@
      <script src="../acces/auth.js"></script>
      <script src="../assets/nav.js"></script>
 
-   Le menu s'insère dans le premier .tk-topbar de la page, juste avant
-   le nom de l'outil (.tk-topbar__tool). Sans session ou sans accès à
-   la base, la barre reste telle quelle.
+   Le menu s'insère dans chaque barre de la page (.tk-topbar, ou .wb-topbar
+   pour le Whiteboard), juste avant le nom de l'outil. Sans session ou
+   sans accès à la base, la barre reste telle quelle.
    ============================================================= */
 (function (root) {
   'use strict';
@@ -42,14 +42,15 @@
     '.tk-nav__menu{position:absolute;top:calc(100% + 12px);left:0;width:340px;max-height:calc(100vh - 80px);overflow-y:auto;background:#fff;border:1px solid #E8EAED;border-radius:12px;box-shadow:0 18px 44px rgba(12,26,46,.28);padding:8px;z-index:3000;font-family:"Manrope",sans-serif}' +
     '.tk-nav__menu[hidden]{display:none}' +
     '.tk-nav__h{font:500 9px "DM Mono",monospace;letter-spacing:2px;text-transform:uppercase;color:#6B7A90;margin:8px 10px 6px}' +
-    '.tk-nav__item{display:flex;align-items:center;gap:12px;width:100%;padding:9px 10px;border-radius:8px;color:#0C1A2E;font-size:13px;font-weight:600;line-height:1.3;text-decoration:none}' +
-    '.tk-nav__item:hover{background:#F4F5F7;text-decoration:none}' +
+    '.tk-nav .tk-nav__item{display:flex;align-items:center;gap:12px;width:100%;padding:9px 10px;border-radius:8px;color:#0C1A2E;font-size:13px;font-weight:600;line-height:1.3;text-decoration:none}' +
+    '.tk-nav .tk-nav__item:hover{background:#F4F5F7;text-decoration:none}' +
     '.tk-nav__ic{width:30px;height:30px;border-radius:6px;background:#E4EAF3;display:grid;place-items:center;font:500 10px "DM Mono",monospace;color:#0C447C;flex-shrink:0}' +
     '.tk-nav__item small{display:block;font:400 11px "Manrope",sans-serif;color:#6B7A90;margin-top:1px}' +
     '.tk-nav__item[aria-current="page"]{background:#E6F4EE}' +
     '.tk-nav__item[aria-current="page"] .tk-nav__ic{background:#1A7A42;color:#fff}' +
     '.tk-nav__here{margin-left:auto;font:500 9px "DM Mono",monospace;letter-spacing:1px;text-transform:uppercase;color:#1A7A42}' +
     '.tk-nav__hr{border:0;border-top:1px solid #E8EAED;margin:6px 0}' +
+    '@media(max-width:720px){.wb-topbar .tk-nav__lbl,.wb-topbar .tk-nav__sep{display:none}.wb-topbar .tk-nav{gap:0}}' +
     '@media(max-width:700px){.tk-nav{position:static}.tk-nav__menu{position:fixed;top:64px;left:16px;right:16px;width:auto}}';
 
   function esc(s) {
@@ -88,24 +89,28 @@
   }
 
   function monter(outils) {
-    var barre = document.querySelector('.tk-topbar');
-    var nom = barre && barre.querySelector('.tk-topbar__tool');
-    if (!barre || !nom || barre.querySelector('.tk-nav')) return;
+    var barres = document.querySelectorAll('.tk-topbar, .wb-topbar');
+    if (!barres.length) return;
+    var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    Array.prototype.forEach.call(barres, function (barre) { monterDans(barre, outils); });
+  }
+
+  function monterDans(barre, outils) {
+    var nom = barre.querySelector('.tk-topbar__tool, .tool-name');
+    if (!nom || barre.querySelector('.tk-nav')) return;
 
     var courant = slugCourant();
     var normaux = outils.filter(function (o) { return o.slug !== 'admin'; });
     var admin = outils.filter(function (o) { return o.slug === 'admin'; });
 
-    var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-
     var nav = document.createElement('span');
     nav.className = 'tk-nav';
     nav.innerHTML =
-      '<button type="button" class="tk-nav__btn" aria-haspopup="menu" aria-expanded="false" aria-controls="tk-nav-menu">' +
+      '<button type="button" class="tk-nav__btn" aria-haspopup="menu" aria-expanded="false">' +
         '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg>' +
-        'Outils</button>' +
+        '<span class="tk-nav__lbl">Outils</span></button>' +
       '<span class="tk-nav__sep" aria-hidden="true"></span>' +
-      '<div class="tk-nav__menu" id="tk-nav-menu" role="menu" hidden>' +
+      '<div class="tk-nav__menu" role="menu" hidden>' +
         '<div class="tk-nav__h">Mes outils</div>' +
         normaux.map(function (o) { return item(o, courant); }).join('') +
         (admin.length ? '<hr class="tk-nav__hr">' + admin.map(function (o) { return item(o, courant); }).join('') : '') +
