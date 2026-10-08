@@ -73,6 +73,18 @@ et Priorité sont des puces multi-sélection (plusieurs valeurs = une union) ; l
 affichée par le radar, c'est-à-dire le regroupement défini dans Configurer → Priorités. Les filtres
 sont conservés dans ce navigateur.
 
+La barre est **repliée par défaut** — les filtres servent peu — et se déplie par le bouton
+« Afficher » à droite, comme la section « 1. Données ». Le choix est conservé dans ce navigateur
+(`bdv2:collapsed`).
+
+Ce qui restreint l'affichage ne se cache jamais pour autant : l'en-tête de la barre, visible
+repliée comme dépliée, porte le compte des tickets, le détail des filtres actifs, la puce de
+sélection issue d'un clic et « Réinitialiser ». Le résumé passe de « 70 tickets » à
+« 2 sur 70 tickets · ouverts · origine PRJ301 · sans Fix Version · 1 équipe », en couleur
+d'accent — un filtre oublié fausse tous les chiffres de la page, il doit se voir sans déplier.
+Les libellés du résumé sont lus sur les boutons de la barre, donc toujours ceux que la barre
+affiche.
+
 Une **alerte se transforme en filtre** : le clic ouvre la fiche des tickets comme avant, et son
 en-tête porte « ⌖ Filtrer le radar » — le tableau de bord ne garde alors que ces tickets-là,
 signalés par une puce bleue dans la barre. La liste est figée au moment du clic (les alertes se
