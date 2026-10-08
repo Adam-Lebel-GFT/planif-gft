@@ -9,7 +9,7 @@
   var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config, CH = root.BDV2Charts, DD = root.BDV2Drill;
   var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var $ = function (id) { return document.getElementById(id); };
-  var LS = { raw: 'bdv2:rawPaste', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
+  var LS = { raw: 'bdv2:rawPaste', view: 'bdv2:view', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
 
   var S = {
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
@@ -72,9 +72,9 @@
     var cols = C.detectColumns(parsed.headers);
     if (cols.status === -1) { setMsg('Colonne « Status » introuvable dans les en-têtes collés.', 'err'); renderColumnChips(cols); return false; }
     S.raw = raw; S.headers = parsed.headers; S.cols = cols; S.archived = null; $('archiveBanner').classList.add('hidden');
-    // Un collage neuf s'analyse à l'instant présent : il n'y a plus de champ
-    // pour en décider. Seule une analyse rouverte depuis le journal impose sa
-    // propre date, et elle le fait après coup.
+    // La date de référence est le moment de l'analyse, toujours — elle ne se
+    // choisit plus. Seule une analyse rouverte depuis le journal impose la
+    // sienne, et elle le fait après coup.
     S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
     S.tickets = C.buildTickets(parsed.rows, parsed.headers, cols);
     S.analysisName = ($('analysisName').value || '').trim();
@@ -94,9 +94,9 @@
   function loadArchived(tickets, meta) {
     S.tickets = tickets.map(function (t, i) { t.idx = i; return t; });
     S.raw = ''; S.archived = meta; S.analysisId = meta.id || null; S.analysisName = meta.nom || '';
-    // Une analyse du journal se rejoue à SA date de référence, celle où elle a
-    // été prise — sans quoi ses retards et sa prévision seraient recalculés sur
-    // aujourd'hui et ne diraient plus ce qu'elle disait.
+    // Une analyse du journal se rejoue à SA date, celle où elle a été prise :
+    // sans quoi ses retards et sa prévision seraient recalculés sur aujourd'hui
+    // et ne diraient plus ce qu'elle disait.
     if (meta.refDate) S.refDate = new Date(meta.refDate + 'T00:00:00');
     if (meta.refHalf != null) S.refHalf = Number(meta.refHalf) || 0;
     var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
@@ -138,7 +138,7 @@
     var conf = cfg();
     hooks.prepare.forEach(function (fn) { try { fn(S.tickets, S); } catch (e) { console.error(e); } });
     C.enrich(S.tickets, conf, S.refDate);
-    applySections();
+    applyView();
     renderFilterBar();
     var vis = visibleTickets();
     renderKpis(vis);
@@ -148,10 +148,9 @@
     $('filterSummary').textContent = vis.length === baseTickets().length ? vis.length + ' tickets' : vis.length + ' tickets affichés sur ' + baseTickets().length;
   }
 
-  // Une seule configuration de sections, partagée : ce que l'un décide
-  // d'afficher, tout le monde le voit. Il n'y a plus de vue par rôle.
-  function applySections() {
-    var sec = cfg().sections || {};
+  function applyView() {
+    var v = cfg().views[S.view] || cfg().views.projet;
+    var sec = v.sections || {};
     ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].forEach(function (s) {
       var el = $('sec-' + s); if (el) el.classList.toggle('hidden', sec[s] === false || !available[s]);
     });
@@ -270,11 +269,13 @@
   // ── Cube ───────────────────────────────────────────────────────────
   function renderCube(vis) {
     var conf = cfg();
+    var view = conf.views[S.view];
     var cards = conf.cards.filter(function (c) {
       if (!c.visible) return false;
       // Sans plan publié, la dimension Version est vide — en lignes, en
       // colonnes comme en découpage.
-      return !(!S.hasPlan && (c.rows === 'version' || c.cols === 'version' || c.split === 'version'));
+      if (!S.hasPlan && (c.rows === 'version' || c.cols === 'version' || c.split === 'version')) return false;
+      return !view || view.cards.indexOf(c.id) !== -1 || S.view === 'projet';
     });
     var base = baseTickets();
     S.cardCtx = {};
@@ -330,7 +331,9 @@
   function addCard() {
     var id = 'card_' + Date.now().toString(36);
     CFG.update(function (c) {
-      c.cards.push({ id: id, title: 'Nouvelle carte', rows: 'team', cols: 'status', split: null, measure: 'count', style: 'hstack', visible: true });
+      c.cards.push({ id: id, title: 'Nouvelle carte', rows: 'team', cols: 'status', measure: 'count', style: 'hstack', visible: true });
+      var v = c.views[S.view];
+      if (v && v.cards.indexOf(id) === -1) v.cards.push(id);
     });
     var el = document.querySelector('[data-card-title="' + id + '"]');
     if (el) { el.focus(); el.select(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
@@ -468,6 +471,12 @@
       S.tickets = []; S.raw = ''; S.archived = null; $('archiveBanner').classList.add('hidden'); $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); $('colChips').innerHTML = ''; setMsg('', ''); DD.close();
       document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } }));
     });
+    // La date de référence est le moment de l'analyse : elle n'a plus de champ.
+    S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
+    // La vue se choisit désormais dans le tiroir (Configurer → Vues) : c'est un
+    // réglage, pas un geste quotidien, et l'en-tête n'a plus de ligne d'outils.
+    try { S.view = localStorage.getItem(LS.view) || 'projet'; } catch (e) {}
+    if (!cfg().views[S.view]) S.view = 'projet';
     $('cfgBtn').addEventListener('click', function () { CFG.open(configCtx()); });
     $('cfgClose').addEventListener('click', CFG.close);
     $('cfgBackdrop').addEventListener('click', CFG.close);
@@ -515,6 +524,7 @@
         if (!confirm('Supprimer la carte « ' + (card ? card.title : id) + ' » ?')) return;
         CFG.update(function (c) {
           c.cards = c.cards.filter(function (x) { return x.id !== id; });
+          Object.keys(c.views).forEach(function (v) { c.views[v].cards = c.views[v].cards.filter(function (x) { return x !== id; }); });
         });
         return;
       }
@@ -532,6 +542,21 @@
       else if (d.cardMeasure !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardMeasure; }); if (card) card.measure = t.value; });
       else if (d.cardWidth !== undefined && t.classList.contains('dim-select')) CFG.update(function (c) { var card = c.cards.find(function (x) { return x.id === d.cardWidth; }); if (card) card.width = t.value; });
     });
+  }
+
+  // La vue active et son enregistrement vivent ici — c'est l'état de la page,
+  // pas la configuration — mais se commandent depuis le tiroir.
+  function setView(id) {
+    if (!cfg().views[id] || id === S.view) return;
+    S.view = id;
+    try { localStorage.setItem(LS.view, id); } catch (e) {}
+    rerender();
+  }
+
+  function saveView() {
+    var v = cfg().views[S.view]; if (!v) return;
+    CFG.update(function (c) { c.views[S.view].cards = c.cards.filter(function (x) { return x.visible; }).map(function (x) { return x.id; }); });
+    setMsg('Vue « ' + v.label + ' » enregistrée avec les cartes visibles.', 'ok');
   }
 
   function configCtx() {
@@ -563,6 +588,6 @@
     document.dispatchEvent(new CustomEvent('bdv2:ready'));
   }
 
-  root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, setMsg: setMsg, esc: esc, ticketId: ticketId };
+  root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, view: function () { return S.view; }, setView: setView, saveView: saveView, setMsg: setMsg, esc: esc, ticketId: ticketId };
   document.addEventListener('DOMContentLoaded', init);
 })(window);

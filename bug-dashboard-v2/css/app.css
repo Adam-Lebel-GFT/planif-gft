@@ -346,7 +346,8 @@ body.dd-open{overflow:hidden;}
 .cfg-input{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-family:var(--font); font-size:12px; width:150px;}
 .cfg-input.num{width:64px; font-family:var(--font-mono); text-align:right;}
 .cfg-select{border:1px solid var(--border); border-radius:6px; padding:5px 6px; font-family:var(--font); font-size:12px; background:#fff; max-width:170px;}
-.cfg-sections{display:flex; flex-wrap:wrap; gap:8px 18px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2);}
+.cfg-table tr.is-on{background:#EAF1F8;}
+.cfg-table tr.is-on .cfg-input{border-color:var(--navy);}
 .cfg-check{font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
 .cfg-color summary{list-style:none; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:6px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
 .cfg-color summary:hover{border-color:var(--navy);}
