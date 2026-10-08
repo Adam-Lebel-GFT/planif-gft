@@ -35,10 +35,6 @@ button.small{padding:6px 10px; font-size:11.5px;}
 .hero{display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; padding-bottom:16px; margin-bottom:18px; border-bottom:2px solid var(--navy);}
 .hero h1{font-size:22px; margin:0 0 4px; color:var(--navy); font-weight:800; letter-spacing:-.3px;}
 .hero p{margin:0; color:var(--muted); font-size:13px; max-width:760px;}
-.hero-fields{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;}
-.hero-fields label{font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px; font-weight:600;}
-.hero-fields input, .hero-fields select{font-family:var(--font-mono); font-size:12.5px; border:1px solid var(--border); border-radius:6px; padding:7px 9px; background:#fff; color:var(--navy);}
-.hero-fields select{font-family:var(--font); font-weight:700;}
 .mode-badge{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; background:#EAF1F8; color:var(--accent);}
 .mode-badge.local{background:#FBF1E6; color:#b0611f;}
 .mode-badge a{color:inherit;}
@@ -350,6 +346,7 @@ body.dd-open{overflow:hidden;}
 .cfg-input{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-family:var(--font); font-size:12px; width:150px;}
 .cfg-input.num{width:64px; font-family:var(--font-mono); text-align:right;}
 .cfg-select{border:1px solid var(--border); border-radius:6px; padding:5px 6px; font-family:var(--font); font-size:12px; background:#fff; max-width:170px;}
+.cfg-sections{display:flex; flex-wrap:wrap; gap:8px 18px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2);}
 .cfg-check{font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
 .cfg-color summary{list-style:none; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:6px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
 .cfg-color summary:hover{border-color:var(--navy);}

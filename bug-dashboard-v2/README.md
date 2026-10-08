@@ -17,7 +17,7 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 | `js/config.js` | configuration (locale + partagée Supabase) et tiroir de configuration |
 | `js/charts.js` | rendu des graphiques (empilé h/v, heatmap, barres, donut, tableau, courbes) |
 | `js/drill.js` | fenêtre de détail des tickets (onglets réalisé/reste, CSV, JQL, Jira) |
-| `js/app.js` | orchestration, filtres, bandeau, alertes, cube, vues, session |
+| `js/app.js` | orchestration, filtres, bandeau, alertes, cube, session |
 | `js/plan.js` | lot 2 — plan de livraisons, rattachement Target date → version, train |
 | `js/history.js` | lot 3 — journal des analyses, deltas, évolution, comparateur |
 | `js/ai.js` | lot 4 — synthèse IA et « Demander au Radar » — **non chargé** (voir « Synthèse IA masquée ») |
@@ -36,8 +36,8 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 3. **Synthèse IA masquée** : la section « Synthèse IA » et « Demander au Radar » ne sont plus
    affichées. Le module reste livré : pour le réactiver, décommenter
    `<script src="js/ai.js"></script>` à la fin de `index.html` (l'onglet « IA » du tiroir de
-   configuration et la case de section « ai » des vues réapparaissent alors, la section restant
-   pilotée par vue). Côté serveur, une fois par l'administrateur : tableau de bord Supabase →
+   configuration et la case « Synthèse IA » des sections affichées réapparaissent alors).
+   Côté serveur, une fois par l'administrateur : tableau de bord Supabase →
    Edge Functions → `bug-radar-ai` → Secrets → `ANTHROPIC_API_KEY`. Modèle par défaut :
    Claude Haiku 4.5 (le moins coûteux), modifiable dans Configurer → IA. La clé n'est jamais
    dans la page.
@@ -88,10 +88,13 @@ comparaison serait fausse.
 Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
 doigt), le titre s'édite en place, les cinq sélecteurs changent lignes, colonnes, découpage,
 mesure et largeur, les icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
-avec des réglages par défaut, visible dans la vue courante, et place le curseur dans son titre.
+avec des réglages par défaut et place le curseur dans son titre.
 L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle aussi réordonnable au
-glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
-absentes de la vue gardent leur place dans la liste.
+glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées
+gardent leur place dans la liste.
+
+Une carte dont les lignes, les colonnes **ou le découpage** sont la dimension Version ne
+s'affiche pas tant qu'aucun plan n'est publié : elle serait vide.
 
 La **heatmap ouverts / terminés** (icône ◫, proposée seulement quand les colonnes de la carte
 sont les statuts) sépare la grille en deux blocs — en cours à gauche, terminé à droite, filet
@@ -202,12 +205,32 @@ choisie explicitement est conservée.
 
 Le temps restant est compté en **demi-journées de travail** : `releases-planning` publie ses
 jalons avec leur demi-journée (matin `T00:00`, après-midi `T12:00`), et la demi-journée en cours
-se choisit à côté de la date de référence (pré-remplie sur l'heure courante). Ne comptent ni la
+se déduit de l'heure de l'analyse. Ne comptent ni la
 demi-journée en cours — à 11h30 le lundi, le matin est derrière nous — ni celle du jalon : un
 Code freeze le jeudi vers 7h ferme déjà le jeudi matin, personne ne travaillant avant. Lundi
 matin, gel le jeudi matin : lundi après-midi (0,5) + mardi (1) + mercredi (1) = **2,5 jours**.
 Les seuils des paliers acceptent les demi-journées (2,5). Un plan publié avant cette évolution
 (date nue) vaut « matin », comme avant.
+
+## Une seule vue, partagée
+
+L'en-tête ne porte plus de ligne d'outils : ni date de référence, ni demi-journée, ni sélecteur
+de vue, ni « Enregistrer la vue », ni impression. Il n'y a **qu'une configuration**, la même pour
+tout le monde — les trois vues par rôle (Direction, Chef de projet, Scrum) ont été supprimées.
+
+- **Date de référence** : c'est l'instant de l'analyse. Un collage neuf s'analyse maintenant ;
+  une analyse rouverte depuis le journal se rejoue à *sa* date, celle où elle a été prise, sans
+  quoi ses retards et sa prévision seraient recalculés sur aujourd'hui et ne diraient plus ce
+  qu'elle disait.
+- **Sections affichées** : Configurer → **Cartes**, bloc « Sections affichées ». Le choix est
+  partagé. Une section dont les données manquent (pas de plan publié, pas de journal) reste
+  masquée quoi qu'il arrive.
+- **Cartes visibles** : la case de chaque carte, sur la carte ou dans la liste du tiroir. Elle
+  vaut pour tous.
+
+Une configuration enregistrée avant ce changement est migrée (`schema` 6) : les sections de la
+vue « Chef de projet » — la vue par défaut — deviennent les sections partagées, et le bloc
+`views` est supprimé.
 
 ## Journal des analyses
 

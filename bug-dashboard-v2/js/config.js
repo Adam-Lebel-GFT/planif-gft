@@ -26,7 +26,9 @@
 
   // Version du schéma de configuration : incrémentée quand un défaut livré doit
   // primer sur une valeur déjà enregistrée (localStorage / Supabase) — voir migrate().
-  var SCHEMA = 5;
+  var SECTION_LABELS = [['kpis', 'Indicateurs'], ['alerts', 'Alertes'], ['ai', 'Synthèse IA'], ['train', 'Train de versions'], ['cube', 'Cube multidimensionnel'], ['history', 'Journal des analyses']];
+
+  var SCHEMA = 6;
 
   var DEFAULTS = {
     schema:     SCHEMA,
@@ -56,11 +58,10 @@
     alerts:     { boundary: 'freeze', tiers: [{ days: 3, pct: 50, level: 'serious' }, { days: 1, pct: 70, level: 'critical' }] },
     burnup:     { startPct: 25, openFrom: 8, openTo: 19 },
     cards:      DEFAULT_CARDS,
-    views: {
-      direction: { label: 'Direction',      cards: ['team_status', 'team_priority', 'version_status'], sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
-      projet:    { label: 'Chef de projet', cards: DEFAULT_CARDS.map(function (c) { return c.id; }), sections: { kpis: true, ai: false, train: true, cube: true, history: true, alerts: true } },
-      scrum:     { label: 'Scrum',          cards: ['team_status', 'team_priority', 'status', 'team', 'done_fix'], sections: { kpis: true, ai: false, train: true, cube: true, history: false, alerts: true } }
-    },
+    // Une seule configuration, partagée par tout le monde : les sections
+    // affichées et la visibilité des cartes (dans `cards`) ne dépendent plus
+    // d'un rôle choisi dans l'en-tête.
+    sections:   { kpis: true, alerts: true, ai: false, train: true, cube: true, history: true },
     ai:         { model: 'claude-haiku-4-5', auto: true, tone: 'direction' },
     // threshold : plafond de tickets tracé en pointillé sur l'évolution
     // « Ouverts / terminés ». 0 = pas de ligne.
@@ -111,6 +112,14 @@
         { days: 1, pct: 70, level: 'critical' }
       ];
       delete stored.alerts.daysBefore; delete stored.alerts.minPct;
+    }
+    // v6 : les trois vues par rôle disparaissent au profit d'une
+    // configuration unique. On reprend les sections de « Chef de projet »,
+    // la vue par défaut, pour ne pas faire disparaître de section au passage.
+    if (from < 6 && stored.views) {
+      var projet = stored.views.projet || stored.views[Object.keys(stored.views)[0]];
+      if (projet && projet.sections && !stored.sections) stored.sections = projet.sections;
+      delete stored.views;
     }
     stored.schema = SCHEMA;
     return stored;
@@ -249,7 +258,7 @@
 
   function renderDrawer() {
     var el = document.getElementById('cfgBody');
-    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['labels', 'Étiquettes'], ['cards', 'Cartes'], ['rules', 'Règles'], ['views', 'Vues'], ['ai', 'IA'], ['data', 'Sauvegarde']]
+    var tabs = [['teams', 'Équipes'], ['priorities', 'Priorités'], ['statuses', 'Statuts'], ['labels', 'Étiquettes'], ['cards', 'Cartes'], ['rules', 'Règles'], ['ai', 'IA'], ['data', 'Sauvegarde']]
       .filter(function (t) { return t[0] !== 'ai' || aiLoaded(); });
     if (drawerTab === 'ai' && !aiLoaded()) drawerTab = 'teams';
     document.getElementById('cfgTabs').innerHTML = tabs.map(function (t) {
@@ -349,6 +358,14 @@
           '<button type="button" class="icon-btn" data-card-del="' + esc(c.id) + '" title="Supprimer">🗑</button>' +
           '</li>';
       }).join('') + '</ul><p style="margin-top:10px"><button type="button" class="ghost" id="cfgAddCard">+ Ajouter une carte</button></p>';
+      // Les sections de la page se règlent ici, à côté des cartes : c'est la
+      // même question — qu'est-ce qui s'affiche — et il n'y a qu'un réglage
+      // pour tout le monde.
+      h += '<h4 style="margin-top:22px">Sections affichées</h4>' +
+        '<p class="cfg-help">Ce choix vaut pour tous les utilisateurs de l\'outil. Une section dont les données manquent (pas de plan publié, pas de journal) reste masquée quoi qu\'il arrive.</p>' +
+        '<div class="cfg-sections">' + SECTION_LABELS.filter(function (o) { return o[0] !== 'ai' || aiLoaded(); }).map(function (o) {
+          return '<label class="cfg-check"><input type="checkbox" data-section="' + o[0] + '" ' + (cfg.sections[o[0]] === false ? '' : 'checked') + '> ' + o[1] + '</label>';
+        }).join('') + '</div>';
     } else if (drawerTab === 'rules') {
       h += '<h4>Rattachement d\'un ticket à une version</h4>' +
         '<p class="cfg-help">Un ticket est rattaché à la <strong>première version</strong> dont le jalon choisi tombe le jour de sa Target date ou après (les Target dates sont des vendredis ; la version déployée le mardi suivant l\'emporte donc). Une tolérance négative autorise un jalon quelques jours <em>avant</em> la Target date. La Fix Version reste informative, sauf si vous cochez l\'option ci-dessous.</p>' +
@@ -393,13 +410,7 @@
             '<td class="num"><button type="button" class="icon-btn" data-tier-del="' + i + '" title="Supprimer ce palier">🗑</button></td></tr>';
         }).join('') + '</tbody></table>' +
         '<div class="cfg-actions"><button type="button" class="ghost small" id="cfgAddTier">Ajouter un palier</button></div>' +
-        '<p class="cfg-help">Chaque palier se lit « à tant de jours du jalon, tout ce qui est sous tant de pour cent est en risque ». Un ticket n\'est compté que dans le palier le plus serré qu\'il déclenche, jamais deux fois. Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (choisie en haut de page, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
-    } else if (drawerTab === 'views') {
-      h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
-      h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
-        var v = cfg.views[id];
-        return '<tr><td><input type="text" class="cfg-input" value="' + esc(v.label) + '" data-view-label="' + id + '"></td><td class="num">' + v.cards.length + '</td><td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].filter(function (s) { return s !== 'ai' || aiLoaded(); }).map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + s + '</label>'; }).join(' ') + '</td></tr>';
-      }).join('') + '</tbody></table>';
+        '<p class="cfg-help">Chaque palier se lit « à tant de jours du jalon, tout ce qui est sous tant de pour cent est en risque ». Un ticket n\'est compté que dans le palier le plus serré qu\'il déclenche, jamais deux fois. Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (celle de l\'analyse, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
     } else if (drawerTab === 'ai') {
       h += '<p class="cfg-help">La synthèse est générée par une fonction serveur (la clé d\'API n\'est jamais dans la page). Le modèle le moins coûteux est sélectionné par défaut.</p>' +
         '<div class="cfg-grid">' +
@@ -476,8 +487,7 @@
       }
       else if (d.hist !== undefined) update(function (c) { c.history[d.hist] = Math.max(0, Number(t.value) || 0); });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
-      else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
-      else if (d.viewSection !== undefined) update(function (c) { c.views[d.viewSection].sections[d.section] = t.checked; });
+      else if (d.section !== undefined) update(function (c) { c.sections[d.section] = t.checked; });
       else if (t.id === 'cfgImport' && t.files && t.files[0]) {
         t.files[0].text().then(function (txt) { try { importJSON(txt); renderDrawer(); } catch (err) { alert('Fichier invalide : ' + err.message); } });
       }
