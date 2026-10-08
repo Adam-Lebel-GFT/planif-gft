@@ -560,7 +560,7 @@ async function handleFile(file){
     var currentCountry = '';
     var COUNTRY_RE = /^(canada|qu[eé]bec|france|suisse|espagne|maroc|portugal|pologne|inde|br[eé]sil|allemagne|italie|royaume|belgique|roumanie)/i;
     var dateKeys = colDates.map(function(d){ return d ? dsU(d) : null; });
-    for(var r=7;r<data.length;r++){
+    for(var r=6;r<data.length;r++){ // dès la ligne 7 : elle porte le premier titre de section (« Canada »)
       if(r%20===0){ loaderSet(55 + 35*(r/data.length), 'Lecture des personnes…'); await paint(); }
       var row=data[r]; if(!row) continue;
       var name=String(row[1]||'').trim();
