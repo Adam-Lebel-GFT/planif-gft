@@ -79,6 +79,42 @@
     return f;
   }
 
+  // ── Dernier fichier chargé : conservé dans ce navigateur (IndexedDB), jamais envoyé ──
+  function idb() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('tk-planning', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  async function kv(mode, fn) {
+    var d = await idb();
+    try {
+      return await new Promise(function (res, rej) {
+        var tx = d.transaction('kv', mode), out = fn(tx.objectStore('kv'));
+        tx.oncomplete = function () { res(out && out.result); };
+        tx.onerror = tx.onabort = function () { rej(tx.error); };
+      });
+    } finally { d.close(); }
+  }
+  async function remember(file) {
+    if (!file || file.tkRestored) return;
+    try {
+      await kv('readwrite', function (st) { return st.put({ blob: file, name: file.name, type: file.type, lastModified: file.lastModified, storeId: file.tkStoreId || null, at: Date.now() }, 'dernier'); });
+    } catch (e) { console.warn('dernier fichier non conservé', e); }
+  }
+  async function restore() {
+    try {
+      var rec = await kv('readonly', function (st) { return st.get('dernier'); });
+      if (!rec || !rec.blob) return null;
+      var f = new File([rec.blob], rec.name, { type: rec.type, lastModified: rec.lastModified });
+      f.tkStoreId = rec.storeId; f.tkRestored = true;
+      return f;
+    } catch (e) { return null; }
+  }
+  async function forget() { try { await kv('readwrite', function (st) { return st.delete('dernier'); }); } catch (e) {} }
+
   // ── Interface ───────────────────────────────────────────────────
   function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('fr-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }); }
   function mount(el, opts) {
@@ -171,5 +207,5 @@
     refresh().catch(function (e) { say('Versions indisponibles : ' + (e && e.message || e), 'err'); });
     return { refresh: refresh };
   }
-  root.TKPlanStore = { mount: mount, _extract: extract, _encode: encode, _decode: decode, _toFile: toFile };
+  root.TKPlanStore = { mount: mount, remember: remember, restore: restore, forget: forget, _extract: extract, _encode: encode, _decode: decode, _toFile: toFile };
 })(window);

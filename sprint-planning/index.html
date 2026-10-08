@@ -1355,6 +1355,7 @@ function clearFile(key) {
   if (key === 'backlog') setTimeout(renderBacklogSummary, 0);
   const { inputId, cardId, nameId, trashId } = map[key];
   state[key] = null;
+  if (key === 'planning' && window.TKPlanStore) TKPlanStore.forget();
   const input   = document.getElementById(inputId);
   const card    = document.getElementById(cardId);
   const nameEl  = document.getElementById(nameId);
@@ -1388,6 +1389,13 @@ if (window.TKPlanStore) TKPlanStore.mount(document.getElementById('planning-stor
     const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
     input.dispatchEvent(new Event('change'));
   }
+});
+// Retour sur la page ou actualisation : le dernier planning chargé est rechargé automatiquement.
+if (window.TKPlanStore) TKPlanStore.restore().then((f) => {
+  if (!f || state.planning) return;
+  const input = document.getElementById('file-planning');
+  const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files;
+  input.dispatchEvent(new Event('change'));
 });
 
 // Le backlog ne déclenche aucun calcul à lui seul : sans compte rendu immédiat,
@@ -1607,6 +1615,7 @@ async function loadSprintsFromPlanning(file) {
       if (fp) { state.paramsFileName = file.name; prefillSidebarFromFile(fp); }
     } catch (e) {}
     TKLoader.set(100, 'Terminé');
+    if (window.TKPlanStore) TKPlanStore.remember(file);
   } catch(e) {}
   finally { TKLoader.hide(); }
 }
