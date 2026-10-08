@@ -981,8 +981,8 @@ function normVersions(list){
   return (list||[]).filter(function(v){ return v && v.start && v.end && String(v.end).slice(0,10)>=t; }) // en cours = pas encore terminée, IAT compris
     .map(function(v){
       var start=String(v.start).slice(0,10), end=String(v.end).slice(0,10);
-      // Les dates d'une version n'incluent pas les tests IAT : on ne garde que l'étendue des phases hors « IAT ».
-      var ph=(v.phases||[]).filter(function(p){ return p && p.start && p.end && !/iat/i.test(p.label||''); });
+      // Les dates d'une version n'incluent ni le gel ni les tests IAT : on ne garde que l'étendue des autres phases.
+      var ph=(v.phases||[]).filter(function(p){ return p && p.start && p.end && !/\b(iat|gel|freeze)\b/i.test(p.label||''); });
       if(ph.length){
         start=ph.reduce(function(m,p){ var d=String(p.start).slice(0,10); return d<m?d:m; }, String(ph[0].start).slice(0,10));
         end=ph.reduce(function(m,p){ var d=String(p.end).slice(0,10); return d>m?d:m; }, String(ph[0].end).slice(0,10));
@@ -1029,7 +1029,7 @@ function renderVersionChips(){
     var b=document.createElement('button');
     b.className='chip'+(selVersions.has(v.num)?' on':'')+(out?' offw':'');
     b.textContent=v.num;
-    b.title=fmtRange(v.start, v.end)+' (hors tests IAT)'+(out?' — hors des dates du fichier chargé':'');
+    b.title=fmtRange(v.start, v.end)+' (hors gel et tests IAT)'+(out?' — hors des dates du fichier chargé':'');
     if(out && !selVersions.has(v.num)) b.disabled=true;
     else b.onclick=function(){ if(selVersions.has(v.num)) selVersions.delete(v.num); else selVersions.add(v.num); applyVersionSelection(); };
     el.appendChild(b);
