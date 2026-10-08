@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (variables communes). Les styles inline ci-dessous, déclarés après, restent prioritaires : aucun impact visuel. -->
 <link rel="stylesheet" href="../assets/theme.css">
+<script src="../assets/loader.js"></script>
+<script src="../assets/planning-store.js"></script>
 <script src="../assets/paste-field.js"></script>
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
@@ -820,6 +822,8 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     </div>
   </div>
 
+  <div id="planning-store"></div>
+
   <div class="backlog-summary" id="backlog-summary"></div>
 
   <!-- Backlog par copier-coller (alternative au fichier ci-dessus) -->
@@ -1376,6 +1380,16 @@ function clearFile(key) {
 setupFileInput('file-planning', 'card-planning', 'name-planning', 'trash-planning', 'planning', loadSprintsFromPlanning);
 setupFileInput('file-backlog',  'card-backlog',  'name-backlog',  'trash-backlog',  'backlog',  renderBacklogSummary);
 
+// Versions enregistrées du planning (base partagée) : recharger une version revient à déposer son fichier.
+if (window.TKPlanStore) TKPlanStore.mount(document.getElementById('planning-store'), {
+  getFile: () => state.planning,
+  onLoad: (file) => {
+    const input = document.getElementById('file-planning');
+    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  }
+});
+
 // Le backlog ne déclenche aucun calcul à lui seul : sans compte rendu immédiat,
 // le déposer ne produit rien de visible et un code d'équipe non rapproché ne se
 // découvre qu'au dashboard. On le relit donc tout de suite, et à chaque
@@ -1385,7 +1399,11 @@ async function renderBacklogSummary() {
   if (!box) return;
   var stories = null;
   if (state.backlogPasted && state.backlogPasted.length) stories = state.backlogPasted;
-  else if (state.backlog) { try { stories = await parseBacklog(state.backlog); } catch (e) { stories = null; } }
+  else if (state.backlog) {
+    TKLoader.show('Lecture du backlog…', 'Analyse du fichier Jira…'); await TKLoader.paint();
+    try { stories = await parseBacklog(state.backlog); } catch (e) { stories = null; }
+    finally { TKLoader.hide(); }
+  }
   if (!stories) { box.className = 'backlog-summary'; box.innerHTML = ''; return; }
 
   var parEquipe = {}, inconnus = {}, sprints = {};
@@ -1553,9 +1571,14 @@ function setSprintMode(mode) {
 }
 
 async function loadSprintsFromPlanning(file) {
+  TKLoader.show('Chargement du planning…', 'Lecture du fichier…');
   try {
+    await TKLoader.paint();
     const ab = await file.arrayBuffer();
-    const wb = XLSX.read(ab, { type:'array', cellDates:false });
+    TKLoader.set(30, 'Analyse du classeur…'); await TKLoader.paint();
+    // Seuls les onglets utiles sont décodés : le classeur en compte beaucoup d'autres, très volumineux.
+    const wb = XLSX.read(ab, { type:'array', cellDates:false, sheets:['Planning Build','Parameters'] });
+    TKLoader.set(65, 'Lecture des sprints et des équipes…'); await TKLoader.paint();
     const sheet = wb.Sheets['Planning Build'];
     if (!sheet) return;
     const data = XLSX.utils.sheet_to_json(sheet, { header:1, defval:null });
@@ -1583,7 +1606,9 @@ async function loadSprintsFromPlanning(file) {
       const fp = parseParametersFromWB(wb);
       if (fp) { state.paramsFileName = file.name; prefillSidebarFromFile(fp); }
     } catch (e) {}
+    TKLoader.set(100, 'Terminé');
   } catch(e) {}
+  finally { TKLoader.hide(); }
 }
 
 function renderSprintPicker(sprints) {
@@ -1600,6 +1625,7 @@ function renderSprintPicker(sprints) {
 
 // ── Logging ──
 function log(text, type='info') {
+  if (TKLoader.active()) TKLoader.step(text);
   const box = document.getElementById('log-box');
   box.classList.add('visible');
   const icons = { ok:'●', warn:'▲', err:'✕', info:'–' };
@@ -1616,6 +1642,7 @@ function clearLog() {
   document.getElementById('progress-bar').classList.remove('visible');
 }
 function setProgress(pct) {
+  if (TKLoader.active()) TKLoader.set(pct);
   document.getElementById('progress-bar').classList.add('visible');
   document.getElementById('progress-fill').style.width = pct+'%';
 }
@@ -2440,7 +2467,9 @@ async function runCalculation() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Calcul en cours…';
+  TKLoader.show('Calcul en cours…', 'Préparation…');
   try {
+    await TKLoader.paint();
     // Paramètres lus depuis la sidebar (currentParams)
     const params = { ...currentParams };
     const velTxt = (params.categories||[]).map(c => `${c.code || c.nom}=${c.velocite}`).join(' · ');
@@ -2448,7 +2477,8 @@ async function runCalculation() {
     setProgress(15);
     log('Lecture du planning…','info');
     const planAB = await state.planning.arrayBuffer();
-    const planWB = XLSX.read(planAB, {type:'array'});
+    await TKLoader.paint();
+    const planWB = XLSX.read(planAB, {type:'array', sheets:['Planning Build']});
     rebuildTeamIndex();
     const { sprintRanges, sprintDates, dates, persons } = parsePlanning(planWB);
     const sprintNames = Object.keys(sprintRanges);
@@ -2504,15 +2534,18 @@ async function runCalculation() {
     log(`Erreur : ${err.message}`,'err');
     console.error(err);
   } finally {
+    TKLoader.hide();
     btn.disabled = false;
     btn.innerHTML = '<div class="run-arrow">▶</div> Lancer le calcul';
   }
 }
 // ── Dashboard override listener ──────────────────────────────
-window.addEventListener('message', (e) => {
+window.addEventListener('message', async (e) => {
   if (!e.data) return;
   if (e.data.type !== 'dashboard_export') return;
   if (!lastResults) return;
+  TKLoader.show('Export Excel…', 'Construction du classeur…'); await TKLoader.paint();
+  try {
   const { allResults, params, sprintDates, stories = [] } = lastResults;
   const dashOverrides = e.data.overrides || {};
   const modResults = allResults.map(r => {
@@ -2552,6 +2585,7 @@ window.addEventListener('message', (e) => {
   } else {
     log('Excel exporté depuis le dashboard (' + modResults.length + ' sprint(s) avec modifications).', 'ok');
   }
+  } finally { TKLoader.hide(); }
 });
 
 // ── Dashboard ────────────────────────────────────────────────
