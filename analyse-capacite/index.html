@@ -11,6 +11,7 @@
 <!-- Thème partagé de la plateforme (entête commune). Les styles inline ci-dessous, déclarés après, restent prioritaires. -->
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="../assets/loader.js"></script>
+<script src="../assets/planning-store.js"></script>
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
@@ -241,7 +242,8 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="file-status" id="file-status">Cliquez ou glissez votre fichier .xlsx ici</div>
     </div>
   </div>
-  <div class="privacy-note">Traitement 100&nbsp;% local dans votre navigateur — aucune donnée n'est transmise.</div>
+  <div class="privacy-note">Traitement 100&nbsp;% local dans votre navigateur. Rien n'est transmis, sauf si vous cliquez sur « Enregistrer ce fichier » (envoi à la base partagée).</div>
+  <div id="planning-store"></div>
 
   <div class="label">Filtres</div>
   <div class="filters">
@@ -532,7 +534,9 @@ function readFileBuffer(file, onProgress){
 
 // ── Parse fichier réel (onglet « Planning Build ») ──
 function excelDateToJS(serial){ if(typeof serial!=='number') return null; return new Date((serial-25569)*86400*1000); }
+var currentFile = null; // dernier fichier planning chargé (enregistrable comme version)
 async function handleFile(file){
+  currentFile = file;
   if(typeof XLSX === 'undefined'){ setFileMsg('Librairie Excel non chargée (connexion requise au 1er chargement). Réessayez.', 'err'); return; }
   loaderShow(); await paint();
   try {
@@ -1383,6 +1387,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('#sb-raffinage').addEventListener('input', updateLeadCalc);
   $('#sb-support').addEventListener('input', updateLeadCalc);
 
+  if(window.TKPlanStore) TKPlanStore.mount($('#planning-store'), { getFile:function(){ return currentFile; }, onLoad:function(f){ return handleFile(f); } });
   loadPlanVersions().catch(function(e){ console.warn(e); });
   renderAll(); // état initial vide — en attente d'un fichier
 });

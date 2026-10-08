@@ -10,6 +10,7 @@
 <!-- Thème partagé de la plateforme (variables communes). Les styles inline ci-dessous, déclarés après, restent prioritaires : aucun impact visuel. -->
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="../assets/loader.js"></script>
+<script src="../assets/planning-store.js"></script>
 <script src="../assets/paste-field.js"></script>
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
@@ -821,6 +822,8 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     </div>
   </div>
 
+  <div id="planning-store"></div>
+
   <div class="backlog-summary" id="backlog-summary"></div>
 
   <!-- Backlog par copier-coller (alternative au fichier ci-dessus) -->
@@ -1376,6 +1379,16 @@ function clearFile(key) {
 
 setupFileInput('file-planning', 'card-planning', 'name-planning', 'trash-planning', 'planning', loadSprintsFromPlanning);
 setupFileInput('file-backlog',  'card-backlog',  'name-backlog',  'trash-backlog',  'backlog',  renderBacklogSummary);
+
+// Versions enregistrées du planning (base partagée) : recharger une version revient à déposer son fichier.
+if (window.TKPlanStore) TKPlanStore.mount(document.getElementById('planning-store'), {
+  getFile: () => state.planning,
+  onLoad: (file) => {
+    const input = document.getElementById('file-planning');
+    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  }
+});
 
 // Le backlog ne déclenche aucun calcul à lui seul : sans compte rendu immédiat,
 // le déposer ne produit rien de visible et un code d'équipe non rapproché ne se
