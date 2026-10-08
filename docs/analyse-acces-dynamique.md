@@ -6,7 +6,7 @@ directeur de programme, avec gestion des rôles et journal de connexion.
 ## 1. Contexte et objectifs
 
 Les outils du toolkit (sprint-planning, releases-planning,
-analyse-capacite, bug-dashboard, whiteboard, poker-planning) sont des
+analyse-capacite, bug-dashboard-v2, whiteboard, poker-planning) sont des
 pages web autonomes, sans authentification. On ouvre maintenant l'accès
 à des personnes externes à l'équipe technique — un chef de projet et un
 directeur de programme — avec :

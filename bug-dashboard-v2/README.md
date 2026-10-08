@@ -1,8 +1,8 @@
-# Bug Dashboard v2 — « Radar »
+# Bug Dashboard — « Radar »
 
 Cockpit de stabilisation : colle un extrait Jira, projette chaque ticket sur le train de
 livraison, croise équipes × statuts × priorités × origine, journalise chaque analyse et
-lève les alertes de stabilisation. Le Bug Dashboard v1 reste disponible comme outil « lite ».
+lève les alertes de stabilisation.
 
 Tout est compté en **nombre de tickets** (les bugs n'ont pas de points) ; l'avancement
 pondéré (poids par statut, configurables) est un indicateur secondaire.
@@ -27,7 +27,7 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 ## Mise en service
 
 1. **Plan de livraisons** : ouvrir `releases-planning/`, vérifier versions et jalons, cliquer
-   « Publier le plan → Bug Dashboard v2 » (connecté). Sans publication, le v2 lit le plan
+   « Publier le plan → Bug Dashboard » (connecté). Sans publication, l'outil lit le plan
    local du même navigateur.
 2. **Règle de rattachement** (Configurer → Règles) : première version dont le jalon
    « Déploiement sur la branche » tombe à la Target date du ticket ou après. Les Target dates

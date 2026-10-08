@@ -15,6 +15,7 @@
   height: 56px;
   display: flex; align-items: center; gap: 12px;
   padding-inline: clamp(16px, 4vw, 40px);
+  position: sticky; top: 0; z-index: 40;
 }
 .lnk-logo { display: flex; align-items: center; gap: 10px; }
 .lnk-logo .sq { width: 11px; height: 11px; background: var(--accent); flex-shrink: 0; }
@@ -274,27 +275,13 @@
         <span class="tool-cta">Voir la maquette <span class="arw">→</span></span>
       </a>
 
-      <!-- Outil 6 : Bug Dashboard (disponible) -->
-      <a class="tool tk-card tk-card--hover is-available" href="./bug-dashboard/" data-outil="bug-dashboard">
-        <div class="tool-top">
-          <span class="tool-icon" aria-hidden="true">🐞</span>
-          <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
-        </div>
-        <h2>Bug Dashboard (lite)</h2>
-        <p>
-          État d'avancement des bugs par statut et par équipe : colle un extrait Excel,
-          pondération éditable, graphiques prêts pour un manager.
-        </p>
-        <span class="tool-cta">Ouvrir l'outil <span class="arw">→</span></span>
-      </a>
-
-      <!-- Outil 7 : Bug Dashboard v2 (disponible) -->
+      <!-- Outil 7 : Bug Dashboard (disponible) -->
       <a class="tool tk-card tk-card--hover is-available" href="./bug-dashboard-v2/" data-outil="bug-dashboard-v2">
         <div class="tool-top">
           <span class="tool-icon" aria-hidden="true">📡</span>
           <span class="tk-badge tk-badge--ok tk-badge--dot">Disponible</span>
         </div>
-        <h2>Bug Dashboard v2 — Radar</h2>
+        <h2>Bug Dashboard</h2>
         <p>
           Cube multidimensionnel (équipes × statuts × priorités × origine), projection sur
           le train de livraison, journal des analyses et alertes de stabilisation.

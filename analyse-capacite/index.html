@@ -15,6 +15,7 @@
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
+<script src="../assets/nav.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root{
@@ -100,7 +101,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .darr{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
 
 /* ── KPI bar (sticky) ── */
-.kpibar{position:sticky;top:0;z-index:60;background:var(--grey);padding:14px 0 12px;margin-top:8px;box-shadow:0 14px 14px -14px rgba(12,26,46,.10)}
+.kpibar{position:sticky;top:var(--tk-stick,56px);z-index:60;background:var(--grey);padding:14px 0 12px;margin-top:8px;box-shadow:0 14px 14px -14px rgba(12,26,46,.10)}
 .kpibar-inner{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
 .kpi{flex:1;min-width:158px;background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:13px 18px}
 .kpi-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -242,7 +243,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="file-status" id="file-status">Cliquez ou glissez votre fichier .xlsx ici</div>
     </div>
   </div>
-  <div class="privacy-note">Traitement 100&nbsp;% local dans votre navigateur. Rien n'est transmis, sauf si vous cliquez sur « Enregistrer ce fichier » (envoi à la base partagée).</div>
+  <div class="privacy-note">Traitement 100&nbsp;% local dans votre navigateur. Rien n'est transmis, sauf si vous cliquez sur « Enregistrer ce fichier » (envoi à la base partagée). Le dernier fichier chargé et vos paramètres sont conservés dans ce navigateur.</div>
   <div id="planning-store"></div>
 
   <div class="label">Filtres</div>
@@ -599,6 +600,7 @@ async function handleFile(file){
     setStateData({ dates:dates, sprints:sprints, persons:persons, sourceLabel:file.name });
     setFileMsg(persons.length+' personnes · '+sprints.length+' sprint(s) · '+dates.length+' jours — traitement 100 % local.', 'ok');
     $('#file-card').classList.add('has-file');
+    if(window.TKPlanStore) TKPlanStore.remember(file);
     loaderSet(100, 'Terminé'); await paint();
     loaderHide();
   } catch(e){ console.error(e); loaderHide(); setFileMsg('Erreur de lecture : '+e.message, 'err'); }
@@ -977,8 +979,17 @@ function ganttHeaderClick(e){
 function versionNum(label){ var m=String(label||'').match(/\d+(?:\.\d+)+|\d+/); return m ? m[0] : String(label||'').trim(); }
 function normVersions(list){
   var t=todayStr();
-  return (list||[]).filter(function(v){ return v && v.start && v.end && String(v.end).slice(0,10)>=t; })
-    .map(function(v){ return { num:versionNum(v.label), start:String(v.start).slice(0,10), end:String(v.end).slice(0,10) }; })
+  return (list||[]).filter(function(v){ return v && v.start && v.end && String(v.end).slice(0,10)>=t; }) // en cours = pas encore terminée, IAT compris
+    .map(function(v){
+      var start=String(v.start).slice(0,10), end=String(v.end).slice(0,10);
+      // Les dates d'une version n'incluent ni le gel ni les tests IAT : on ne garde que l'étendue des autres phases.
+      var ph=(v.phases||[]).filter(function(p){ return p && p.start && p.end && !/\b(iat|gel|freeze)\b/i.test(p.label||''); });
+      if(ph.length){
+        start=ph.reduce(function(m,p){ var d=String(p.start).slice(0,10); return d<m?d:m; }, String(ph[0].start).slice(0,10));
+        end=ph.reduce(function(m,p){ var d=String(p.end).slice(0,10); return d>m?d:m; }, String(ph[0].end).slice(0,10));
+      }
+      return { num:versionNum(v.label), start:start, end:end };
+    })
     .sort(function(a,b){ return a.start<b.start?-1:a.start>b.start?1:0; });
 }
 async function loadPlanVersions(){
@@ -1019,7 +1030,7 @@ function renderVersionChips(){
     var b=document.createElement('button');
     b.className='chip'+(selVersions.has(v.num)?' on':'')+(out?' offw':'');
     b.textContent=v.num;
-    b.title=fmtRange(v.start, v.end)+(out?' — hors des dates du fichier chargé':'');
+    b.title=fmtRange(v.start, v.end)+' (hors gel et tests IAT)'+(out?' — hors des dates du fichier chargé':'');
     if(out && !selVersions.has(v.num)) b.disabled=true;
     else b.onclick=function(){ if(selVersions.has(v.num)) selVersions.delete(v.num); else selVersions.add(v.num); applyVersionSelection(); };
     el.appendChild(b);
@@ -1332,6 +1343,19 @@ function updateLeadCalc(){
 }
 function openSidebar(){ $('#sidebar').classList.add('open'); $('#sidebar-overlay').classList.add('visible'); }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('visible'); }
+// Paramètres du tiroir : mémorisés dans ce navigateur et rétablis à chaque ouverture de la page.
+var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags'];
+var PARAM_KEY='planif:analyse-capacite:params';
+function saveParams(){
+  try { var o={}; PARAM_IDS.forEach(function(id){ var el=$('#'+id); o[id]=(el.type==='checkbox')?el.checked:el.value; }); localStorage.setItem(PARAM_KEY, JSON.stringify(o)); } catch(e){}
+}
+function restoreParams(){
+  try {
+    var o=JSON.parse(localStorage.getItem(PARAM_KEY)||'null'); if(!o) return false;
+    PARAM_IDS.forEach(function(id){ if(!(id in o)) return; var el=$('#'+id); if(el.type==='checkbox') el.checked=!!o[id]; else el.value=o[id]; });
+    return true;
+  } catch(e){ return false; }
+}
 function applyParams(){
   P.vc=posf($('#sb-vel-conf').value); P.vi=posf($('#sb-vel-integ').value); P.vt=posf($('#sb-vel-trans').value);
   P.agile=pct($('#sb-agile').value); P.bogues=pct($('#sb-bogues').value);
@@ -1342,6 +1366,7 @@ function applyParams(){
   ANGLO=parseNames($('#sb-anglo').value); applyCountryOverrides();
   DEFAULT_ORDER=parseTeams($('#sb-default-teams').value); DEFAULT_TEAMS=new Set(DEFAULT_ORDER);
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
+  saveParams();
   closeSidebar();
   renderAll();
 }
@@ -1387,9 +1412,15 @@ document.addEventListener('DOMContentLoaded', function(){
   $('#sb-raffinage').addEventListener('input', updateLeadCalc);
   $('#sb-support').addEventListener('input', updateLeadCalc);
 
+  if(restoreParams()){ updateLeadCalc(); applyParams(); }
   if(window.TKPlanStore) TKPlanStore.mount($('#planning-store'), { getFile:function(){ return currentFile; }, onLoad:function(f){ return handleFile(f); } });
   loadPlanVersions().catch(function(e){ console.warn(e); });
-  renderAll(); // état initial vide — en attente d'un fichier
+  renderAll();
+  // Retour sur la page ou actualisation : le dernier fichier chargé est rechargé automatiquement.
+  if(window.TKPlanStore) TKPlanStore.restore().then(function(f){
+    if(!f || currentFile) return;
+    return handleFile(f).then(function(){ var el=$('#file-status'); if(el && el.className.indexOf('ok')>=0) el.textContent+=' — dernier fichier rechargé automatiquement.'; });
+  }); // état initial vide — en attente d'un fichier
 });
 /*APP-END*/</script>
 </body>

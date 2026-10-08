@@ -82,12 +82,13 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .ghost-btn:hover { border-color: var(--muted); }
 
 /* ── Gantt ────────────────────────────────────────────────── */
-.gantt-wrap { max-width: 1300px; margin: 0 auto 60px; padding: 0 32px; }
+.gantt-wrap { max-width: 1300px; margin: 0 auto 20px; padding: 0 32px; }
 .gantt-card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); overflow: hidden; }
 .gantt-empty { padding: 44px 20px; text-align: center; color: var(--muted); font-size: 13px; }
 .move-hint { background: #FFF7E6; border-bottom: 1px solid #F0D28A; color: #7A5B00; font-size: 11.5px; padding: 8px 20px; font-weight: 600; }
 .gantt-scroll { overflow-x: auto; }
 .gantt-inner { position: relative; }
+.gantt-toolbar { display: flex; align-items: center; justify-content: flex-end; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--bg); }
 
 .hdr { position: sticky; top: 0; background: var(--white); z-index: 3; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); border-left: 1px solid var(--border); }
 .hdr-month { height: 24px; font-size: 10.5px; font-weight: 700; color: var(--white); background: var(--navy); letter-spacing: .6px; text-transform: uppercase; }
@@ -98,12 +99,12 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .hdr-day .dnum { font-size: 11px; font-weight: 700; color: var(--navy); font-family: var(--font-mono); }
 .hdr-day.weekend { background: #F0F1F5; }
 .hdr-day.weekend .dnum { color: var(--muted); }
-.corner { position: sticky; left: 0; background: var(--white); z-index: 4; border-right: 1.5px solid var(--border); }
+.corner { position: sticky; left: 0; background: var(--white); z-index: 4; box-sizing: border-box; border-right: 1.5px solid var(--border); }
 
 .ver-row { display: flex; border-bottom: 1px solid var(--border); }
-.ver-label { position: sticky; left: 0; background: var(--white); z-index: 2; width: 190px; flex-shrink: 0; padding: 8px 10px 8px 16px; border-right: 1.5px solid var(--border); display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.ver-label .v { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; color: var(--navy); }
-.ver-label .d { font-size: 10px; color: var(--muted); }
+.ver-label { position: sticky; left: 0; background: var(--white); z-index: 8; width: 95px; box-sizing: border-box; flex-shrink: 0; padding: 8px 6px 8px 10px; border-right: 1.5px solid var(--border); display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.ver-label .v { font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; color: var(--navy); }
+.ver-label .d { font-size: 9px; white-space: nowrap; color: var(--muted); }
 .vl-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .vl-icon { width: 18px; height: 18px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; flex-shrink: 0; }
 .vl-icon:hover { background: var(--bg); color: var(--accent); }
@@ -175,7 +176,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Paramètres généraux</h2>
-        <div class="hint">Cadence des sprints et zoom du board. Le gabarit de phases (étapes) utilisé pour créer une nouvelle version se configure dans la carte « Étapes » ci-dessous, les jalons dans la carte « Jalons ». Les phases et dates d'une version existante se modifient directement sur le board.</div>
+        <div class="hint">Cadence des sprints. Le gabarit de phases (étapes) utilisé pour créer une nouvelle version se configure dans la carte « Étapes » sous le board, les jalons dans la carte « Jalons ». Les phases et dates d'une version existante se modifient directement sur le board.</div>
       </div>
       <button class="collapse-btn" data-key="general" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -185,19 +186,41 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
         <div class="field w-num"><label>Premier n° de sprint</label><input type="number" id="firstSprint" min="1" max="200"></div>
         <div class="field w-date"><label>Ce sprint débute le</label><input type="date" id="sprintAnchor"></div>
         <div class="field w-num"><label>Décalage entre versions par défaut (sem.)</label><input type="number" id="defaultOffsetWeeks" min="1" max="8"></div>
-        <div class="zoom-row">
+      </div>
+      <div class="row" style="margin-top:2px;margin-bottom:0">
+        <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
+        <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
+        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard</button>
+        <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
+        <span id="syncTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center">Chargement du plan partagé…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gantt-wrap">
+  <div class="gantt-card">
+    <div id="ganttEmpty" class="gantt-empty hidden">Aucune version à afficher — ajoutez-en une dans la carte « Versions » ci-dessous.</div>
+    <div id="ganttBody">
+      <div class="gantt-toolbar">
+          <div class="zoom-row">
           <label>Zoom</label>
           <input type="range" id="zoomRange" min="24" max="96" step="2">
           <span class="zoom-val" id="zoomVal"></span>
         </div>
       </div>
-      <div class="row" style="margin-top:2px;margin-bottom:0">
-        <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
-        <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
-        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard v2 les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard v2</button>
-        <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
-        <span id="syncTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center">Chargement du plan partagé…</span>
+      <div id="moveHint" class="move-hint hidden"></div>
+      <div id="phaseEditPanel" class="phase-edit-panel hidden">
+        <div class="pep-head">
+          <strong id="pepTitle"></strong>
+          <button class="ghost-btn" id="pepClose" type="button">Terminer l'édition</button>
+          <div class="pep-hint">Ajustez les dates et matin/après-midi ci-dessous, ou faites glisser les poignées sur les barres de la ligne (bord bleu) — la date de début/fin de la version est la somme des étapes.</div>
+        </div>
+        <div class="pep-phases" id="pepPhases"></div>
       </div>
+      <div class="gantt-scroll"><div id="ganttRoot" class="gantt-inner"></div></div>
+      <div class="legend" id="legend"></div>
+      <div class="legend-note">Maquette de préparation — phases, jalons et cadence de chevauchement restent à confirmer avec les squad leads avant diffusion. Barre rouge = date du jour.</div>
     </div>
   </div>
 </div>
@@ -223,7 +246,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
     <div class="card-head">
       <div class="card-titles">
         <h2>Versions</h2>
-        <div class="hint">Nouvelle version = nom suggéré + gabarit d'étapes ci-dessus. Pour renommer, changer les dates ou retirer une version existante, utilisez les icônes ✎ / 🗑 sur sa ligne du board plus bas.</div>
+        <div class="hint">Nouvelle version = nom suggéré + gabarit d'étapes ci-dessus. Pour renommer, changer les dates ou retirer une version existante, utilisez les icônes ✎ / 🗑 sur sa ligne du board ci-dessus.</div>
       </div>
       <button class="collapse-btn" data-key="versions" type="button" title="Réduire / agrandir" aria-label="Réduire / agrandir"><span class="chev">▾</span></button>
     </div>
@@ -252,29 +275,10 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
   </div>
 </div>
 
-<div class="gantt-wrap">
-  <div class="gantt-card">
-    <div id="ganttEmpty" class="gantt-empty hidden">Aucune version à afficher — ajoutez-en une dans la carte « Versions » ci-dessus.</div>
-    <div id="ganttBody">
-      <div id="moveHint" class="move-hint hidden"></div>
-      <div id="phaseEditPanel" class="phase-edit-panel hidden">
-        <div class="pep-head">
-          <strong id="pepTitle"></strong>
-          <button class="ghost-btn" id="pepClose" type="button">Terminer l'édition</button>
-          <div class="pep-hint">Ajustez les dates et matin/après-midi ci-dessous, ou faites glisser les poignées sur les barres de la ligne (bord bleu) — la date de début/fin de la version est la somme des étapes.</div>
-        </div>
-        <div class="pep-phases" id="pepPhases"></div>
-      </div>
-      <div class="gantt-scroll"><div id="ganttRoot" class="gantt-inner"></div></div>
-      <div class="legend" id="legend"></div>
-      <div class="legend-note">Maquette de préparation — phases, jalons et cadence de chevauchement restent à confirmer avec les squad leads avant diffusion. Barre rouge = date du jour.</div>
-    </div>
-  </div>
-</div>
-
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
+<script src="../assets/nav.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════
 // Constantes & helpers
@@ -290,6 +294,7 @@ const PICKER_WEEKS = 6; // amplitude des sélecteurs "Semaine" pour les jalons
 const PHASE_NAMES = ['Chargement de la version', 'DEV', 'Test IAT'];
 const PHASE_COLORS = ['var(--accent)', 'var(--navy)', 'var(--green)'];
 const PHASE_H = 26, JALONS_H = 40, ROW_H = PHASE_H + JALONS_H;
+const LABW = 95; // largeur de la colonne des versions (px)
 function phaseLabel(p, i) { return p.label || PHASE_NAMES[i] || ('Étape ' + (i + 1)); }
 function phaseColor(p, i) {
   // La couleur suit en direct l'étape de gabarit dont cette phase est issue,
@@ -524,7 +529,7 @@ async function publishPlan() {
     if (all.error) throw all.error;
     const stale = (all.data || []).map(r => r.id).filter(id => ids.indexOf(id) === -1);
     if (stale.length) { const del = await client.from('plan_versions').delete().in('id', stale); if (del.error) throw del.error; }
-    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard v2.';
+    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard.';
   } catch (e) {
     tag.textContent = 'Publication refusée : ' + (e.message || e);
   }
@@ -917,17 +922,18 @@ function renderGantt() {
   const HALFW = COLW / 2;
   const days = timeline.days;
   const totalW = days.length * COLW;
+  root.style.width = (LABW + totalW) + 'px';
 
   // ── Bandes week-end (sous tout le reste) ──
   const bandWrap = document.createElement('div');
   bandWrap.className = 'weekend-bands';
-  bandWrap.style.width = (190 + totalW) + 'px';
+  bandWrap.style.width = (LABW + totalW) + 'px';
   days.forEach((d, i) => {
     const dow = (d.getDay() + 6) % 7;
     if (dow >= 5) {
       const band = document.createElement('div');
       band.className = 'weekend-band';
-      band.style.left = (190 + i * COLW) + 'px';
+      band.style.left = (LABW + i * COLW) + 'px';
       band.style.width = COLW + 'px';
       bandWrap.appendChild(band);
     }
@@ -937,11 +943,11 @@ function renderGantt() {
   // ── Traits de séparation matin / après-midi (repère visuel demi-journée) ──
   const halfWrap = document.createElement('div');
   halfWrap.className = 'halfday-lines';
-  halfWrap.style.width = (190 + totalW) + 'px';
+  halfWrap.style.width = (LABW + totalW) + 'px';
   days.forEach((d, i) => {
     const line = document.createElement('div');
     line.className = 'halfday-line';
-    line.style.left = (190 + i * COLW + HALFW) + 'px';
+    line.style.left = (LABW + i * COLW + HALFW) + 'px';
     halfWrap.appendChild(line);
   });
   root.appendChild(halfWrap);
@@ -950,11 +956,11 @@ function renderGantt() {
   const headWrap = document.createElement('div');
   headWrap.style.display = 'flex';
   headWrap.style.position = 'relative';
-  headWrap.style.zIndex = '1';
+  headWrap.style.zIndex = '9';
 
   const cornerCol = document.createElement('div');
   cornerCol.className = 'corner';
-  cornerCol.style.width = '190px';
+  cornerCol.style.width = LABW + 'px';
   cornerCol.style.flexShrink = '0';
   headWrap.appendChild(cornerCol);
 
@@ -1041,8 +1047,6 @@ function renderGantt() {
     const row = document.createElement('div');
     row.className = 'ver-row';
     row.style.height = ROW_H + 'px';
-    row.style.position = 'relative';
-    row.style.zIndex = '1';
 
     const label = document.createElement('div');
     label.className = 'ver-label';
@@ -1160,7 +1164,7 @@ function renderGantt() {
     const offset = dayDiff(timeline.start, today);
     const line = document.createElement('div');
     line.className = 'today-line';
-    line.style.left = (190 + offset * COLW + COLW / 2) + 'px';
+    line.style.left = (LABW + offset * COLW + COLW / 2) + 'px';
     line.innerHTML = '<span class="tag">Aujourd\'hui</span>';
     root.appendChild(line);
   }

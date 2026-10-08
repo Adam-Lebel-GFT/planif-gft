@@ -70,7 +70,7 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .chip.opt{background:#F4F5F7; opacity:.85;}   /* colonne absente et non bloquante : gris + croix */
 
 /* ── Barre de filtres (une seule, au-dessus de tout ce qu'elle filtre) ── */
-.filterbar{position:sticky; top:0; z-index:30; background:rgba(244,245,247,.96); backdrop-filter:blur(6px); padding:10px 0 8px; margin:0 0 6px; display:flex; flex-direction:column; gap:10px; align-items:stretch; border-bottom:1px solid var(--border);}
+.filterbar{position:sticky; top:var(--tk-stick,56px); z-index:30; background:rgba(244,245,247,.96); backdrop-filter:blur(6px); padding:10px 0 8px; margin:0 0 6px; display:flex; flex-direction:column; gap:10px; align-items:stretch; border-bottom:1px solid var(--border);}
 .filter-head{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
 .filter-body{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
 .filter-head .collapse-btn{padding:4px 9px;}

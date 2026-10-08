@@ -193,8 +193,8 @@ window.addEventListener('message', function(e) {
 ## Composant partagé — le champ « copier-coller » (`assets/paste-field.js`)
 
 Le moteur de collage du **Bug Dashboard v2 (radar)** est extrait dans
-`assets/paste-field.js` et réutilisé par le Sprint Planning, le Poker Planning et
-le Bug Dashboard (lite). Il expose `window.TKPaste`.
+`assets/paste-field.js` et réutilisé par le Sprint Planning et le Poker Planning.
+Il expose `window.TKPaste`.
 
 Ce qu'il gère, une fois pour toutes :
 
@@ -238,7 +238,7 @@ diffère selon l'outil.
 
 | Outil | Nécessaire pour progresser |
 |-------|----------------------------|
-| Bug Dashboard (lite) / Radar | `Statut` |
+| Radar (Bug Dashboard v2) | `Statut` |
 | Sprint Planning (backlog) | `Clé` + `Sprint` + `Team code` — sans eux une story ne se rattache ni à une équipe ni à un sprint |
 | Poker Planning | `Clé` **ou** `Résumé` (`need:'any'`, même `group`) |
 
@@ -250,7 +250,7 @@ qu'en égalité stricte (`'=sp'` ne doit pas capter la colonne `Sprint`).
 
 **Trouvé → vert avec un crochet ✓. Absent → gris avec une croix ✗.** Le rouge est
 réservé aux seules colonnes qui *bloquent* l'analyse. Cette règle vaut pour les
-quatre outils : le radar utilise ses propres classes `.chip` (`bug-dashboard-v2`),
+trois outils : le radar utilise ses propres classes `.chip` (`bug-dashboard-v2`),
 les autres les classes `.tkp-chip` injectées par le composant.
 
 ### Imports de fichiers
