@@ -195,6 +195,10 @@
 
   // Le lot IA n'est pas toujours livré (js/ai.js peut ne pas être chargé) :
   // l'onglet « IA » et la case de section correspondante sont alors masqués.
+  var SECTION_LABELS = { kpis: 'Indicateurs', alerts: 'Alertes', ai: 'Synthèse IA', train: 'Train de versions', cube: 'Cube', history: 'Journal' };
+
+  function activeView() { return (root.BDV2App && root.BDV2App.view && root.BDV2App.view()) || 'projet'; }
+
   function aiLoaded() { return !!(root.BDV2App && root.BDV2App.available && root.BDV2App.available.ai); }
 
   // Jalons proposés : ceux définis dans le plan de livraisons (avec leurs vrais
@@ -393,13 +397,20 @@
             '<td class="num"><button type="button" class="icon-btn" data-tier-del="' + i + '" title="Supprimer ce palier">🗑</button></td></tr>';
         }).join('') + '</tbody></table>' +
         '<div class="cfg-actions"><button type="button" class="ghost small" id="cfgAddTier">Ajouter un palier</button></div>' +
-        '<p class="cfg-help">Chaque palier se lit « à tant de jours du jalon, tout ce qui est sous tant de pour cent est en risque ». Un ticket n\'est compté que dans le palier le plus serré qu\'il déclenche, jamais deux fois. Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (choisie en haut de page, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
+        '<p class="cfg-help">Chaque palier se lit « à tant de jours du jalon, tout ce qui est sous tant de pour cent est en risque ». Un ticket n\'est compté que dans le palier le plus serré qu\'il déclenche, jamais deux fois. Le temps restant est compté en <strong>demi-journées de travail</strong> : ni la demi-journée en cours (celle de l\'analyse, elle est déjà entamée) ni celle du jalon ne comptent — un Code freeze le jeudi matin ferme déjà ce matin-là. Lundi matin, gel le jeudi matin : lundi après-midi, mardi, mercredi = 2,5 jours. Les demi-journées sont acceptées dans le seuil (2,5). Le jalon surveillé ici est indépendant du jalon de rattachement ci-dessus.</p>';
     } else if (drawerTab === 'views') {
-      h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. Sélectionnez une vue en haut de page ; le bouton « Enregistrer la vue » (en haut de page) fige la visibilité actuelle des cartes dans la vue sélectionnée.</p>';
-      h += '<table class="cfg-table"><thead><tr><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
+      var act = activeView();
+      h += '<p class="cfg-help">Une vue = un jeu de cartes et de sections visibles. La vue affichée se choisit ici, dans la première colonne — elle n\'encombre plus l\'en-tête. Le choix est propre à ce navigateur ; les vues elles-mêmes, leurs noms et leurs sections, sont partagés.</p>';
+      h += '<table class="cfg-table"><thead><tr><th class="num">Affichée</th><th>Vue</th><th class="num">Cartes</th><th>Sections</th></tr></thead><tbody>' + Object.keys(cfg.views).map(function (id) {
         var v = cfg.views[id];
-        return '<tr><td><input type="text" class="cfg-input" value="' + esc(v.label) + '" data-view-label="' + id + '"></td><td class="num">' + v.cards.length + '</td><td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].filter(function (s) { return s !== 'ai' || aiLoaded(); }).map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + s + '</label>'; }).join(' ') + '</td></tr>';
-      }).join('') + '</tbody></table>';
+        return '<tr' + (id === act ? ' class="is-on"' : '') + '>' +
+          '<td class="num"><input type="radio" name="cfgActiveView" data-view-active="' + id + '" ' + (id === act ? 'checked' : '') + ' title="Afficher cette vue"></td>' +
+          '<td><input type="text" class="cfg-input" value="' + esc(v.label) + '" data-view-label="' + id + '"></td>' +
+          '<td class="num">' + v.cards.length + '</td>' +
+          '<td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].filter(function (s) { return s !== 'ai' || aiLoaded(); }).map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + SECTION_LABELS[s] + '</label>'; }).join(' ') + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+        '<div class="cfg-actions"><button type="button" class="ghost small" id="cfgSaveView">Enregistrer la vue affichée avec les cartes visibles</button></div>' +
+        '<p class="cfg-help">Ce bouton fige dans la vue affichée les cartes qu\'elle montre en ce moment — décochez celles dont vous ne voulez pas, puis enregistrez. La case « visible » d\'une carte, elle, vaut pour toutes les vues : la liste de chaque vue filtre par-dessus. La vue « Chef de projet » montre toujours tout ce qui est visible.</p>';
     } else if (drawerTab === 'ai') {
       h += '<p class="cfg-help">La synthèse est générée par une fonction serveur (la clé d\'API n\'est jamais dans la page). Le modèle le moins coûteux est sélectionné par défaut.</p>' +
         '<div class="cfg-grid">' +
@@ -476,6 +487,7 @@
       }
       else if (d.hist !== undefined) update(function (c) { c.history[d.hist] = Math.max(0, Number(t.value) || 0); });
       else if (d.ai !== undefined) update(function (c) { c.ai[d.ai] = t.type === 'checkbox' ? t.checked : t.value; });
+      else if (d.viewActive !== undefined) { if (root.BDV2App && root.BDV2App.setView) root.BDV2App.setView(d.viewActive); renderDrawer(); }
       else if (d.viewLabel !== undefined) update(function (c) { c.views[d.viewLabel].label = t.value; });
       else if (d.viewSection !== undefined) update(function (c) { c.views[d.viewSection].sections[d.section] = t.checked; });
       else if (t.id === 'cfgImport' && t.files && t.files[0]) {
@@ -497,6 +509,7 @@
         update(function (c) { var tr = tiersOf(c)[Number(d.tierDel)]; c.alerts.tiers = (c.alerts.tiers || []).filter(function (x) { return x !== tr; }); });
         renderDrawer(); return;
       }
+      if (b.id === 'cfgSaveView') { if (root.BDV2App && root.BDV2App.saveView) root.BDV2App.saveView(); renderDrawer(); return; }
       if (b.id === 'cfgAddTier') {
         // Le nouveau palier se place plus serré que le plus serré : moitié moins
         // de temps, barre dix points plus haut. Sans quoi on ajoute un doublon.

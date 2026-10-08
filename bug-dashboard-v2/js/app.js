@@ -9,7 +9,7 @@
   var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config, CH = root.BDV2Charts, DD = root.BDV2Drill;
   var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var $ = function (id) { return document.getElementById(id); };
-  var LS = { raw: 'bdv2:rawPaste', refDate: 'bdv2:refDate', refHalf: 'bdv2:refHalf', view: 'bdv2:view', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
+  var LS = { raw: 'bdv2:rawPaste', view: 'bdv2:view', filters: 'bdv2:filters', collapsed: 'bdv2:collapsed', name: 'bdv2:analysisName' };
 
   var S = {
     raw: '', headers: [], cols: {}, tickets: [], refDate: new Date(), refHalf: new Date().getHours() >= 12 ? 1 : 0,
@@ -72,6 +72,10 @@
     var cols = C.detectColumns(parsed.headers);
     if (cols.status === -1) { setMsg('Colonne « Status » introuvable dans les en-têtes collés.', 'err'); renderColumnChips(cols); return false; }
     S.raw = raw; S.headers = parsed.headers; S.cols = cols; S.archived = null; $('archiveBanner').classList.add('hidden');
+    // La date de référence est le moment de l'analyse, toujours — elle ne se
+    // choisit plus. Seule une analyse rouverte depuis le journal impose la
+    // sienne, et elle le fait après coup.
+    S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
     S.tickets = C.buildTickets(parsed.rows, parsed.headers, cols);
     S.analysisName = ($('analysisName').value || '').trim();
     try { localStorage.setItem(LS.raw, raw); localStorage.setItem(LS.name, S.analysisName); } catch (e) {}
@@ -90,8 +94,11 @@
   function loadArchived(tickets, meta) {
     S.tickets = tickets.map(function (t, i) { t.idx = i; return t; });
     S.raw = ''; S.archived = meta; S.analysisId = meta.id || null; S.analysisName = meta.nom || '';
-    if (meta.refDate) { S.refDate = new Date(meta.refDate + 'T00:00:00'); $('refDateInput').value = meta.refDate; }
-    if (meta.refHalf != null) { S.refHalf = Number(meta.refHalf) || 0; $('refHalfSelect').value = String(S.refHalf); }
+    // Une analyse du journal se rejoue à SA date, celle où elle a été prise :
+    // sans quoi ses retards et sa prévision seraient recalculés sur aujourd'hui
+    // et ne diraient plus ce qu'elle disait.
+    if (meta.refDate) S.refDate = new Date(meta.refDate + 'T00:00:00');
+    if (meta.refHalf != null) S.refHalf = Number(meta.refHalf) || 0;
     var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
     S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: has('assignee'), dueDate: has('dueDate'), created: has('created') };
     S.headers = [];
@@ -109,7 +116,6 @@
   function exitArchive() {
     S.archived = null; $('archiveBanner').classList.add('hidden');
     var saved = null; try { saved = localStorage.getItem(LS.raw); } catch (e) {}
-    try { var rd = localStorage.getItem(LS.refDate); if (rd) { $('refDateInput').value = rd; S.refDate = new Date(rd + 'T00:00:00'); } var rh = localStorage.getItem(LS.refHalf); if (rh != null) { S.refHalf = Number(rh) || 0; $('refHalfSelect').value = rh; } } catch (e) {}
     if (saved) { $('pasteArea').value = saved; analyze({ silent: true }); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
     else { S.tickets = []; $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); setMsg('', ''); document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } })); }
   }
@@ -261,13 +267,23 @@
   }
 
   // ── Cube ───────────────────────────────────────────────────────────
+  // Les cartes que la vue retient : sa liste et la case « visible », qui est
+  // globale. Le garde-fou « pas de plan publié » n'entre pas ici — il masque
+  // à l'écran, il ne doit pas retirer une carte de la vue qu'on enregistre.
+  function viewCards(conf) {
+    var view = conf.views[S.view];
+    return conf.cards.filter(function (c) {
+      if (!c.visible) return false;
+      return !view || view.cards.indexOf(c.id) !== -1 || S.view === 'projet';
+    });
+  }
+
   function renderCube(vis) {
     var conf = cfg();
-    var view = conf.views[S.view];
-    var cards = conf.cards.filter(function (c) {
-      if (!c.visible) return false;
-      if (!S.hasPlan && (c.rows === 'version' || c.cols === 'version')) return false; // sans plan publié, la dimension Version est vide
-      return !view || view.cards.indexOf(c.id) !== -1 || S.view === 'projet';
+    var cards = viewCards(conf).filter(function (c) {
+      // Sans plan publié, la dimension Version est vide — en lignes, en
+      // colonnes comme en découpage.
+      return !(!S.hasPlan && (c.rows === 'version' || c.cols === 'version' || c.split === 'version'));
     });
     var base = baseTickets();
     S.cardCtx = {};
@@ -463,33 +479,16 @@
       S.tickets = []; S.raw = ''; S.archived = null; $('archiveBanner').classList.add('hidden'); $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); $('colChips').innerHTML = ''; setMsg('', ''); DD.close();
       document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } }));
     });
-    var refInput = $('refDateInput');
-    refInput.value = (function () { try { return localStorage.getItem(LS.refDate); } catch (e) { return null; } })() || C.toISO(new Date());
-    S.refDate = new Date(refInput.value + 'T00:00:00');
-    refInput.addEventListener('change', function () { S.refDate = refInput.value ? new Date(refInput.value + 'T00:00:00') : new Date(); try { localStorage.setItem(LS.refDate, refInput.value); } catch (e) {} rerender(); });
-    // Demi-journée de référence : les jalons du plan tombent le matin ou
-    // l'après-midi, le temps restant se compte donc par demi-journées.
-    var halfSel = $('refHalfSelect');
-    var savedHalf = (function () { try { return localStorage.getItem(LS.refHalf); } catch (e) { return null; } })();
-    S.refHalf = savedHalf != null ? (Number(savedHalf) || 0) : (new Date().getHours() >= 12 ? 1 : 0);
-    halfSel.value = String(S.refHalf);
-    halfSel.addEventListener('change', function () { S.refHalf = Number(halfSel.value) || 0; try { localStorage.setItem(LS.refHalf, halfSel.value); } catch (e) {} rerender(); });
-    // vues
-    var viewSel = $('viewSelect');
-    function fillViews() { var v = cfg().views; viewSel.innerHTML = Object.keys(v).map(function (id) { return '<option value="' + id + '"' + (id === S.view ? ' selected' : '') + '>' + esc(v[id].label) + '</option>'; }).join(''); }
+    // La date de référence est le moment de l'analyse : elle n'a plus de champ.
+    S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
+    // La vue se choisit désormais dans le tiroir (Configurer → Vues) : c'est un
+    // réglage, pas un geste quotidien, et l'en-tête n'a plus de ligne d'outils.
     try { S.view = localStorage.getItem(LS.view) || 'projet'; } catch (e) {}
     if (!cfg().views[S.view]) S.view = 'projet';
-    fillViews();
-    viewSel.addEventListener('change', function () { S.view = viewSel.value; try { localStorage.setItem(LS.view, S.view); } catch (e) {} rerender(); });
-    $('saveViewBtn').addEventListener('click', function () {
-      CFG.update(function (c) { var v = c.views[S.view]; if (v) v.cards = c.cards.filter(function (x) { return x.visible; }).map(function (x) { return x.id; }); });
-      setMsg('Vue « ' + cfg().views[S.view].label + ' » enregistrée avec les cartes visibles.', 'ok');
-    });
     $('cfgBtn').addEventListener('click', function () { CFG.open(configCtx()); });
     $('cfgClose').addEventListener('click', CFG.close);
     $('cfgBackdrop').addEventListener('click', CFG.close);
-    $('printBtn').addEventListener('click', function () { window.print(); });
-    CFG.onChange(function () { fillViews(); rerender(); });
+    CFG.onChange(rerender);
     // filtres
     try { var f = JSON.parse(localStorage.getItem(LS.filters) || 'null'); if (f) S.filters = Object.assign(S.filters, f); } catch (e) {}
     // Filtres enregistrés avant l'arrivée d'une dimension : on rétablit le tableau vide.
@@ -553,6 +552,26 @@
     });
   }
 
+  // La vue active et son enregistrement vivent ici — c'est l'état de la page,
+  // pas la configuration — mais se commandent depuis le tiroir.
+  function setView(id) {
+    if (!cfg().views[id] || id === S.view) return;
+    S.view = id;
+    try { localStorage.setItem(LS.view, id); } catch (e) {}
+    rerender();
+  }
+
+  // Enregistre les cartes que la vue affiche, pas toutes celles qui sont
+  // cochées : la case « visible » est globale, la liste de la vue est un
+  // filtre par-dessus. Figer tout ce qui est coché effaçait la liste de la
+  // vue dès qu'on l'enregistrait depuis une autre.
+  function saveView() {
+    var v = cfg().views[S.view]; if (!v) return;
+    var ids = viewCards(cfg()).map(function (x) { return x.id; });
+    CFG.update(function (c) { c.views[S.view].cards = ids; });
+    setMsg('Vue « ' + v.label + ' » enregistrée avec ses ' + ids.length + ' carte' + (ids.length > 1 ? 's' : '') + '.', 'ok');
+  }
+
   function configCtx() {
     var teams = [], prios = {}, statuses = {}, labels = {};
     S.tickets.forEach(function (t) {
@@ -582,6 +601,6 @@
     document.dispatchEvent(new CustomEvent('bdv2:ready'));
   }
 
-  root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, setMsg: setMsg, esc: esc, ticketId: ticketId };
+  root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, view: function () { return S.view; }, setView: setView, saveView: saveView, setMsg: setMsg, esc: esc, ticketId: ticketId };
   document.addEventListener('DOMContentLoaded', init);
 })(window);

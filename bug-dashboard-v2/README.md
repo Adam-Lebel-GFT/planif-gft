@@ -93,6 +93,9 @@ L'ordre obtenu est celui de la liste du tiroir (Configurer → Cartes, elle auss
 glisser-déposer) : il est partagé, comme le reste de la configuration. Les cartes masquées ou
 absentes de la vue gardent leur place dans la liste.
 
+Une carte dont les lignes, les colonnes **ou le découpage** sont la dimension Version ne
+s'affiche pas tant qu'aucun plan n'est publié : elle serait vide.
+
 La **heatmap ouverts / terminés** (icône ◫, proposée seulement quand les colonnes de la carte
 sont les statuts) sépare la grille en deux blocs — en cours à gauche, terminé à droite, filet
 entre les deux — chacun avec sa colonne de sous-total, et colore les cellules par état : bleu en
@@ -202,12 +205,44 @@ choisie explicitement est conservée.
 
 Le temps restant est compté en **demi-journées de travail** : `releases-planning` publie ses
 jalons avec leur demi-journée (matin `T00:00`, après-midi `T12:00`), et la demi-journée en cours
-se choisit à côté de la date de référence (pré-remplie sur l'heure courante). Ne comptent ni la
+se déduit de l'heure de l'analyse. Ne comptent ni la
 demi-journée en cours — à 11h30 le lundi, le matin est derrière nous — ni celle du jalon : un
 Code freeze le jeudi vers 7h ferme déjà le jeudi matin, personne ne travaillant avant. Lundi
 matin, gel le jeudi matin : lundi après-midi (0,5) + mardi (1) + mercredi (1) = **2,5 jours**.
 Les seuils des paliers acceptent les demi-journées (2,5). Un plan publié avant cette évolution
 (date nue) vaut « matin », comme avant.
+
+## En-tête sans ligne d'outils
+
+L'en-tête ne porte plus de réglages. Ce qui s'y trouvait :
+
+| Avant, en haut de page | Maintenant |
+|---|---|
+| Date de référence | le moment de l'analyse, toujours |
+| Demi-journée | déduite de l'heure de l'analyse |
+| Sélecteur de vue | Configurer → **Vues**, colonne « Affichée » |
+| « Enregistrer la vue » | Configurer → **Vues**, en bas du tableau |
+| Imprimer | retiré |
+
+Les trois vues (Direction, Chef de projet, Scrum) sont inchangées : même jeu de cartes, mêmes
+sections, même comportement. Seul leur sélecteur a déménagé dans le tiroir — c'est un réglage
+qu'on pose une fois, pas un geste quotidien. Le choix de la vue affichée reste propre à chaque
+navigateur ; les vues elles-mêmes, leurs noms et leurs sections, restent partagées.
+
+Une carte est affichée si sa case « visible » est cochée **et** qu'elle figure dans la liste de
+la vue. La case vaut pour toutes les vues ; la liste de chaque vue filtre par-dessus. « Chef de
+projet » est l'exception : elle montre toujours tout ce qui est visible, sa liste ne filtre rien.
+
+« Enregistrer la vue affichée » fige dans la vue les cartes **qu'elle montre en ce moment** :
+on décoche celles dont on ne veut pas, puis on enregistre. Le bouton figeait auparavant toutes
+les cartes cochées, sans tenir compte de la liste de la vue — enregistrer Scrum juste après y
+être passé lui donnait les onze cartes au lieu de ses cinq. Le garde-fou « pas de plan publié »
+n'entre pas dans l'enregistrement : il masque une carte à l'écran, il ne la retire pas de la vue.
+
+**La date de référence est le moment de l'analyse.** Un collage neuf s'analyse maintenant. Une
+analyse rouverte depuis le journal se rejoue à *sa* date, celle où elle a été prise — sans quoi
+ses retards et sa prévision seraient recalculés sur aujourd'hui et ne diraient plus ce qu'elle
+disait.
 
 ## Journal des analyses
 
