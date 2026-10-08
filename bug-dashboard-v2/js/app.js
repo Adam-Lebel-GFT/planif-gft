@@ -267,15 +267,23 @@
   }
 
   // ── Cube ───────────────────────────────────────────────────────────
+  // Les cartes que la vue retient : sa liste et la case « visible », qui est
+  // globale. Le garde-fou « pas de plan publié » n'entre pas ici — il masque
+  // à l'écran, il ne doit pas retirer une carte de la vue qu'on enregistre.
+  function viewCards(conf) {
+    var view = conf.views[S.view];
+    return conf.cards.filter(function (c) {
+      if (!c.visible) return false;
+      return !view || view.cards.indexOf(c.id) !== -1 || S.view === 'projet';
+    });
+  }
+
   function renderCube(vis) {
     var conf = cfg();
-    var view = conf.views[S.view];
-    var cards = conf.cards.filter(function (c) {
-      if (!c.visible) return false;
+    var cards = viewCards(conf).filter(function (c) {
       // Sans plan publié, la dimension Version est vide — en lignes, en
       // colonnes comme en découpage.
-      if (!S.hasPlan && (c.rows === 'version' || c.cols === 'version' || c.split === 'version')) return false;
-      return !view || view.cards.indexOf(c.id) !== -1 || S.view === 'projet';
+      return !(!S.hasPlan && (c.rows === 'version' || c.cols === 'version' || c.split === 'version'));
     });
     var base = baseTickets();
     S.cardCtx = {};
@@ -553,10 +561,15 @@
     rerender();
   }
 
+  // Enregistre les cartes que la vue affiche, pas toutes celles qui sont
+  // cochées : la case « visible » est globale, la liste de la vue est un
+  // filtre par-dessus. Figer tout ce qui est coché effaçait la liste de la
+  // vue dès qu'on l'enregistrait depuis une autre.
   function saveView() {
     var v = cfg().views[S.view]; if (!v) return;
-    CFG.update(function (c) { c.views[S.view].cards = c.cards.filter(function (x) { return x.visible; }).map(function (x) { return x.id; }); });
-    setMsg('Vue « ' + v.label + ' » enregistrée avec les cartes visibles.', 'ok');
+    var ids = viewCards(cfg()).map(function (x) { return x.id; });
+    CFG.update(function (c) { c.views[S.view].cards = ids; });
+    setMsg('Vue « ' + v.label + ' » enregistrée avec ses ' + ids.length + ' carte' + (ids.length > 1 ? 's' : '') + '.', 'ok');
   }
 
   function configCtx() {

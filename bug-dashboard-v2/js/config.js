@@ -410,7 +410,7 @@
           '<td>' + ['kpis', 'alerts', 'ai', 'train', 'cube', 'history'].filter(function (s) { return s !== 'ai' || aiLoaded(); }).map(function (s) { return '<label class="cfg-check"><input type="checkbox" data-view-section="' + id + '" data-section="' + s + '" ' + (v.sections[s] ? 'checked' : '') + '> ' + SECTION_LABELS[s] + '</label>'; }).join(' ') + '</td></tr>';
       }).join('') + '</tbody></table>' +
         '<div class="cfg-actions"><button type="button" class="ghost small" id="cfgSaveView">Enregistrer la vue affichée avec les cartes visibles</button></div>' +
-        '<p class="cfg-help">Cocher ou décocher une carte ne change que l\'affichage courant. Ce bouton fige la visibilité actuelle des cartes dans la vue affichée, pour tout le monde.</p>';
+        '<p class="cfg-help">Ce bouton fige dans la vue affichée les cartes qu\'elle montre en ce moment — décochez celles dont vous ne voulez pas, puis enregistrez. La case « visible » d\'une carte, elle, vaut pour toutes les vues : la liste de chaque vue filtre par-dessus. La vue « Chef de projet » montre toujours tout ce qui est visible.</p>';
     } else if (drawerTab === 'ai') {
       h += '<p class="cfg-help">La synthèse est générée par une fonction serveur (la clé d\'API n\'est jamais dans la page). Le modèle le moins coûteux est sélectionné par défaut.</p>' +
         '<div class="cfg-grid">' +
