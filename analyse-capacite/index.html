@@ -95,6 +95,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .dinp{flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--grey2);border-radius:var(--radius);font-family:'DM Mono',monospace;font-size:11px;color:var(--text);background:var(--grey)}
 .dinp:focus{outline:none;border-color:var(--navy);background:var(--white)}
 .flag{width:16px;height:12px;vertical-align:-1px;margin-right:2px;border-radius:2px;box-shadow:0 0 0 1px rgba(12,26,46,.12);object-fit:cover}
+.loader{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(70,74,82,.62);backdrop-filter:blur(2px)}
+.loader.on{display:flex}
+.loader-card{width:min(380px,86vw);background:var(--white);border-radius:var(--radius2);padding:26px 26px 22px;text-align:center;box-shadow:0 18px 50px rgba(12,26,46,.28)}
+.spin{width:38px;height:38px;margin:0 auto 14px;border:4px solid var(--grey2);border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-t{font-size:13px;font-weight:700;color:var(--navy)}
+.loader-s{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin:5px 0 14px;min-height:14px}
+.loader-bar{height:8px;border-radius:4px;background:var(--grey2);overflow:hidden}
+.loader-fill{height:100%;width:0;border-radius:4px;background:var(--navy);transition:width .25s ease}
+.loader-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:7px}
 .darr{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
 
 /* ── KPI bar (sticky) ── */
@@ -342,6 +352,16 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 
 </div>
 
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader-card">
+    <div class="spin"></div>
+    <div class="loader-t">Chargement du planning…</div>
+    <div class="loader-s" id="loader-step"></div>
+    <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+    <div class="loader-pct" id="loader-pct">0 %</div>
+  </div>
+</div>
+
 <!-- ── Sidebar paramètres ── -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div class="sidebar" id="sidebar">
@@ -381,6 +401,12 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     </div>
     <div class="sb-divider"></div>
     <div>
+      <div class="sb-group-title">Canadiens anglophones</div>
+      <input class="sb-input-text" id="sb-anglo" placeholder="ex: Madgin, Morneau-Pettigrew" value="">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Par défaut, toute personne de la section « Canada » du fichier est au Québec (drapeau du Québec). Indiquez ici les noms (ou fragments de noms) à rattacher au Canada anglophone (drapeau canadien).</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div>
       <div class="sb-group-title">Équipes affichées par défaut</div>
       <input class="sb-input-text" id="sb-default-teams" placeholder="ex: CONF-1, INTEG 4 — vide = toutes" value="">
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">À l'ouverture d'un fichier, seules ces équipes sont pré-sélectionnées. Vide = toutes.</div>
@@ -414,9 +440,10 @@ var state = { dates: [], sprints: [], persons: [], sourceLabel: '' };
 var filters = { q: '', teams: new Set(), roles: new Set(), countries: new Set(), noVA: false };
 var DEFAULT_TEAMS = new Set();
 // Windows n'affiche pas les émojis de drapeaux (on y voit « ES », « FR »…) : on utilise des images (code ISO).
-var FLAGS = {'canada':'ca','québec':'ca','quebec':'ca','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
+var FLAGS = {'canada':'ca','québec':'qc','quebec':'qc','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
 var selected = new Set();
 var planVersions = [];     // versions du calendrier des versions (releases-planning) : { num, start, end }
+var ANGLO = [];  // fragments (minuscules) de noms de Canadiens anglophones (hors Québec)
 var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
 var unit = 'JP';
@@ -434,13 +461,35 @@ function isWE(s){ var w=pd(s).getUTCDay(); return w===0||w===6; }
 function isoWeek(s){ var d=pd(s); var dt=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); var dn=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-dn); var ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return { y: dt.getUTCFullYear(), w: Math.ceil((((dt-ys)/86400000)+1)/7) }; }
 function weekKey(s){ var iw=isoWeek(s); return iw.y+'-W'+String(iw.w).padStart(2,'0'); }
 function isLead(role){ var r=(role||'').toLowerCase(); return r.indexOf('lead')>=0||r.indexOf('architect')>=0||r.indexOf('program manager')>=0||r.indexOf('pmo')>=0; }
+// Drapeau du Québec (fleurdelisé) en SVG intégré : absent de flagcdn.com.
+var QC_FLAG = (function(){
+  var fl = '<g fill="#fff"><path d="M0-4.6C1.5-2.8 1.5-.6 0 1.2-1.5-.6-1.5-2.8 0-4.6Z"/>'
+    +'<path d="M-.6 1C-2.2-2-5-.8-4.6 1.3-4.4 2.5-3 3-2.2 2.2-3.2 2.3-3.5 1.3-2.9.7-2.2.2-1.2.5-.2 1.9Z"/>'
+    +'<path d="M.6 1C2.2-2 5-.8 4.6 1.3 4.4 2.5 3 3 2.2 2.2 3.2 2.3 3.5 1.3 2.9.7 2.2.2 1.2.5.2 1.9Z"/>'
+    +'<rect x="-2.6" y="1.7" width="5.2" height="1" rx=".3"/><path d="M-1.6 3.2H1.6L0 5Z"/></g>';
+  var g = function(x,y){ return '<g transform="translate('+x+' '+y+') scale(.6)">'+fl+'</g>'; };
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 18"><rect width="24" height="18" fill="#003DA5"/>'
+    +'<path d="M10.2 0h3.6v7.2H24v3.6H13.8V18h-3.6V10.8H0V7.2h10.2Z" fill="#fff"/>'
+    +g(5.1,3.6)+g(18.9,3.6)+g(5.1,14.4)+g(18.9,14.4)+'</svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+})();
+// « Canada » dans le fichier = Québec par défaut (projet francophone) ; les anglophones listés dans les paramètres restent au Canada.
+function isAnglo(name){ var n=(name||'').toLowerCase(); return ANGLO.some(function(t){ return n.indexOf(t)>=0; }); }
+function applyCountryOverrides(){
+  state.persons.forEach(function(p){
+    var c=p.country0, k=c.toLowerCase().trim();
+    p.country = (k==='canada' || k==='québec' || k==='quebec') ? (isAnglo(p.name) ? 'Canada' : 'Québec') : c;
+  });
+  filters.countries.forEach(function(c){ if(!countryList().some(function(x){ return x===c; })) filters.countries.delete(c); });
+}
 function flagFor(c){
   var iso = c ? FLAGS[String(c).toLowerCase().trim()] : null;
   if(!iso) return '';
+  if(iso==='qc') return '<img class="flag" src="'+QC_FLAG+'" width="16" height="12" alt="" title="Québec">';
   return '<img class="flag" src="https://flagcdn.com/w20/'+iso+'.png" srcset="https://flagcdn.com/w40/'+iso+'.png 2x" width="16" height="12" alt="" loading="lazy">';
 }
 function flagPrefix(c){ var f=flagFor(c); return f ? f+' ' : ''; }
-function mkPerson(name, team, role, alloc, arr, dep, country, va){ return { va:!!va, name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
+function mkPerson(name, team, role, alloc, arr, dep, country, va){ return { va:!!va, country0:(country||''), name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
 function activeOn(p, ds){ return (!p.arr || p.arr <= ds) && (!p.dep || p.dep >= ds); }
 function roleRank(role){
   if(!role) return 99; var r=role.toLowerCase().trim();
@@ -457,14 +506,39 @@ function velFor(team){ return ITSET.has(team)?P.vi : TTSET.has(team)?P.vt : P.vc
 function leadRateOf(p){ return isLead(p.role) ? Math.max(0, 1 - P.raff - P.supp) : 1.0; }
 function spPerJP(p){ var v=velFor(p.team); return leadRateOf(p) * (1-P.agile) * (1-P.bogues) / (v>0?v:1); }
 
+// ── Écran de chargement (voile gris + indicateur + barre de progression) ──
+function loaderShow(){ $('#loader').classList.add('on'); loaderSet(0,'Lecture du fichier…'); }
+function loaderSet(pct, step){
+  pct=Math.max(0, Math.min(100, Math.round(pct)));
+  $('#loader-fill').style.width=pct+'%'; $('#loader-pct').textContent=pct+' %';
+  if(step) $('#loader-step').textContent=step;
+}
+function loaderHide(){ $('#loader').classList.remove('on'); }
+// Laisse le navigateur peindre l'écran avant le traitement suivant (sinon la barre reste figée).
+function paint(){ return new Promise(function(r){ requestAnimationFrame(function(){ setTimeout(r, 0); }); }); }
+function readFileBuffer(file, onProgress){
+  return new Promise(function(res, rej){
+    var fr=new FileReader();
+    fr.onprogress=function(e){ if(e.lengthComputable) onProgress(e.loaded/e.total); };
+    fr.onload=function(){ res(fr.result); };
+    fr.onerror=function(){ rej(fr.error||new Error('lecture impossible')); };
+    fr.readAsArrayBuffer(file);
+  });
+}
+
 // ── Parse fichier réel (onglet « Planning Build ») ──
 function excelDateToJS(serial){ if(typeof serial!=='number') return null; return new Date((serial-25569)*86400*1000); }
-function handleFile(file){
+async function handleFile(file){
   if(typeof XLSX === 'undefined'){ setFileMsg('Librairie Excel non chargée (connexion requise au 1er chargement). Réessayez.', 'err'); return; }
-  file.arrayBuffer().then(function(ab){
-    var wb = XLSX.read(ab, { type:'array', cellDates:false });
+  loaderShow(); await paint();
+  try {
+    var ab = await readFileBuffer(file, function(f){ loaderSet(f*25, 'Lecture du fichier…'); });
+    loaderSet(25, 'Analyse du classeur…'); await paint();
+    // Seul l'onglet « Planning Build » est décodé : les autres onglets du classeur (très volumineux) sont ignorés.
+    var wb = XLSX.read(ab, { type:'array', cellDates:false, sheets:'Planning Build', cellFormula:false, cellHTML:false, cellNF:false, cellText:false, cellStyles:false });
     var sheet = wb.Sheets['Planning Build'];
-    if(!sheet){ setFileMsg('Onglet « Planning Build » introuvable — format attendu : fichier planning Planif v2.4.', 'err'); return; }
+    if(!sheet){ loaderHide(); setFileMsg('Onglet « Planning Build » introuvable — format attendu : fichier planning Planif v2.4.', 'err'); return; }
+    loaderSet(55, 'Lecture du planning…'); await paint();
     var data = XLSX.utils.sheet_to_json(sheet, { header:1, defval:null });
     var sprintRow = data[2]||[], dateRow = data[5]||[];
     var colDates = dateRow.map(function(v){ if(typeof v==='number') return excelDateToJS(v); if(v instanceof Date) return v; return null; });
@@ -485,7 +559,9 @@ function handleFile(file){
     var persons = [];
     var currentCountry = '';
     var COUNTRY_RE = /^(canada|qu[eé]bec|france|suisse|espagne|maroc|portugal|pologne|inde|br[eé]sil|allemagne|italie|royaume|belgique|roumanie)/i;
+    var dateKeys = colDates.map(function(d){ return d ? dsU(d) : null; });
     for(var r=7;r<data.length;r++){
+      if(r%20===0){ loaderSet(55 + 35*(r/data.length), 'Lecture des personnes…'); await paint(); }
       var row=data[r]; if(!row) continue;
       var name=String(row[1]||'').trim();
       if(!name || name==='Full Names' || name==='NaN') continue;
@@ -499,16 +575,19 @@ function handleFile(file){
       var alloc=Math.min(1, Math.max(0, allocRaw>1?allocRaw/100:allocRaw));
       var va=String(row[11]||'').trim().toUpperCase()==='VA'; // colonne L « VA ? »
       var p=mkPerson(name, team, role, alloc, toDS(row[7]), toDS(row[8]), currentCountry, va);
-      for(var cc=0;cc<colDates.length;cc++){ var dd=colDates[cc]; if(!dd) continue; var code=String(row[cc]||'').trim(); if(code) p.dailyCodes[dsU(dd)]=code; }
+      for(var cc=0;cc<dateKeys.length;cc++){ var dk=dateKeys[cc]; if(!dk) continue; var code=String(row[cc]||'').trim(); if(code) p.dailyCodes[dk]=code; }
       persons.push(p);
     }
-    if(!persons.length){ setFileMsg('Aucune personne détectée dans le fichier.', 'err'); return; }
+    if(!persons.length){ loaderHide(); setFileMsg('Aucune personne détectée dans le fichier.', 'err'); return; }
     var dsAll = colDates.filter(Boolean).map(dsU).sort();
     var dates=[]; (function(){ var c=pd(dsAll[0]), e=pd(dsAll[dsAll.length-1]); while(c<=e){ dates.push(dsU(c)); c=new Date(c.getTime()+86400000); } })();
+    loaderSet(92, 'Affichage de l\'analyse…'); await paint();
     setStateData({ dates:dates, sprints:sprints, persons:persons, sourceLabel:file.name });
     setFileMsg(persons.length+' personnes · '+sprints.length+' sprint(s) · '+dates.length+' jours — traitement 100 % local.', 'ok');
     $('#file-card').classList.add('has-file');
-  }).catch(function(e){ console.error(e); setFileMsg('Erreur de lecture : '+e.message, 'err'); });
+    loaderSet(100, 'Terminé'); await paint();
+    loaderHide();
+  } catch(e){ console.error(e); loaderHide(); setFileMsg('Erreur de lecture : '+e.message, 'err'); }
 }
 function setFileMsg(txt, type){ var el=$('#file-status'); el.textContent=txt; el.className='file-status '+(type||''); }
 
@@ -537,6 +616,7 @@ function applyDefaultTeams(){
 }
 function setStateData(d){
   state = d;
+  applyCountryOverrides();
   filters = { q:'', teams:new Set(), roles:new Set(), countries:new Set(), noVA:false };
   selVersions = new Set();
   applyDefaultTeams();
@@ -1228,6 +1308,7 @@ async function exportCapacityPptx(){
 function pct(v){ var n=parseFloat(v); return isNaN(n)?0:Math.min(1,Math.max(0,n/100)); }
 function posf(v){ var n=parseFloat(v); return (isNaN(n)||n<=0)?2.0:n; }
 function parseTeams(str){ return str.split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;}); }
+function parseNames(str){ return str.split(',').map(function(s){return s.trim().toLowerCase();}).filter(function(s){return s.length>0;}); }
 function updateLeadCalc(){
   var r=parseFloat($('#sb-raffinage').value)||0, s=parseFloat($('#sb-support').value)||0;
   $('#sb-lead-calc').textContent = Math.max(0, Math.round(100-r-s))+'%';
@@ -1240,6 +1321,7 @@ function applyParams(){
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
+  ANGLO=parseNames($('#sb-anglo').value); applyCountryOverrides();
   DEFAULT_TEAMS=new Set(parseTeams($('#sb-default-teams').value));
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
   closeSidebar();
