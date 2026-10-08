@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (entête commune). Les styles inline ci-dessous, déclarés après, restent prioritaires. -->
 <link rel="stylesheet" href="../assets/theme.css">
+<script src="../assets/loader.js"></script>
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
@@ -95,16 +96,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .dinp{flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--grey2);border-radius:var(--radius);font-family:'DM Mono',monospace;font-size:11px;color:var(--text);background:var(--grey)}
 .dinp:focus{outline:none;border-color:var(--navy);background:var(--white)}
 .flag{width:16px;height:12px;vertical-align:-1px;margin-right:2px;border-radius:2px;box-shadow:0 0 0 1px rgba(12,26,46,.12);object-fit:cover}
-.loader{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(70,74,82,.62);backdrop-filter:blur(2px)}
-.loader.on{display:flex}
-.loader-card{width:min(380px,86vw);background:var(--white);border-radius:var(--radius2);padding:26px 26px 22px;text-align:center;box-shadow:0 18px 50px rgba(12,26,46,.28)}
-.spin{width:38px;height:38px;margin:0 auto 14px;border:4px solid var(--grey2);border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loader-t{font-size:13px;font-weight:700;color:var(--navy)}
-.loader-s{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin:5px 0 14px;min-height:14px}
-.loader-bar{height:8px;border-radius:4px;background:var(--grey2);overflow:hidden}
-.loader-fill{height:100%;width:0;border-radius:4px;background:var(--navy);transition:width .25s ease}
-.loader-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:7px}
 .darr{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
 
 /* ── KPI bar (sticky) ── */
@@ -352,16 +343,6 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 
 </div>
 
-<div class="loader" id="loader" role="status" aria-live="polite">
-  <div class="loader-card">
-    <div class="spin"></div>
-    <div class="loader-t">Chargement du planning…</div>
-    <div class="loader-s" id="loader-step"></div>
-    <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
-    <div class="loader-pct" id="loader-pct">0 %</div>
-  </div>
-</div>
-
 <!-- ── Sidebar paramètres ── -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div class="sidebar" id="sidebar">
@@ -534,15 +515,11 @@ function leadRateOf(p){ return isLead(p.role) ? Math.max(0, 1 - P.raff - P.supp)
 function spPerJP(p){ var v=velFor(p.team); return leadRateOf(p) * (1-P.agile) * (1-P.bogues) / (v>0?v:1); }
 
 // ── Écran de chargement (voile gris + indicateur + barre de progression) ──
-function loaderShow(){ $('#loader').classList.add('on'); loaderSet(0,'Lecture du fichier…'); }
-function loaderSet(pct, step){
-  pct=Math.max(0, Math.min(100, Math.round(pct)));
-  $('#loader-fill').style.width=pct+'%'; $('#loader-pct').textContent=pct+' %';
-  if(step) $('#loader-step').textContent=step;
-}
-function loaderHide(){ $('#loader').classList.remove('on'); }
+function loaderShow(){ TKLoader.show('Chargement du planning…', 'Lecture du fichier…'); }
+function loaderSet(pct, step){ TKLoader.set(pct, step); }
+function loaderHide(){ TKLoader.hide(); }
 // Laisse le navigateur peindre l'écran avant le traitement suivant (sinon la barre reste figée).
-function paint(){ return new Promise(function(r){ requestAnimationFrame(function(){ setTimeout(r, 0); }); }); }
+function paint(){ return TKLoader.paint(); }
 function readFileBuffer(file, onProgress){
   return new Promise(function(res, rej){
     var fr=new FileReader();
