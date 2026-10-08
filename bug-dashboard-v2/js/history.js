@@ -513,6 +513,86 @@
     return (metric === 'teams' ? '<p class="sub">Tickets ouverts (non terminés) par équipe.</p>' : '') + lines(keys.map(function (k) { return { label: k, color: colors[k], values: points.map(function (p) { if (!p.st) return null; var v = p.st[field][k]; return v == null ? 0 : (metric === 'teams' ? v.open : v); }) }; }));
   }
 
+  // ── Message de fin de version ────────────────────────────────────────────
+  // Le texte hebdomadaire se déduit entièrement d'une photo, hors ses deux
+  // phrases de contexte. Les trois paquets se lisent dans l'ordre : un ticket
+  // tombe dans le premier qui le prend, donc dans exactement un, et leur somme
+  // fait le périmètre — ce qui permet d'en tirer des pourcentages honnêtes.
+  var ORIGINES = [
+    { cle: 'PRJ301', court: 'transverse', phrase: 'Des {n} livrés au transverse' },
+    { cle: 'Interne', court: 'ST', phrase: 'Des {n} livrés en interne' }
+  ];
+
+  function paquets(tickets, cfg) {
+    var b = cfg.bilan || {};
+    var res = (b.resolutions || []).map(C.normalize);
+    var lab = C.normalize(b.labelSansLivraison || '');
+    var out = {};
+    ORIGINES.forEach(function (o) { out[o.cle] = { pasBug: 0, sansLivraison: 0, code: 0, total: 0 }; });
+    tickets.forEach(function (t) {
+      var o = out[t.origin] || out.Interne;
+      o.total++;
+      if (res.indexOf(C.normalize(t.resolution || '')) !== -1) o.pasBug++;
+      else if (lab && C.normalize(t.labels || '').indexOf(lab) !== -1) o.sansLivraison++;
+      else o.code++;
+    });
+    return out;
+  }
+
+  function bilanTexte(idx) {
+    var cfg = CFG.get(), b = cfg.bilan || {}, it = H.items[idx];
+    if (!it) return null;
+    var tk = inflate(it.tickets || []);
+    if (!tk.length) return null;
+    var par = paquets(tk, cfg), total = tk.length;
+    var pct = function (n) { return (n / total * 100).toFixed(1).replace('.', ','); };
+    var som = function (k) { var n = 0; ORIGINES.forEach(function (o) { n += par[o.cle][k]; }); return n; };
+    // « fixed_no-release » se dit « fixed no release » dans une phrase.
+    var sansLiv = (b.labelSansLivraison || '').replace(/[_-]+/g, ' ').trim() || 'sans livraison';
+    var L = [];
+    if (b.intro) L.push(b.intro, '');
+    L.push('Total : ' + total + ' tickets (' + ORIGINES.map(function (o) { return par[o.cle].total + ' ' + o.court; }).join(' et ') + ')', '');
+    ORIGINES.forEach(function (o) {
+      var p = par[o.cle];
+      if (!p.total) return;
+      L.push(o.phrase.replace('{n}', p.total) + ' :', '');
+      L.push('* ' + p.pasBug + ' sont déclinés, abandonnés ou not replicables');
+      L.push('* ' + p.sansLivraison + ' en ' + sansLiv);
+      L.push('* ' + p.code + ' ont du code sur la version', '');
+    });
+    L.push('On comprendra que ' + pct(som('pasBug')) + ' % ne sont pas des bugs, ' + pct(som('code')) +
+      ' % ont du code et ' + pct(som('sansLivraison')) + ' % sont en ' + sansLiv + '.');
+    if (b.fin) L.push('', b.fin);
+    return L.join('\n');
+  }
+
+  function ouvrirMessage(idx) {
+    var it = H.items[idx], txt = bilanTexte(idx);
+    var ov = document.getElementById('msgOverlay');
+    if (!ov) return;
+    document.getElementById('msgSub').textContent = (it.nom || 'Analyse') + ' · ' + fmtWhen(it.at) +
+      (txt ? ' · ' + it.nb + ' tickets' : '');
+    document.getElementById('msgText').value = txt ||
+      'Cette photo n\'a pas gardé ses tickets : le message ne peut pas être composé.\n' +
+      'Configurer → Règles → « conserver les tickets » doit être coché avant l\'analyse.';
+    document.getElementById('msgText').readOnly = !txt;
+    ov.classList.add('is-open');
+  }
+  function fermerMessage() { var ov = document.getElementById('msgOverlay'); if (ov) ov.classList.remove('is-open'); }
+
+  function bindMessage() {
+    var ov = document.getElementById('msgOverlay'); if (!ov) return;
+    document.getElementById('msgClose').addEventListener('click', fermerMessage);
+    ov.addEventListener('click', function (e) { if (e.target === ov) fermerMessage(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermerMessage(); });
+    document.getElementById('msgCopy').addEventListener('click', async function () {
+      var b = this, t = document.getElementById('msgText');
+      try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); }
+      var old = b.textContent; b.textContent = 'Copié ✓';
+      setTimeout(function () { b.textContent = old; }, 1600);
+    });
+  }
+
   // ── Section Évolution ────────────────────────────────────────────────────
   function renderHistory() {
     var hasData = S.tickets.length > 0;
@@ -627,6 +707,7 @@
       if (v.official == null && !mine.length) return '';
       var fid = 'histV' + v.td.replace(/[^0-9a-z]/gi, '');
       var head = '<div class="ver-head"><span class="ver-name">' + (v.official != null ? '📌 ' : '') + esc(versionLabel(v, true)) + '</span>' +
+        (v.official != null ? '<button type="button" class="icon-btn" data-hist-msg="' + v.official + '" title="Composer le message de fin de version">✉</button>' : '') +
         (v.official == null && v.td !== 'none' ? '<span class="tk-badge tk-badge--muted">pas encore officialisée</span>' : '') +
         (mine.length ? foldBtn(fid, mine.length + ' analyse' + (mine.length > 1 ? 's' : '') + ' de travail') : '<span class="sub">aucune analyse de travail</span>') + '</div>';
       return '<div class="ver-block">' + head +
@@ -712,6 +793,8 @@
     var r = e.target.closest('[data-hist-rename]');
     if (r) { var it = H.items[+r.dataset.histRename]; var nom = prompt('Nom de l\'analyse :', it.nom || ''); if (nom == null) return; it.nom = nom.trim(); if (H.source === 'supabase' && it.id) await S.client.from('bdv2_analyses').update({ nom: it.nom || null }).eq('id', it.id); else saveLocal(H.items); refresh(); return; }
     var p = e.target.closest('[data-hist-pin]');
+    var msg = e.target.closest('[data-hist-msg]');
+    if (msg) { ouvrirMessage(+msg.dataset.histMsg); return; }
     if (p) { var ip = H.items[+p.dataset.histPin]; ip.epingle = !ip.epingle; if (H.source === 'supabase' && ip.id) await S.client.from('bdv2_analyses').update({ epingle: ip.epingle }).eq('id', ip.id); else saveLocal(H.items); refresh(); return; }
     var dl = e.target.closest('[data-hist-del]');
     if (dl) { var idx = +dl.dataset.histDel, id = H.items[idx]; if (!confirm('Supprimer cette analyse du journal ?')) return; if (H.source === 'supabase' && id.id) { var res = await S.client.from('bdv2_analyses').delete().eq('id', id.id); if (res.error) { alert(res.error.message); return; } } H.items.splice(idx, 1); if (H.source !== 'supabase') saveLocal(H.items); H.compare = []; refresh(); return; }
@@ -725,6 +808,7 @@
   });
 
   document.addEventListener('bdv2:ready', async function () {
+    bindMessage();
     await load();
     if (S.raw) { H.currentHash = await sha256(S.raw + '|' + C.toISO(S.refDate)); }
     if (S.tickets.length) APP.rerender(); else renderHistory();

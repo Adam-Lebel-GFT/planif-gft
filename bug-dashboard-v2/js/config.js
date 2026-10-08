@@ -37,6 +37,17 @@
     // fourre-tout ; liste vide, on retombe sur celles qui portent au moins
     // « min » tickets, ce qui reste lisible sans configuration.
     labels:     { suivies: ['SM-RK'], min: 2 },
+    // Message de fin de version : les trois paquets dans lesquels tombent les
+    // tickets livrés, et les deux phrases qui encadrent le texte. Les paquets
+    // se lisent dans l'ordre — pas un bug, puis sans livraison, puis le reste —
+    // si bien qu'un ticket tombe dans exactement un, et que les trois totalisent
+    // le périmètre.
+    bilan:      {
+      resolutions: ['Decline', 'Declined', 'Duplicate', 'Incomplete', 'Not replicable', 'Abandonned', 'Abandoned', "Won't do", 'Cannot Reproduce'],
+      labelSansLivraison: 'fixed_no-release',
+      intro: 'Voici l\'image pour ce soir.',
+      fin: 'Bonne soirée tout le monde'
+    },
     version:    { boundary: 'deploy', toleranceDays: 0, useFixVersion: false },
     // Paliers de risque : plus le jalon approche, plus la barre monte. Un
     // ticket ouvert sous `pct` d'avancement alors qu'il reste `days` jours
@@ -353,6 +364,16 @@
         '<label>Journée de travail de <input type="number" min="0" max="23" class="cfg-input num" data-burnup="openFrom" value="' + (cfg.burnup ? cfg.burnup.openFrom : 8) + '"> h à <input type="number" min="1" max="24" class="cfg-input num" data-burnup="openTo" value="' + (cfg.burnup ? cfg.burnup.openTo : 19) + '"> h</label>' +
         '</div>' +
         '<p class="cfg-help">Hors de ces heures et le week-end, la rampe reste plate et l\'axe du graphique est comprimé — une analyse saisie la nuit reste visible, dans un couloir étroit.</p>' +
+        '<h4>Message de fin de version</h4>' +
+        '<div class="cfg-grid">' +
+        '<label>Étiquette « sans livraison » <input type="text" class="cfg-input" data-bilan="labelSansLivraison" value="' + esc(cfg.bilan.labelSansLivraison || '') + '"></label>' +
+        '</div>' +
+        '<label class="cfg-block">Résolutions qui ne sont pas des bugs, une par ligne<textarea class="cfg-input cfg-area" data-bilan="resolutions">' + esc((cfg.bilan.resolutions || []).join('\n')) + '</textarea></label>' +
+        '<div class="cfg-grid">' +
+        '<label>Phrase d\'ouverture <input type="text" class="cfg-input" data-bilan="intro" value="' + esc(cfg.bilan.intro || '') + '"></label>' +
+        '<label>Phrase de cl\u00f4ture <input type="text" class="cfg-input" data-bilan="fin" value="' + esc(cfg.bilan.fin || '') + '"></label>' +
+        '</div>' +
+        '<p class="cfg-help">Le bouton ✉ d\'une version officielle, dans le journal, compose le message hebdomadaire à partir de sa photo. Un ticket tombe dans le premier paquet qui le prend : <b>pas un bug</b> (sa résolution est dans la liste), sinon <b>sans livraison</b> (il porte l\'étiquette), sinon <b>du code sur la version</b>. Le texte reste modifiable avant d\'être copié.</p>' +
         '<h4>Évolution</h4>' +
         '<div class="cfg-grid">' +
         '<label>Ligne de repère à <input type="number" min="0" max="9999" class="cfg-input num" data-hist="threshold" value="' + (cfg.history.threshold == null ? 40 : cfg.history.threshold) + '"> tickets</label>' +
@@ -426,6 +447,11 @@
       else if (d.cardSplit !== undefined) { update(function (c) { var card = findCard(c, d.cardSplit); if (card) normalizeCard((card.split = t.value || null, card)); }); renderDrawer(); }
       else if (d.cardMeasure !== undefined) update(function (c) { var card = findCard(c, d.cardMeasure); if (card) card.measure = t.value; });
       else if (d.cardStyle !== undefined) update(function (c) { var card = findCard(c, d.cardStyle); if (card) card.style = t.value; });
+      else if (d.bilan !== undefined) update(function (c) {
+        c.bilan[d.bilan] = d.bilan === 'resolutions'
+          ? t.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean)
+          : t.value;
+      });
       else if (d.lab !== undefined) update(function (c) {
         var l = c.labels.suivies || (c.labels.suivies = []);
         var i = l.indexOf(d.lab);

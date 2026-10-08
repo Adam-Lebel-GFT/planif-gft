@@ -127,6 +127,18 @@
 </div>
 
 <!-- Drill-down -->
+<div id="msgOverlay" class="dd-overlay" aria-hidden="true">
+  <div class="dd-panel msg-panel" role="dialog" aria-modal="true" aria-labelledby="msgTitle">
+    <div class="dd-head">
+      <div><h3 id="msgTitle">Message de fin de version</h3><div class="dd-sub" id="msgSub"></div></div>
+      <div class="dd-actions">
+        <button type="button" class="primary small" id="msgCopy">Copier le message</button>
+        <button type="button" class="ghost small" id="msgClose">Fermer ✕</button>
+      </div>
+    </div>
+    <div class="dd-body msg-body"><textarea id="msgText" spellcheck="false" aria-label="Message à copier"></textarea></div>
+  </div>
+</div>
 <div id="ddOverlay" class="dd-overlay" aria-hidden="true">
   <div class="dd-panel" role="dialog" aria-modal="true" aria-labelledby="ddTitle">
     <div class="dd-head">
