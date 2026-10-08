@@ -401,6 +401,12 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     </div>
     <div class="sb-divider"></div>
     <div>
+      <div class="sb-group-title">Canadiens anglophones</div>
+      <input class="sb-input-text" id="sb-anglo" placeholder="ex: Madgin, Morneau-Pettigrew" value="">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Par défaut, toute personne de la section « Canada » du fichier est au Québec (drapeau du Québec). Indiquez ici les noms (ou fragments de noms) à rattacher au Canada anglophone (drapeau canadien).</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div>
       <div class="sb-group-title">Équipes affichées par défaut</div>
       <input class="sb-input-text" id="sb-default-teams" placeholder="ex: CONF-1, INTEG 4 — vide = toutes" value="">
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">À l'ouverture d'un fichier, seules ces équipes sont pré-sélectionnées. Vide = toutes.</div>
@@ -437,6 +443,7 @@ var DEFAULT_TEAMS = new Set();
 var FLAGS = {'canada':'ca','québec':'qc','quebec':'qc','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
 var selected = new Set();
 var planVersions = [];     // versions du calendrier des versions (releases-planning) : { num, start, end }
+var ANGLO = [];  // fragments (minuscules) de noms de Canadiens anglophones (hors Québec)
 var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
 var unit = 'JP';
@@ -466,6 +473,15 @@ var QC_FLAG = (function(){
     +g(5.1,3.6)+g(18.9,3.6)+g(5.1,14.4)+g(18.9,14.4)+'</svg>';
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 })();
+// « Canada » dans le fichier = Québec par défaut (projet francophone) ; les anglophones listés dans les paramètres restent au Canada.
+function isAnglo(name){ var n=(name||'').toLowerCase(); return ANGLO.some(function(t){ return n.indexOf(t)>=0; }); }
+function applyCountryOverrides(){
+  state.persons.forEach(function(p){
+    var c=p.country0, k=c.toLowerCase().trim();
+    p.country = (k==='canada' || k==='québec' || k==='quebec') ? (isAnglo(p.name) ? 'Canada' : 'Québec') : c;
+  });
+  filters.countries.forEach(function(c){ if(!countryList().some(function(x){ return x===c; })) filters.countries.delete(c); });
+}
 function flagFor(c){
   var iso = c ? FLAGS[String(c).toLowerCase().trim()] : null;
   if(!iso) return '';
@@ -473,7 +489,7 @@ function flagFor(c){
   return '<img class="flag" src="https://flagcdn.com/w20/'+iso+'.png" srcset="https://flagcdn.com/w40/'+iso+'.png 2x" width="16" height="12" alt="" loading="lazy">';
 }
 function flagPrefix(c){ var f=flagFor(c); return f ? f+' ' : ''; }
-function mkPerson(name, team, role, alloc, arr, dep, country, va){ return { va:!!va, name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
+function mkPerson(name, team, role, alloc, arr, dep, country, va){ return { va:!!va, country0:(country||''), name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
 function activeOn(p, ds){ return (!p.arr || p.arr <= ds) && (!p.dep || p.dep >= ds); }
 function roleRank(role){
   if(!role) return 99; var r=role.toLowerCase().trim();
@@ -600,6 +616,7 @@ function applyDefaultTeams(){
 }
 function setStateData(d){
   state = d;
+  applyCountryOverrides();
   filters = { q:'', teams:new Set(), roles:new Set(), countries:new Set(), noVA:false };
   selVersions = new Set();
   applyDefaultTeams();
@@ -1291,6 +1308,7 @@ async function exportCapacityPptx(){
 function pct(v){ var n=parseFloat(v); return isNaN(n)?0:Math.min(1,Math.max(0,n/100)); }
 function posf(v){ var n=parseFloat(v); return (isNaN(n)||n<=0)?2.0:n; }
 function parseTeams(str){ return str.split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;}); }
+function parseNames(str){ return str.split(',').map(function(s){return s.trim().toLowerCase();}).filter(function(s){return s.length>0;}); }
 function updateLeadCalc(){
   var r=parseFloat($('#sb-raffinage').value)||0, s=parseFloat($('#sb-support').value)||0;
   $('#sb-lead-calc').textContent = Math.max(0, Math.round(100-r-s))+'%';
@@ -1303,6 +1321,7 @@ function applyParams(){
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
+  ANGLO=parseNames($('#sb-anglo').value); applyCountryOverrides();
   DEFAULT_TEAMS=new Set(parseTeams($('#sb-default-teams').value));
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
   closeSidebar();
