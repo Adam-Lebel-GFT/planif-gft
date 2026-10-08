@@ -295,6 +295,17 @@ tfoot td{font-weight:800; color:var(--navy); border-top:2px solid var(--border);
 .tip b{color:#fff;} .tip .muted{color:rgba(255,255,255,.7);}
 
 /* ── Drill-down ────────────────────────────────────────────────────── */
+/* Fenêtre du message de fin de version : le texte s'y relit et s'y retouche
+   avant d'être copié, d'où un vrai champ plutôt qu'un bloc figé. */
+.msg-panel{max-width:760px;}
+.msg-body{padding:16px 20px 20px;}
+.msg-body textarea{width:100%; min-height:440px; border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+  font-family:var(--font); font-size:13.5px; line-height:1.65; color:var(--text); resize:vertical; background:#fbfcfe;}
+.msg-body textarea:focus{outline:2px solid var(--accent); border-color:var(--accent);}
+.msg-body textarea[readonly]{color:var(--muted); background:var(--surface-2);}
+/* Champs longs du tiroir de configuration */
+.cfg-block{display:block; margin:10px 0;}
+.cfg-area{width:100%; min-height:110px; font-family:var(--font-mono); font-size:12px; line-height:1.6; resize:vertical;}
 .dd-overlay{position:fixed; inset:0; background:rgba(12,26,46,.5); display:none; align-items:flex-start; justify-content:center; padding:48px 20px; z-index:1000;}
 .dd-overlay.is-open{display:flex;}
 .dd-panel{background:var(--white); border-radius:14px; width:100%; max-width:1180px; max-height:calc(100vh - 80px); display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(12,26,46,.3);}

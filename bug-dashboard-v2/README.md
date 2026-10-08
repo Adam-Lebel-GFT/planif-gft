@@ -337,3 +337,23 @@ case chiffrée partagent ce calcul, donc ils ne peuvent plus se contredire. Quan
 lent que les 100 % sortent de l'horizon, la prévision affiche « indéterminé » plutôt qu'une date
 inventée. Le dépassement de la Target date, lui, reste exprimé en jours calendaires : un retard se
 vit dans le calendrier.
+
+### Message de fin de version
+
+Chaque version officielle du journal porte un bouton **✉**. Il compose, depuis la photo
+officielle, le message hebdomadaire à envoyer à l'équipe : le total, sa répartition entre
+transverse et interne, puis trois lignes par origine. Le texte s'ouvre dans une fenêtre où il se
+**relit et se retouche** — les deux phrases de contexte changent chaque semaine — avant d'être
+copié d'un bouton.
+
+Un ticket tombe dans le **premier paquet qui le prend**, et donc dans exactement un :
+
+1. **pas un bug** — sa résolution figure dans la liste (décliné, doublon, non reproductible…) ;
+2. **sans livraison** — il porte l'étiquette `fixed_no-release` ;
+3. **du code sur la version** — tout le reste.
+
+Les trois totalisent donc le périmètre, ce qui rend les pourcentages de la dernière phrase
+exacts par construction. Liste des résolutions, étiquette et phrases d'encadrement se règlent
+dans **Configurer → Règles**. Une photo qui n'a pas gardé ses tickets ne peut pas produire le
+message, et la fenêtre le dit plutôt que d'afficher des zéros.
+
