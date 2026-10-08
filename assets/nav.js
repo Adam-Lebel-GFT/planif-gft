@@ -38,7 +38,7 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
   }
-  // « Bug Dashboard v2 (radar) » -> « Bug Dashboard v2 » : l'onglet reste court.
+  // « Administration (accès dynamique) » -> « Administration » : l'onglet reste court.
   function libelleCourt(label) {
     return String(label).replace(/\s*\(.*\)\s*$/, '');
   }

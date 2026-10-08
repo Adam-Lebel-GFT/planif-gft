@@ -194,7 +194,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
       <div class="row" style="margin-top:2px;margin-bottom:0">
         <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
         <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
-        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard v2 les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard v2</button>
+        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard</button>
         <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
         <span id="syncTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center">Chargement du plan partagé…</span>
       </div>
@@ -525,7 +525,7 @@ async function publishPlan() {
     if (all.error) throw all.error;
     const stale = (all.data || []).map(r => r.id).filter(id => ids.indexOf(id) === -1);
     if (stale.length) { const del = await client.from('plan_versions').delete().in('id', stale); if (del.error) throw del.error; }
-    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard v2.';
+    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard.';
   } catch (e) {
     tag.textContent = 'Publication refusée : ' + (e.message || e);
   }

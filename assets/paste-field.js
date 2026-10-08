@@ -2,8 +2,7 @@
    Agile Toolkit — champ « copier-coller » partagé
    ────────────────────────────────────────────────────────────────────
    Le moteur de collage du Bug Dashboard v2 (radar), extrait pour être
-   réutilisé par les autres outils : Sprint Planning, Poker Planning et
-   Bug Dashboard (lite).
+   réutilisé par les autres outils : Sprint Planning et Poker Planning.
 
    Ce qu'il apporte, quel que soit l'outil :
      • collage Excel (TSV), CSV (virgule ou point-virgule), cellules entre
