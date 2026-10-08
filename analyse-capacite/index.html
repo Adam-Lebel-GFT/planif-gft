@@ -401,6 +401,12 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     </div>
     <div class="sb-divider"></div>
     <div>
+      <div class="sb-group-title">Affichage</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" id="sb-hide-flags"> Cacher le drapeau des usagers</label>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Retire le drapeau devant chaque personne (sélection des personnes et Gantt). Les drapeaux du filtre « Pays » sont conservés.</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div>
       <div class="sb-group-title">Canadiens anglophones</div>
       <input class="sb-input-text" id="sb-anglo" placeholder="ex: Madgin, Morneau-Pettigrew" value="">
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Le bureau (colonne « Office ») décide : Quebec → Québec, Toronto → Canada. Sans bureau, une personne du Canada est au Québec. Indiquez ici des noms (ou fragments) à forcer au Canada anglophone.</div>
@@ -447,6 +453,7 @@ function normTeam(t){ t=String(t==null?'':t).replace(/\s+/g,' ').trim(); var m=t
 var FLAGS = {'canada':'ca','québec':'qc','quebec':'qc','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
 var selected = new Set();
 var planVersions = [];     // versions du calendrier des versions (releases-planning) : { num, start, end }
+var HIDE_USER_FLAGS = false; // option « Cacher le drapeau des usagers » : drapeaux retirés devant les personnes, conservés sur les pays
 var ANGLO = [];  // fragments (minuscules) de noms de Canadiens anglophones (hors Québec)
 var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
@@ -507,6 +514,7 @@ function flagFor(c){
   if(iso==='qc') return '<img class="flag" src="'+QC_FLAG+'" width="16" height="12" alt="" title="Québec">';
   return '<img class="flag" src="https://flagcdn.com/w20/'+iso+'.png" srcset="https://flagcdn.com/w40/'+iso+'.png 2x" width="16" height="12" alt="" loading="lazy">';
 }
+function userFlag(c){ return HIDE_USER_FLAGS ? '' : flagPrefix(c); }
 function flagPrefix(c){ var f=flagFor(c); return f ? f+' ' : ''; }
 function mkPerson(name, team, role, alloc, arr, dep, country, va, office){ return { va:!!va, office:(office||''), country0:(country||''), name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
 function activeOn(p, ds){ return (!p.arr || p.arr <= ds) && (!p.dep || p.dep >= ds); }
@@ -793,7 +801,7 @@ function renderChips(){
   sorted.forEach(function(p){
     var b=document.createElement('button'); b.className='chip'+(selected.has(p.name)?' on':'');
     b.title=(p.country?p.country+(p.office?' ('+p.office+')':'')+' · ':'')+p.role+' · '+p.team+(p.alloc<1?' · alloc. '+Math.round(p.alloc*100)+' %':'');
-    b.innerHTML=flagPrefix(p.country)+esc(p.name)+(p.alloc<1?' <span class="tag">'+Math.round(p.alloc*100)+'%</span>':'');
+    b.innerHTML=userFlag(p.country)+esc(p.name)+(p.alloc<1?' <span class="tag">'+Math.round(p.alloc*100)+'%</span>':'');
     b.onclick=function(){ if(selected.has(p.name)) selected.delete(p.name); else selected.add(p.name); renderAll(); };
     cp.appendChild(b);
   });
@@ -914,7 +922,7 @@ function renderGantt(){
       tp.forEach(function(p){
         var pJP=0, pSP=0;
         wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ pJP+=p.alloc; pSP+=p.alloc*spPerJP(p); } });
-        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+flagPrefix(p.country)+esc(p.name)+'</span><span class="gp-tot">'+(unit==='JP'?f1(pJP)+' JP':f1(pSP)+' SP')+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
+        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot">'+(unit==='JP'?f1(pJP)+' JP':f1(pSP)+' SP')+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
         dates.forEach(function(d){
           if(isWE(d)){ h+='<td class="gc we" data-col="'+d+'"></td>'; return; }
           if(!activeOn(p,d)){ h+='<td class="gc na" data-col="'+d+'" title="'+d+' · hors période"></td>'; return; }
@@ -1349,6 +1357,7 @@ function applyParams(){
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
+  HIDE_USER_FLAGS=$('#sb-hide-flags').checked;
   ANGLO=parseNames($('#sb-anglo').value); applyCountryOverrides();
   DEFAULT_ORDER=parseTeams($('#sb-default-teams').value); DEFAULT_TEAMS=new Set(DEFAULT_ORDER);
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
