@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (entête commune). Les styles inline ci-dessous, déclarés après, restent prioritaires. -->
 <link rel="stylesheet" href="../assets/theme.css">
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root{
@@ -91,6 +94,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .date-row{display:flex;align-items:center;gap:8px}
 .dinp{flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--grey2);border-radius:var(--radius);font-family:'DM Mono',monospace;font-size:11px;color:var(--text);background:var(--grey)}
 .dinp:focus{outline:none;border-color:var(--navy);background:var(--white)}
+.flag{width:16px;height:12px;vertical-align:-1px;margin-right:2px;border-radius:2px;box-shadow:0 0 0 1px rgba(12,26,46,.12);object-fit:cover}
 .darr{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
 
 /* ── KPI bar (sticky) ── */
@@ -258,6 +262,10 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
           <button class="mini-btn" data-preset="30">30 j</button>
           <button class="mini-btn" data-preset="90">90 j</button>
         </div>
+        <div id="block-versions" style="display:none;margin-top:10px">
+          <div class="flabel" style="margin-bottom:6px">Version (en cours et futures)</div>
+          <div class="chip-row" id="chips-versions"></div>
+        </div>
       </div>
     </div>
     <div class="frow">
@@ -272,6 +280,10 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="fblock">
         <div class="flabel">Fonctions</div>
         <div class="chip-row" id="chips-roles"></div>
+      </div>
+      <div class="fblock" id="block-va" style="display:none;flex:0 0 auto;min-width:0">
+        <div class="flabel">Vaudoise</div>
+        <div class="chip-row" id="chips-va"></div>
       </div>
     </div>
     <div class="persons-head">
@@ -369,12 +381,6 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     </div>
     <div class="sb-divider"></div>
     <div>
-      <div class="sb-group-title">Exclusion « Vaudoise » (export PowerPoint)</div>
-      <input class="sb-input-text" id="sb-vaudoise" placeholder="ex: Dinesh, Madalena, Fardjana" value="Dinesh, Madalena, Marques, Fardjana">
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">Noms (ou fragments de noms) exclus du graphique de capacité par sprint et de son tableau. Vide = personne n'est exclu.</div>
-    </div>
-    <div class="sb-divider"></div>
-    <div>
       <div class="sb-group-title">Équipes affichées par défaut</div>
       <input class="sb-input-text" id="sb-default-teams" placeholder="ex: CONF-1, INTEG 4 — vide = toutes" value="">
       <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">À l'ouverture d'un fichier, seules ces équipes sont pré-sélectionnées. Vide = toutes.</div>
@@ -395,7 +401,6 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 var P = { vc:2.0, vi:2.0, vt:2.0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10 };
 var ITSET = new Set(['INTEG 4','INTEG 5']);
 var TTSET = new Set(['TRANS']);
-var VSET  = ['dinesh','madalena','marques','fardjana']; // fragments (minuscules) identifiant les ressources « Vaudoise » à exclure du graphique PowerPoint
 var WORKING = new Set(['R', 'S', 'AS']);
 var MN  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 var MNc = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -406,10 +411,13 @@ var GANTT_CAP = 140; // jours ouvrés max affichés sans forçage
 var CHART_PERIOD_CAP = { jour:40, semaine:26, mois:18, sprint:30 };
 
 var state = { dates: [], sprints: [], persons: [], sourceLabel: '' };
-var filters = { q: '', teams: new Set(), roles: new Set(), countries: new Set() };
+var filters = { q: '', teams: new Set(), roles: new Set(), countries: new Set(), noVA: false };
 var DEFAULT_TEAMS = new Set();
-var FLAGS = {'canada':'🇨🇦','québec':'🇨🇦','quebec':'🇨🇦','france':'🇫🇷','suisse':'🇨🇭','switzerland':'🇨🇭','espagne':'🇪🇸','spain':'🇪🇸','maroc':'🇲🇦','morocco':'🇲🇦','tunisie':'🇹🇳','portugal':'🇵🇹','pologne':'🇵🇱','poland':'🇵🇱','inde':'🇮🇳','india':'🇮🇳','brésil':'🇧🇷','bresil':'🇧🇷','brazil':'🇧🇷','allemagne':'🇩🇪','germany':'🇩🇪','italie':'🇮🇹','royaume-uni':'🇬🇧','belgique':'🇧🇪','roumanie':'🇷🇴'};
+// Windows n'affiche pas les émojis de drapeaux (on y voit « ES », « FR »…) : on utilise des images (code ISO).
+var FLAGS = {'canada':'ca','québec':'ca','quebec':'ca','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
 var selected = new Set();
+var planVersions = [];     // versions du calendrier des versions (releases-planning) : { num, start, end }
+var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
 var unit = 'JP';
 var rangeStart = null, rangeEnd = null;
@@ -426,8 +434,13 @@ function isWE(s){ var w=pd(s).getUTCDay(); return w===0||w===6; }
 function isoWeek(s){ var d=pd(s); var dt=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); var dn=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-dn); var ys=new Date(Date.UTC(dt.getUTCFullYear(),0,1)); return { y: dt.getUTCFullYear(), w: Math.ceil((((dt-ys)/86400000)+1)/7) }; }
 function weekKey(s){ var iw=isoWeek(s); return iw.y+'-W'+String(iw.w).padStart(2,'0'); }
 function isLead(role){ var r=(role||'').toLowerCase(); return r.indexOf('lead')>=0||r.indexOf('architect')>=0||r.indexOf('program manager')>=0||r.indexOf('pmo')>=0; }
-function flagFor(c){ if(!c) return '🏳️'; var k=String(c).toLowerCase().trim(); return FLAGS[k] || '🏳️'; }
-function mkPerson(name, team, role, alloc, arr, dep, country){ return { name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
+function flagFor(c){
+  var iso = c ? FLAGS[String(c).toLowerCase().trim()] : null;
+  if(!iso) return '';
+  return '<img class="flag" src="https://flagcdn.com/w20/'+iso+'.png" srcset="https://flagcdn.com/w40/'+iso+'.png 2x" width="16" height="12" alt="" loading="lazy">';
+}
+function flagPrefix(c){ var f=flagFor(c); return f ? f+' ' : ''; }
+function mkPerson(name, team, role, alloc, arr, dep, country, va){ return { va:!!va, name:name, team:team, role:role, country:(country||''), alloc:(alloc==null?1:alloc), arr:(arr||null), dep:(dep||null), dailyCodes:{} }; }
 function activeOn(p, ds){ return (!p.arr || p.arr <= ds) && (!p.dep || p.dep >= ds); }
 function roleRank(role){
   if(!role) return 99; var r=role.toLowerCase().trim();
@@ -484,7 +497,8 @@ function handleFile(file){
       var role=String(row[6]||'').trim();
       var allocRaw=(row[9]!==null&&row[9]!==undefined&&row[9]!=='')?parseFloat(row[9]):1.0;
       var alloc=Math.min(1, Math.max(0, allocRaw>1?allocRaw/100:allocRaw));
-      var p=mkPerson(name, team, role, alloc, toDS(row[7]), toDS(row[8]), currentCountry);
+      var va=String(row[11]||'').trim().toUpperCase()==='VA'; // colonne L « VA ? »
+      var p=mkPerson(name, team, role, alloc, toDS(row[7]), toDS(row[8]), currentCountry, va);
       for(var cc=0;cc<colDates.length;cc++){ var dd=colDates[cc]; if(!dd) continue; var code=String(row[cc]||'').trim(); if(code) p.dailyCodes[dsU(dd)]=code; }
       persons.push(p);
     }
@@ -523,7 +537,8 @@ function applyDefaultTeams(){
 }
 function setStateData(d){
   state = d;
-  filters = { q:'', teams:new Set(), roles:new Set(), countries:new Set() };
+  filters = { q:'', teams:new Set(), roles:new Set(), countries:new Set(), noVA:false };
+  selVersions = new Set();
   applyDefaultTeams();
   hi = new Set(); forceGantt = false;
   $('#search').value='';
@@ -537,8 +552,9 @@ function setStateData(d){
 }
 function viewDates(){ return state.dates.filter(function(d){ return d>=rangeStart && d<=rangeEnd; }); }
 function viewWeekdays(){ return viewDates().filter(function(d){ return !isWE(d); }); }
-function setRange(a,b){
+function setRange(a,b,keepVersions){
   if(!state.dates.length) return; // aucun fichier chargé
+  if(!keepVersions) selVersions=new Set();
   rangeStart = a < state.dates[0] ? state.dates[0] : a;
   rangeEnd   = b > state.dates[state.dates.length-1] ? state.dates[state.dates.length-1] : b;
   if(rangeStart>rangeEnd){ var t=rangeStart; rangeStart=rangeEnd; rangeEnd=t; }
@@ -559,6 +575,7 @@ function matchesExcept(p, except){
   if(except!=='teams' && filters.teams.size && !filters.teams.has(p.team)) return false;
   if(except!=='roles' && filters.roles.size && !filters.roles.has(p.role||'—')) return false;
   if(except!=='countries' && filters.countries.size && !filters.countries.has(p.country||'—')) return false;
+  if(except!=='va' && filters.noVA && p.va) return false;
   if(filters.q && p.name.toLowerCase().indexOf(filters.q)<0) return false;
   return true;
 }
@@ -566,6 +583,7 @@ function matches(p){
   if(filters.teams.size && !filters.teams.has(p.team)) return false;
   if(filters.roles.size && !filters.roles.has(p.role||'—')) return false;
   if(filters.countries.size && !filters.countries.has(p.country||'—')) return false;
+  if(filters.noVA && p.va) return false;
   if(filters.q && p.name.toLowerCase().indexOf(filters.q)<0) return false;
   return true;
 }
@@ -650,15 +668,24 @@ function renderChips(){
   renderFacet($('#chips-teams'), teamList(), filters.teams, 'teams', byTeam, esc);
   renderFacet($('#chips-roles'), roleList(), filters.roles, 'roles', byRole, esc);
   var nCo=renderFacet($('#chips-countries'), countryList(), filters.countries, 'countries', byCountry,
-    function(c){ return flagFor(c)+' '+esc(c); });
+    function(c){ return flagPrefix(c)+esc(c); });
   $('#block-countries').style.display = nCo ? '' : 'none';
+  // Filtre Vaudoise (colonne « VA ? ») : actif = les ressources VA sont incluses ; désactivé = exclues partout, export PowerPoint compris.
+  var nVA=nPeriod(function(p){ return p.va; }), vaEl=$('#chips-va');
+  $('#block-va').style.display = (nVA || filters.noVA) ? '' : 'none';
+  vaEl.innerHTML='';
+  var vb=document.createElement('button'); vb.className='chip'+(filters.noVA?'':' on');
+  vb.innerHTML='Vaudoise <span class="tag">'+nWin('va', function(p){ return p.va; })+'</span>';
+  vb.title=filters.noVA?'Ressources Vaudoise exclues — cliquer pour les inclure':'Ressources Vaudoise incluses — cliquer pour les exclure';
+  vb.onclick=function(){ filters.noVA=!filters.noVA; renderAll(); };
+  vaEl.appendChild(vb);
   var cp=$('#chips-persons'); cp.innerHTML='';
   // Regroupées par équipe (A→Z), puis par nom (A→Z) à l'intérieur de chaque équipe.
   var sorted=vis.filter(activeInWindow).sort(function(a,b){ return byLabel(a.team,b.team) || byLabel(a.name,b.name); });
   sorted.forEach(function(p){
     var b=document.createElement('button'); b.className='chip'+(selected.has(p.name)?' on':'');
     b.title=(p.country?p.country+' · ':'')+p.role+' · '+p.team+(p.alloc<1?' · alloc. '+Math.round(p.alloc*100)+' %':'');
-    b.innerHTML=(p.country?flagFor(p.country)+' ':'')+esc(p.name)+(p.alloc<1?' <span class="tag">'+Math.round(p.alloc*100)+'%</span>':'');
+    b.innerHTML=flagPrefix(p.country)+esc(p.name)+(p.alloc<1?' <span class="tag">'+Math.round(p.alloc*100)+'%</span>':'');
     b.onclick=function(){ if(selected.has(p.name)) selected.delete(p.name); else selected.add(p.name); renderAll(); };
     cp.appendChild(b);
   });
@@ -779,7 +806,7 @@ function renderGantt(){
       tp.forEach(function(p){
         var pJP=0, pSP=0;
         wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ pJP+=p.alloc; pSP+=p.alloc*spPerJP(p); } });
-        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+(p.country?flagFor(p.country)+' ':'')+esc(p.name)+'</span><span class="gp-tot">'+(unit==='JP'?f1(pJP)+' JP':f1(pSP)+' SP')+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
+        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+flagPrefix(p.country)+esc(p.name)+'</span><span class="gp-tot">'+(unit==='JP'?f1(pJP)+' JP':f1(pSP)+' SP')+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
         dates.forEach(function(d){
           if(isWE(d)){ h+='<td class="gc we" data-col="'+d+'"></td>'; return; }
           if(!activeOn(p,d)){ h+='<td class="gc na" data-col="'+d+'" title="'+d+' · hors période"></td>'; return; }
@@ -849,14 +876,62 @@ function ganttHeaderClick(e){
   applyDim();
 }
 
-function renderAll(){ renderChips(); renderKPIs(); renderTable(); renderGantt(); }
+// ── Calendrier des versions (releases-planning) : versions en cours et futures ──
+function versionNum(label){ var m=String(label||'').match(/\d+(?:\.\d+)+|\d+/); return m ? m[0] : String(label||'').trim(); }
+function normVersions(list){
+  var t=todayStr();
+  return (list||[]).filter(function(v){ return v && v.start && v.end && String(v.end).slice(0,10)>=t; })
+    .map(function(v){ return { num:versionNum(v.label), start:String(v.start).slice(0,10), end:String(v.end).slice(0,10) }; })
+    .sort(function(a,b){ return a.start<b.start?-1:a.start>b.start?1:0; });
+}
+async function loadPlanVersions(){
+  var found=null;
+  try {
+    var A=window.PlanifAuth;
+    if(A && (await A.getSession())){
+      var c=A.getClient();
+      var r=await c.from('bdv2_config').select('valeur').eq('cle','releases-planning').maybeSingle();
+      if(!r.error && r.data && r.data.valeur && Array.isArray(r.data.valeur.versions) && r.data.valeur.versions.length) found=r.data.valeur.versions;
+      if(!found){ var q=await c.from('plan_versions').select('label,debut,fin').order('ordre'); if(!q.error && q.data && q.data.length) found=q.data.map(function(x){ return { label:x.label, start:x.debut, end:x.fin }; }); }
+    }
+  } catch(e){ console.warn('calendrier des versions (base) indisponible', e); }
+  if(!found){
+    try { var raw=JSON.parse(localStorage.getItem('gft-vaudoise-plan-livraisons-v3')||'null'); if(raw && Array.isArray(raw.versions) && raw.versions.length) found=raw.versions; } catch(e){}
+  }
+  if(!found){
+    try { var snap=JSON.parse(localStorage.getItem('planif:plan-publie')||'null'); if(snap && Array.isArray(snap.versions) && snap.versions.length) found=snap.versions; } catch(e){}
+  }
+  planVersions=normVersions(found);
+  renderVersionChips();
+}
+function applyVersionSelection(){
+  if(!state.dates.length) return;
+  var sel=planVersions.filter(function(v){ return selVersions.has(v.num); });
+  if(!sel.length){ var dr=defaultRange(); setRange(dr[0], dr[1], true); return; }
+  var a=sel.reduce(function(m,v){ return v.start<m?v.start:m; }, sel[0].start);
+  var b=sel.reduce(function(m,v){ return v.end>m?v.end:m; }, sel[0].end);
+  setRange(a, b, true);
+}
+function renderVersionChips(){
+  var el=$('#chips-versions'); if(!el) return;
+  $('#block-versions').style.display = planVersions.length ? '' : 'none';
+  el.innerHTML='';
+  var first=state.dates[0], last=state.dates[state.dates.length-1];
+  planVersions.forEach(function(v){
+    var out = !first || v.end<first || v.start>last;
+    var b=document.createElement('button');
+    b.className='chip'+(selVersions.has(v.num)?' on':'')+(out?' offw':'');
+    b.textContent=v.num;
+    b.title=fmtRange(v.start, v.end)+(out?' — hors des dates du fichier chargé':'');
+    if(out && !selVersions.has(v.num)) b.disabled=true;
+    else b.onclick=function(){ if(selVersions.has(v.num)) selVersions.delete(v.num); else selVersions.add(v.num); applyVersionSelection(); };
+    el.appendChild(b);
+  });
+}
+
+function renderAll(){ renderVersionChips(); renderChips(); renderKPIs(); renderTable(); renderGantt(); }
 
 // ── Export PowerPoint (graphique de capacité par sprint) ──
-function isVaudoise(name){
-  if(!VSET.length) return false;
-  var n=(name||'').toLowerCase();
-  return VSET.some(function(t){ return n.indexOf(t)>=0; });
-}
 // Rôle canonique pour le graphique — même logique de détection que roleRank(), sans distinction Lead
 function roleCategory(role){
   var r=(role||'').toLowerCase();
@@ -867,14 +942,13 @@ function roleCategory(role){
 }
 // Ventile la capacité de chaque période (au sens du critère courant : jour/semaine/mois/sprint)
 // en 4 séries par rôle : BA / DEV / QA / Autre, dans l'unité courante (JP ou SP).
-// Les personnes « Vaudoise » (VSET) sont exclues du calcul, pas seulement isolées.
+// Les ressources « Vaudoise » suivent le filtre Vaudoise (incluses ou exclues de la sélection).
 function categorySeriesByPeriod(periodsList, ppl){
   var ba=[], dev=[], qa=[], autre=[];
   periodsList.forEach(function(g){
     var b=0, d2=0, q=0, a=0;
     g.days.forEach(function(d){
       ppl.forEach(function(p){
-        if(isVaudoise(p.name)) return;
         if(!activeOn(p,d)) return;
         if(!WORKING.has(p.dailyCodes[d])) return;
         var val = (unit==='SP') ? p.alloc*spPerJP(p) : p.alloc;
@@ -1088,7 +1162,7 @@ async function exportCapacityPptx(){
   function addContentChrome(s, slideTitle, pageNum){
     s.addText(slideTitle, { x:0.49, y:0.32, w:12.36, h:0.42, fontSize:24, color:'0E2841', fontFace:'Calibri', bold:true, valign:'middle' });
     s.addText(subtitle, { x:0.48, y:0.74, w:11.5, h:0.22, fontSize:12, color:'404040', fontFace:'Calibri' });
-    s.addText('* Ressources rattachées au projet Vaudoise exclues de ce graphique', { x:1.01, y:6.18, w:9, h:0.16, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
+    s.addText(filters.noVA ? '* Ressources rattachées au projet Vaudoise exclues de ce graphique' : '* Ressources rattachées au projet Vaudoise incluses dans ce graphique', { x:1.01, y:6.18, w:9, h:0.16, fontSize:9, color:'404040', fontFace:'Calibri', italic:true });
     s.addText(today + ' |', { x:0.917, y:6.45, w:3, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
     s.addText('Analyse de capacité - GFT', { x:1.614, y:6.45, w:5, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', valign:'middle' });
     s.addText(String(pageNum), { x:9.417, y:6.45, w:3, h:0.3, fontSize:10, color:'404040', fontFace:'Calibri', align:'right', valign:'middle' });
@@ -1154,7 +1228,6 @@ async function exportCapacityPptx(){
 function pct(v){ var n=parseFloat(v); return isNaN(n)?0:Math.min(1,Math.max(0,n/100)); }
 function posf(v){ var n=parseFloat(v); return (isNaN(n)||n<=0)?2.0:n; }
 function parseTeams(str){ return str.split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;}); }
-function parseVaudoise(str){ return str.split(',').map(function(s){return s.trim().toLowerCase();}).filter(function(s){return s.length>0;}); }
 function updateLeadCalc(){
   var r=parseFloat($('#sb-raffinage').value)||0, s=parseFloat($('#sb-support').value)||0;
   $('#sb-lead-calc').textContent = Math.max(0, Math.round(100-r-s))+'%';
@@ -1167,7 +1240,6 @@ function applyParams(){
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
-  VSET=parseVaudoise($('#sb-vaudoise').value);
   DEFAULT_TEAMS=new Set(parseTeams($('#sb-default-teams').value));
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
   closeSidebar();
@@ -1215,6 +1287,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('#sb-raffinage').addEventListener('input', updateLeadCalc);
   $('#sb-support').addEventListener('input', updateLeadCalc);
 
+  loadPlanVersions().catch(function(e){ console.warn(e); });
   renderAll(); // état initial vide — en attente d'un fichier
 });
 /*APP-END*/</script>
