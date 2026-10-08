@@ -103,7 +103,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   background: #0C1A2E; height: 56px; flex-shrink: 0;
   display: flex; align-items: center; gap: 12px;
   padding-inline: clamp(16px, 4vw, 40px);
-  position: relative; z-index: 40;
+  position: sticky; top: 0; z-index: 40;
 }
 .tk-topbar__logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .tk-topbar__logo:hover { text-decoration: none; }
@@ -159,7 +159,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 @media (min-width: 900px) {
   .board { grid-template-columns: minmax(0, 1fr) 304px; }
-  .sidebar-sticky { position: sticky; top: 20px; }
+  .sidebar-sticky { position: sticky; top: calc(var(--tk-stick, 56px) + 20px); }
 }
 
 .panel-label {

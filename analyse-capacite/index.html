@@ -101,7 +101,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .darr{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
 
 /* ── KPI bar (sticky) ── */
-.kpibar{position:sticky;top:0;z-index:60;background:var(--grey);padding:14px 0 12px;margin-top:8px;box-shadow:0 14px 14px -14px rgba(12,26,46,.10)}
+.kpibar{position:sticky;top:var(--tk-stick,56px);z-index:60;background:var(--grey);padding:14px 0 12px;margin-top:8px;box-shadow:0 14px 14px -14px rgba(12,26,46,.10)}
 .kpibar-inner{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
 .kpi{flex:1;min-width:158px;background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:13px 18px}
 .kpi-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}

@@ -42,7 +42,9 @@ html, body {
   background: var(--grey);
   font-family: 'Manrope', sans-serif;
   color: var(--text);
-  overflow-x: hidden;
+  /* clip et non hidden : hidden ferait de body un conteneur de défilement
+     et casserait le bandeau fixe (position: sticky). */
+  overflow-x: clip;
 }
 
 /* ── Subtle grid texture ── */
