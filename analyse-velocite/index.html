@@ -82,6 +82,7 @@ button, select, input { font-family: inherit; }
 .intro { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 2px solid var(--v-ink); }
 .intro h1 { margin: 0; font-size: clamp(22px, 3.4vw, 26px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
 .intro p { margin: 4px 0 0; color: var(--v-ink-3); max-width: 70ch; }
+.demo-note.is-real { color: var(--v-good-ink); background: var(--v-good-wash); }
 .demo-note { font-size: 11.5px; font-weight: 700; color: var(--v-warn-ink); background: var(--v-warn-wash); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
 
 /* ── Connecteurs (sources de données) ───────────────────────────── */
@@ -193,6 +194,10 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 .c-T2 { background: var(--v-eq-2); fill: var(--v-eq-2); stroke: var(--v-eq-2); }
 .c-T3 { background: var(--v-eq-3); fill: var(--v-eq-3); stroke: var(--v-eq-3); }
 .c-T4 { background: var(--v-eq-4); fill: var(--v-eq-4); stroke: var(--v-eq-4); }
+.c-T5 { background: #e87ba4; fill: #e87ba4; stroke: #e87ba4; }
+.c-T6 { background: #008300; fill: #008300; stroke: #008300; }
+.c-T7 { background: #e34948; fill: #e34948; stroke: #e34948; }
+.c-T8, .c-T9, .c-T10, .c-T11, .c-T12 { background: #8d94a3; fill: #8d94a3; stroke: #8d94a3; }
 
 /* colonnes */
 .cols-wrap { overflow-x: auto; }
@@ -273,10 +278,10 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
 <main class="av">
   <section class="intro">
     <div>
-      <h1>Analyse de vélocité — WIP et jours par ticket</h1>
+      <h1>Analyse de vélocité</h1>
       <p>Combien de tickets chaque personne mène de front, et combien de jours il faut pour livrer un ticket, version par version.</p>
     </div>
-    <span class="demo-note">Maquette · données simulées</span>
+    <span class="demo-note">Chargement des données…</span>
   </section>
 
   <section class="sources" id="sources" aria-label="Connecteurs"></section>
@@ -297,7 +302,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     </div>
   </div>
 
-  <div class="section-title"><h2>WIP : tickets en cours par personne</h2><span class="line"></span><span class="hint" id="gHint"></span></div>
+  <div class="section-title"><h2 id="gTitre">WIP : tickets en cours par personne</h2><span class="line"></span><span class="hint" id="gHint"></span></div>
   <section class="gauges" id="gauges"></section>
 
   <div class="section-title"><h2>Vélocité</h2><span class="line"></span><button type="button" class="vbtn" id="cardsReset" title="Revenir aux cartes livrées avec l'outil">Cartes par défaut</button></div>
@@ -308,7 +313,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     <ul id="pourquoi"></ul>
   </details>
 
-  <p class="foot">Maquette : données simulées (21 versions, 4 équipes). Filtres et cartes sont conservés dans ce navigateur ; la version finale les partagera entre utilisateurs comme le Bug Dashboard, et lira le Plan de livraisons, l'Analyse de capacité et l'historique des statuts Jira.</p>
+  <p class="foot">Connecté, la page lit le plan publié et le journal du Bug Dashboard ; sans connexion, elle affiche des données simulées. Filtres et cartes sont conservés dans ce navigateur.</p>
 </main>
 
 <script src="../acces/config.js"></script>
@@ -331,7 +336,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   //   derog        tickets livrés après le gel (dérogation)
   //   delai        jours ouvrés In Progress → Dev done (moyenne)
   // ════════════════════════════════════════════════════════════════════
-  var DATA = {
+  var SIMULE = {
     "genere": "2026-10-09",
     "teams": [
       {"id":"T1","nom":"TEAM 1","personnes":8,"canada":true},
@@ -450,12 +455,160 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     ]
   };
 
+  // ════════════════════════════════════════════════════════════════════
+  // Vraies données : plan publié + journal du Bug Dashboard (Supabase).
+  // Chaque photo du journal donne, pour chaque ticket, son statut, son
+  // équipe, son assigné et sa version. On en reconstitue, version par
+  // version et équipe par équipe : tickets en cours, effectif actif,
+  // engagés, livrés au gel, jours passés dans chaque étape.
+  // ════════════════════════════════════════════════════════════════════
+  var ETAPES_REELLES = [
+    { cle: 'a', nom: 'Analyse', statuts: ['Open', 'Selected for Analyse', 'In Analyze', 'Dev Analyse', 'Under Review', 'Ready for Development'] },
+    { cle: 'd', nom: 'Dev', statuts: ['In Progress', 'In Progress - Completed', 'Code Review', 'Code Review - Completed', 'Functional review', 'Functional review - Completed'] },
+    { cle: 'q', nom: 'QA', statuts: ['Quality Assurance Testing', 'Quality Assurance Test Completed'] }
+  ];
+  var ABANDON = ['decline', 'declined', "won't do", 'wont do', 'rejected', 'duplicate'];
+  var TERMINE_DEFAUT = ['closed', 'done', 'resolved', 'dev done', 'ready for testing'];
+  function norm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+  function joursOuvres(a, b) {
+    var t = 0, d = new Date(a.getTime());
+    while (d < b) {
+      var lendemain = new Date(d.getTime()); lendemain.setHours(24, 0, 0, 0);
+      var fin = lendemain < b ? lendemain : b, j = d.getDay();
+      if (j !== 0 && j !== 6) t += (fin - d) / 864e5;
+      d = fin;
+    }
+    return t;
+  }
+  function dateDe(x) { if (!x) return null; var s = String(x); return new Date(s.length <= 10 ? s + 'T23:59:00' : s); }
+  function isoDe(x) { return x ? String(x).slice(0, 10) : null; }
+
+  function construireReel(plan, photosBrutes, cfg) {
+    var termine = (cfg && cfg.statuses && Array.isArray(cfg.statuses.done) ? cfg.statuses.done : TERMINE_DEFAUT).map(norm).filter(function (s) { return ABANDON.indexOf(s) === -1; });
+    var etapeDe = {};
+    ETAPES_REELLES.forEach(function (e) { e.statuts.forEach(function (st) { etapeDe[norm(st)] = e.cle; }); });
+    function etapeStatut(st) { var n = norm(st); return ABANDON.indexOf(n) !== -1 ? 'x' : termine.indexOf(n) !== -1 ? 'f' : etapeDe[n] || 'a'; }
+    var photos = photosBrutes.map(function (p) { return { t: new Date(p.cree_le), tickets: p.tickets || [] }; }).sort(function (a, b) { return a.t - b.t; });
+    if (!photos.length || !plan.length) return null;
+
+    // Équipes : les GW-PC-TEAMn d'abord, puis les autres par volume.
+    var vol = {};
+    photos.forEach(function (p) { p.tickets.forEach(function (x) { var tm = x.tm || 'Non affecté'; vol[tm] = (vol[tm] || 0) + 1; }); });
+    var codes = Object.keys(vol).sort(function (a, b) {
+      var ma = /TEAM\s*(\d+)/i.exec(a), mb = /TEAM\s*(\d+)/i.exec(b);
+      if (ma && mb) return ma[1] - mb[1];
+      if (ma || mb) return ma ? -1 : 1;
+      return vol[b] - vol[a];
+    });
+    var teams = codes.map(function (c, i) {
+      var m = /TEAM\s*(\d+)/i.exec(c);
+      return { id: 'T' + (i + 1), code: c, nom: m ? 'TEAM ' + m[1] : c, principale: !!m && vol[c] >= 50 };
+    });
+    var idDe = {}; teams.forEach(function (t) { idDe[t.code] = t.id; });
+
+    // Historique de chaque ticket, photo par photo
+    var hist = {};
+    photos.forEach(function (p) {
+      p.tickets.forEach(function (x) {
+        (hist[x.k] = hist[x.k] || []).push({ t: p.t, s: etapeStatut(x.st), eq: idDe[x.tm || 'Non affecté'], v: x.v, a: x.a || '' });
+      });
+    });
+
+    var auj = new Date();
+    var versions = plan.map(function (p, i) {
+      var j = p.jalons || {};
+      var v = { v: p.label, n: i + 1, debut: isoDe(p.debut), gel: isoDe(j.freeze) || isoDe(p.fin), gonogo: isoDe(j.gonogo), deploiement: isoDe(j.deploy) || isoDe(p.fin), gelT: dateDe(j.freeze || p.fin), finT: dateDe(j.deploy || p.fin) };
+      var debutT = dateDe(p.debut);
+      v.etat = auj > v.finT ? 'livree' : auj >= new Date(v.debut + 'T00:00:00') ? 'en-cours' : 'prevision';
+      v.debutT = new Date(v.debut + 'T00:00:00');
+      return v;
+    });
+
+    var rows = [];
+    versions.forEach(function (v) {
+      if (v.etat === 'prevision') return;
+      var fen = photos.filter(function (p) { return p.t >= v.debutT && p.t <= v.finT; });
+      teams.forEach(function (t) {
+        // Tickets rattachés en dernier lieu à cette version, pour cette équipe
+        var miens = Object.keys(hist).filter(function (k) { var h = hist[k], d = h[h.length - 1]; return d.v === v.v && d.eq === t.id; }).map(function (k) { return hist[k]; });
+        var engages = miens.filter(function (h) { return h[h.length - 1].s !== 'x'; });
+        // Tickets en cours (Dev + QA, toutes versions) et effectif actif, en moyenne sur les photos de la fenêtre
+        // Le journal ne couvre que les tickets de stabilisation : l'effectif
+        // retenu est celui des personnes actives, assignées à au moins un ticket
+        // en Dev ou en QA, en moyenne sur les photos de la version. 1,0 ticket
+        // par personne active = chacun un ticket à la fois.
+        var wip = null, etp = null;
+        if (fen.length) {
+          var sw = 0, sp = 0;
+          fen.forEach(function (p) {
+            var gens = {};
+            p.tickets.forEach(function (x) {
+              if (idDe[x.tm || 'Non affecté'] !== t.id) return;
+              var e = etapeStatut(x.st);
+              if (e === 'd' || e === 'q') { sw++; gens[x.a || '(non assigné)'] = 1; }
+            });
+            sp += Object.keys(gens).length;
+          });
+          wip = sw / fen.length; etp = sp / fen.length || null;
+        }
+        if (!engages.length && !wip) return;
+        // Livrés au gel / après le gel
+        var avantGel = photos.some(function (p) { return p.t <= v.gelT; });
+        var gel = 0, livres = 0;
+        engages.forEach(function (h) {
+          if (h[h.length - 1].s === 'f') livres++;
+          var avant = h.filter(function (e) { return e.t <= v.gelT; });
+          if (avant.length && avant[avant.length - 1].s === 'f') gel++;
+        });
+        // Jours par étape : temps entre deux photos attribué à l'étape de la première
+        var ej = { a: 0, d: 0, q: 0 }, nj = 0;
+        engages.forEach(function (h) {
+          if (h.length < 2 || h[0].s === 'f') return;
+          var fin = -1;
+          for (var i = 0; i < h.length; i++) if (h[i].s === 'f') { fin = i; break; }
+          if (fin < 1) return;
+          for (var k = 0; k < fin; k++) if (ej[h[k].s] != null) ej[h[k].s] += joursOuvres(h[k].t, h[k + 1].t);
+          nj++;
+        });
+        var et = nj ? { a: ej.a / nj, d: ej.d / nj, q: ej.q / nj } : { a: 0, d: 0, q: 0 };
+        rows.push({ v: v.v, n: v.n, eq: t.id, wip: wip, etp: etp, engages: engages.length, gel: avantGel ? gel : 0, derog: avantGel ? livres - gel : livres,
+          reportes: engages.length - livres, livres: livres, gelConnu: avantGel && v.etat === 'livree', nj: nj, etapes: et, delai: nj ? et.a + et.d + et.q : null });
+      });
+    });
+    var nbTickets = Object.keys(hist).length;
+    return { reel: true, genere: isoDe(auj.toISOString()), teams: teams, versions: versions, rows: rows,
+      meta: { photos: photos.length, tickets: nbTickets, derniere: photos[photos.length - 1].t } };
+  }
+
+  async function chargerReel() {
+    var A = window.PlanifAuth;
+    if (!A) return null;
+    var s = null;
+    try { s = await A.getSession(); } catch (e) { return null; }
+    if (!s) return null;
+    var c = A.getClient();
+    var r = await Promise.all([
+      c.from('plan_versions').select('label,debut,fin,jalons,ordre,publie_le').order('ordre'),
+      c.from('bdv2_analyses').select('cree_le,tickets').order('cree_le'),
+      c.from('bdv2_config').select('valeur').eq('cle', 'bug-dashboard-v2').maybeSingle()
+    ]);
+    if (r[0].error) throw r[0].error;
+    if (r[1].error) throw r[1].error;
+    var d = construireReel(r[0].data || [], r[1].data || [], r[2].data && r[2].data.valeur);
+    if (d) d.meta.publie = (r[0].data || []).reduce(function (m, x) { return x.publie_le && (!m || x.publie_le > m) ? x.publie_le : m; }, null);
+    return d;
+  }
+
+  function demarrer(DATA) {
+  var REEL = !!DATA.reel;
+  var PAR = REEL ? 'par personne active' : 'par personne';
+
   // ── Réglages ──────────────────────────────────────────────────────────
   var ROUGE = 2.5;   // au-delà : surcharge (tenue au gel et délai s'effondrent)
   var MAX = 3.5;     // fond d'échelle du compteur
   var BANDE = 0.32;  // largeur du lissage, en tickets par personne
   var REGLE = { debit: 0.95, delai: 1.3, tenue: 0.05 };  // bornes de la zone verte
-  var CLE = 'analyse-velocite:v2';
+  var CLE = 'analyse-velocite:v3:' + (DATA.reel ? 'reel' : 'simule');
   var NB = ' ';
 
   var TEAMS = DATA.teams, VERS = DATA.versions, ROWS = DATA.rows;
@@ -463,14 +616,13 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   var NEXT = VERS.filter(function (v) { return v.etat === 'prevision'; })[0];
   var DERNIERES = DONE.slice(-3);
   var TOUS = TEAMS.map(function (t) { return t.id; });
+  // Équipes cochées par défaut : les équipes de développement (GW-PC-TEAMn).
+  var DEFAUT_EQ = REEL ? TEAMS.filter(function (t) { return t.principale; }).map(function (t) { return t.id; }) : TOUS.slice();
+  if (!DEFAUT_EQ.length) DEFAUT_EQ = TOUS.slice();
   var NOM = {}; TEAMS.forEach(function (t) { NOM[t.id] = t.nom; });
 
   // Groupes d'états : chaque statut Jira tombe dans une étape.
-  var ETAPES = [
-    { cle: 'a', nom: 'Analyse', statuts: ['Open', 'Analysis'] },
-    { cle: 'd', nom: 'Dev', statuts: ['In Progress', 'In Progress - Completed', 'Code Review', 'Code Review - Completed'] },
-    { cle: 'q', nom: 'QA', statuts: ['Ready for Testing', 'Quality Assurance Testing', 'Quality Assurance Test Completed'] }
-  ];
+  var ETAPES = ETAPES_REELLES;
   var NOM_ETAPE = {}; ETAPES.forEach(function (e) { NOM_ETAPE[e.cle] = e.nom; });
   // Maquette : la répartition par étape est simulée à partir du délai. La
   // version finale la lira dans l'historique des statuts Jira de chaque ticket.
@@ -478,6 +630,12 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var k = { T1: 1.05, T2: 0.9, T3: 1.15, T4: 1.0 }[r.eq] || 1;
     return { a: 0.9 + 0.12 * r.delai, d: 0.52 * r.delai, q: 0.48 * r.delai * k };
   }
+  // Les lignes simulées prennent la forme des lignes réelles.
+  if (!REEL) ROWS.forEach(function (r) {
+    if (r.gel == null) return;
+    r.livres = r.gel + r.derog; r.gelConnu = true; r.nj = r.gel; r.etapes = jEtapes(r);
+    r.delai = r.etapes.a + r.etapes.d + r.etapes.q;
+  });
 
   function $(s) { return document.querySelector(s); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -491,9 +649,10 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   // Régression linéaire locale (noyau gaussien) du débit, de la tenue et du
   // délai en fonction des tickets en cours par personne, sur tout l'historique
   // livré : la référence ne bouge pas quand on filtre.
-  var OBS = ROWS.filter(function (r) { return r.gel != null; }).map(function (r) {
+  var OBS = ROWS.filter(function (r) { return dans(r.v, DONE) && r.etp > 0 && r.gelConnu && r.engages > 0 && r.nj > 0; }).map(function (r) {
     return { w: r.wip / r.etp, debit: r.gel / r.etp, tenue: r.gel / r.engages, delai: r.delai, r: r };
   });
+  var ZONE_DEFAUT = { lo: 1.0, hi: 1.5, ideal: 1.2, defaut: true };
   function lisse(k, x) {
     var sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
     OBS.forEach(function (o) {
@@ -503,7 +662,8 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var mx = sx / sw, my = sy / sw, vx = sxx / sw - mx * mx;
     return my + (vx > 1e-9 ? (sxy / sw - mx * my) / vx : 0) * (x - mx);
   }
-  var Z = (function () {
+  var nbVersionsObs = {}; OBS.forEach(function (o) { nbVersionsObs[o.r.v] = 1; });
+  var Z = OBS.length < 20 || Object.keys(nbVersionsObs).length < 8 ? ZONE_DEFAUT : (function () {
     var lo = Math.min.apply(null, OBS.map(function (o) { return o.w; })), hi = Math.max.apply(null, OBS.map(function (o) { return o.w; }));
     var G = [];
     for (var x = lo; x <= hi; x += 0.02) G.push({ x: x, debit: lisse('debit', x), tenue: lisse('tenue', x), delai: lisse('delai', x) });
@@ -514,6 +674,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       if (G[i].debit < REGLE.debit * dMax || G[i].tenue < G[iLo].tenue - REGLE.tenue || G[i].delai > REGLE.delai * G[iLo].delai) break;
       iHi = i;
     }
+    if (G[iHi].x - G[iLo].x < 0.3) return ZONE_DEFAUT;
     return { lo: Math.round(G[iLo].x * 10) / 10, hi: Math.round(G[iHi].x * 10) / 10, ideal: Math.round((G[iLo].x + G[iHi].x) / 2 * 10) / 10 };
   })();
   function etat(w) {
@@ -529,11 +690,12 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   var MESURES = {
     jours:  { nom: 'Jours par ticket', unite: 'j', dec: 1, additif: false, decoupes: ['', 'etape', 'equipe'] },
     livres: { nom: 'Tickets livrés', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
-    wipp:   { nom: 'Tickets en cours par personne', unite: '/ pers.', dec: 1, additif: false, decoupes: ['', 'equipe'], zone: true },
+    wipp:   { nom: 'Tickets en cours ' + PAR, unite: '/ pers.', dec: 1, additif: false, decoupes: ['', 'equipe'], zone: true },
     wip:    { nom: 'Tickets en cours', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
     tenue:  { nom: 'Tenue au gel', unite: '%', dec: 0, additif: false, decoupes: ['', 'equipe'], pct: true },
     caf:    { nom: 'Capacité à faire (CAF)', unite: 'JP', dec: 0, additif: true, decoupes: ['', 'equipe'] }
   };
+  if (REEL) delete MESURES.caf;
   var AXES = { version: 'Par version', equipe: 'Par équipe' };
   var DECOUPES = { '': 'Sans découpage', etape: 'Par étape', equipe: 'Par équipe' };
   var STYLES = { colonnes: ['▥', 'Colonnes'], barres: ['▤', 'Barres'], courbe: ['⟋', 'Courbe'], tableau: ['▦', 'Tableau'] };
@@ -543,11 +705,11 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     return [
       { id: 'c1', titre: 'Jours par ticket, version par version', mesure: 'jours', axe: 'version', decoupe: 'etape', style: 'colonnes', largeur: 'pleine' },
       { id: 'c2', titre: 'Jours par ticket, par équipe', mesure: 'jours', axe: 'equipe', decoupe: 'etape', style: 'barres', largeur: 'demi' },
-      { id: 'c3', titre: 'Tickets en cours par personne', mesure: 'wipp', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' },
+      { id: 'c3', titre: 'Tickets en cours ' + PAR, mesure: 'wipp', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' },
       { id: 'c4', titre: 'Tickets livrés par version', mesure: 'livres', axe: 'version', decoupe: 'equipe', style: 'colonnes', largeur: 'pleine' }
     ];
   }
-  function etatParDefaut() { return { periode: 'all', equipes: TOUS.slice(), etapes: ['a', 'd', 'q'], replie: false, cartes: cartesParDefaut() }; }
+  function etatParDefaut() { return { periode: 'all', equipes: DEFAUT_EQ.slice(), etapes: ['a', 'd', 'q'], replie: false, cartes: cartesParDefaut() }; }
   var S = etatParDefaut();
   try {
     var m = JSON.parse(localStorage.getItem(CLE) || 'null');
@@ -556,7 +718,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       if (Array.isArray(m.equipes)) { var eq = TOUS.filter(function (id) { return m.equipes.indexOf(id) !== -1; }); if (eq.length) S.equipes = eq; }
       if (Array.isArray(m.etapes)) { var et = ['a', 'd', 'q'].filter(function (c) { return m.etapes.indexOf(c) !== -1; }); if (et.length) S.etapes = et; }
       S.replie = !!m.replie;
-      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && MESURES[c.mesure] && AXES[c.axe]; });
+      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && AXES[c.axe]; }).map(function (c) { if (!MESURES[c.mesure]) c.mesure = 'jours'; return c; });
     }
   } catch (e) { /* stockage indisponible : valeurs par défaut */ }
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* idem */ } }
@@ -580,20 +742,21 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var nbV = {}; rs.forEach(function (r) { nbV[r.v] = 1; });
     var n = Object.keys(nbV).length;
     if (mesure === 'jours') {
-      var g = sum(rs, 'gel');
+      var g = sum(rs, 'nj');
       if (!g) return null;
-      return sum(rs, function (r) { var j = jEtapes(r); return etapes.reduce(function (a, c) { return a + j[c]; }, 0) * r.gel; }) / g;
+      return sum(rs, function (r) { return r.nj ? etapes.reduce(function (a, c) { return a + r.etapes[c]; }, 0) * r.nj : 0; }) / g;
     }
-    if (mesure === 'livres') return sum(rs, function (r) { return r.gel + r.derog; }) / n;
-    if (mesure === 'wip') return sum(rs, 'wip') / n;
-    if (mesure === 'wipp') return sum(rs, 'wip') / sum(rs, 'etp');
-    if (mesure === 'tenue') return sum(rs, 'gel') / sum(rs, 'engages');
+    if (mesure === 'livres') return sum(rs, 'livres') / n;
+    var avecWip = rs.filter(function (r) { return r.wip != null; });
+    if (mesure === 'wip') return avecWip.length ? sum(avecWip, 'wip') / n : null;
+    if (mesure === 'wipp') { var e = sum(avecWip, function (r) { return r.etp || 0; }); return e ? sum(avecWip, 'wip') / e : null; }
+    if (mesure === 'tenue') { var gc = rs.filter(function (r) { return r.gelConnu; }), en = sum(gc, 'engages'); return en ? sum(gc, 'gel') / en : null; }
     if (mesure === 'caf') return sum(rs, 'caf') / n;
     return null;
   }
   // Tableau croisé d'une carte : catégories (axe) × séries (découpage).
   function pivot(c) {
-    var vs = versionsVues(), base = ROWS.filter(function (r) { return r.gel != null && S.equipes.indexOf(r.eq) !== -1 && dans(r.v, vs); });
+    var vs = versionsVues(), base = ROWS.filter(function (r) { return S.equipes.indexOf(r.eq) !== -1 && dans(r.v, vs); });
     var cats = c.axe === 'version' ? vs.map(function (v) { return { cle: v.v, nom: court(v.v), filtre: function (r) { return r.v === v.v; } }; })
       : S.equipes.map(function (id) { return { cle: id, nom: NOM[id], filtre: function (r) { return r.eq === id; } }; });
     var series;
@@ -632,7 +795,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       } else {
         corps = '<div class="grp" style="height:auto">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="height:' + ((v || 0) / mx * H).toFixed(1) + 'px" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
       }
-      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : seule ? l.vals[0] : l.total;
+      var tot = p.empile ? (l.vals.some(function (v) { return v != null; }) ? sum(l.vals, function (v) { return v || 0; }) : null) : seule ? l.vals[0] : l.total;
       return '<div class="col"><span class="col-tot">' + fmt(p, tot) + '</span>' + corps + '</div>';
     }).join('') + '</div><div class="axis">' + p.lignes.map(function (l) { return '<span>' + esc(l.cat.nom) + '</span>'; }).join('') + '</div></div>';
     return h;
@@ -680,7 +843,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var h = '<div class="tbl-wrap"><table class="data"><thead><tr><th>' + (p.cats.length && p.cats[0].cle in NOM ? 'Équipe' : 'Version') + '</th>' +
       (multi ? p.series.map(function (s) { return '<th>' + esc(s.nom) + '</th>'; }).join('') : '') + '<th>' + esc(multi ? (p.empile ? 'Total' : 'Ensemble') : p.m.nom) + '</th></tr></thead><tbody>';
     h += p.lignes.map(function (l) {
-      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : multi ? l.total : l.vals[0];
+      var tot = p.empile ? (l.vals.some(function (v) { return v != null; }) ? sum(l.vals, function (v) { return v || 0; }) : null) : multi ? l.total : l.vals[0];
       return '<tr><td>' + esc(l.cat.nom) + '</td>' + (multi ? l.vals.map(function (v) { return '<td>' + fmt(p, v) + '</td>'; }).join('') : '') + '<td>' + fmt(p, tot) + '</td></tr>';
     }).join('');
     return h + '</tbody></table></div>';
@@ -735,26 +898,36 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       return '<path class="g-arc ' + cls + '" stroke-width="' + ep + '" d="M' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' A' + r + ',' + r + ' 0 0 1 ' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + '"/>';
     }
     var g = 0.03;
-    var s = '<svg viewBox="0 0 320 172" role="img" aria-label="' + esc(titre + ' : ' + nf(w, 1) + ' ticket en cours par personne, ' + etat(w).txt.slice(2)) + '">';
+    var s = '<svg viewBox="0 0 320 172" role="img" aria-label="' + esc(titre + ' : ' + nf(w, 1) + ' ticket en cours ' + PAR + ', ' + etat(w).txt.slice(2)) + '">';
     s += arc(0, Z.lo - g, 'g-warn') + arc(Z.lo + g, Z.hi - g, 'g-good') + arc(Z.hi + g, ROUGE - g, 'g-warn') + arc(ROUGE + g, MAX, 'g-bad');
     [0, 1, 2, 3].forEach(function (t) { var p = pt(t, r - 32); s += '<text class="g-tick" x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="middle">' + t + '</text>'; });
     var n = pt(w, r - 8);
     s += '<line class="g-needle" x1="' + cx + '" y1="' + cy + '" x2="' + n[0].toFixed(1) + '" y2="' + n[1].toFixed(1) + '"/><circle class="g-hub" cx="' + cx + '" cy="' + cy + '" r="11"/></svg>';
-    return s + '<div class="g-val"><b>' + nf(w, 1) + '</b><small>ticket en cours par personne</small></div>';
+    return s + '<div class="g-val"><b>' + nf(w, 1) + '</b><small>ticket en cours ' + PAR + '</small></div>';
   }
   function actuel(ids) {
-    var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && dans(r.v, DERNIERES); });
-    return { wip: sum(rs, 'wip') / DERNIERES.length, w: sum(rs, 'wip') / sum(rs, 'etp') };
+    var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && dans(r.v, DERNIERES) && r.etp > 0; });
+    var e = sum(rs, 'etp');
+    return { wip: sum(rs, 'wip') / Math.max(1, DERNIERES.length), w: e ? sum(rs, 'wip') / e : 0, etp: e / Math.max(1, DERNIERES.length) };
   }
-  function limite(ids) { return sum(ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v; }), function (r) { return Math.max(1, Math.round(Z.ideal * r.etp)); }); }
+  // Limite de la prochaine version : WIP idéal × effectif. En simulation,
+  // l'effectif prévu vient de l'Analyse de capacité ; en réel (non branchée),
+  // de l'effectif actif moyen des dernières versions.
+  function limite(ids) {
+    var prev = NEXT ? ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v && r.etp > 0; }) : [];
+    if (prev.length) return sum(prev, function (r) { return Math.max(1, Math.round(Z.ideal * r.etp)); });
+    return sum(ids, function (id) { var a = actuel([id]); return a.etp > 0 ? Math.max(1, Math.round(Z.ideal * a.etp)) : 0; });
+  }
   function rendreCompteurs() {
     var ids = S.equipes, now = actuel(ids), e = etat(now.w), tousLa = ids.length === TOUS.length;
-    $('#gHint').textContent = 'Versions ' + court(DERNIERES[0].v) + ' à ' + court(DERNIERES[2].v) + ' · limites pour la ' + NEXT.v;
+    $('#gTitre').textContent = 'WIP : tickets en cours ' + PAR;
+    if (!DERNIERES.length) { $('#gauges').innerHTML = '<div class="card empty">Aucune version livrée avec des photos du journal : les compteurs apparaîtront après la prochaine livraison.</div>'; return; }
+    $('#gHint').textContent = 'Versions ' + court(DERNIERES[0].v) + ' à ' + court(DERNIERES[DERNIERES.length - 1].v) + (NEXT ? ' · limites pour la ' + NEXT.v : '') + (Z.defaut ? ' · zones par défaut' : '');
     var h = '<article class="card g-main"><div class="gauge">' + compteur(now.w, tousLa ? 'Dispositif entier' : 'Équipes sélectionnées') + '</div><div class="lecture">' +
       '<span class="k">' + (tousLa ? 'Dispositif entier' : ids.map(function (id) { return NOM[id]; }).join(' + ')) + '</span>' +
       '<span><span class="pill ' + e.cls + '">' + e.txt + '</span></span>' +
-      '<p class="big"><b>' + nf(now.wip) + ' tickets</b> en cours, soit <b>' + nf(now.w, 1) + ' par personne</b> (bon niveau : ' + nf(Z.ideal, 1) + ').</p>' +
-      '<p class="cible">' + esc(NEXT.v) + ' : ' + nf(limite(ids)) + ' tickets en cours au maximum.</p>' +
+      '<p class="big"><b>' + nf(now.wip) + ' tickets</b> en cours, soit <b>' + nf(now.w, 1) + ' ' + PAR + '</b> (bon niveau : ' + nf(Z.ideal, 1) + ').</p>' +
+      '<p class="cible">' + esc(NEXT ? NEXT.v : 'Prochaine version') + ' : ' + nf(limite(ids)) + ' tickets en cours au maximum.</p>' +
       '<div class="zones"><span><i style="background:var(--v-good)"></i>' + nf(Z.lo, 1) + '–' + nf(Z.hi, 1) + '</span><span><i style="background:var(--v-warn)"></i>à surveiller</span><span><i style="background:var(--v-critical)"></i>&gt; ' + nf(ROUGE, 1) + '</span></div></div></article>';
     h += ids.map(function (id) {
       var a = actuel([id]), et = etat(a.w);
@@ -783,9 +956,9 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var parts = [], filtre = false;
     var vs = versionsVues();
     parts.push(vs.length + ' versions');
-    parts.push(S.equipes.length === TOUS.length ? '4 équipes' : S.equipes.map(function (id) { return NOM[id]; }).join(', '));
+    parts.push(S.equipes.length === TOUS.length ? TOUS.length + ' équipes' : S.equipes.map(function (id) { return NOM[id]; }).join(', '));
     if (S.etapes.length < 3) parts.push('étapes : ' + S.etapes.map(function (k) { return NOM_ETAPE[k]; }).join(' + '));
-    filtre = S.periode !== 'all' || S.equipes.length < TOUS.length || S.etapes.length < 3;
+    filtre = S.periode !== 'all' || S.equipes.join() !== DEFAUT_EQ.join() || S.etapes.length < 3;
     var r = $('#fResume');
     r.textContent = parts.join(' · ');
     r.className = 'filter-summary' + (filtre ? ' is-filtered' : '');
@@ -798,29 +971,43 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   }
 
   function rendrePourquoi() {
-    function bilan(l) { var g = sum(l, function (o) { return o.r.gel; }); return { tenue: g / sum(l, function (o) { return o.r.engages; }), delai: sum(l, function (o) { return o.r.delai * o.r.gel; }) / g, n: l.length }; }
-    function ligne(nom, b) { return '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours de développement par ticket (' + b.n + ' cas).</li>'; }
-    $('#pourquoi').innerHTML =
-      ligne('Dans le vert', bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }))) +
+    function bilan(l) { var nj = sum(l, function (o) { return o.r.nj; }); return { tenue: sum(l, function (o) { return o.r.gel; }) / sum(l, function (o) { return o.r.engages; }), delai: nj ? sum(l, function (o) { return o.r.delai * o.r.nj; }) / nj : null, n: l.length }; }
+    function ligne(nom, b) { return b.n ? '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours par ticket (' + b.n + ' cas).</li>' : '<li><b>' + nom + '</b> : aucun cas observé.</li>'; }
+    var src = REEL
+      ? '<li><b>Source.</b> ' + DATA.meta.photos + ' photos du journal du Bug Dashboard et les ' + VERS.length + ' versions du plan publié. Une photo donne le statut de chaque ticket à un instant : le temps passé entre deux photos est compté dans l\'étape de la première, en jours ouvrés. Les jours par étape sont donc approchés, d\'autant mieux que les analyses sont fréquentes.</li>' +
+        '<li><b>Par personne active.</b> Le journal ne contient que les tickets de stabilisation et l\'Analyse de capacité n\'est pas encore branchée : les compteurs rapportent les tickets en Dev ou en QA aux personnes qui en ont au moins un, en moyenne sur les photos de la version. 1,0 = chacun traite un ticket à la fois ; au-delà, des personnes mènent plusieurs tickets de front.</li>' +
+        '<li><b>Livré.</b> Un ticket est livré quand son statut fait partie des statuts « terminés » du Bug Dashboard (Configurer → Statuts), hors abandons (Decline…). Il est livré au gel s\'il l\'était sur la dernière photo avant le gel de code.</li>'
+      : '<li><b>Données simulées.</b> Connectez-vous depuis le lanceur pour lire le plan publié et le journal du Bug Dashboard.</li>';
+    $('#pourquoi').innerHTML = src + (Z.defaut
+      ? '<li><b>Zones par défaut</b> (vert de ' + nf(Z.lo, 1) + ' à ' + nf(Z.hi, 1) + ', rouge au-delà de ' + nf(ROUGE, 1) + ') : l\'historique est encore trop court (' + OBS.length + ' cas équipe × version sur ' + Object.keys(nbVersionsObs).length + ' versions ; il en faut 20 sur 8 versions) pour les calculer. Elles se calculeront seules quand il y aura assez de versions livrées.</li>'
+      : ligne('Dans le vert', bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }))) +
       ligne('Dans le jaune', bilan(OBS.filter(function (o) { return o.w > Z.hi && o.w <= ROUGE; }))) +
       ligne('Dans le rouge', bilan(OBS.filter(function (o) { return o.w > ROUGE; }))) +
-      '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, toutes équipes, et ne changent pas avec les filtres. La limite d\'une version = ' + nf(Z.ideal, 1) + ' × personnes présentes prévues dans l\'Analyse de capacité.</li>' +
+      '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, toutes équipes, et ne changent pas avec les filtres.</li>') +
+      '<li>La limite d\'une version = ' + nf(Z.ideal, 1) + ' × ' + (REEL ? 'effectif actif estimé' : 'personnes présentes prévues dans l\'Analyse de capacité') + '.</li>' +
       ETAPES.map(function (e) { return '<li><b>' + e.nom + '</b> regroupe les statuts Jira : ' + esc(e.statuts.join(', ')) + '.</li>'; }).join('');
   }
 
   // ── Connecteurs : d'où viennent les données ─────────────────────────────
   function rendreSources() {
-    var tickets = sum(ROWS, function (r) { return (r.engages || 0) + (r.vise || 0); });
-    var personnes = sum(TEAMS, 'personnes');
-    function src(ic, nom, meta, soon) {
-      return '<div class="src' + (soon ? ' is-soon' : '') + '"><span class="src-ic" aria-hidden="true">' + ic + '</span><div class="src-txt"><div class="src-name">' + esc(nom) +
-        '</div><div class="src-meta">' + esc(meta) + '</div></div>' + (soon ? '<span class="src-soon">À venir</span>' : '<span class="src-ok">✓ Synchronisé</span>') + '</div>';
+    function src(ic, nom, meta, etat) {
+      var pastille = etat === 'ok' ? '<span class="src-ok">✓ Branché</span>' : '<span class="src-soon">' + esc(etat) + '</span>';
+      return '<div class="src' + (etat === 'ok' ? '' : ' is-soon') + '"><span class="src-ic" aria-hidden="true">' + ic + '</span><div class="src-txt"><div class="src-name">' + esc(nom) +
+        '</div><div class="src-meta">' + esc(meta) + '</div></div>' + pastille + '</div>';
     }
-    $('#sources').innerHTML =
-      src('🚆', 'Plan de livraisons', VERS.length + ' versions · publié le 05/10') +
-      src('📡', 'Journal du Bug Dashboard', nf(tickets) + ' tickets · analyse du 09/10') +
-      src('📈', 'Analyse de capacité', 'Planning du 05/10 · ' + personnes + ' personnes') +
-      src('🗂', 'Backlog entier', 'Tickets hors stabilisation', true);
+    function jj(d) { return d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '–'; }
+    $('#sources').innerHTML = REEL
+      ? src('🚆', 'Plan de livraisons', VERS.length + ' versions · publié le ' + jj(DATA.meta.publie), 'ok') +
+        src('📡', 'Journal du Bug Dashboard', DATA.meta.photos + ' photos · ' + nf(DATA.meta.tickets) + ' tickets · dernière le ' + jj(DATA.meta.derniere), 'ok') +
+        src('📈', 'Analyse de capacité', 'Effectif remplacé par les personnes actives', 'Non branché') +
+        src('🗂', 'Backlog entier', 'Tickets hors stabilisation', 'À venir')
+      : src('🚆', 'Plan de livraisons', 'Versions fictives 3.1 à 3.21', 'Simulé') +
+        src('📡', 'Journal du Bug Dashboard', 'Tickets fictifs', 'Simulé') +
+        src('📈', 'Analyse de capacité', 'Effectifs fictifs', 'Simulé') +
+        src('🗂', 'Backlog entier', 'Tickets hors stabilisation', 'À venir');
+    var note = document.querySelector('.demo-note');
+    note.textContent = REEL ? 'Données réelles · journal du Bug Dashboard' : 'Données simulées · connectez-vous pour les vraies';
+    note.classList.toggle('is-real', REEL);
   }
 
   function tout() { rendreFiltres(); rendreCompteurs(); rendreCartes(); }
@@ -830,7 +1017,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var b = e.target.closest('button');
     if (!b) return;
     if (b.id === 'fToggle') { S.replie = !S.replie; sauver(); rendreFiltres(); return; }
-    if (b.id === 'fReset') { S.periode = 'all'; S.equipes = TOUS.slice(); S.etapes = ['a', 'd', 'q']; }
+    if (b.id === 'fReset') { S.periode = 'all'; S.equipes = DEFAUT_EQ.slice(); S.etapes = ['a', 'd', 'q']; }
     else if (b.closest('#fPeriode')) S.periode = b.getAttribute('data-val');
     else if (b.hasAttribute('data-eq')) {
       var id = b.getAttribute('data-eq'), i = S.equipes.indexOf(id);
@@ -926,6 +1113,12 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   rendreSources();
   rendrePourquoi();
   tout();
+  }
+
+  chargerReel().then(function (d) { demarrer(d || SIMULE); }, function (e) {
+    console.warn('Vraies données indisponibles, données simulées affichées :', e);
+    demarrer(SIMULE);
+  });
 })();
 </script>
 <script>
