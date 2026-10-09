@@ -155,6 +155,9 @@ table.gt{border-collapse:separate;border-spacing:0;font-family:'DM Mono',monospa
 .gp-meta{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--muted);margin-top:0}
 .gc{min-width:22px;width:22px;height:17px;font-size:8px;text-align:center;padding:0;color:transparent;transition:opacity .15s,filter .15s}
 .gc.show{color:inherit}
+.gc.spd,.gsum td.spd{background-image:linear-gradient(rgba(229,57,53,.13),rgba(229,57,53,.13));box-shadow:inset 1px 0 0 rgba(229,57,53,.35),inset -1px 0 0 rgba(229,57,53,.35)}
+.gt thead th.spd{background-image:linear-gradient(rgba(229,57,53,.55),rgba(229,57,53,.55))}
+.gp-th{color:var(--muted)}
 .gc.dim,.gt thead th.dim{filter:grayscale(.75);opacity:.26}
 .pr2{background:#CDE9DA;color:#0F5C30}
 .ho{background:#D7E3FA;color:#1A3A8A}
@@ -341,6 +344,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     <span><span class="lg" style="background:repeating-linear-gradient(45deg,#F3E0DD 0 3px,#FBF2F0 3px 6px)"></span>Non renseigné</span>
     <span><span class="lg" style="background:#FAFBFC"></span>Hors période</span>
     <span><span class="lg" style="background:#E9ECF0"></span>Week-end</span>
+    <span id="lg-sp" style="display:none"><span class="lg" style="background:#F9D3D2;border-color:#E53935"></span>Sprint planning</span>
   </div>
   </div>
 
@@ -365,6 +369,18 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="sb-group-title">Tâches hors récits</div>
       <div class="sb-row"><span class="sb-lbl">Cérémonies agiles</span><input class="sb-input" id="sb-agile" type="number" step="1" min="0" max="100" value="10"></div>
       <div class="sb-row"><span class="sb-lbl">Bogues</span><input class="sb-input" id="sb-bogues" type="number" step="1" min="0" max="100" value="10"></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div>
+      <div class="sb-group-title">Sprint planning</div>
+      <div class="sb-row"><span class="sb-lbl">Réduire la CAF ces jours-là</span><input type="checkbox" id="sb-sp-on" onchange="spPreview()"></div>
+      <div class="sb-row"><span class="sb-lbl">Diminution de la journée (%)</span><input class="sb-input" id="sb-sp-pct" type="number" step="1" min="0" max="100" value="30" oninput="spPreview()"></div>
+      <div class="sb-row"><span class="sb-lbl">Récurrence : le</span>
+        <select class="sb-input" id="sb-sp-dow" style="width:118px;text-align:left" onchange="spPreview()"><option value="1">Lundi</option><option value="2" selected>Mardi</option><option value="3">Mercredi</option><option value="4">Jeudi</option><option value="5">Vendredi</option></select></div>
+      <div class="sb-row"><span class="sb-lbl">Toutes les (semaines)</span><input class="sb-input" id="sb-sp-every" type="number" step="1" min="1" max="12" value="3" oninput="spPreview()"></div>
+      <div class="sb-row"><span class="sb-lbl">À partir du</span><input class="sb-input" id="sb-sp-anchor" type="date" style="width:132px;text-align:left" onchange="spPreview()"></div>
+      <div id="sb-sp-preview" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--navy);margin-top:6px;line-height:1.5"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5">La journée est en surbrillance rouge dans le Gantt. Le pourcentage réduit la capacité de cette journée pour chaque personne présente (jours-personne et story points) ; la présence ne change pas. Sans date de départ, le cycle part du premier sprint du fichier.</div>
     </div>
     <div class="sb-divider"></div>
     <div>
@@ -414,7 +430,8 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 'use strict';
 
 // ── Paramètres de calcul (modifiables via la sidebar) ──
-var P = { vc:2.0, vi:2.0, vt:2.0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10 };
+var P = { vc:2.0, vi:2.0, vt:2.0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10,
+  sp_on:false, sp_pct:0.30, sp_dow:2, sp_every:3, sp_anchor:'' };   // sprint planning : récurrence + diminution de la journée
 var ITSET = new Set(['INTEG 4','INTEG 5']);
 var TTSET = new Set(['TRANS']);
 var WORKING = new Set(['R', 'S', 'AS']);
@@ -691,14 +708,55 @@ function activeInWindow(p){ return (!p.arr || p.arr<=rangeEnd) && (!p.dep || p.d
 function activeSel(){ return state.persons.filter(function(p){ return matches(p) && selected.has(p.name) && activeInWindow(p); }); }
 
 // ── Agrégations ──
+// ── Sprint planning : récurrence « à la Outlook » ──
+function spMonday(ms){ var d=new Date(ms); var w=(d.getUTCDay()+6)%7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()-w); }
+// Date de départ effective : celle saisie, sinon le premier jour du cycle à partir du début du premier sprint (ou du fichier).
+function spAnchor(){
+  if(P.sp_anchor) return P.sp_anchor;
+  var first = state.sprints.length ? state.sprints[0].start : (state.dates[0]||'');
+  if(!first) return '';
+  var d=pd(first); for(var i=0;i<7 && d.getUTCDay()!==P.sp_dow;i++) d.setUTCDate(d.getUTCDate()+1);
+  return dsU(d);
+}
+// Vrai si la journée `ds` est un sprint planning : bon jour de semaine, à partir de la date de départ,
+// toutes les P.sp_every semaines (la semaine de la date de départ est la semaine 0).
+function isPlanDay(ds, anchor){
+  if(!P.sp_on) return false;
+  var d=pd(ds); if(d.getUTCDay()!==P.sp_dow) return false;
+  var a = anchor || spAnchor(); if(!a || ds<a) return false;
+  var wk=Math.round((spMonday(d.getTime())-spMonday(pd(a).getTime()))/(7*86400000));
+  return wk % Math.max(1, P.sp_every) === 0;
+}
+// Part de capacité conservée ce jour-là (1 hors sprint planning).
+function planFactor(ds){ return isPlanDay(ds) ? 1-P.sp_pct : 1; }
+function spPreview(){
+  var el=$('#sb-sp-preview'); if(!el) return;
+  if(!$('#sb-sp-on').checked){ el.textContent='Désactivé : la CAF n\'est pas réduite.'; return; }
+  var a=$('#sb-sp-anchor').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(a)){ el.textContent='Sans date de départ : le cycle part du premier sprint du fichier planning.'; return; }
+  var save={on:P.sp_on,dow:P.sp_dow,every:P.sp_every};
+  P.sp_on=true; P.sp_dow=parseInt($('#sb-sp-dow').value,10); P.sp_every=parseInt($('#sb-sp-every').value,10)||1;
+  var t=new Date(), d=new Date(Math.max(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate()), pd(a).getTime())), out=[];
+  for(var i=0;i<400 && out.length<4;i++, d.setUTCDate(d.getUTCDate()+1)){
+    if(isPlanDay(dsU(d), a)) out.push(d.toLocaleDateString('fr-CA',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}));
+  }
+  P.sp_on=save.on; P.sp_dow=save.dow; P.sp_every=save.every;
+  el.textContent = out.length ? 'Prochains : '+out.join(' · ') : 'Aucune occurrence.';
+}
+
+// Capacité d'une journée : jp / sp tiennent compte du sprint planning ; pres (présence) n'en tient pas compte ;
+// pl_jp / pl_sp = capacité retirée par le sprint planning.
 function dayAgg(ds, ppl){
-  var jp=0, sp=0, abs=0;
+  var jp=0, sp=0, abs=0, pres=0, plJ=0, plS=0, pf=planFactor(ds);
   for(var i=0;i<ppl.length;i++){
     var p=ppl[i]; if(!activeOn(p,ds)) continue;
     var code=p.dailyCodes[ds];
-    if(WORKING.has(code)){ jp+=p.alloc; sp+=p.alloc*spPerJP(p); } else { abs+=p.alloc; }
+    if(WORKING.has(code)){
+      var s1=p.alloc*spPerJP(p);
+      jp+=p.alloc*pf; sp+=s1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf);
+    } else { abs+=p.alloc; }
   }
-  return { jp:jp, sp:sp, abs:abs };
+  return { jp:jp, sp:sp, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS };
 }
 function fmtRange(a,b){
   var A=pd(a), B=pd(b);
@@ -729,9 +787,9 @@ function periods(){
   return out;
 }
 function aggPeriod(g, ppl){
-  var jp=0, sp=0, abs=0;
-  g.days.forEach(function(d){ var a=dayAgg(d, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; });
-  return { jp:jp, sp:sp, abs:abs, ouvres:g.days.length };
+  var jp=0, sp=0, abs=0, pres=0, plJ=0, plS=0;
+  g.days.forEach(function(d){ var a=dayAgg(d, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres+=a.pres; plJ+=a.pl_jp; plS+=a.pl_sp; });
+  return { jp:jp, sp:sp, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, ouvres:g.days.length };
 }
 
 // ── Rendu : chips ──
@@ -802,8 +860,8 @@ function toggleFilter(set, val, totalCount){
 // ── Rendu : KPI ──
 function renderKPIs(){
   var ppl=activeSel(), pers=periods();
-  var jp=0, sp=0, abs=0;
-  pers.forEach(function(g){ var a=aggPeriod(g, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; });
+  var jp=0, sp=0, abs=0, pres0=0, pl=0;
+  pers.forEach(function(g){ var a=aggPeriod(g, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres0+=a.pres; pl+=(unit==='JP')?a.pl_jp:a.pl_sp; });
   var ouvres = viewWeekdays().length;
   var tot = (unit==='JP') ? jp : sp;
   var per = pers.length ? tot/pers.length : 0;
@@ -811,11 +869,11 @@ function renderKPIs(){
   $('#k1v').textContent = ppl.length;
   $('#k1s').textContent = 'sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
   $('#k2v').textContent = f1(tot); $('#k2u').textContent = unit;
-  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile/bogues appliqués':'');
+  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile/bogues appliqués':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+unit:'');
   $('#k3l').textContent = 'Moyenne / '+granLbl;
   $('#k3v').textContent = f1(per); $('#k3u').textContent = unit;
   $('#k3s').textContent = pers.length+' période(s)';
-  var pres = (jp+abs)>0 ? jp/(jp+abs) : NaN;
+  var pres = (pres0+abs)>0 ? pres0/(pres0+abs) : NaN;
   $('#k4v').textContent = isFinite(pres) ? Math.round(pres*100) : '—';
   $('#k4s').textContent = f1(abs)+" JP d'absence";
 }
@@ -832,7 +890,7 @@ function renderTable(){
   } else {
     rows.forEach(function(r){
       var v=(unit==='JP')?r.jp:r.sp;
-      var pres=(r.jp+r.abs)>0 ? r.jp/(r.jp+r.abs) : NaN;
+      var pres=(r.pres+r.abs)>0 ? r.pres/(r.pres+r.abs) : NaN;
       var w=maxV>0 ? Math.round(v/maxV*100) : 0;
       h+='<tr><td><div class="p-label">'+esc(r.g.label)+'</div>'+(r.g.sub?'<div class="p-sub">'+esc(r.g.sub)+'</div>':'')+'</td>'
         +'<td class="num">'+r.ouvres+'</td>'
@@ -874,9 +932,9 @@ function buildGanttHdr(dates){
   h+='</tr><tr class="g1">';
   wg.forEach(function(g){ h+='<th class="clk" data-week="'+g.w+'" colspan="'+g.c+'">S'+parseInt(g.w.slice(6),10)+'</th>'; });
   h+='</tr><tr class="g2">';
-  dates.forEach(function(d){ var dt=pd(d), we=isWE(d); h+='<th data-col="'+d+'"'+(we?' class="we"':' class="clk" data-day="'+d+'"')+'>'+dt.getUTCDate()+'</th>'; });
+  dates.forEach(function(d){ var dt=pd(d), we=isWE(d); h+='<th data-col="'+d+'"'+(we?' class="we"':' class="clk'+(isPlanDay(d)?' spd" title="Sprint planning':'')+'" data-day="'+d+'"')+'>'+dt.getUTCDate()+'</th>'; });
   h+='</tr><tr class="g3">';
-  dates.forEach(function(d){ var dt=pd(d), we=isWE(d); h+='<th data-col="'+d+'"'+(we?' class="we"':' class="clk" data-day="'+d+'"')+'>'+DN[dt.getUTCDay()]+'</th>'; });
+  dates.forEach(function(d){ var dt=pd(d), we=isWE(d); h+='<th data-col="'+d+'"'+(we?' class="we"':' class="clk'+(isPlanDay(d)?' spd" title="Sprint planning':'')+'" data-day="'+d+'"')+'>'+DN[dt.getUTCDay()]+'</th>'; });
   h+='</tr>';
   return h;
 }
@@ -900,17 +958,19 @@ function renderGantt(){
     tl.forEach(function(team){
       var tp=ppl.filter(function(p){ return p.team===team; }).sort(function(a,b){ return roleRank(a.role)-roleRank(b.role) || a.name.localeCompare(b.name); });
       var tJP=0, tSP=0;
-      tp.forEach(function(p){ wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ tJP+=p.alloc; tSP+=p.alloc*spPerJP(p); } }); });
+      tp.forEach(function(p){ wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); tJP+=p.alloc*f; tSP+=p.alloc*spPerJP(p)*f; } }); });
       h+='<tr class="trow"><td class="gteam">'+esc(team)+'<span class="tsub">'+tp.length+' pers · '+(unit==='JP'?f1(tJP)+' JP':f1(tSP)+' SP')+'</span></td><td colspan="'+dates.length+'"></td></tr>';
       tp.forEach(function(p){
-        var pJP=0, pSP=0;
-        wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ pJP+=p.alloc; pSP+=p.alloc*spPerJP(p); } });
-        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot">'+(unit==='JP'?f1(pJP)+' JP':f1(pSP)+' SP')+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
+        var pJP=0, pSP=0, pDays=0;
+        wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); pDays++; pJP+=p.alloc*f; pSP+=p.alloc*spPerJP(p)*f; } });
+        // En-tête de la personne : CAF théorique (jours de présence à 100 %, avant toute diminution) › CAF réelle (toutes diminutions appliquées).
+        var vel=velFor(p.team), pTheo=(unit==='JP') ? pDays : pDays/(vel>0?vel:1), pReal=(unit==='JP') ? pJP : pSP;
+        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot"><span class="gp-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(pTheo)+'</span> \u203a <span title="CAF réelle : affectation, tâches de lead, cérémonies, bogues et sprint planning appliqués">'+f1(pReal)+'</span> '+unit+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
         dates.forEach(function(d){
           if(isWE(d)){ h+='<td class="gc we" data-col="'+d+'"></td>'; return; }
           if(!activeOn(p,d)){ h+='<td class="gc na" data-col="'+d+'" title="'+d+' · hors période"></td>'; return; }
           var code=p.dailyCodes[d];
-          h+='<td class="gc show '+cellCls(code)+'" data-col="'+d+'" title="'+d+' · '+(code||'non renseigné')+'">'+esc(code||'')+'</td>';
+          h+='<td class="gc show '+cellCls(code)+(isPlanDay(d)?' spd':'')+'" data-col="'+d+'" title="'+d+' · '+(code||'non renseigné')+'">'+esc(code||'')+'</td>';
         });
         h+='</tr>';
       });
@@ -919,7 +979,7 @@ function renderGantt(){
     dates.forEach(function(d){
       if(isWE(d)){ h+='<td class="we" data-col="'+d+'" style="background:#22344E"></td>'; return; }
       var a=dayAgg(d, ppl);
-      h+='<td data-col="'+d+'" title="'+d+' · '+f1(a.jp)+' JP">'+(a.jp>0?f1(a.jp):'·')+'</td>';
+      h+='<td data-col="'+d+'"'+(isPlanDay(d)?' class="spd"':'')+' title="'+d+' · '+f1(a.jp)+' JP'+(a.pl_jp>0?' (sprint planning −'+f1(a.pl_jp)+')':'')+'">'+(a.jp>0?f1(a.jp):'·')+'</td>';
     });
     h+='</tr>';
   }
@@ -1037,7 +1097,7 @@ function renderVersionChips(){
   });
 }
 
-function renderAll(){ renderVersionChips(); renderChips(); renderKPIs(); renderTable(); renderGantt(); }
+function renderAll(){ var lg=$('#lg-sp'); if(lg) lg.style.display=P.sp_on?'':'none'; renderVersionChips(); renderChips(); renderKPIs(); renderTable(); renderGantt(); }
 
 // ── Export PowerPoint (graphique de capacité par sprint) ──
 // Rôle canonique pour le graphique — même logique de détection que roleRank(), sans distinction Lead
@@ -1059,7 +1119,7 @@ function categorySeriesByPeriod(periodsList, ppl){
       ppl.forEach(function(p){
         if(!activeOn(p,d)) return;
         if(!WORKING.has(p.dailyCodes[d])) return;
-        var val = (unit==='SP') ? p.alloc*spPerJP(p) : p.alloc;
+        var val = ((unit==='SP') ? p.alloc*spPerJP(p) : p.alloc) * planFactor(d);
         var cat=roleCategory(p.role);
         if(cat==='BA') b+=val;
         else if(cat==='DEV') d2+=val;
@@ -1344,7 +1404,7 @@ function updateLeadCalc(){
 function openSidebar(){ $('#sidebar').classList.add('open'); $('#sidebar-overlay').classList.add('visible'); }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('visible'); }
 // Paramètres du tiroir : mémorisés dans ce navigateur et rétablis à chaque ouverture de la page.
-var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags'];
+var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags','sb-sp-on','sb-sp-pct','sb-sp-dow','sb-sp-every','sb-sp-anchor'];
 var PARAM_KEY='planif:analyse-capacite:params';
 function saveParams(){
   try { var o={}; PARAM_IDS.forEach(function(id){ var el=$('#'+id); o[id]=(el.type==='checkbox')?el.checked:el.value; }); localStorage.setItem(PARAM_KEY, JSON.stringify(o)); } catch(e){}
@@ -1363,6 +1423,9 @@ function applyParams(){
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
   HIDE_USER_FLAGS=$('#sb-hide-flags').checked;
+  P.sp_on=$('#sb-sp-on').checked; P.sp_pct=pct($('#sb-sp-pct').value);
+  P.sp_dow=Math.min(5, Math.max(1, parseInt($('#sb-sp-dow').value,10)||2)); P.sp_every=Math.min(12, Math.max(1, parseInt($('#sb-sp-every').value,10)||3));
+  P.sp_anchor=/^\d{4}-\d{2}-\d{2}$/.test($('#sb-sp-anchor').value) ? $('#sb-sp-anchor').value : '';
   ANGLO=parseNames($('#sb-anglo').value); applyCountryOverrides();
   DEFAULT_ORDER=parseTeams($('#sb-default-teams').value); DEFAULT_TEAMS=new Set(DEFAULT_ORDER);
   if(DEFAULT_TEAMS.size) applyDefaultTeams();
@@ -1413,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('#sb-support').addEventListener('input', updateLeadCalc);
 
   if(restoreParams()){ updateLeadCalc(); applyParams(); }
+  spPreview();
   if(window.TKPlanStore) TKPlanStore.mount($('#planning-store'), { getFile:function(){ return currentFile; }, onLoad:function(f){ return handleFile(f); } });
   loadPlanVersions().catch(function(e){ console.warn(e); });
   renderAll();
