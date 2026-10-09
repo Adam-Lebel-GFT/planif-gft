@@ -21,25 +21,26 @@
     for (var i = 0; i < REJECT.length; i++) if (REJECT[i][1].test(r)) return REJECT[i][0];
     return null;
   }
-  var VERSION_COLORS = ['#0d366b', '#c026d3', '#14b8a6', '#6366f1', '#5b8def'];
+  var VERSION_COLORS = ['#0d366b', '#c026d3', '#14b8a6', '#6366f1', '#5b8def', '#a16207', '#be123c', '#0e7490'];
   var DUR = 0.45;
   var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span><span>✦ flash et traînée : recule d\'un statut</span>';
-  var ui = { nVers: 3, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null };
+  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null };
   var M = null;          // données construites (photos, tickets, positions)
   var DOW = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
   // ── Données ────────────────────────────────────────────────────────
+  function openWin() { var b = CFG.get().burnup || {}, a = b.openFrom == null ? 8 : b.openFrom, z = b.openTo == null ? 19 : b.openTo; return { a: a, z: z, h: z - a }; }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
   function build(items, nVers) {
     var cfg = CFG.get();
     var photos = items.filter(function (i) { return i.tickets && i.tickets.length; }).slice().sort(function (a, b) { return new Date(a.at) - new Date(b.at); });
     if (photos.length < 2) return null;
-    // versions affichées : les Target dates les plus récentes (au moins 5 tickets dans une photo)
-    var tdMax = {};
-    photos.forEach(function (p) { var c = {}; p.tickets.forEach(function (t) { if (t.td) c[t.td] = (c[t.td] || 0) + 1; }); Object.keys(c).forEach(function (td) { tdMax[td] = Math.max(tdMax[td] || 0, c[td]); }); });
-    var tds = Object.keys(tdMax).filter(function (td) { return tdMax[td] >= 5; }).sort();
-    tds = tds.slice(-nVers);
+    // versions affichées : les Target dates les plus récentes (au moins 3 tickets dans une photo) ; toutes par défaut
+    var tdMax = {}, tdPhotos = {};
+    photos.forEach(function (p) { var c = {}; p.tickets.forEach(function (t) { if (t.td) c[t.td] = (c[t.td] || 0) + 1; }); Object.keys(c).forEach(function (td) { tdMax[td] = Math.max(tdMax[td] || 0, c[td]); tdPhotos[td] = (tdPhotos[td] || 0) + 1; }); });
+    var tds = Object.keys(tdMax).filter(function (td) { return tdMax[td] >= 3 && tdPhotos[td] >= 2; })   // une version vue sur une seule photo n'a pas de film.sort();
+    if (nVers > 0) tds = tds.slice(-nVers);   // 0 = toutes les versions du journal
     if (!tds.length) return null;
     var rowOf = {}; tds.forEach(function (td, i) { rowOf[td] = i; });
     // photos utiles : à partir de la première qui contient une de ces versions
@@ -47,7 +48,10 @@
     photos = photos.slice(first);
     if (photos.length < 2) return null;
     var t0 = new Date(photos[0].at).getTime();
-    var T = photos.map(function (p) { return (new Date(p.at).getTime() - t0) / 864e5; });
+    // Le temps du film est le temps ouvré (fenêtre du burn-up, Configurer → Règles) : une nuit ou
+    // un week-end ne compte pas, une photo saisie la nuit se place à la fermeture.
+    var wn = openWin(), t0d = new Date(t0);
+    var T = photos.map(function (p) { return C.openHours(t0d, new Date(p.at), wn.a, wn.z) / wn.h; });
     // statuts (colonnes), du moins au plus avancé
     var statSet = {}, teamSet = {}, fakeTeams = [];
     photos.forEach(function (p) { p.tickets.forEach(function (t) {
@@ -75,7 +79,7 @@
     photos.forEach(function (p) { var c = {}; p.tickets.forEach(function (t) { if (rowOf[t.td] != null) c[t.td] = (c[t.td] || 0) + 1; }); Object.keys(c).forEach(function (td) { maxTd[td] = Math.max(maxTd[td] || 0, c[td]); }); });
     var covered = photos.map(function (p) {
       var c = {}; p.tickets.forEach(function (t) { if (rowOf[t.td] != null) c[t.td] = (c[t.td] || 0) + 1; });
-      return tds.map(function (td) { return (c[td] || 0) >= Math.max(5, .5 * (maxTd[td] || 0)); });
+      return tds.map(function (td) { return (c[td] || 0) >= Math.max(Math.min(5, maxTd[td] || 0), .5 * (maxTd[td] || 0)); });
     });
     // Version terminée et officielle : sa photo épinglée (celle dont la date du nom est la Target
     // date, à défaut la plus récente des épinglées qui la contiennent) reste en place, les photos
@@ -123,14 +127,14 @@
       // ticket qui change de version (ligne) d'une photo à l'autre : repoussé (dir +1, version plus tardive) ou ramené (dir -1)
       if (i > 0) for (var q = 0; q < N; q++) { var s0 = st[i - 1][q], s1 = st[i][q]; if (s0 && s1 && s0.row !== s1.row) tk[q].moves.push({ i: i, dir: s1.row > s0.row ? 1 : -1 }); }
     });
-    return { photos: photos, T: T, tds: tds, statuses: statuses, colOf: colOf, doneSet: doneSet, tk: tk, st: st, counts: counts, teamLabels: teamLabels, teamColors: teamColors, doneCols: statuses.map(function (s) { return !!doneSet[C.normalize(s)]; }), t0: t0 };
+    return { win: wn, photos: photos, T: T, tds: tds, statuses: statuses, colOf: colOf, doneSet: doneSet, tk: tk, st: st, counts: counts, teamLabels: teamLabels, teamColors: teamColors, doneCols: statuses.map(function (s) { return !!doneSet[C.normalize(s)]; }), t0: t0 };
   }
 
   // ── Géométrie et positions ─────────────────────────────────────────
   var G = null;
   function layout(w) {
     var K = M.statuses.length, nR = M.tds.length;
-    var PW = 118, GAP = 12, HEAD = 46, ROWH = 112;
+    var PW = 118, GAP = 12, HEAD = 46, ROWH = nR > 4 ? 92 : 112;
     var boardW = Math.max(K * 64, w - 2 * PW - 2 * GAP);
     var W = 2 * PW + 2 * GAP + boardW, H = HEAD + nR * ROWH;
     var g = { W: W, H: H, PW: PW, GAP: GAP, HEAD: HEAD, ROWH: ROWH, K: K, nR: nR, cw: boardW / K, bx: PW + GAP, tx: PW + GAP + boardW + GAP };
@@ -180,7 +184,8 @@
   function lastMove(j, i) { var mv = M.tk[j].moves, d = 0; for (var k = 0; k < mv.length && mv[k].i <= i; k++) d = mv[k].dir; return d; }
   function frameAt(t) { var i = 0; for (var k = 0; k < M.T.length; k++) if (M.T[k] <= t) i = k; return i; }
   function label(t) {
-    var d = new Date(M.t0 + t * 864e5), h = d.getHours(), m = d.getMinutes();
+    var d = C.addOpenHours(new Date(M.t0), t * M.win.h, M.win.a, M.win.z) || new Date(M.t0), h = d.getHours(), m = Math.floor(d.getMinutes() / 5) * 5;
+    if (h < M.win.a) { h = M.win.a; m = 0; } else if (h >= M.win.z) { h = M.win.z; m = 0; }
     return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
   function fit(cv, w, h) { var dpr = window.devicePixelRatio || 1; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0); }
@@ -234,24 +239,28 @@
       ctx.fillStyle = cs.ink; ctx.font = '800 12.5px ' + cs.font; ctx.textAlign = 'center'; ctx.fillText(pn[2], px + g.PW / 2, 18);
       ctx.fillStyle = cs.muted; ctx.font = '600 10px ' + cs.font; ctx.fillText(pn[3], px + g.PW / 2, 31);
     });
-    // points
-    var prevI = i > 0 ? i - 1 : 0, p = i === 0 ? 1 : Math.min(1, (t - M.T[i]) / Math.min(DUR, (M.T[i] - M.T[i - 1]) * .8)), e = ease(p);
-    var cnt = { cloud: 0, trash: 0 }, why = {}, cells = {}, dots = [];
+    // points : chaque ticket glisse de sa place de la photo précédente à celle de la suivante,
+    // avec un petit décalage qui lui est propre ; il n'y arrive qu'à l'instant de la photo suivante
+    var ja = i, jb = Math.min(i + 1, M.T.length - 1), span = M.T[jb] - M.T[ja], seg = span > 0 ? Math.max(0, Math.min(1, (t - M.T[ja]) / span)) : 1;
+    var cnt = { cloud: 0, trash: 0 }, why = {}, cells = {}, dots = [], W = .6;
     REJECT.forEach(function (r) { why[r[0]] = 0; });
     for (var j = 0; j < M.tk.length; j++) {
-      var s = M.st[i][j]; if (!s) continue;
-      var a = M.pos[i][j], b = M.pos[prevI][j], alpha = 1, moving = false;
-      if (!b) { b = [g.PW / 2 + (hash(M.tk[j].k) % 40 - 20), g.H / 2]; alpha = Math.min(1, p + .05); }   // nouveau : vient du nuage
-      var x = b[0] + (a[0] - b[0]) * e, y = b[1] + (a[1] - b[1]) * e + Math.sin(e * Math.PI) * ((hash(M.tk[j].k) % 5) - 2) * 3;
-      moving = p < 1 && (a[0] !== b[0] || a[1] !== b[1]);
-      var ps = i > 0 ? M.st[prevI][j] : null, age = i > 0 ? t - M.T[i] : 99;
-      var back = !!(ps && ps.kind === 'board' && s.kind === 'board' && s.row === ps.row && s.col < ps.col);
+      var sa = M.st[ja][j], sb = M.st[jb][j]; if (!sa && !sb) continue;
+      var delay = (hash(M.tk[j].k) % 35) / 100, tp = ja === jb ? 1 : Math.max(0, Math.min(1, (seg - delay) / W)), e = ease(tp);
+      var pa = M.pos[ja][j], pb = M.pos[jb][j], alpha = 1;
+      if (!sa) { if (tp <= 0) continue; pa = [g.PW / 2 + (hash(M.tk[j].k) % 40 - 20), g.H / 2]; alpha = Math.min(1, tp + .05); }   // nouveau : vient du nuage
+      if (!sb) { sb = sa; pb = pa; }
+      var cur = (tp >= .5 || !sa) ? sb : sa;
+      var x = pa[0] + (pb[0] - pa[0]) * e, y = pa[1] + (pb[1] - pa[1]) * e + Math.sin(e * Math.PI) * ((hash(M.tk[j].k) % 5) - 2) * 3;
+      var moving = tp > 0 && tp < 1 && (pa[0] !== pb[0] || pa[1] !== pb[1]);
+      var age = t - (M.T[ja] + (delay + W) * span);
+      var back = !!(sa && sb && sa.kind === 'board' && sb.kind === 'board' && sb.row === sa.row && sb.col < sa.col);
       var path = null;
-      if (back && age < 1.1) { path = []; var top = Math.min(1, p); for (var u = 0; u <= 10; u++) { var eu = ease(top * u / 10); path.push([b[0] + (a[0] - b[0]) * eu, b[1] + (a[1] - b[1]) * eu - Math.sin(eu * Math.PI) * 6]); } }
-      dots.push({ x: x, y: y, j: j, alpha: alpha, moving: moving, done: s.kind === 'board' && M.doneCols[s.col], back: back, age: age, path: path, mark: s.kind === 'trash' ? 0 : lastMove(j, i) });
-      if (s.kind === 'board') { var ck = s.row + ':' + s.col; cells[ck] = (cells[ck] || 0) + 1; } else if (s.kind === 'cloud') cnt.cloud++; else { cnt.trash++; why[s.why]++; }
+      if (back && tp > 0 && age < 1.1) { path = []; for (var u = 0; u <= 10; u++) { var eu = ease(tp * u / 10); path.push([pa[0] + (pb[0] - pa[0]) * eu, pa[1] + (pb[1] - pa[1]) * eu - Math.sin(eu * Math.PI) * 6]); } }
+      dots.push({ x: x, y: y, j: j, alpha: alpha, moving: moving, tp: tp, done: cur.kind === 'board' && M.doneCols[cur.col], back: back, age: age, path: path, mark: cur.kind === 'trash' ? 0 : lastMove(j, tp >= .5 ? jb : ja) });
+      if (cur.kind === 'board') { var ck = cur.row + ':' + cur.col; cells[ck] = (cells[ck] || 0) + 1; } else if (cur.kind === 'cloud') cnt.cloud++; else { cnt.trash++; why[cur.why]++; }
     }
-    dots.forEach(function (d) { if (d.moving) { ctx.strokeStyle = rgba(dotColor(d.j), .45 * (1 - p)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(d.x, d.y, 3.4 + p * 8, 0, 7); ctx.stroke(); } });
+    dots.forEach(function (d) { if (d.moving) { ctx.strokeStyle = rgba(dotColor(d.j), .45 * (1 - d.tp)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(d.x, d.y, 3.4 + d.tp * 8, 0, 7); ctx.stroke(); } });
     var rad = Math.max(2.2, Math.min(3.6, G.cellPitch * .38));
     // étoile filante : traînée effilée du point de départ vers la nouvelle place, qui s'estompe
     dots.forEach(function (d) {
@@ -260,9 +269,9 @@
     });
     dots.forEach(function (d) {
       ctx.globalAlpha = d.alpha * (d.done && !d.moving ? .9 : 1);
-      var flash = d.back && d.age < 1.1 && Math.floor(d.age * 9) % 2 === 0;
+      var flash = d.back && d.age < 1.1 && (Math.floor(d.age * 9) % 2 + 2) % 2 === 0;
       ctx.fillStyle = flash ? '#ffffff' : dotColor(d.j); ctx.beginPath(); ctx.arc(d.x, d.y, d.moving ? rad + .5 : rad, 0, 7); ctx.fill();
-      if (d.back && d.age < 1.1) { ctx.strokeStyle = rgba(dotColor(d.j), .9 * (1 - d.age / 1.1)); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(d.x, d.y, rad + 2 + 3 * Math.abs(Math.sin(d.age * 14)), 0, 7); ctx.stroke(); }
+      if (d.back && d.age < 1.1) { ctx.strokeStyle = rgba(dotColor(d.j), .9 * (1 - Math.max(0, d.age) / 1.1)); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(d.x, d.y, rad + 2 + 3 * Math.abs(Math.sin(d.age * 14)), 0, 7); ctx.stroke(); }
     });
     ctx.globalAlpha = 1;
     // cible : rouge si le ticket a été repoussé vers une version plus tardive, verte s'il est revenu vers une version antérieure ; elle le suit
@@ -314,11 +323,16 @@
     ctx.fillStyle = cs.muted; ctx.font = '500 10.5px ' + cs.mono; ctx.textAlign = 'right';
     for (var k2 = 0; k2 <= 4; k2++) ctx.fillText(Math.round(ymax * k2 / 4), c.pl - 6, yOf(ymax * k2 / 4) + 4);
     ctx.textAlign = 'center';
-    var step = Math.max(1, Math.round(span / 8)), d0 = new Date(M.t0); d0.setHours(0, 0, 0, 0);
-    var base = (M.t0 - d0.getTime()) / 864e5;
-    for (var d = Math.ceil((vs + base) / step) * step; d <= vs + base + span; d += step) {
-      var x2 = xOf(d - base); if (x2 < c.pl || x2 > c.pl + pw) continue; var dt = new Date(d0.getTime() + d * 864e5);
-      ctx.fillText(dt.getDate() + ' ' + MON[dt.getMonth()], x2, c.h - 10);
+    // graduations aux jours ouvrés : un lundi sur la vue d'ensemble, chaque jour ouvré en vue serrée
+    var d0 = new Date(M.t0); d0.setHours(0, 0, 0, 0);
+    for (var n = 0; n < 400; n++) {
+      var day = new Date(d0.getTime() + n * 864e5); if (!C.isWorkday(day)) continue;
+      if (span > 12 && day.getDay() !== 1) continue;
+      var open = new Date(day); open.setHours(M.win.a, 0, 0, 0);
+      var w = open >= new Date(M.t0) ? C.openHours(new Date(M.t0), open, M.win.a, M.win.z) / M.win.h : -C.openHours(open, new Date(M.t0), M.win.a, M.win.z) / M.win.h;
+      var x2 = xOf(w); if (x2 < c.pl - 1) continue; if (x2 > c.pl + pw + 1) break;
+      ctx.fillText(day.getDate() + ' ' + MON[day.getMonth()], x2, c.h - 10);
+      ctx.strokeStyle = cs.line; ctx.beginPath(); ctx.moveTo(Math.round(x2) + .5, c.pt + ph); ctx.lineTo(Math.round(x2) + .5, c.pt + ph + 4); ctx.stroke();
     }
     ctx.strokeStyle = cs.line; ctx.strokeRect(.5, .5, c.w - 1, c.h - 1);
   }
@@ -343,7 +357,7 @@
     }
     $('mvFlow').innerHTML = i === 0 ? '<span>Première photo : état de départ</span>' :
       '<span class="mv-pos">+' + ent + ' entrés</span><span class="mv-neg">−' + rem + ' sortis (nuage)</span><span class="mv-neg">' + tr + ' à la poubelle</span><span>' + mv + ' changements de statut</span><span class="mv-neg">' + back + ' reculs</span><span class="mv-neg">' + push + ' repoussés</span><span class="mv-pos">' + pull + ' ramenés</span><span class="mv-pos">' + cl + ' clôturés</span>';
-    $('mvFlowLbl').textContent = i === 0 ? 'Photo 1 / ' + M.T.length : 'Photo ' + (i + 1) + ' / ' + M.T.length + ' · depuis la précédente (' + Math.round((M.T[i] - M.T[i - 1]) * 24) + ' h)';
+    $('mvFlowLbl').textContent = i === 0 ? 'Photo 1 / ' + M.T.length : 'Photo ' + (i + 1) + ' / ' + M.T.length + ' · depuis la précédente (' + Math.round((M.T[i] - M.T[i - 1]) * M.win.h) + ' h ouvrées)';
   }
 
   function render() {
@@ -388,7 +402,7 @@
       return '<div class="mv-tile"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>Version du ' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</div>' +
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% terminé</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
-    var nOpts = [1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + n + ' version' + (n > 1 ? 's' : '') + '</option>'; }).join('');
+    var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
     rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Bug movie</h2>' +
       '<div class="sub">Les photos du journal rejouées : chaque ticket est un point qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
       '<div class="card-tools"><select class="dim-select" id="mvN" aria-label="Versions affichées">' + nOpts + '</select></div></div>' +
