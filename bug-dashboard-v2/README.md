@@ -404,3 +404,15 @@ exacts par construction. Liste des résolutions, étiquette et phrases d'encadre
 dans **Configurer → Règles**. Une photo qui n'a pas gardé ses tickets ne peut pas produire le
 message, et la fenêtre le dit plutôt que d'afficher des zéros.
 
+
+## Bug movie
+
+Sous l'évolution, une carte **🎬 Bug movie** rejoue les photos du journal : chaque ticket est un point
+(couleur d'équipe, ou de version au choix) qui avance de statut en statut, une ligne par version
+(les 1 à 5 Target dates les plus récentes). Un curseur avance et recule dans le temps ; sous le tableau,
+les aires ouvert / terminé de chaque version se chevauchent sur l'axe des dates, sous la barre
+« aujourd'hui », et les chiffres suivent le curseur. Un ticket qui n'est plus dans aucune des versions
+affichées part dans le **nuage** ; un ticket dont la résolution est *Declined*, *Duplicate*,
+*Not replicable*, *Incomplete* ou *Abandoned* va à la **poubelle** (liste dans `js/movie.js`).
+Un ticket ne change de place qu'à la photo où on le voit ailleurs : le mouvement est connu à la photo près.
+Il faut au moins deux photos contenant une même version (5 tickets minimum).
