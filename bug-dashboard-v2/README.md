@@ -416,3 +416,4 @@ affichées part dans le **nuage** ; un ticket dont la résolution est *Declined*
 *Not replicable*, *Incomplete* ou *Abandoned* va à la **poubelle** (liste dans `js/movie.js`).
 Un ticket ne change de place qu'à la photo où on le voit ailleurs : le mouvement est connu à la photo près.
 Il faut au moins deux photos contenant une même version (5 tickets minimum).
+Une version **terminée et officielle** (Target date atteinte, photo épinglée) reste figée sur sa photo officielle : les photos suivantes ne la modifient plus. Une photo qui ne couvre pas une version (moins de 5 tickets, ou moins de la moitié du maximum vu) ne la vide pas : ses chiffres et ses tickets restent ceux de la photo d'avant.
