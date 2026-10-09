@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<!-- Les autres outils du toolkit sont en thème clair : data-theme="light" fige ce thème.
+     Retirer l'attribut laisse la page suivre le thème du système (jetons sombres prêts). -->
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyse de vélocité — Agile Toolkit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Thème partagé de la plateforme (entête commune). Les styles ci-dessous, déclarés après, restent prioritaires. -->
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   Analyse de vélocité — maquette
+   Squelette du Bug Dashboard : une barre de filtres collante en tête, puis
+   les compteurs de WIP (tickets en cours par personne) et une grille de
+   cartes configurables (mesure, axe, découpage, style, largeur).
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --v-page: #F4F5F7;
+  --v-surface: #FFFFFF;
+  --v-surface-2: #F3F5F8;
+  --v-ink: #0C1A2E;
+  --v-ink-2: #3D4B60;
+  --v-ink-3: #6B7A90;
+  --v-line: #E8EAED;
+  --v-line-2: #CDD3DC;
+  --v-texture: rgba(12, 26, 46, .03);
+  --v-accent: #0C447C;
+  --v-accent-wash: #EAF1F8;
+  --v-good: #0ca30c;
+  --v-warn: #fab219;
+  --v-critical: #d03b3b;
+  --v-good-ink: #006300;
+  --v-warn-ink: #8A5A00;
+  --v-bad-ink: #B42E2E;
+  --v-good-wash: rgba(12, 163, 12, .12);
+  --v-warn-wash: rgba(250, 178, 25, .20);
+  --v-bad-wash: rgba(208, 59, 59, .13);
+  --v-zone: rgba(12, 163, 12, .10);
+  --v-shadow: 0 1px 3px rgba(12, 26, 46, .05);
+  /* Séries : une seule mesure, les étapes (rampe ordonnée bleue), les équipes */
+  --v-s0: #2a78d6;
+  --v-st-a: #86b6ef; --v-st-d: #2a78d6; --v-st-q: #104281;
+  --v-eq-1: #eb6834; --v-eq-2: #1baf7a; --v-eq-3: #eda100; --v-eq-4: #4a3aa7;
+  --v-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --v-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+    --v-line: #223047; --v-line-2: #33445C; --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14);
+    --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
+    --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .16);
+    --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    --v-s0: #3987e5; --v-st-a: #86b6ef; --v-st-d: #3987e5; --v-st-q: #1c5cab;
+    --v-eq-1: #d95926; --v-eq-2: #199e70; --v-eq-3: #c98500; --v-eq-4: #9085e9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+  --v-line: #223047; --v-line-2: #33445C; --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14);
+  --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
+  --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .16);
+  --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  --v-s0: #3987e5; --v-st-a: #86b6ef; --v-st-d: #3987e5; --v-st-q: #1c5cab;
+  --v-eq-1: #d95926; --v-eq-2: #199e70; --v-eq-3: #c98500; --v-eq-4: #9085e9;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--v-page); color: var(--v-ink); font-family: var(--v-font); font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(var(--v-texture) 1px, transparent 1px), linear-gradient(90deg, var(--v-texture) 1px, transparent 1px); background-size: 40px 40px; }
+button, select, input { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.av { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 40px); padding-block: 24px 56px; }
+
+.intro { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 2px solid var(--v-ink); }
+.intro h1 { margin: 0; font-size: clamp(22px, 3.4vw, 26px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.intro p { margin: 4px 0 0; color: var(--v-ink-3); max-width: 70ch; }
+.demo-note { font-size: 11.5px; font-weight: 700; color: var(--v-warn-ink); background: var(--v-warn-wash); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+
+/* ── Connecteurs (sources de données) ───────────────────────────── */
+.sources { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.src { display: flex; align-items: center; gap: 10px; background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.src.is-soon { background: transparent; border-style: dashed; border-color: var(--v-line-2); }
+.src-ic { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--v-surface-2); border: 1px solid var(--v-line); font-size: 16px; flex: none; }
+.src-txt { min-width: 0; flex: 1; }
+.src-name { font-weight: 700; font-size: 12.5px; }
+.src-meta { font-family: var(--v-mono); font-size: 10px; color: var(--v-ink-3); line-height: 1.4; }
+.src-ok { font-size: 11px; font-weight: 700; color: var(--v-good-ink); white-space: nowrap; flex: none; }
+.src-soon { font-size: 10.5px; font-weight: 700; color: var(--v-ink-3); background: var(--v-surface-2); border: 1px solid var(--v-line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; flex: none; }
+
+/* ── Barre de filtres (comme le Bug Dashboard) ───────────────────── */
+.filterbar { position: sticky; top: var(--tk-stick, 56px); z-index: 30; background: var(--v-page); background: color-mix(in srgb, var(--v-page) 95%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); padding: 10px 0 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--v-line); }
+.filter-head, .filter-body { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
+.filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); font-weight: 800; }
+.filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-summary { margin-left: auto; font-size: 12px; color: var(--v-ink-3); }
+.filter-summary.is-filtered { color: var(--v-accent); font-weight: 700; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--v-line-2); border-radius: 8px; overflow: hidden; background: var(--v-surface); }
+.seg button { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: transparent; border: 0; border-right: 1px solid var(--v-line); padding: 7px 11px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
+.fchip { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 999px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.fchip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.fchip[aria-pressed="true"] { color: var(--v-ink); border-color: var(--v-ink); background: var(--v-accent-wash); }
+.fchip[aria-pressed="false"] .dot { opacity: .3; }
+.vbtn { font-size: 12px; font-weight: 700; color: var(--v-ink-3); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 8px; padding: 6px 11px; cursor: pointer; white-space: nowrap; }
+.vbtn:hover { border-color: var(--v-ink); color: var(--v-ink); }
+.vbtn .chev { display: inline-block; transition: transform .15s ease; }
+.vbtn.is-collapsed .chev { transform: rotate(-90deg); }
+
+/* ── Sections ────────────────────────────────────────────────────── */
+.section-title { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; }
+.section-title h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--v-ink-3); font-weight: 800; white-space: nowrap; }
+.section-title .line { flex: 1; height: 1px; background: var(--v-line); }
+.section-title .hint { font-size: 12px; color: var(--v-ink-3); }
+.card { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--v-shadow); min-width: 0; }
+.k { font-family: var(--v-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--v-ink-3); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--v-good-wash); color: var(--v-good-ink); }
+.pill.warn { background: var(--v-warn-wash); color: var(--v-warn-ink); }
+.pill.bad { background: var(--v-bad-wash); color: var(--v-bad-ink); }
+
+/* ── Compteurs ───────────────────────────────────────────────────── */
+.gauges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.g-main { grid-column: span 2; display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 14px; align-items: center; }
+.g-main .lecture { display: flex; flex-direction: column; gap: 8px; }
+.g-main .big { margin: 0; font-size: 13px; color: var(--v-ink-2); }
+.g-main .big b, .g-main .cible { color: var(--v-ink); }
+.g-main .cible { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.3; }
+.team { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 10px; }
+.team h3 { margin: 0; font-size: 13.5px; font-weight: 800; }
+.team .gauge { width: 100%; max-width: 120px; }
+.team .lim { font-size: 12px; color: var(--v-ink-2); margin: 0; line-height: 1.4; }
+.team .lim b { color: var(--v-ink); }
+.gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
+.g-arc { fill: none; }
+.g-good { stroke: var(--v-good); } .g-warn { stroke: var(--v-warn); } .g-bad { stroke: var(--v-critical); }
+.g-tick { fill: var(--v-ink-3); font-family: var(--v-mono); font-size: 12px; }
+.g-needle { stroke: var(--v-ink); stroke-width: 5; stroke-linecap: round; }
+.g-hub { fill: var(--v-ink); stroke: var(--v-surface); stroke-width: 3; }
+.g-val { text-align: center; margin-top: 4px; }
+.g-val b { display: block; font-size: 26px; font-weight: 800; line-height: 1; }
+.g-val small { font-size: 11px; color: var(--v-ink-3); }
+.team .g-val b { font-size: 19px; }
+.team .g-val small, .team .g-tick { display: none; }
+.zones { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--v-ink-2); }
+.zones span { display: inline-flex; align-items: center; gap: 6px; }
+.zones i { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ── Cartes configurables ────────────────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.cards .card.w-full { grid-column: 1 / -1; }
+.c-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.c-ident { display: flex; align-items: center; gap: 6px; }
+.grip { cursor: grab; color: var(--v-line-2); font-size: 15px; padding: 0 3px; touch-action: none; user-select: none; border-radius: 4px; line-height: 1; }
+.grip:hover, .grip:focus-visible { color: var(--v-ink-3); }
+.grip:active { cursor: grabbing; }
+.cards .card.is-dragging { opacity: .55; outline: 2px dashed var(--v-accent); outline-offset: 2px; }
+body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-select: none; }
+.c-title { flex: 1; min-width: 0; border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 2px 4px; font-size: 14.5px; font-weight: 800; color: var(--v-ink); }
+.c-title:hover { border-color: var(--v-line); }
+.c-title:focus { border-color: var(--v-accent); background: var(--v-surface); outline: none; }
+.icon-btn { background: transparent; border: 1px solid transparent; color: var(--v-ink-3); padding: 3px 7px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.icon-btn:hover { border-color: var(--v-line); color: var(--v-ink); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.c-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-top: 7px; border-top: 1px dashed var(--v-line); }
+.c-tools label { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; color: var(--v-ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.sel { font-weight: 700; font-size: 11.5px; border: 1px solid var(--v-line-2); border-radius: 6px; padding: 4px 6px; background: var(--v-surface); color: var(--v-ink-2); max-width: 170px; text-transform: none; letter-spacing: 0; }
+.style-seg { display: inline-flex; border: 1px solid var(--v-line-2); border-radius: 6px; overflow: hidden; margin-left: auto; }
+.style-seg button { background: var(--v-surface); border: 0; border-right: 1px solid var(--v-line); color: var(--v-ink-3); padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.style-seg button:last-child { border-right: 0; }
+.style-seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
+.c-sub { font-size: 12px; color: var(--v-ink-3); margin: -4px 0 10px; }
+.c-body { min-height: 80px; }
+.card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 150px; border: 2px dashed var(--v-line-2); background: transparent; box-shadow: none; color: var(--v-ink-3); font-size: 12.5px; font-weight: 700; cursor: pointer; border-radius: 12px; }
+.card-add:hover { border-color: var(--v-accent); color: var(--v-accent); }
+.card-add .plus { font-size: 30px; line-height: 1; font-weight: 400; }
+.empty { padding: 30px 10px; text-align: center; color: var(--v-ink-3); }
+
+/* couleurs des séries */
+.c-0 { background: var(--v-s0); fill: var(--v-s0); stroke: var(--v-s0); }
+.c-a { background: var(--v-st-a); fill: var(--v-st-a); stroke: var(--v-st-a); }
+.c-d { background: var(--v-st-d); fill: var(--v-st-d); stroke: var(--v-st-d); }
+.c-q { background: var(--v-st-q); fill: var(--v-st-q); stroke: var(--v-st-q); }
+.c-T1 { background: var(--v-eq-1); fill: var(--v-eq-1); stroke: var(--v-eq-1); }
+.c-T2 { background: var(--v-eq-2); fill: var(--v-eq-2); stroke: var(--v-eq-2); }
+.c-T3 { background: var(--v-eq-3); fill: var(--v-eq-3); stroke: var(--v-eq-3); }
+.c-T4 { background: var(--v-eq-4); fill: var(--v-eq-4); stroke: var(--v-eq-4); }
+
+/* colonnes */
+.cols-wrap { overflow-x: auto; }
+.cols { display: flex; align-items: flex-end; gap: 4px; height: 200px; }
+.col { flex: 1; min-width: 26px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.col-tot { font-family: var(--v-mono); font-size: 10.5px; color: var(--v-ink-2); margin-bottom: 3px; white-space: nowrap; }
+.pile { width: min(24px, 76%); display: flex; flex-direction: column-reverse; gap: 2px; }
+.pile span:last-child { border-radius: 4px 4px 0 0; }
+.grp { display: flex; align-items: flex-end; gap: 1px; height: 100%; width: min(40px, 90%); justify-content: center; }
+.grp span { flex: 1; max-width: 9px; border-radius: 3px 3px 0 0; }
+.axis { display: flex; gap: 4px; border-top: 1px solid var(--v-line-2); padding-top: 4px; }
+.axis span { flex: 1; min-width: 26px; text-align: center; font-family: var(--v-mono); font-size: 10px; color: var(--v-ink-3); white-space: nowrap; overflow: hidden; }
+/* barres */
+.brows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; }
+.brows .lbl { font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.track { display: flex; gap: 2px; height: 20px; }
+.track span { height: 100%; display: flex; align-items: center; justify-content: center; font-family: var(--v-mono); font-size: 10.5px; color: #fff; overflow: hidden; white-space: nowrap; min-width: 0; }
+.track span:first-child { border-radius: 4px 0 0 4px; } .track span:last-child { border-radius: 0 4px 4px 0; }
+.track span.c-a { color: #0C1A2E; }
+.gtrack { display: flex; flex-direction: column; gap: 2px; }
+.gtrack span { height: 7px; border-radius: 0 3px 3px 0; }
+.bval { font-family: var(--v-mono); font-size: 12px; color: var(--v-ink-2); text-align: right; white-space: nowrap; }
+/* courbe */
+.viz { display: block; overflow: visible; }
+.viz text { font-family: var(--v-mono); font-size: 10px; fill: var(--v-ink-3); }
+.viz .grid { stroke: var(--v-line); stroke-width: 1; }
+.viz .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz .pt { stroke: var(--v-surface); stroke-width: 2; }
+.viz .zone { fill: var(--v-zone); }
+.viz .zone-t { fill: var(--v-good-ink); font-family: var(--v-font); font-weight: 700; }
+/* tableau */
+.tbl-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data th { font-family: var(--v-mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--v-ink-3); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--v-line); font-weight: 500; white-space: nowrap; }
+.data td { padding: 6px 8px; border-bottom: 1px solid var(--v-line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--v-ink-2); }
+.data th:first-child, .data td:first-child { text-align: left; }
+.data td:first-child { font-weight: 700; color: var(--v-ink); }
+.data tr.tot td { font-weight: 800; color: var(--v-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11.5px; color: var(--v-ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; }
+
+details.card { margin-top: 22px; }
+details summary { cursor: pointer; font-weight: 800; }
+details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); display: grid; gap: 5px; }
+.foot { margin-top: 26px; font-size: 11.5px; color: var(--v-ink-3); }
+
+@media (max-width: 1100px) {
+  .sources { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gauges .g-main { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .filterbar { position: static; }
+  .filter-summary { margin-left: 0; width: 100%; }
+}
+@media (max-width: 520px) {
+  .sources { grid-template-columns: minmax(0, 1fr); }
+  .g-main { grid-template-columns: minmax(0, 1fr); }
+  .g-main .gauge { max-width: 190px; margin: 0 auto; }
+  .card { padding: 14px 12px; }
+  .style-seg { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Analyse de vélocité</span>
+  <span class="tk-topbar__version">MAQUETTE</span>
+</header>
+
+<main class="av">
+  <section class="intro">
+    <div>
+      <h1>Analyse de vélocité — WIP et jours par ticket</h1>
+      <p>Combien de tickets chaque personne mène de front, et combien de jours il faut pour livrer un ticket, version par version.</p>
+    </div>
+    <span class="demo-note">Maquette · données simulées</span>
+  </section>
+
+  <section class="sources" id="sources" aria-label="Connecteurs"></section>
+
+  <!-- Barre de filtres : elle s'applique à toute la page. Ce qui restreint
+       l'affichage reste lisible dans l'en-tête, même repliée. -->
+  <div class="filterbar" id="filterbar" role="toolbar" aria-label="Filtres">
+    <div class="filter-head">
+      <span class="filter-label">Filtres</span>
+      <span class="filter-summary" id="fResume"></span>
+      <button type="button" class="vbtn" id="fReset">Réinitialiser</button>
+      <button type="button" class="vbtn" id="fToggle" aria-expanded="true"><span class="chev">▾</span> <span class="lbl">Masquer</span></button>
+    </div>
+    <div class="filter-body" id="fBody">
+      <div class="filter-group"><span class="filter-label">Historique</span><div class="seg" id="fPeriode"></div></div>
+      <div class="filter-group"><span class="filter-label">Équipes</span><span id="fEquipes" class="filter-group"></span></div>
+      <div class="filter-group"><span class="filter-label">Étapes</span><span id="fEtapes" class="filter-group"></span></div>
+    </div>
+  </div>
+
+  <div class="section-title"><h2>WIP : tickets en cours par personne</h2><span class="line"></span><span class="hint" id="gHint"></span></div>
+  <section class="gauges" id="gauges"></section>
+
+  <div class="section-title"><h2>Vélocité</h2><span class="line"></span><button type="button" class="vbtn" id="cardsReset" title="Revenir aux cartes livrées avec l'outil">Cartes par défaut</button></div>
+  <section class="cards" id="cards"></section>
+
+  <details class="card">
+    <summary>D'où viennent les zones et les étapes ?</summary>
+    <ul id="pourquoi"></ul>
+  </details>
+
+  <p class="foot">Maquette : données simulées (21 versions, 4 équipes). Filtres et cartes sont conservés dans ce navigateur ; la version finale les partagera entre utilisateurs comme le Bug Dashboard, et lira le Plan de livraisons, l'Analyse de capacité et l'historique des statuts Jira.</p>
+</main>
+
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
+<script src="../assets/nav.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ════════════════════════════════════════════════════════════════════
+  // Données de démonstration (simulées)
+  // 21 versions du train hebdomadaire (3.1.0 → 3.21.0) × 4 équipes. Dans la
+  // version finale, elles viendront du Plan de livraisons (versions),
+  // de l'Analyse de capacité (CAF) et du journal du Bug Dashboard (WIP,
+  // engagés, livrés au gel, délais).
+  //   caf          CAF réelle du chargement au gel (JP) ; etp = caf ÷ 5 jours
+  //   wip          tickets en cours (In Progress → QA Testing), moyenne des photos
+  //   engages, gel tickets engagés au chargement, livrés au gel de code
+  //   derog        tickets livrés après le gel (dérogation)
+  //   delai        jours ouvrés In Progress → Dev done (moyenne)
+  // ════════════════════════════════════════════════════════════════════
+  var DATA = {
+    "genere": "2026-10-09",
+    "teams": [
+      {"id":"T1","nom":"TEAM 1","personnes":8,"canada":true},
+      {"id":"T2","nom":"TEAM 2","personnes":7,"canada":false},
+      {"id":"T3","nom":"TEAM 3","personnes":9,"canada":false},
+      {"id":"T4","nom":"TEAM 4","personnes":6,"canada":true}
+    ],
+    "versions": [
+      {"v":"3.1.0","n":1,"debut":"2026-06-08","gel":"2026-06-12","gonogo":"2026-06-15","deploiement":"2026-06-16","etat":"livree"},
+      {"v":"3.2.0","n":2,"debut":"2026-06-15","gel":"2026-06-19","gonogo":"2026-06-22","deploiement":"2026-06-23","etat":"livree"},
+      {"v":"3.3.0","n":3,"debut":"2026-06-22","gel":"2026-06-26","gonogo":"2026-06-29","deploiement":"2026-06-30","etat":"livree"},
+      {"v":"3.4.0","n":4,"debut":"2026-06-29","gel":"2026-07-03","gonogo":"2026-07-06","deploiement":"2026-07-07","etat":"livree"},
+      {"v":"3.5.0","n":5,"debut":"2026-07-06","gel":"2026-07-10","gonogo":"2026-07-13","deploiement":"2026-07-14","etat":"livree"},
+      {"v":"3.6.0","n":6,"debut":"2026-07-13","gel":"2026-07-17","gonogo":"2026-07-20","deploiement":"2026-07-21","etat":"livree"},
+      {"v":"3.7.0","n":7,"debut":"2026-07-20","gel":"2026-07-24","gonogo":"2026-07-27","deploiement":"2026-07-28","etat":"livree"},
+      {"v":"3.8.0","n":8,"debut":"2026-07-27","gel":"2026-07-31","gonogo":"2026-08-03","deploiement":"2026-08-04","etat":"livree"},
+      {"v":"3.9.0","n":9,"debut":"2026-08-03","gel":"2026-08-07","gonogo":"2026-08-10","deploiement":"2026-08-11","etat":"livree"},
+      {"v":"3.10.0","n":10,"debut":"2026-08-10","gel":"2026-08-14","gonogo":"2026-08-17","deploiement":"2026-08-18","etat":"livree"},
+      {"v":"3.11.0","n":11,"debut":"2026-08-17","gel":"2026-08-21","gonogo":"2026-08-24","deploiement":"2026-08-25","etat":"livree"},
+      {"v":"3.12.0","n":12,"debut":"2026-08-24","gel":"2026-08-28","gonogo":"2026-08-31","deploiement":"2026-09-01","etat":"livree"},
+      {"v":"3.13.0","n":13,"debut":"2026-08-31","gel":"2026-09-04","gonogo":"2026-09-07","deploiement":"2026-09-08","etat":"livree"},
+      {"v":"3.14.0","n":14,"debut":"2026-09-07","gel":"2026-09-11","gonogo":"2026-09-14","deploiement":"2026-09-15","etat":"livree"},
+      {"v":"3.15.0","n":15,"debut":"2026-09-14","gel":"2026-09-18","gonogo":"2026-09-21","deploiement":"2026-09-22","etat":"livree"},
+      {"v":"3.16.0","n":16,"debut":"2026-09-21","gel":"2026-09-25","gonogo":"2026-09-28","deploiement":"2026-09-29","etat":"livree"},
+      {"v":"3.17.0","n":17,"debut":"2026-09-28","gel":"2026-10-02","gonogo":"2026-10-05","deploiement":"2026-10-06","etat":"livree","iatEnCours":true},
+      {"v":"3.18.0","n":18,"debut":"2026-10-05","gel":"2026-10-09","gonogo":"2026-10-12","deploiement":"2026-10-13","etat":"en-cours"},
+      {"v":"3.19.0","n":19,"debut":"2026-10-12","gel":"2026-10-16","gonogo":"2026-10-19","deploiement":"2026-10-20","etat":"prevision"},
+      {"v":"3.20.0","n":20,"debut":"2026-10-19","gel":"2026-10-23","gonogo":"2026-10-26","deploiement":"2026-10-27","etat":"prevision"},
+      {"v":"3.21.0","n":21,"debut":"2026-10-26","gel":"2026-10-30","gonogo":"2026-11-02","deploiement":"2026-11-03","etat":"prevision"}
+    ],
+    "rows": [
+      {"v":"3.1.0","n":1,"eq":"T1","caf":26.5,"cafTheo":38,"etp":5.3,"wip":3.6,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2,"regressions":0,"spGel":11,"spDerog":0,"spReportes":0},
+      {"v":"3.1.0","n":1,"eq":"T2","caf":26.5,"cafTheo":33.5,"etp":5.3,"wip":3.4,"engages":8,"gel":7,"derog":0,"reportes":1,"delai":2.4,"regressions":0,"spGel":8,"spDerog":0,"spReportes":1},
+      {"v":"3.1.0","n":1,"eq":"T3","caf":31.5,"cafTheo":43,"etp":6.3,"wip":3.9,"engages":9,"gel":9,"derog":0,"reportes":0,"delai":2.3,"regressions":0,"spGel":13,"spDerog":0,"spReportes":0},
+      {"v":"3.1.0","n":1,"eq":"T4","caf":20.5,"cafTheo":28.5,"etp":4.1,"wip":2.9,"engages":6,"gel":5,"derog":0,"reportes":1,"delai":2.4,"regressions":0,"spGel":6,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T1","caf":27,"cafTheo":38.5,"etp":5.4,"wip":4.8,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.6,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T2","caf":26,"cafTheo":33.5,"etp":5.2,"wip":4.3,"engages":8,"gel":7,"derog":0,"reportes":1,"delai":2.8,"regressions":0,"spGel":7,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T3","caf":31,"cafTheo":43,"etp":6.2,"wip":5.2,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.6,"regressions":1,"spGel":13,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T4","caf":21,"cafTheo":29,"etp":4.2,"wip":3.2,"engages":6,"gel":6,"derog":0,"reportes":0,"delai":2.8,"regressions":0,"spGel":7,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T1","caf":24.5,"cafTheo":34,"etp":4.9,"wip":3.7,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2.6,"regressions":0,"spGel":8,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T2","caf":23.5,"cafTheo":33.5,"etp":4.7,"wip":4.5,"engages":9,"gel":9,"derog":0,"reportes":0,"delai":2.4,"regressions":0,"spGel":11,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T3","caf":30,"cafTheo":43,"etp":6,"wip":6,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.3.0","n":3,"eq":"T4","caf":18.5,"cafTheo":25.5,"etp":3.7,"wip":3.5,"engages":7,"gel":7,"derog":0,"reportes":0,"delai":3,"regressions":0,"spGel":9,"spDerog":0,"spReportes":0},
+      {"v":"3.4.0","n":4,"eq":"T1","caf":23.5,"cafTheo":33,"etp":4.7,"wip":5.2,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.8,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.4.0","n":4,"eq":"T2","caf":26,"cafTheo":32.5,"etp":5.2,"wip":5.8,"engages":11,"gel":11,"derog":0,"reportes":0,"delai":2.9,"regressions":1,"spGel":12,"spDerog":0,"spReportes":0},
+      {"v":"3.4.0","n":4,"eq":"T3","caf":31,"cafTheo":42,"etp":6.2,"wip":6.7,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.4.0","n":4,"eq":"T4","caf":17.5,"cafTheo":24.5,"etp":3.5,"wip":4.6,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2.8,"regressions":0,"spGel":9,"spDerog":0,"spReportes":0},
+      {"v":"3.5.0","n":5,"eq":"T1","caf":29,"cafTheo":37.5,"etp":5.8,"wip":7.5,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.6,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T2","caf":26,"cafTheo":33,"etp":5.2,"wip":6,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.7,"regressions":1,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T3","caf":30,"cafTheo":42.5,"etp":6,"wip":7.4,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":15,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T4","caf":20.5,"cafTheo":28,"etp":4.1,"wip":4.5,"engages":9,"gel":8,"derog":0,"reportes":1,"delai":2.9,"regressions":0,"spGel":10,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T1","caf":26.5,"cafTheo":35,"etp":5.3,"wip":9.3,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":4.1,"regressions":0,"spGel":12,"spDerog":1,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T2","caf":23.5,"cafTheo":31,"etp":4.7,"wip":7.4,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.9,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T3","caf":28.5,"cafTheo":39.5,"etp":5.7,"wip":7.6,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.5,"regressions":1,"spGel":15,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T4","caf":20,"cafTheo":26.5,"etp":4,"wip":8.4,"engages":9,"gel":7,"derog":1,"reportes":1,"delai":4.7,"regressions":0,"spGel":7,"spDerog":1,"spReportes":1},
+      {"v":"3.7.0","n":7,"eq":"T1","caf":23,"cafTheo":31.5,"etp":4.6,"wip":11.7,"engages":11,"gel":8,"derog":1,"reportes":2,"delai":6,"regressions":1,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.7.0","n":7,"eq":"T2","caf":20,"cafTheo":27.5,"etp":4,"wip":11.3,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":8.8,"regressions":1,"spGel":7,"spDerog":1,"spReportes":2},
+      {"v":"3.7.0","n":7,"eq":"T3","caf":25.5,"cafTheo":35.5,"etp":5.1,"wip":12.7,"engages":12,"gel":9,"derog":1,"reportes":2,"delai":6,"regressions":1,"spGel":11,"spDerog":1,"spReportes":3},
+      {"v":"3.7.0","n":7,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"wip":10.2,"engages":9,"gel":5,"derog":1,"reportes":3,"delai":8.6,"regressions":0,"spGel":6,"spDerog":1,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T1","caf":21,"cafTheo":28.5,"etp":4.2,"wip":12.4,"engages":10,"gel":6,"derog":2,"reportes":2,"delai":6.7,"regressions":1,"spGel":7,"spDerog":2,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T2","caf":17.5,"cafTheo":25,"etp":3.5,"wip":11,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":8.3,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.8.0","n":8,"eq":"T3","caf":22.5,"cafTheo":32,"etp":4.5,"wip":13.1,"engages":11,"gel":7,"derog":2,"reportes":2,"delai":7.6,"regressions":1,"spGel":10,"spDerog":2,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T4","caf":16,"cafTheo":21.5,"etp":3.2,"wip":10.3,"engages":7,"gel":4,"derog":1,"reportes":2,"delai":8.9,"regressions":0,"spGel":5,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T1","caf":18.5,"cafTheo":26.5,"etp":3.7,"wip":11,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":9.1,"regressions":0,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T2","caf":17,"cafTheo":23,"etp":3.4,"wip":10.5,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":7.9,"regressions":2,"spGel":7,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T3","caf":21,"cafTheo":29.5,"etp":4.2,"wip":12.9,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":10,"regressions":0,"spGel":7,"spDerog":1,"spReportes":3},
+      {"v":"3.9.0","n":9,"eq":"T4","caf":15,"cafTheo":20,"etp":3,"wip":10.5,"engages":7,"gel":3,"derog":1,"reportes":3,"delai":13.5,"regressions":1,"spGel":3,"spDerog":1,"spReportes":4},
+      {"v":"3.10.0","n":10,"eq":"T1","caf":20,"cafTheo":27,"etp":4,"wip":11.5,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":6.7,"regressions":0,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.10.0","n":10,"eq":"T2","caf":17,"cafTheo":24,"etp":3.4,"wip":11,"engages":9,"gel":5,"derog":1,"reportes":3,"delai":8.6,"regressions":0,"spGel":6,"spDerog":1,"spReportes":3},
+      {"v":"3.10.0","n":10,"eq":"T3","caf":22.5,"cafTheo":30.5,"etp":4.5,"wip":14.3,"engages":11,"gel":6,"derog":2,"reportes":3,"delai":9.7,"regressions":0,"spGel":7,"spDerog":2,"spReportes":4},
+      {"v":"3.10.0","n":10,"eq":"T4","caf":15,"cafTheo":20.5,"etp":3,"wip":8.3,"engages":7,"gel":5,"derog":1,"reportes":1,"delai":8.1,"regressions":0,"spGel":6,"spDerog":1,"spReportes":1},
+      {"v":"3.11.0","n":11,"eq":"T1","caf":23,"cafTheo":31,"etp":4.6,"wip":13.2,"engages":11,"gel":7,"derog":1,"reportes":3,"delai":7.3,"regressions":0,"spGel":9,"spDerog":1,"spReportes":4},
+      {"v":"3.11.0","n":11,"eq":"T2","caf":20.5,"cafTheo":27.5,"etp":4.1,"wip":11.2,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":7,"regressions":1,"spGel":8,"spDerog":1,"spReportes":2},
+      {"v":"3.11.0","n":11,"eq":"T3","caf":25,"cafTheo":35,"etp":5,"wip":15.2,"engages":12,"gel":7,"derog":1,"reportes":4,"delai":7.9,"regressions":0,"spGel":9,"spDerog":1,"spReportes":5},
+      {"v":"3.11.0","n":11,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"wip":11.8,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":10.2,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.12.0","n":12,"eq":"T1","caf":26,"cafTheo":35.5,"etp":5.2,"wip":11.2,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":5.1,"regressions":1,"spGel":12,"spDerog":1,"spReportes":1},
+      {"v":"3.12.0","n":12,"eq":"T2","caf":23.5,"cafTheo":31,"etp":4.7,"wip":7.3,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.3,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.12.0","n":12,"eq":"T3","caf":28,"cafTheo":40,"etp":5.6,"wip":14.8,"engages":11,"gel":8,"derog":1,"reportes":2,"delai":6.8,"regressions":1,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.12.0","n":12,"eq":"T4","caf":19.5,"cafTheo":26.5,"etp":3.9,"wip":10.3,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":6.7,"regressions":1,"spGel":9,"spDerog":1,"spReportes":2},
+      {"v":"3.13.0","n":13,"eq":"T1","caf":27,"cafTheo":37.5,"etp":5.4,"wip":11.4,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":5.9,"regressions":1,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T2","caf":25.5,"cafTheo":33,"etp":5.1,"wip":8,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":4.4,"regressions":1,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T3","caf":32,"cafTheo":42.5,"etp":6.4,"wip":13.2,"engages":15,"gel":13,"derog":1,"reportes":1,"delai":4.7,"regressions":0,"spGel":18,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T4","caf":21,"cafTheo":28,"etp":4.2,"wip":9.5,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.2,"regressions":0,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T1","caf":25,"cafTheo":33,"etp":5,"wip":12.9,"engages":12,"gel":8,"derog":1,"reportes":3,"delai":6.9,"regressions":1,"spGel":10,"spDerog":1,"spReportes":4},
+      {"v":"3.14.0","n":14,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":8.3,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T3","caf":33.5,"cafTheo":43,"etp":6.7,"wip":11.4,"engages":14,"gel":13,"derog":0,"reportes":1,"delai":4.6,"regressions":0,"spGel":17,"spDerog":0,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T4","caf":18,"cafTheo":24.5,"etp":3.6,"wip":10.6,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":8.7,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.15.0","n":15,"eq":"T1","caf":28.5,"cafTheo":39,"etp":5.7,"wip":11,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":4.9,"regressions":0,"spGel":14,"spDerog":1,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T2","caf":24,"cafTheo":34,"etp":4.8,"wip":7.5,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":3.9,"regressions":0,"spGel":10,"spDerog":0,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T3","caf":32,"cafTheo":43.5,"etp":6.4,"wip":11.6,"engages":15,"gel":14,"derog":0,"reportes":1,"delai":3.7,"regressions":0,"spGel":21,"spDerog":0,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T4","caf":20.5,"cafTheo":29,"etp":4.1,"wip":9.9,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.8,"regressions":1,"spGel":9,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T1","caf":28,"cafTheo":38.5,"etp":5.6,"wip":12.1,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":6,"regressions":2,"spGel":11,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T2","caf":24.5,"cafTheo":33.5,"etp":4.9,"wip":7.3,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.9,"regressions":1,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T3","caf":33.5,"cafTheo":43,"etp":6.7,"wip":14.3,"engages":14,"gel":12,"derog":1,"reportes":1,"delai":5.9,"regressions":0,"spGel":17,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T4","caf":22,"cafTheo":29,"etp":4.4,"wip":9.2,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5,"regressions":1,"spGel":8,"spDerog":1,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T1","caf":30.5,"cafTheo":38,"etp":6.1,"wip":12.2,"engages":13,"gel":11,"derog":1,"reportes":1,"delai":5.7,"regressions":0,"spGel":13,"spDerog":1,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":8.4,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.9,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T3","caf":29,"cafTheo":43,"etp":5.8,"wip":13.2,"engages":14,"gel":10,"derog":1,"reportes":3,"delai":5.3,"regressions":0,"spGel":12,"spDerog":1,"spReportes":3},
+      {"v":"3.17.0","n":17,"eq":"T4","caf":21,"cafTheo":28.5,"etp":4.2,"wip":9.2,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.4,"regressions":0,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.18.0","n":18,"eq":"T1","caf":29,"cafTheo":38.5,"etp":5.8,"wip":11.2,"engages":13},
+      {"v":"3.18.0","n":18,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":7.1,"engages":11},
+      {"v":"3.18.0","n":18,"eq":"T3","caf":33,"cafTheo":43,"etp":6.6,"wip":12.7,"engages":15},
+      {"v":"3.18.0","n":18,"eq":"T4","caf":21,"cafTheo":29,"etp":4.2,"wip":9.5,"engages":10},
+      {"v":"3.19.0","n":19,"eq":"T1","caf":23,"cafTheo":31,"etp":4.6,"vise":11},
+      {"v":"3.19.0","n":19,"eq":"T2","caf":25.5,"cafTheo":32.5,"etp":5.1,"vise":9},
+      {"v":"3.19.0","n":19,"eq":"T3","caf":30.5,"cafTheo":42,"etp":6.1,"vise":13},
+      {"v":"3.19.0","n":19,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"vise":8},
+      {"v":"3.20.0","n":20,"eq":"T1","caf":26,"cafTheo":38,"etp":5.2,"vise":6},
+      {"v":"3.20.0","n":20,"eq":"T2","caf":27.5,"cafTheo":33.5,"etp":5.5,"vise":5},
+      {"v":"3.20.0","n":20,"eq":"T3","caf":31,"cafTheo":43,"etp":6.2,"vise":8},
+      {"v":"3.20.0","n":20,"eq":"T4","caf":21.5,"cafTheo":28.5,"etp":4.3,"vise":4},
+      {"v":"3.21.0","n":21,"eq":"T1","caf":27.5,"cafTheo":37,"etp":5.5,"vise":3},
+      {"v":"3.21.0","n":21,"eq":"T2","caf":24.5,"cafTheo":32,"etp":4.9,"vise":2},
+      {"v":"3.21.0","n":21,"eq":"T3","caf":29,"cafTheo":41.5,"etp":5.8,"vise":3},
+      {"v":"3.21.0","n":21,"eq":"T4","caf":22,"cafTheo":27.5,"etp":4.4,"vise":1}
+    ]
+  };
+
+  // ── Réglages ──────────────────────────────────────────────────────────
+  var ROUGE = 2.5;   // au-delà : surcharge (tenue au gel et délai s'effondrent)
+  var MAX = 3.5;     // fond d'échelle du compteur
+  var BANDE = 0.32;  // largeur du lissage, en tickets par personne
+  var REGLE = { debit: 0.95, delai: 1.3, tenue: 0.05 };  // bornes de la zone verte
+  var CLE = 'analyse-velocite:v2';
+  var NB = ' ';
+
+  var TEAMS = DATA.teams, VERS = DATA.versions, ROWS = DATA.rows;
+  var DONE = VERS.filter(function (v) { return v.etat === 'livree'; });
+  var NEXT = VERS.filter(function (v) { return v.etat === 'prevision'; })[0];
+  var DERNIERES = DONE.slice(-3);
+  var TOUS = TEAMS.map(function (t) { return t.id; });
+  var NOM = {}; TEAMS.forEach(function (t) { NOM[t.id] = t.nom; });
+
+  // Groupes d'états : chaque statut Jira tombe dans une étape.
+  var ETAPES = [
+    { cle: 'a', nom: 'Analyse', statuts: ['Open', 'Analysis'] },
+    { cle: 'd', nom: 'Dev', statuts: ['In Progress', 'In Progress - Completed', 'Code Review', 'Code Review - Completed'] },
+    { cle: 'q', nom: 'QA', statuts: ['Ready for Testing', 'Quality Assurance Testing', 'Quality Assurance Test Completed'] }
+  ];
+  var NOM_ETAPE = {}; ETAPES.forEach(function (e) { NOM_ETAPE[e.cle] = e.nom; });
+  // Maquette : la répartition par étape est simulée à partir du délai. La
+  // version finale la lira dans l'historique des statuts Jira de chaque ticket.
+  function jEtapes(r) {
+    var k = { T1: 1.05, T2: 0.9, T3: 1.15, T4: 1.0 }[r.eq] || 1;
+    return { a: 0.9 + 0.12 * r.delai, d: 0.52 * r.delai, q: 0.48 * r.delai * k };
+  }
+
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function sum(a, f) { var s = 0; a.forEach(function (x) { s += typeof f === 'function' ? f(x) : x[f]; }); return s; }
+  function nf(x, d) { return x == null || !isFinite(x) ? '–' : x.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function pc(x) { return x == null || !isFinite(x) ? '–' : nf(x * 100) + NB + '%'; }
+  function dans(v, liste) { return liste.some(function (x) { return x.v === v; }); }
+  function court(v) { return v.replace(/\.0$/, ''); }
+
+  // ── Zone verte : où l'on livre le plus au gel sans dégrader délai ni tenue ──
+  // Régression linéaire locale (noyau gaussien) du débit, de la tenue et du
+  // délai en fonction des tickets en cours par personne, sur tout l'historique
+  // livré : la référence ne bouge pas quand on filtre.
+  var OBS = ROWS.filter(function (r) { return r.gel != null; }).map(function (r) {
+    return { w: r.wip / r.etp, debit: r.gel / r.etp, tenue: r.gel / r.engages, delai: r.delai, r: r };
+  });
+  function lisse(k, x) {
+    var sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    OBS.forEach(function (o) {
+      var p = Math.exp(-0.5 * Math.pow((o.w - x) / BANDE, 2));
+      sw += p; sx += p * o.w; sy += p * o[k]; sxx += p * o.w * o.w; sxy += p * o.w * o[k];
+    });
+    var mx = sx / sw, my = sy / sw, vx = sxx / sw - mx * mx;
+    return my + (vx > 1e-9 ? (sxy / sw - mx * my) / vx : 0) * (x - mx);
+  }
+  var Z = (function () {
+    var lo = Math.min.apply(null, OBS.map(function (o) { return o.w; })), hi = Math.max.apply(null, OBS.map(function (o) { return o.w; }));
+    var G = [];
+    for (var x = lo; x <= hi; x += 0.02) G.push({ x: x, debit: lisse('debit', x), tenue: lisse('tenue', x), delai: lisse('delai', x) });
+    var dMax = Math.max.apply(null, G.map(function (g) { return g.debit; })), iLo = 0;
+    while (G[iLo].debit < REGLE.debit * dMax) iLo++;
+    var iHi = iLo;
+    for (var i = iLo + 1; i < G.length; i++) {
+      if (G[i].debit < REGLE.debit * dMax || G[i].tenue < G[iLo].tenue - REGLE.tenue || G[i].delai > REGLE.delai * G[iLo].delai) break;
+      iHi = i;
+    }
+    return { lo: Math.round(G[iLo].x * 10) / 10, hi: Math.round(G[iHi].x * 10) / 10, ideal: Math.round((G[iLo].x + G[iHi].x) / 2 * 10) / 10 };
+  })();
+  function etat(w) {
+    if (w > ROUGE) return { cls: 'bad', txt: '✕ Surcharge' };
+    if (w > Z.hi) return { cls: 'warn', txt: '⚠ À surveiller' };
+    if (w < Z.lo) return { cls: 'warn', txt: '⚠ Sous-chargé' };
+    return { cls: 'good', txt: '✓ Dans la zone' };
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // État : filtres + cartes, conservés dans ce navigateur
+  // ════════════════════════════════════════════════════════════════════
+  var MESURES = {
+    jours:  { nom: 'Jours par ticket', unite: 'j', dec: 1, additif: false, decoupes: ['', 'etape', 'equipe'] },
+    livres: { nom: 'Tickets livrés', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
+    wipp:   { nom: 'Tickets en cours par personne', unite: '/ pers.', dec: 1, additif: false, decoupes: ['', 'equipe'], zone: true },
+    wip:    { nom: 'Tickets en cours', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
+    tenue:  { nom: 'Tenue au gel', unite: '%', dec: 0, additif: false, decoupes: ['', 'equipe'], pct: true },
+    caf:    { nom: 'Capacité à faire (CAF)', unite: 'JP', dec: 0, additif: true, decoupes: ['', 'equipe'] }
+  };
+  var AXES = { version: 'Par version', equipe: 'Par équipe' };
+  var DECOUPES = { '': 'Sans découpage', etape: 'Par étape', equipe: 'Par équipe' };
+  var STYLES = { colonnes: ['▥', 'Colonnes'], barres: ['▤', 'Barres'], courbe: ['⟋', 'Courbe'], tableau: ['▦', 'Tableau'] };
+  var LARGEURS = { demi: '1 colonne', pleine: 'Pleine largeur' };
+
+  function cartesParDefaut() {
+    return [
+      { id: 'c1', titre: 'Jours par ticket, version par version', mesure: 'jours', axe: 'version', decoupe: 'etape', style: 'colonnes', largeur: 'pleine' },
+      { id: 'c2', titre: 'Jours par ticket, par équipe', mesure: 'jours', axe: 'equipe', decoupe: 'etape', style: 'barres', largeur: 'demi' },
+      { id: 'c3', titre: 'Tickets en cours par personne', mesure: 'wipp', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' },
+      { id: 'c4', titre: 'Tickets livrés par version', mesure: 'livres', axe: 'version', decoupe: 'equipe', style: 'colonnes', largeur: 'pleine' }
+    ];
+  }
+  function etatParDefaut() { return { periode: 'all', equipes: TOUS.slice(), etapes: ['a', 'd', 'q'], replie: false, cartes: cartesParDefaut() }; }
+  var S = etatParDefaut();
+  try {
+    var m = JSON.parse(localStorage.getItem(CLE) || 'null');
+    if (m && typeof m === 'object') {
+      if (['all', '12', '6'].indexOf(m.periode) !== -1) S.periode = m.periode;
+      if (Array.isArray(m.equipes)) { var eq = TOUS.filter(function (id) { return m.equipes.indexOf(id) !== -1; }); if (eq.length) S.equipes = eq; }
+      if (Array.isArray(m.etapes)) { var et = ['a', 'd', 'q'].filter(function (c) { return m.etapes.indexOf(c) !== -1; }); if (et.length) S.etapes = et; }
+      S.replie = !!m.replie;
+      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && MESURES[c.mesure] && AXES[c.axe]; });
+    }
+  } catch (e) { /* stockage indisponible : valeurs par défaut */ }
+  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* idem */ } }
+  function normaliser(c) {
+    if (MESURES[c.mesure].decoupes.indexOf(c.decoupe) === -1) c.decoupe = '';
+    if (c.axe === 'equipe' && c.decoupe === 'equipe') c.decoupe = '';
+    if (!STYLES[c.style]) c.style = 'colonnes';
+    if (!LARGEURS[c.largeur]) c.largeur = 'demi';
+    return c;
+  }
+  S.cartes.forEach(normaliser);
+
+  function versionsVues() { return S.periode === 'all' ? DONE : DONE.slice(-Number(S.periode)); }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Calcul d'une valeur : une mesure sur un ensemble de lignes
+  // (« par version » = moyenne par version pour les comptes additifs)
+  // ════════════════════════════════════════════════════════════════════
+  function valeur(mesure, rs, etapes) {
+    if (!rs.length) return null;
+    var nbV = {}; rs.forEach(function (r) { nbV[r.v] = 1; });
+    var n = Object.keys(nbV).length;
+    if (mesure === 'jours') {
+      var g = sum(rs, 'gel');
+      if (!g) return null;
+      return sum(rs, function (r) { var j = jEtapes(r); return etapes.reduce(function (a, c) { return a + j[c]; }, 0) * r.gel; }) / g;
+    }
+    if (mesure === 'livres') return sum(rs, function (r) { return r.gel + r.derog; }) / n;
+    if (mesure === 'wip') return sum(rs, 'wip') / n;
+    if (mesure === 'wipp') return sum(rs, 'wip') / sum(rs, 'etp');
+    if (mesure === 'tenue') return sum(rs, 'gel') / sum(rs, 'engages');
+    if (mesure === 'caf') return sum(rs, 'caf') / n;
+    return null;
+  }
+  // Tableau croisé d'une carte : catégories (axe) × séries (découpage).
+  function pivot(c) {
+    var vs = versionsVues(), base = ROWS.filter(function (r) { return r.gel != null && S.equipes.indexOf(r.eq) !== -1 && dans(r.v, vs); });
+    var cats = c.axe === 'version' ? vs.map(function (v) { return { cle: v.v, nom: court(v.v), filtre: function (r) { return r.v === v.v; } }; })
+      : S.equipes.map(function (id) { return { cle: id, nom: NOM[id], filtre: function (r) { return r.eq === id; } }; });
+    var series;
+    if (c.decoupe === 'etape') series = S.etapes.map(function (k) { return { cle: k, nom: NOM_ETAPE[k], cls: 'c-' + k, etapes: [k], filtre: function () { return true; } }; });
+    else if (c.decoupe === 'equipe') series = S.equipes.map(function (id) { return { cle: id, nom: NOM[id], cls: 'c-' + id, etapes: S.etapes, filtre: function (r) { return r.eq === id; } }; });
+    else series = [{ cle: '', nom: MESURES[c.mesure].nom, cls: 'c-0', etapes: S.etapes, filtre: function () { return true; } }];
+    var empile = c.decoupe === 'etape' || (c.decoupe === 'equipe' && MESURES[c.mesure].additif);
+    var lignes = cats.map(function (cat) {
+      var rs = base.filter(cat.filtre);
+      return { cat: cat, vals: series.map(function (s) { return valeur(c.mesure, rs.filter(s.filtre), s.etapes); }), total: valeur(c.mesure, rs, S.etapes) };
+    });
+    return { cats: cats, series: series, lignes: lignes, empile: empile, m: MESURES[c.mesure] };
+  }
+  function fmt(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec); }
+  function fmtU(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec) + NB + p.m.unite; }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Rendus d'une carte
+  // ════════════════════════════════════════════════════════════════════
+  function titreSeg(p, l, i) { return l.cat.nom + ' · ' + p.series[i].nom + ' : ' + fmtU(p, l.vals[i]); }
+  function maxDe(p) {
+    var m = 0;
+    p.lignes.forEach(function (l) {
+      if (p.empile) m = Math.max(m, sum(l.vals, function (v) { return v || 0; }));
+      else l.vals.forEach(function (v) { m = Math.max(m, v || 0); });
+      if (!p.empile && p.series.length > 1) m = Math.max(m, l.total || 0);
+    });
+    return m || 1;
+  }
+  function colonnes(p) {
+    var mx = maxDe(p) * 1.08, H = 176, seule = p.series.length === 1;
+    var h = '<div class="cols-wrap"><div class="cols">' + p.lignes.map(function (l) {
+      var corps;
+      if (p.empile || seule) {
+        corps = '<div class="pile">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="height:' + ((v || 0) / mx * H).toFixed(1) + 'px" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      } else {
+        corps = '<div class="grp" style="height:auto">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="height:' + ((v || 0) / mx * H).toFixed(1) + 'px" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      }
+      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : seule ? l.vals[0] : l.total;
+      return '<div class="col"><span class="col-tot">' + fmt(p, tot) + '</span>' + corps + '</div>';
+    }).join('') + '</div><div class="axis">' + p.lignes.map(function (l) { return '<span>' + esc(l.cat.nom) + '</span>'; }).join('') + '</div></div>';
+    return h;
+  }
+  function barres(p) {
+    var mx = maxDe(p), seule = p.series.length === 1;
+    return '<div class="brows">' + p.lignes.map(function (l) {
+      var corps, tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : seule ? l.vals[0] : l.total;
+      if (p.empile || seule) {
+        corps = '<div class="track">' + l.vals.map(function (v, i) {
+          var w = (v || 0) / mx * 100;
+          return '<span class="' + p.series[i].cls + '" style="width:' + w.toFixed(1) + '%" title="' + esc(titreSeg(p, l, i)) + '">' + (w > 10 && !seule ? fmt(p, v) : '') + '</span>';
+        }).join('') + '</div>';
+      } else {
+        corps = '<div class="gtrack">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="width:' + ((v || 0) / mx * 100).toFixed(1) + '%" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      }
+      return '<span class="lbl">' + esc(l.cat.nom) + '</span>' + corps + '<span class="bval">' + fmtU(p, tot) + '</span>';
+    }).join('') + '</div>';
+  }
+  function courbe(p, hote, zone) {
+    var W = Math.max(280, hote.clientWidth || 600), H = 210, pl = 40, pr = 12, pt = 14, pb = 26;
+    var n = p.lignes.length, bw = (W - pl - pr) / Math.max(1, n);
+    var mx = maxDe(p) * 1.1;
+    if (zone) mx = Math.max(mx, ROUGE + 0.3);
+    function X(i) { return pl + bw * (i + 0.5); }
+    function Y(v) { return pt + (H - pt - pb) * (1 - v / mx); }
+    var s = '<svg class="viz" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(p.m.nom) + '">';
+    if (zone) s += '<rect class="zone" x="' + pl + '" y="' + Y(Z.hi).toFixed(1) + '" width="' + (W - pl - pr) + '" height="' + (Y(Z.lo) - Y(Z.hi)).toFixed(1) + '"/><text class="zone-t" x="' + (pl + 4) + '" y="' + (Y(Z.hi) - 4).toFixed(1) + '">Zone idéale ' + nf(Z.lo, 1) + ' – ' + nf(Z.hi, 1) + '</text>';
+    var pas = mx > 50 ? Math.ceil(mx / 4 / 10) * 10 : mx > 10 ? Math.ceil(mx / 4) : mx > 2 ? 1 : 0.25;
+    if (p.m.pct) pas = 0.25;
+    for (var t = 0; t <= mx + 1e-9; t += pas) s += '<line class="grid" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(t).toFixed(1) + '" y2="' + Y(t).toFixed(1) + '"/><text x="' + (pl - 6) + '" y="' + (Y(t) + 3.5).toFixed(1) + '" text-anchor="end">' + (p.m.pct ? nf(t * 100) + '%' : nf(t, pas < 1 ? 2 : 0)) + '</text>';
+    var series = p.empile && p.series.length > 1 ? p.series.map(function (sr, i) { return { sr: sr, i: i }; }) : p.series.map(function (sr, i) { return { sr: sr, i: i }; });
+    series.forEach(function (o) {
+      var pts = [];
+      p.lignes.forEach(function (l, k) { var v = l.vals[o.i]; if (v != null) pts.push([X(k), Y(v), l, v]); });
+      s += '<path class="ln ' + o.sr.cls + '" style="fill:none" d="' + pts.map(function (q, k) { return (k ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('') + '"/>';
+      pts.forEach(function (q) { s += '<circle class="pt ' + o.sr.cls + '" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="4"><title>' + esc(titreSeg(p, q[2], o.i)) + '</title></circle>'; });
+    });
+    var pasL = Math.max(1, Math.ceil(30 / bw));
+    p.lignes.forEach(function (l, k) { if (k % pasL === 0) s += '<text x="' + X(k).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(l.cat.nom) + '</text>'; });
+    return s + '</svg>';
+  }
+  function tableau(p) {
+    var multi = p.series.length > 1;
+    var h = '<div class="tbl-wrap"><table class="data"><thead><tr><th>' + (p.cats.length && p.cats[0].cle in NOM ? 'Équipe' : 'Version') + '</th>' +
+      (multi ? p.series.map(function (s) { return '<th>' + esc(s.nom) + '</th>'; }).join('') : '') + '<th>' + esc(multi ? (p.empile ? 'Total' : 'Ensemble') : p.m.nom) + '</th></tr></thead><tbody>';
+    h += p.lignes.map(function (l) {
+      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : multi ? l.total : l.vals[0];
+      return '<tr><td>' + esc(l.cat.nom) + '</td>' + (multi ? l.vals.map(function (v) { return '<td>' + fmt(p, v) + '</td>'; }).join('') : '') + '<td>' + fmt(p, tot) + '</td></tr>';
+    }).join('');
+    return h + '</tbody></table></div>';
+  }
+  function sousTitre(c, p) {
+    var vs = versionsVues(), per = vs.length === DONE.length ? 'tout l\'historique' : 'les ' + vs.length + ' dernières versions';
+    var txt = c.axe === 'equipe' ? 'Moyenne sur ' + per + '.' : 'Versions ' + court(vs[0].v) + ' à ' + court(vs[vs.length - 1].v) + '.';
+    if (c.mesure === 'jours') txt += ' De l\'entrée en ' + NOM_ETAPE[S.etapes[0]] + ' à la fin de ' + NOM_ETAPE[S.etapes[S.etapes.length - 1]] + '.';
+    if (p.series.length > 1 && !p.empile) txt += ' Séries côte à côte : elles ne s\'additionnent pas.';
+    return txt;
+  }
+
+  function rendreCartes() {
+    var hote = $('#cards');
+    var h = S.cartes.map(function (c, i) {
+      var m = MESURES[c.mesure];
+      var opt = function (obj, cur, permis) { return Object.keys(obj).filter(function (k) { return !permis || permis.indexOf(k) !== -1; }).map(function (k) { return '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + esc(Array.isArray(obj[k]) ? obj[k][1] : (obj[k].nom || obj[k])) + '</option>'; }).join(''); };
+      var decPermis = m.decoupes.filter(function (d) { return !(c.axe === 'equipe' && d === 'equipe'); });
+      return '<article class="card' + (c.largeur === 'pleine' ? ' w-full' : '') + '" data-id="' + esc(c.id) + '">' +
+        '<div class="c-head"><div class="c-ident"><span class="grip" tabindex="0" role="button" aria-label="Déplacer la carte (glisser, ou flèches du clavier)" title="Glisser pour réordonner les cartes">⠿</span><input class="c-title" value="' + esc(c.titre) + '" aria-label="Titre de la carte" data-f="titre">' +
+        '<button type="button" class="icon-btn" data-act="suppr" title="Supprimer la carte">🗑</button></div>' +
+        '<div class="c-tools">' +
+        '<label>Mesure <select class="sel" data-f="mesure">' + opt(MESURES, c.mesure) + '</select></label>' +
+        '<label>Axe <select class="sel" data-f="axe">' + opt(AXES, c.axe) + '</select></label>' +
+        '<label>Découpage <select class="sel" data-f="decoupe">' + opt(DECOUPES, c.decoupe, decPermis) + '</select></label>' +
+        '<label>Largeur <select class="sel" data-f="largeur">' + opt(LARGEURS, c.largeur) + '</select></label>' +
+        '<span class="style-seg">' + Object.keys(STYLES).map(function (k) { return '<button type="button" data-style="' + k + '" aria-pressed="' + (c.style === k) + '" title="' + STYLES[k][1] + '">' + STYLES[k][0] + '</button>'; }).join('') + '</span>' +
+        '</div></div><p class="c-sub"></p><div class="c-body"></div><div class="legend"></div></article>';
+    }).join('');
+    hote.innerHTML = h + '<button type="button" class="card-add" id="cardAdd"><span class="plus">+</span>Ajouter une carte</button>';
+    S.cartes.forEach(function (c) { dessinerCarte(c); });
+  }
+  function dessinerCarte(c) {
+    var el = document.querySelector('#cards .card[data-id="' + c.id + '"]');
+    if (!el) return;
+    var p = pivot(c), corps = el.querySelector('.c-body');
+    el.querySelector('.c-sub').textContent = sousTitre(c, p);
+    if (!p.lignes.length) { corps.innerHTML = '<div class="empty">Aucune donnée pour ces filtres.</div>'; return; }
+    corps.innerHTML = c.style === 'barres' ? barres(p) : c.style === 'tableau' ? tableau(p) : c.style === 'courbe' ? '' : colonnes(p);
+    if (c.style === 'courbe') corps.innerHTML = courbe(p, corps, !!p.m.zone && p.series.length === 1);
+    el.querySelector('.legend').innerHTML = p.series.length > 1 ? p.series.map(function (s) { return '<span><i class="' + s.cls + '"></i>' + esc(s.nom) + '</span>'; }).join('') : '';
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Compteurs de WIP
+  // ════════════════════════════════════════════════════════════════════
+  function compteur(w, titre) {
+    var cx = 160, cy = 160, r = 128, ep = 26;
+    function pt(v, rr) { var a = Math.PI * (1 - Math.min(v, MAX) / MAX); return [cx + rr * Math.cos(a), cy - rr * Math.sin(a)]; }
+    function arc(a, b, cls) {
+      var p = pt(a, r), q = pt(b, r);
+      return '<path class="g-arc ' + cls + '" stroke-width="' + ep + '" d="M' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' A' + r + ',' + r + ' 0 0 1 ' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + '"/>';
+    }
+    var g = 0.03;
+    var s = '<svg viewBox="0 0 320 172" role="img" aria-label="' + esc(titre + ' : ' + nf(w, 1) + ' ticket en cours par personne, ' + etat(w).txt.slice(2)) + '">';
+    s += arc(0, Z.lo - g, 'g-warn') + arc(Z.lo + g, Z.hi - g, 'g-good') + arc(Z.hi + g, ROUGE - g, 'g-warn') + arc(ROUGE + g, MAX, 'g-bad');
+    [0, 1, 2, 3].forEach(function (t) { var p = pt(t, r - 32); s += '<text class="g-tick" x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="middle">' + t + '</text>'; });
+    var n = pt(w, r - 8);
+    s += '<line class="g-needle" x1="' + cx + '" y1="' + cy + '" x2="' + n[0].toFixed(1) + '" y2="' + n[1].toFixed(1) + '"/><circle class="g-hub" cx="' + cx + '" cy="' + cy + '" r="11"/></svg>';
+    return s + '<div class="g-val"><b>' + nf(w, 1) + '</b><small>ticket en cours par personne</small></div>';
+  }
+  function actuel(ids) {
+    var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && dans(r.v, DERNIERES); });
+    return { wip: sum(rs, 'wip') / DERNIERES.length, w: sum(rs, 'wip') / sum(rs, 'etp') };
+  }
+  function limite(ids) { return sum(ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v; }), function (r) { return Math.max(1, Math.round(Z.ideal * r.etp)); }); }
+  function rendreCompteurs() {
+    var ids = S.equipes, now = actuel(ids), e = etat(now.w), tousLa = ids.length === TOUS.length;
+    $('#gHint').textContent = 'Versions ' + court(DERNIERES[0].v) + ' à ' + court(DERNIERES[2].v) + ' · limites pour la ' + NEXT.v;
+    var h = '<article class="card g-main"><div class="gauge">' + compteur(now.w, tousLa ? 'Dispositif entier' : 'Équipes sélectionnées') + '</div><div class="lecture">' +
+      '<span class="k">' + (tousLa ? 'Dispositif entier' : ids.map(function (id) { return NOM[id]; }).join(' + ')) + '</span>' +
+      '<span><span class="pill ' + e.cls + '">' + e.txt + '</span></span>' +
+      '<p class="big"><b>' + nf(now.wip) + ' tickets</b> en cours, soit <b>' + nf(now.w, 1) + ' par personne</b> (bon niveau : ' + nf(Z.ideal, 1) + ').</p>' +
+      '<p class="cible">' + esc(NEXT.v) + ' : ' + nf(limite(ids)) + ' tickets en cours au maximum.</p>' +
+      '<div class="zones"><span><i style="background:var(--v-good)"></i>' + nf(Z.lo, 1) + '–' + nf(Z.hi, 1) + '</span><span><i style="background:var(--v-warn)"></i>à surveiller</span><span><i style="background:var(--v-critical)"></i>&gt; ' + nf(ROUGE, 1) + '</span></div></div></article>';
+    h += ids.map(function (id) {
+      var a = actuel([id]), et = etat(a.w);
+      return '<article class="card team"><h3>' + esc(NOM[id]) + '</h3><div class="gauge">' + compteur(a.w, NOM[id]) + '</div><span class="pill ' + et.cls + '">' + et.txt + '</span>' +
+        '<p class="lim">' + nf(a.wip) + ' en cours · limite <b>' + nf(limite([id])) + '</b></p></article>';
+    }).join('');
+    var g = $('#gauges');
+    // Le compteur global prend deux colonnes, chaque équipe une.
+    g.style.gridTemplateColumns = window.matchMedia('(max-width: 1100px)').matches ? '' : 'repeat(' + (ids.length + 2) + ', minmax(0, 1fr))';
+    g.innerHTML = h;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Filtres
+  // ════════════════════════════════════════════════════════════════════
+  function rendreFiltres() {
+    $('#fPeriode').innerHTML = [['all', 'Tout (' + DONE.length + ')'], ['12', '12 dernières'], ['6', '6 dernières']].map(function (o) {
+      return '<button type="button" data-val="' + o[0] + '" aria-pressed="' + (S.periode === o[0]) + '">' + o[1] + '</button>';
+    }).join('');
+    $('#fEquipes').innerHTML = TEAMS.map(function (t) {
+      return '<button type="button" class="fchip" data-eq="' + t.id + '" aria-pressed="' + (S.equipes.indexOf(t.id) !== -1) + '"><span class="dot c-' + t.id + '"></span>' + esc(t.nom) + '</button>';
+    }).join('');
+    $('#fEtapes').innerHTML = ETAPES.map(function (e) {
+      return '<button type="button" class="fchip" data-et="' + e.cle + '" aria-pressed="' + (S.etapes.indexOf(e.cle) !== -1) + '" title="' + esc(e.statuts.join(', ')) + '"><span class="dot c-' + e.cle + '"></span>' + esc(e.nom) + '</button>';
+    }).join('');
+    var parts = [], filtre = false;
+    var vs = versionsVues();
+    parts.push(vs.length + ' versions');
+    parts.push(S.equipes.length === TOUS.length ? '4 équipes' : S.equipes.map(function (id) { return NOM[id]; }).join(', '));
+    if (S.etapes.length < 3) parts.push('étapes : ' + S.etapes.map(function (k) { return NOM_ETAPE[k]; }).join(' + '));
+    filtre = S.periode !== 'all' || S.equipes.length < TOUS.length || S.etapes.length < 3;
+    var r = $('#fResume');
+    r.textContent = parts.join(' · ');
+    r.className = 'filter-summary' + (filtre ? ' is-filtered' : '');
+    $('#fReset').hidden = !filtre;
+    $('#fBody').hidden = S.replie;
+    var tg = $('#fToggle');
+    tg.classList.toggle('is-collapsed', S.replie);
+    tg.setAttribute('aria-expanded', String(!S.replie));
+    tg.querySelector('.lbl').textContent = S.replie ? 'Afficher' : 'Masquer';
+  }
+
+  function rendrePourquoi() {
+    function bilan(l) { var g = sum(l, function (o) { return o.r.gel; }); return { tenue: g / sum(l, function (o) { return o.r.engages; }), delai: sum(l, function (o) { return o.r.delai * o.r.gel; }) / g, n: l.length }; }
+    function ligne(nom, b) { return '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours de développement par ticket (' + b.n + ' cas).</li>'; }
+    $('#pourquoi').innerHTML =
+      ligne('Dans le vert', bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }))) +
+      ligne('Dans le jaune', bilan(OBS.filter(function (o) { return o.w > Z.hi && o.w <= ROUGE; }))) +
+      ligne('Dans le rouge', bilan(OBS.filter(function (o) { return o.w > ROUGE; }))) +
+      '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, toutes équipes, et ne changent pas avec les filtres. La limite d\'une version = ' + nf(Z.ideal, 1) + ' × personnes présentes prévues dans l\'Analyse de capacité.</li>' +
+      ETAPES.map(function (e) { return '<li><b>' + e.nom + '</b> regroupe les statuts Jira : ' + esc(e.statuts.join(', ')) + '.</li>'; }).join('');
+  }
+
+  // ── Connecteurs : d'où viennent les données ─────────────────────────────
+  function rendreSources() {
+    var tickets = sum(ROWS, function (r) { return (r.engages || 0) + (r.vise || 0); });
+    var personnes = sum(TEAMS, 'personnes');
+    function src(ic, nom, meta, soon) {
+      return '<div class="src' + (soon ? ' is-soon' : '') + '"><span class="src-ic" aria-hidden="true">' + ic + '</span><div class="src-txt"><div class="src-name">' + esc(nom) +
+        '</div><div class="src-meta">' + esc(meta) + '</div></div>' + (soon ? '<span class="src-soon">À venir</span>' : '<span class="src-ok">✓ Synchronisé</span>') + '</div>';
+    }
+    $('#sources').innerHTML =
+      src('🚆', 'Plan de livraisons', VERS.length + ' versions · publié le 05/10') +
+      src('📡', 'Journal du Bug Dashboard', nf(tickets) + ' tickets · analyse du 09/10') +
+      src('📈', 'Analyse de capacité', 'Planning du 05/10 · ' + personnes + ' personnes') +
+      src('🗂', 'Backlog entier', 'Tickets hors stabilisation', true);
+  }
+
+  function tout() { rendreFiltres(); rendreCompteurs(); rendreCartes(); }
+
+  // ── Interactions ──────────────────────────────────────────────────────
+  $('#filterbar').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'fToggle') { S.replie = !S.replie; sauver(); rendreFiltres(); return; }
+    if (b.id === 'fReset') { S.periode = 'all'; S.equipes = TOUS.slice(); S.etapes = ['a', 'd', 'q']; }
+    else if (b.closest('#fPeriode')) S.periode = b.getAttribute('data-val');
+    else if (b.hasAttribute('data-eq')) {
+      var id = b.getAttribute('data-eq'), i = S.equipes.indexOf(id);
+      if (i !== -1 && S.equipes.length === 1) return;
+      if (i !== -1) S.equipes.splice(i, 1); else S.equipes = TOUS.filter(function (x) { return x === id || S.equipes.indexOf(x) !== -1; });
+    } else if (b.hasAttribute('data-et')) {
+      var k = b.getAttribute('data-et'), j = S.etapes.indexOf(k);
+      if (j !== -1 && S.etapes.length === 1) return;
+      if (j !== -1) S.etapes.splice(j, 1); else S.etapes = ['a', 'd', 'q'].filter(function (x) { return x === k || S.etapes.indexOf(x) !== -1; });
+    } else return;
+    sauver(); tout();
+  });
+  var cartesHote = $('#cards');
+  function carteDe(el) { var a = el.closest('.card[data-id]'); return a ? S.cartes.filter(function (c) { return c.id === a.getAttribute('data-id'); })[0] : null; }
+  cartesHote.addEventListener('change', function (e) {
+    var f = e.target.getAttribute('data-f'), c = carteDe(e.target);
+    if (!f || !c) return;
+    c[f] = e.target.value;
+    if (f === 'titre') { sauver(); return; }
+    normaliser(c); sauver(); rendreCartes();
+  });
+  cartesHote.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'cardAdd') {
+      S.cartes.push({ id: 'c' + Date.now().toString(36), titre: 'Nouvelle carte', mesure: 'jours', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' });
+      sauver(); rendreCartes();
+      var ins = cartesHote.querySelectorAll('.c-title'); ins[ins.length - 1].focus(); ins[ins.length - 1].select();
+      return;
+    }
+    var c = carteDe(b);
+    if (!c) return;
+    var i = S.cartes.indexOf(c);
+    if (b.hasAttribute('data-style')) c.style = b.getAttribute('data-style');
+    else if (b.getAttribute('data-act') === 'suppr') S.cartes.splice(i, 1);
+    else return;
+    sauver(); rendreCartes();
+  });
+  // Glisser-déposer des cartes par la poignée ⠿ (événements pointeur, comme
+  // le Bug Dashboard : la souris et le doigt fonctionnent). Au clavier, les
+  // flèches haut / bas déplacent la carte d'un cran.
+  function persisterOrdre() {
+    var ids = Array.prototype.map.call(cartesHote.querySelectorAll('.card[data-id]'), function (el) { return el.getAttribute('data-id'); });
+    S.cartes.sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
+    sauver();
+  }
+  var drag = null;
+  cartesHote.addEventListener('pointerdown', function (e) {
+    var g = e.target.closest('.grip');
+    if (!g || e.button > 0) return;
+    e.preventDefault();
+    drag = { el: g.closest('.card'), moved: false };
+    drag.el.classList.add('is-dragging');
+    document.body.classList.add('dragging-card');
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var sous = document.elementFromPoint(e.clientX, e.clientY), over = sous && sous.closest('#cards .card[data-id]');
+    if (!over || over === drag.el) return;
+    var cartes = Array.prototype.slice.call(cartesHote.querySelectorAll('.card[data-id]'));
+    if (cartes.indexOf(over) > cartes.indexOf(drag.el)) over.after(drag.el); else over.before(drag.el);
+    drag.moved = true;
+  });
+  document.addEventListener('pointerup', function () {
+    if (!drag) return;
+    drag.el.classList.remove('is-dragging');
+    document.body.classList.remove('dragging-card');
+    if (drag.moved) persisterOrdre();
+    drag = null;
+  });
+  cartesHote.addEventListener('keydown', function (e) {
+    var g = e.target.closest('.grip');
+    if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    var el = g.closest('.card'), voisin = e.key === 'ArrowUp' ? el.previousElementSibling : el.nextElementSibling;
+    if (!voisin || !voisin.hasAttribute('data-id')) return;
+    if (e.key === 'ArrowUp') voisin.before(el); else voisin.after(el);
+    persisterOrdre();
+    g.focus();
+  });
+
+  $('#cardsReset').addEventListener('click', function () { S.cartes = cartesParDefaut(); sauver(); rendreCartes(); });
+  // Les courbes se dessinent à la largeur réelle de leur carte.
+  var largeur = 0;
+  function redimension() {
+    var w = $('.av').clientWidth;
+    if (w === largeur) return;
+    largeur = w;
+    S.cartes.forEach(function (c) { if (c.style === 'courbe') dessinerCarte(c); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(redimension).observe($('.av')); else window.addEventListener('resize', redimension);
+
+  rendreSources();
+  rendrePourquoi();
+  tout();
+})();
+</script>
+<script>
+if (window.PlanifAuth) window.PlanifAuth.surveillerInactiviteOutil().catch(function (e) { console.warn(e); });
+</script>
+</body>
+</html>
