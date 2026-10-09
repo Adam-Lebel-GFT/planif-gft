@@ -16,6 +16,10 @@
 
   // Résolutions qui envoient un ticket à la poubelle (comparées sans accents ni casse).
   var REJECT = [['Declined', /declin|reject/], ['Duplicate', /duplic/], ['Not replicable', /not.?replic|cannot.?repro|not.?reprod|non.?repro/], ['Incomplete', /incomplet/], ['Abandoned', /abandon|won.?t.?do|wont.?do/]];
+  // Statuts de fin : « ready for testing » compte comme Closed ; un statut declined/decline
+  // n'a pas de colonne (le ticket part à la poubelle).
+  function foldStatus(st) { return /^ready for testing$/i.test(C.normalize(st || '')) ? 'Closed' : st; }
+  function statusReject(st) { return /^(decline|declined)$/i.test(C.normalize(st || '')) ? 'Declined' : null; }
   function rejectReason(res) {
     var r = C.normalize(res || ''); if (!r) return null;
     for (var i = 0; i < REJECT.length; i++) if (REJECT[i][1].test(r)) return REJECT[i][0];
@@ -56,7 +60,7 @@
     var statSet = {}, teamSet = {}, fakeTeams = [];
     photos.forEach(function (p) { p.tickets.forEach(function (t) {
       if (rowOf[t.td] == null) return;
-      statSet[t.st] = 1;
+      if (!statusReject(t.st)) statSet[foldStatus(t.st)] = 1;
       var lab = (cfg.teams.alias && cfg.teams.alias[t.tm]) || t.tm || 'Non affecté';
       if (!teamSet[lab]) { teamSet[lab] = 1; fakeTeams.push({ team: t.tm || 'Non affecté', teamLabel: lab }); }
     }); });
@@ -102,10 +106,10 @@
       p.tickets.forEach(function (t) {
         var r = rowOf[t.td]; if (r == null) return;
         var j = idx[t.k]; seen[j] = 1;
-        var why = rejectReason(t.r), done = t.d ? 1 : (doneSet[C.normalize(t.st)] ? 1 : 0);
+        var why = rejectReason(t.r) || statusReject(t.st), fst = foldStatus(t.st), done = t.d ? 1 : (doneSet[C.normalize(fst)] ? 1 : 0);
         if (tk[j].first < 0) tk[j].first = i;
-        if (why) { st[i][j] = { kind: 'trash', row: r, col: colOf[t.st], why: why }; tk[j].res = why; }
-        else { st[i][j] = { kind: 'board', row: r, col: colOf[t.st] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; }
+        if (why) { st[i][j] = { kind: 'trash', row: r, col: colOf[fst], why: why }; tk[j].res = why; }
+        else { st[i][j] = { kind: 'board', row: r, col: colOf[fst] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; }
       });
       for (var j = 0; j < N; j++) {
         if (seen[j] || tk[j].first < 0) continue;
