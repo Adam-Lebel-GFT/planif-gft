@@ -632,8 +632,6 @@ footer span {
 .sb-cat .sb-input-text{margin-top:0}
 .sb-cat-field{margin-top:6px}
 .sb-cat-field .sb-lbl{font-size:10px;color:var(--muted)}
-.sb-sel{width:118px;padding:5px 8px;border:1.5px solid var(--grey2);border-radius:var(--radius);font-size:12px;font-family:'Manrope',sans-serif;color:var(--text);background:var(--grey)}
-.sb-sel:focus{outline:none;border-color:var(--navy);background:var(--white)}
 .sb-hint{font-size:9px;color:var(--muted);margin-top:3px;line-height:1.35}
 .sb-add-cat{width:100%;padding:7px;border:1px dashed var(--grey3);border-radius:var(--radius);background:transparent;color:var(--muted);font-family:Manrope,sans-serif;font-size:11px;font-weight:600;cursor:pointer}
 .sb-add-cat:hover{border-color:var(--navy);color:var(--navy)}
@@ -924,34 +922,6 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
     </div>
     <div class="sb-divider"></div>
     <div>
-      <div class="sb-group-title">Sprint planning</div>
-      <div class="sb-row">
-        <span class="sb-lbl">Réduire la CAF ces jours-là</span>
-        <input type="checkbox" id="sb-sp-on" onchange="spPreview()">
-      </div>
-      <div class="sb-row">
-        <span class="sb-lbl">Diminution de la journée (%)</span>
-        <input class="sb-input" id="sb-sp-pct" type="number" step="1" min="0" max="100" value="30" oninput="spPreview()">
-      </div>
-      <div class="sb-row">
-        <span class="sb-lbl">Récurrence : le</span>
-        <select class="sb-sel" id="sb-sp-dow" onchange="spPreview()">
-          <option value="1">Lundi</option><option value="2" selected>Mardi</option><option value="3">Mercredi</option><option value="4">Jeudi</option><option value="5">Vendredi</option>
-        </select>
-      </div>
-      <div class="sb-row">
-        <span class="sb-lbl">Toutes les (semaines)</span>
-        <input class="sb-input" id="sb-sp-every" type="number" step="1" min="1" max="12" value="3" oninput="spPreview()">
-      </div>
-      <div class="sb-row">
-        <span class="sb-lbl">À partir du</span>
-        <input class="sb-sel" id="sb-sp-anchor" type="date" style="width:132px" onchange="spPreview()">
-      </div>
-      <div class="sb-hint" id="sb-sp-preview"></div>
-      <div class="sb-hint">La journée de sprint planning est en surbrillance rouge dans le dashboard. Le pourcentage s'applique à la capacité de cette journée (après les tâches de lead), pour chaque personne présente ; le nombre de jours de présence ne change pas. Sans date de départ, le cycle part du premier sprint du fichier.</div>
-    </div>
-    <div class="sb-divider"></div>
-    <div>
       <div class="sb-group-title">Tâches de lead</div>
       <div class="sb-row">
         <span class="sb-lbl">Raffinage</span>
@@ -1055,7 +1025,6 @@ var SP_SCHEMA = 2;   // 2 : le champ des équipes porte les codes du backlog
 var config = {
   schema: SP_SCHEMA,
   agile_pct: 0.10, bogues_pct: 0.10, raffinage_pct: 0.20, support_pct: 0.10,
-  sp_on: false, sp_pct: 0.30, sp_dow: 2, sp_every: 3, sp_anchor: '',   // sprint planning : récurrence + diminution de la journée
   categories: DEFAULT_CATEGORIES.map(normalizeCategory)
 };
 
@@ -1092,7 +1061,6 @@ rebuildTeamIndex();
 // Paramètres courants — servent au calcul, à l'Excel et au dashboard.
 var currentParams = {
   agile_pct:0.10, bogues_pct:0.10, raffinage_pct:0.20, support_pct:0.10,
-  sp_on:false, sp_pct:0.30, sp_dow:2, sp_every:3, sp_anchor:'',
   categories: _cats.map(function(c){ return normalizeCategory(c, 0); })
 };
 function syncCurrentParams() {
@@ -1100,8 +1068,6 @@ function syncCurrentParams() {
   currentParams.bogues_pct    = config.bogues_pct;
   currentParams.raffinage_pct = config.raffinage_pct;
   currentParams.support_pct   = config.support_pct;
-  currentParams.sp_on = config.sp_on; currentParams.sp_pct = config.sp_pct; currentParams.sp_dow = config.sp_dow;
-  currentParams.sp_every = config.sp_every; currentParams.sp_anchor = config.sp_anchor;
   currentParams.categories    = _cats.map(function(c, i){ return normalizeCategory(c, i); });
 }
 syncCurrentParams();
@@ -1176,13 +1142,6 @@ function readSidebarIntoConfig() {
   if (el('sb-bogues'))    config.bogues_pct    = pct(el('sb-bogues').value);
   if (el('sb-raffinage')) config.raffinage_pct = pct(el('sb-raffinage').value);
   if (el('sb-support'))   config.support_pct   = pct(el('sb-support').value);
-  if (el('sb-sp-on')) {
-    config.sp_on    = !!el('sb-sp-on').checked;
-    config.sp_pct   = pct(el('sb-sp-pct').value);
-    config.sp_dow   = Math.min(5, Math.max(1, parseInt(el('sb-sp-dow').value, 10) || 2));
-    config.sp_every = Math.min(12, Math.max(1, parseInt(el('sb-sp-every').value, 10) || 3));
-    config.sp_anchor = /^\d{4}-\d{2}-\d{2}$/.test(el('sb-sp-anchor').value) ? el('sb-sp-anchor').value : '';
-  }
   var cards = document.querySelectorAll('#sb-cats .sb-cat');
   if (cards.length) {
     config.categories = [].map.call(cards, function(card, i) {
@@ -1208,11 +1167,6 @@ function syncSidebarFromConfig() {
   if (el('sb-bogues'))    el('sb-bogues').value    = Math.round(config.bogues_pct * 100);
   if (el('sb-raffinage')) el('sb-raffinage').value = Math.round(config.raffinage_pct * 100);
   if (el('sb-support'))   el('sb-support').value   = Math.round(config.support_pct * 100);
-  if (el('sb-sp-on')) {
-    el('sb-sp-on').checked = !!config.sp_on; el('sb-sp-pct').value = Math.round(config.sp_pct * 100);
-    el('sb-sp-dow').value = String(config.sp_dow); el('sb-sp-every').value = config.sp_every; el('sb-sp-anchor').value = config.sp_anchor || '';
-    spPreview();
-  }
   renderCategories();
   updateLeadCalc();
 }
@@ -1273,11 +1227,6 @@ function adoptConfig(raw) {
   config.bogues_pct    = num(raw.bogues_pct,    config.bogues_pct);
   config.raffinage_pct = num(raw.raffinage_pct, config.raffinage_pct);
   config.support_pct   = num(raw.support_pct,   config.support_pct);
-  config.sp_on     = (raw.sp_on === undefined) ? config.sp_on : !!raw.sp_on;
-  config.sp_pct    = Math.min(1, Math.max(0, num(raw.sp_pct, config.sp_pct)));
-  config.sp_dow    = Math.min(5, Math.max(1, parseInt(raw.sp_dow, 10) || config.sp_dow));
-  config.sp_every  = Math.min(12, Math.max(1, parseInt(raw.sp_every, 10) || config.sp_every));
-  config.sp_anchor = /^\d{4}-\d{2}-\d{2}$/.test(raw.sp_anchor || '') ? raw.sp_anchor : '';
   config.categories    = normalizeCategories(raw.categories);
   config.schema        = SP_SCHEMA;
   rebuildTeamIndex(); syncCurrentParams();
@@ -1808,46 +1757,6 @@ function isLead(role) {
   return r.includes('lead')||r.includes('architect')||r.includes('program manager')||r.includes('pmo');
 }
 
-// ── Sprint planning : récurrence « à la Outlook » ──
-// Le lundi de la semaine d'une date (UTC, en ms).
-function spMonday(ms) { var d = new Date(ms); var w = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - w); }
-// Vrai si la journée `ds` (AAAA-MM-JJ) est un jour de sprint planning : bon jour de semaine, à partir de la date de
-// départ (P.sp_anchor_eff), et toutes les P.sp_every semaines (la semaine de la date de départ est la semaine 0).
-function spOccurs(ds, P) {
-  if (!P || !P.sp_on || !(P.sp_pct > 0) || !P.sp_anchor_eff) return false;
-  var d = new Date(ds + 'T00:00:00Z');
-  if (d.getUTCDay() !== Number(P.sp_dow)) return false;
-  if (ds < P.sp_anchor_eff) return false;
-  var every = Math.max(1, parseInt(P.sp_every, 10) || 1);
-  var wk = Math.round((spMonday(d.getTime()) - spMonday(new Date(P.sp_anchor_eff + 'T00:00:00Z').getTime())) / (7 * 86400000));
-  return wk % every === 0;
-}
-// Date de départ effective : celle saisie, sinon le premier « jour » du cycle à partir du début du premier sprint.
-function spResolveAnchor(P, sprintDates) {
-  if (P.sp_anchor) return P.sp_anchor;
-  var first = null;
-  Object.keys(sprintDates || {}).forEach(function (k) { var sd = sprintDates[k]; if (sd && sd.start) { var v = dsUTC(sd.start); if (!first || v < first) first = v; } });
-  if (!first) return '';
-  var d = new Date(first + 'T00:00:00Z');
-  for (var i = 0; i < 7 && d.getUTCDay() !== Number(P.sp_dow); i++) d.setUTCDate(d.getUTCDate() + 1);
-  return dsUTC(d);
-}
-// Aperçu des prochaines occurrences dans le tiroir.
-function spPreview() {
-  var el = document.getElementById('sb-sp-preview'); if (!el) return;
-  var g = function (id) { return document.getElementById(id); };
-  if (!g('sb-sp-on') || !g('sb-sp-on').checked) { el.textContent = 'Désactivé : la CAF n\'est pas réduite.'; return; }
-  var anchor = g('sb-sp-anchor').value;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(anchor)) { el.textContent = 'Sans date de départ : le cycle part du premier sprint du fichier planning.'; return; }
-  var P = { sp_on: true, sp_pct: 1, sp_dow: parseInt(g('sb-sp-dow').value, 10), sp_every: parseInt(g('sb-sp-every').value, 10) || 1, sp_anchor_eff: anchor };
-  var today = new Date(); var t0 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  var d = new Date(Math.max(t0, new Date(anchor + 'T00:00:00Z').getTime())), out = [];
-  for (var i = 0; i < 400 && out.length < 4; i++, d.setUTCDate(d.getUTCDate() + 1)) {
-    if (spOccurs(dsUTC(d), P)) out.push(d.toLocaleDateString('fr-CA', { weekday:'short', day:'numeric', month:'short', timeZone:'UTC' }));
-  }
-  el.textContent = out.length ? 'Prochains : ' + out.join(' · ') : 'Aucune occurrence.';
-}
-
 function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, params) {
   const [colStart, colEnd] = sprintRanges[sprintName];
   const sd = sprintDates[sprintName];
@@ -1861,28 +1770,23 @@ function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, pa
   for (const p of persons) {
     const active = (!p.arrivalDate||p.arrivalDate<=sd.end)&&(!p.departureDate||p.departureDate>=sd.start);
     if (!active) continue;
-    let fCount=0, dispo_theo=0, sp_days=0;
+    let fCount=0, dispo_theo=0;
     const dailyCodes = {}; // dateStr -> code
     for (const c of wdCols) {
       const v = String(p.rowData[c]||'').trim();
       const d = dates[c];
       if (d) dailyCodes[dsUTC(d)] = v || null;
       if (v==='F') fCount++;
-      if (WORKING_CODES.has(v)) { dispo_theo++; if (d && spOccurs(dsUTC(d), params)) sp_days++; }
+      if (WORKING_CODES.has(v)) dispo_theo++;
     }
     fCounts.push(fCount);
     const lead       = isLead(p.role);
     const alloc      = (p.alloc !== undefined) ? p.alloc : 1.0;
     const dispo_theo_adj = dispo_theo * alloc;
-    const rPct       = (params.raffinage_pct === undefined) ? 0.20 : params.raffinage_pct;
-    const sPct       = (params.support_pct   === undefined) ? 0.10 : params.support_pct;
-    const raffinage  = lead ? dispo_theo_adj * rPct : 0;
-    const support    = lead ? dispo_theo_adj * sPct : 0;
-    const lead_rate  = lead ? 1 - rPct - sPct : 1.0;
-    // Sprint planning : la journée perd sp_pct de sa capacité (appliqué au résiduel, comme les autres taux).
-    // Le nombre de jours de présence (dispo_theo) ne change pas : seule la capacité diminue.
-    const planning   = sp_days * alloc * lead_rate * (params.sp_pct || 0);
-    const dispo      = dispo_theo_adj * lead_rate - planning;
+    const raffinage  = lead ? dispo_theo_adj * (params.raffinage_pct||0.20) : 0;
+    const support    = lead ? dispo_theo_adj * (params.support_pct||0.10)   : 0;
+    const lead_rate  = lead ? 1 - (params.raffinage_pct||0.20) - (params.support_pct||0.10) : 1.0;
+    const dispo      = dispo_theo_adj * lead_rate;
     const agile      = dispo * params.agile_pct;
     const brute      = dispo - agile;
     const vel        = velociteFor(params.categories, p.team);
@@ -1891,7 +1795,7 @@ function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, pa
     const bog_jp     = bog_sp * vel;
     const nette      = brute - bog_jp;
     const caf_n      = vel>0 ? nette/vel : 0;
-    result.push({ team:p.team, name:p.name, role:p.role, alloc, dispo_theo:dispo_theo_adj, raffinage, support, lead_rate, planning, sp_days, dispo, agile, brute, caf_b, bog_sp, nette, caf_n, dailyCodes });
+    result.push({ team:p.team, name:p.name, role:p.role, alloc, dispo_theo:dispo_theo_adj, raffinage, support, lead_rate, dispo, agile, brute, caf_b, bog_sp, nette, caf_n, dailyCodes });
   }
   const minF = fCounts.length>0?Math.min(...fCounts):0;
   const maxF = fCounts.length>0?Math.max(...fCounts):0;
@@ -2060,7 +1964,6 @@ function buildWorkbook(allResults, params, sprintDates, enrichment) {
     const paramBlocks = CATS.map(c => ({ lbl: 'Vélocité ' + (c.code || c.nom), val: c.velocite, fmt: FMT_1D }))
       .concat([{ lbl: 'Agile (%)', val: params.agile_pct, fmt: FMT_PCT },
                { lbl: 'Bogues (%)', val: params.bogues_pct, fmt: FMT_PCT }])
-      .concat(params.sp_on ? [{ lbl: 'Sprint planning (%)', val: params.sp_pct, fmt: FMT_PCT }] : [])
       .slice(0, PARAM_COLS);   // au-delà de 13 cases la ligne ne tient pas : les derniers types sont omis du bandeau
     const spans = (() => {
       const n = paramBlocks.length;
@@ -2583,7 +2486,6 @@ async function runCalculation() {
     const params = { ...currentParams };
     const velTxt = (params.categories||[]).map(c => `${c.code || c.nom}=${c.velocite}`).join(' · ');
     log(`Vélocité ${velTxt} · Bogues=${Math.round(params.bogues_pct*100)}% · Agile=${Math.round(params.agile_pct*100)}% · Raffinage=${Math.round((params.raffinage_pct||0.20)*100)}% · Support=${Math.round((params.support_pct||0.10)*100)}%`,'ok');
-    if (params.sp_on) log(`Sprint planning : −${Math.round(params.sp_pct*100)} % de la capacité du jour, le ${['','lundi','mardi','mercredi','jeudi','vendredi'][params.sp_dow]} toutes les ${params.sp_every} semaine(s)${params.sp_anchor ? ' à partir du ' + params.sp_anchor : ''}.`, 'info');
     setProgress(15);
     log('Lecture du planning…','info');
     const planAB = await state.planning.arrayBuffer();
@@ -2591,7 +2493,6 @@ async function runCalculation() {
     const planWB = XLSX.read(planAB, {type:'array', sheets:['Planning Build']});
     rebuildTeamIndex();
     const { sprintRanges, sprintDates, dates, persons } = parsePlanning(planWB);
-    params.sp_anchor_eff = spResolveAnchor(params, sprintDates);
     const sprintNames = Object.keys(sprintRanges);
     log(`${persons.length} personnes · ${sprintNames.length} sprints (${sprintNames[0]} → ${sprintNames[sprintNames.length-1]})`,'ok');
     setProgress(30);
@@ -2665,21 +2566,20 @@ window.addEventListener('message', async (e) => {
       const pov = sprintOv[p.name] || {};
       if (!Object.keys(pov).length) return p;
       const vel = velociteFor(params.categories, p.team);
-      let dispo_theo = 0, sp_days = 0;
+      let dispo_theo = 0;
       for (const [ds, origCode] of Object.entries(p.dailyCodes || {})) {
         const code = ds in pov ? pov[ds] : origCode;
-        if (WORKING_CODES.has(code)) { dispo_theo++; if (spOccurs(ds, params)) sp_days++; }
+        if (WORKING_CODES.has(code)) dispo_theo++;
       }
-      const aff = isLead(p.role) ? 1 - params.raffinage_pct - params.support_pct : 1.0;
-      const planning = sp_days * aff * (params.sp_pct || 0);
-      const dispo = dispo_theo * aff - planning;
+      const aff = isLead(p.role) ? params.lead_rate : params.normal_rate;
+      const dispo = dispo_theo * aff;
       const agile = dispo * params.agile_pct;
       const brute = dispo - agile;
       const caf_b = vel > 0 ? brute / vel : 0;
       const bog_sp = caf_b * params.bogues_pct;
       const nette = brute - bog_sp * vel;
       const caf_n = vel > 0 ? nette / vel : 0;
-      return { ...p, dispo_theo, planning, sp_days, dispo, agile, brute, caf_b, bog_sp, nette, caf_n };
+      return { ...p, dispo_theo, dispo, agile, brute, caf_b, bog_sp, nette, caf_n };
     });
     return { ...r, persons: modPersons };
   });
@@ -2746,9 +2646,7 @@ function openDashboard() {
 
   const PR = {
     ap: params.agile_pct, bp: params.bogues_pct,
-    lr: 1 - params.raffinage_pct - params.support_pct, nr: 1,
-    sp_on: !!params.sp_on, sp_pct: params.sp_pct || 0, sp_dow: params.sp_dow, sp_every: params.sp_every,
-    sp_anchor_eff: params.sp_anchor_eff || ''
+    lr: params.lead_rate, nr: params.normal_rate
   };
 
   const CSS = `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -2790,7 +2688,7 @@ body{font-family:'Manrope',sans-serif;background:#F4F5F7;color:#0C1A2E;min-heigh
 .gs{overflow-x:auto}
 table.gt{border-collapse:collapse;font-size:10px;font-family:'Manrope',sans-serif;width:100%}
 table.gt th,table.gt td{border:.5px solid #E8EAED;padding:0}
-.gn{position:sticky;left:0;min-width:236px;max-width:236px;background:#fff;z-index:2;border-right:1.5px solid #E8EAED!important}
+.gn{position:sticky;left:0;min-width:200px;max-width:200px;background:#fff;z-index:2;border-right:1.5px solid #E8EAED!important}
 .gn-sp{min-width:90px;max-width:90px;background:#fff;border-left:1.5px solid #E8EAED!important;text-align:center}
 .gn-sp-hdr{background:#0C1A2E!important;border-color:#1A2E4A!important}
 .collapse-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;flex-shrink:0;transition:background .15s}
@@ -2812,14 +2710,11 @@ table.gt.collapsed .g3 th:not(.gsk):not(.gn-sp-hdr){display:none}
 .gd.pr{background:#C8E6C9}.gd.ab{background:#F5F5F5}.gd.we{background:#E0E0E0;cursor:default}
 .gd.ho{background:#BBDEFB}.gd.ab2{background:#FFE0B2}.gd.fe{background:#D1C4E9}
 .gd.ov{outline:2px solid #F9A825;outline-offset:-2px}
-.gd.spd{background-image:linear-gradient(rgba(229,57,53,.13),rgba(229,57,53,.13));box-shadow:inset 1px 0 0 rgba(229,57,53,.35),inset -1px 0 0 rgba(229,57,53,.35)}
-.g2 .spd,.g3 .spd{background-image:linear-gradient(rgba(229,57,53,.55),rgba(229,57,53,.55))}
 .gd.sel{outline:2px solid #1565C0;outline-offset:-2px;background:#BBDEFB!important}
 .gnc{padding:0 10px;height:28px;display:flex;align-items:center;justify-content:space-between;gap:6px}
 .gnn{font-size:11px;font-weight:500;color:#0C1A2E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gnr{font-size:9px;color:#6B7A90}
 .gnf{font-size:10px;font-weight:500;color:#1A7A42;white-space:nowrap}
-.gnf-th{color:#6B7A90;font-weight:400}
 .gnf-w{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
 .gnf-alloc{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:600;line-height:1}
 .gnf-alloc-val{font-family:'DM Mono',monospace}
@@ -3108,9 +3003,6 @@ const RAPPORT_TPL = ` + JSON.stringify(RAPPORT_TPL).replace(/<\//g, '<\\/') + `;
 const STORIES_ALL = ` + storiesSerial + `;
 const SD = ` + JSON.stringify(sprData) + `;
 const PR = ` + JSON.stringify(PR) + `;
-` + spMonday.toString() + `
-` + spOccurs.toString() + `
-function isSpDay(ds){ return spOccurs(ds, PR); }
 const CATS = ` + JSON.stringify((params.categories||[]).map(c => ({ n:c.nom, c:c.code, v:c.velocite, t:c.equipes }))) + `;
 const PAL = ` + JSON.stringify(CAT_PALETTE.map(x => ({ bg:x.chipBg, fg:x.chipFg, dot:x.dot }))) + `;
 const CAT_OF = (function(){ var m={}; CATS.forEach(function(c,i){ (c.t||[]).forEach(function(t){ if(m[t]===undefined) m[t]=i; }); }); return m; })();
@@ -3192,22 +3084,22 @@ function hasAllocOv(si, p) {
 function recompP(si, p) {
   const s = SD[si];
   const pov = OV[si] && OV[si][p.name] || {};
-  let dt = 0, spd = 0;
+  let dt = 0;
   for (const ds of s.ganttDates) {
     const d = new Date(ds + 'T00:00:00Z');
     if (d.getUTCDay() === 0 || d.getUTCDay() === 6) continue;
     const code = (ds in pov) ? pov[ds] : (p.dailyCodes[ds] || null);
-    if (WK.has(code)) { dt++; if (isSpDay(ds)) spd++; }
+    if (WK.has(code)) dt++;
   }
   const isLd = p.role && (p.role.toLowerCase().includes('lead') || p.role.toLowerCase().includes('architect'));
-  const aff = isLd ? PR.lr : PR.nr;
+  const aff = isLd ? (PR.lr || 0.7) : (PR.nr || 1.0);
   const vel = velOf(p.team);
   const alloc = getAlloc(si, p);
   const dispo_theo_adj = dt * alloc;
-  const dispo = dispo_theo_adj * aff - spd * alloc * aff * (PR.sp_on ? PR.sp_pct : 0);
-  const brute = dispo - dispo * PR.ap;
+  const dispo = dispo_theo_adj * aff;
+  const brute = dispo - dispo * (PR.ap || 0.1);
   const caf_b = vel > 0 ? brute / vel : 0;
-  const bog_sp = caf_b * PR.bp;
+  const bog_sp = caf_b * (PR.bp || 0.1);
   const nette = brute - bog_sp * vel;
   const caf_n = vel > 0 ? nette / vel : 0;
   return { dispo_theo: dispo_theo_adj, brute: brute, bog_sp: bog_sp, nette: nette, caf_n: caf_n };
@@ -3217,17 +3109,6 @@ function getEff(si, p, field) {
   if (!hasOv) return p[field];
   const c = recompP(si, p);
   return c[field];
-}
-// Jours de présence (R / S / AS) d'une personne sur le sprint, surcharges comprises : base de la CAF théorique.
-function presDays(si, p) {
-  var s = SD[si], pov = OV[si] && OV[si][p.name] || {}, n = 0;
-  for (var di = 0; di < s.ganttDates.length; di++) {
-    var ds = s.ganttDates[di], wd = new Date(ds + 'T00:00:00Z').getUTCDay();
-    if (wd === 0 || wd === 6) continue;
-    var code = (ds in pov) ? pov[ds] : (p.dailyCodes[ds] || null);
-    if (WK.has(code)) n++;
-  }
-  return n;
 }
 var ganttCollapsed = false;
 var multiSel = []; // [{si,name,ds}] for CTRL+click multi-select
@@ -3299,21 +3180,20 @@ function buildHdr(dates) {
   for (var i=0;i<wg.length;i++) h1 += '<th colspan="'+wg[i].c+'">S'+wg[i].n+'</th>';
   h1 += '</tr>';
   var h2 = '<tr class="g2">';
-  for (var i=0;i<dates.length;i++){var d=new Date(dates[i]+'T00:00:00Z');var we=d.getUTCDay()===0||d.getUTCDay()===6;h2+='<th'+(we?' class="we"':(isSpDay(dates[i])?' class="spd" title="Sprint planning"':''))+'>'+d.getUTCDate()+'</th>';}
+  for (var i=0;i<dates.length;i++){var d=new Date(dates[i]+'T00:00:00Z');var we=d.getUTCDay()===0||d.getUTCDay()===6;h2+='<th'+(we?' class="we"':'')+'>'+d.getUTCDate()+'</th>';}
   h2 += '</tr>';
   var h3 = '<tr class="g3">';
-  for (var i=0;i<dates.length;i++){var d=new Date(dates[i]+'T00:00:00Z');var we=d.getUTCDay()===0||d.getUTCDay()===6;h3+='<th'+(we?' class="we"':(isSpDay(dates[i])?' class="spd" title="Sprint planning"':''))+'>'+DN[d.getUTCDay()]+'</th>';}
+  for (var i=0;i<dates.length;i++){var d=new Date(dates[i]+'T00:00:00Z');var we=d.getUTCDay()===0||d.getUTCDay()===6;h3+='<th'+(we?' class="we"':'')+'>'+DN[d.getUTCDay()]+'</th>';}
   h3 += '</tr>';
   return h0+h1+h2+h3;
 }
 function render() {
   var s = SD[curI];
   var fp = s.persons.filter(function(p){ return actT.has(p.team); });
-  var t_theo=0,t_brute=0,t_bog=0,t_caf=0,t_cafTheo=0; var cafByCat=CATS.map(function(){return 0;});
+  var t_theo=0,t_brute=0,t_bog=0,t_caf=0; var cafByCat=CATS.map(function(){return 0;});
   for (var i=0;i<fp.length;i++) {
     var p=fp[i]; var vel=velOf(p.team);
     t_theo  += getEff(curI,p,'dispo_theo');
-    t_cafTheo += vel > 0 ? presDays(curI,p) / vel : 0;
     t_brute += getEff(curI,p,'brute');
     t_bog   += getEff(curI,p,'bog_sp')*vel;
     var cn = getEff(curI,p,'caf_n');
@@ -3388,7 +3268,7 @@ function render() {
         + '<button class="gnf-alloc-pen" title="Modifier affectation" data-action="edit-alloc" data-si="'+curI+'" data-pi="'+pIdx+'">&#9998;</button>'
         + '</div>';
       // Name cell — no SP here anymore
-      tbody += '<tr><td class="gn"><div class="gnc"><div><div class="gnn" title="'+p.name+'">'+displayName+'</div><div class="gnr">'+p.role+(ld?' <span class="lb">Lead</span>':'')+'</div></div><div class="gnf-w"><div class="gnf"><span class="gnf-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(num / velOf(p.team))+'</span> \u203a <span title="CAF réelle : après affectation, tâches de lead, cérémonies, sprint planning et bogues">'+f1(effCaf)+'</span> SP<span style="font-size:8px;color:#6B7A90;margin-left:3px">('+num+'/'+den+')</span></div>'+allocHtml+'</div></div></td>';
+      tbody += '<tr><td class="gn"><div class="gnc"><div><div class="gnn" title="'+p.name+'">'+displayName+'</div><div class="gnr">'+p.role+(ld?' <span class="lb">Lead</span>':'')+'</div></div><div class="gnf-w"><div class="gnf">'+f1(effCaf)+' SP<span style="font-size:8px;color:#6B7A90;margin-left:3px">('+num+'/'+den+')</span></div>'+allocHtml+'</div></div></td>';
       for (var di=0;di<s.ganttDates.length;di++) {
         var ds = s.ganttDates[di];
         var d = new Date(ds+'T00:00:00Z');
@@ -3396,7 +3276,7 @@ function render() {
         var orig = p.dailyCodes[ds]||null;
         var eff = (ds in pov) ? pov[ds] : orig;
         var isOv = ds in pov;
-        tbody += '<td class="gd '+cellCls(eff)+(isOv?' ov':'')+(isSpDay(ds)?' spd':'')+'" data-si="'+curI+'" data-pi="'+s.persons.indexOf(p)+'" data-ds="'+ds+'" data-clickable="1">'+(isOv?'<span class="ob">'+(eff||'×')+'</span>':'')+'</td>';
+        tbody += '<td class="gd '+cellCls(eff)+(isOv?' ov':'')+'" data-si="'+curI+'" data-pi="'+s.persons.indexOf(p)+'" data-ds="'+ds+'" data-clickable="1">'+(isOv?'<span class="ob">'+(eff||'×')+'</span>':'')+'</td>';
       }
       tbody += '</tr>';
     }
@@ -3408,7 +3288,7 @@ function render() {
   kpiHtml += '<div class="kp"><div class="kl">Dispo th\u00e9orique</div><div class="kv">'+f1(t_theo)+'<span>JP</span></div></div>';
   kpiHtml += '<div class="kp"><div class="kl">Dispo brute</div><div class="kv">'+f1(t_brute)+'<span>JP</span></div></div>';
   kpiHtml += '<div class="kp"><div class="kl">Dispo nette</div><div class="kv">'+f1(t_nette)+'<span>JP</span></div></div>';
-  kpiHtml += '<div class="kp ac"><div class="kl">CAF nette totale</div><div class="kv">'+f1(t_caf)+'<span>SP</span></div><div class="ks">Th\u00e9o. '+f1(t_cafTheo)+' \u00b7 '+CATS.map(function(c,i){ return (c.c||c.n)+' '+f1(cafByCat[i]); }).join(' \u00b7 ')+'</div></div>';
+  kpiHtml += '<div class="kp ac"><div class="kl">CAF nette totale</div><div class="kv">'+f1(t_caf)+'<span>SP</span></div><div class="ks">'+CATS.map(function(c,i){ return (c.c||c.n)+' '+f1(cafByCat[i]); }).join(' \u00b7 ')+'</div></div>';
   kpiHtml += '</div>';
 
   var html = '';
@@ -3422,7 +3302,6 @@ function render() {
   html += '<div class="li"><div class="ld" style="background:#F5F5F5;border:1px solid #BDBDBD"></div>Non renseigné</div>';
   html += '<div class="li"><div class="ld" style="background:#E0E0E0"></div>Weekend</div>';
   html += '<div class="li"><div class="ld" style="background:#FFF9C4;border:2px solid #F9A825"></div>Modifié</div>';
-  if (PR.sp_on && PR.sp_pct > 0) html += '<div class="li"><div class="ld" style="background:#F9D3D2;border:1px solid #E53935"></div>Sprint planning (\u2212'+Math.round(PR.sp_pct*100)+' % de la capacité du jour)</div>';
   html += '</div></div>';
   // ── Whiteboard ──
   var s2 = SD[curI];
