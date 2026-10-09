@@ -369,14 +369,21 @@
     if (res.error) { showMsg('roles-msg', res.error.message, false); return; }
     var roleId = id || res.data.id;
 
-    // Recalcule la liste des outils du rôle (supprime puis ré-insère —
-    // suffisant vu le volume, pas besoin d'un diff plus fin).
-    var delRes = await client.from('role_outils').delete().eq('role_id', roleId);
-    if (delRes.error) { showMsg('roles-msg', delRes.error.message, false); return; }
+    // Ajoute d'abord les outils cochés, puis retire les décochés. L'ordre
+    // compte : la règle d'accès de role_outils exige d'être administrateur,
+    // et l'est celui dont un rôle porte l'outil « admin ». Tout supprimer
+    // avant de ré-insérer, sur le rôle Admin, retirait ce droit au milieu de
+    // l'opération : l'insertion était refusée et le rôle restait vide.
     if (outils.length) {
-      var insRes = await client.from('role_outils').insert(outils.map(function (o) { return { role_id: roleId, outil: o }; }));
+      var insRes = await client.from('role_outils').upsert(
+        outils.map(function (o) { return { role_id: roleId, outil: o }; }),
+        { onConflict: 'role_id,outil', ignoreDuplicates: true });
       if (insRes.error) { showMsg('roles-msg', insRes.error.message, false); return; }
     }
+    var delReq = client.from('role_outils').delete().eq('role_id', roleId);
+    if (outils.length) delReq = delReq.not('outil', 'in', '(' + outils.map(function (o) { return '"' + o.replace(/"/g, '') + '"'; }).join(',') + ')');
+    var delRes = await delReq;
+    if (delRes.error) { showMsg('roles-msg', delRes.error.message, false); return; }
 
     showMsg('roles-msg', 'Rôle enregistré.', true);
     roleForm.reset();
