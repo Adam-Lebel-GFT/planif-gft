@@ -1783,9 +1783,11 @@ function computeSprint(sprintName, sprintRanges, sprintDates, dates, persons, pa
     const lead       = isLead(p.role);
     const alloc      = (p.alloc !== undefined) ? p.alloc : 1.0;
     const dispo_theo_adj = dispo_theo * alloc;
-    const raffinage  = lead ? dispo_theo_adj * (params.raffinage_pct||0.20) : 0;
-    const support    = lead ? dispo_theo_adj * (params.support_pct||0.10)   : 0;
-    const lead_rate  = lead ? 1 - (params.raffinage_pct||0.20) - (params.support_pct||0.10) : 1.0;
+    const rPct       = (params.raffinage_pct === undefined) ? 0.20 : params.raffinage_pct;
+    const sPct       = (params.support_pct   === undefined) ? 0.10 : params.support_pct;
+    const raffinage  = lead ? dispo_theo_adj * rPct : 0;
+    const support    = lead ? dispo_theo_adj * sPct : 0;
+    const lead_rate  = lead ? 1 - rPct - sPct : 1.0;
     const dispo      = dispo_theo_adj * lead_rate;
     const agile      = dispo * params.agile_pct;
     const brute      = dispo - agile;
@@ -2571,7 +2573,7 @@ window.addEventListener('message', async (e) => {
         const code = ds in pov ? pov[ds] : origCode;
         if (WORKING_CODES.has(code)) dispo_theo++;
       }
-      const aff = isLead(p.role) ? params.lead_rate : params.normal_rate;
+      const aff = isLead(p.role) ? 1 - params.raffinage_pct - params.support_pct : 1.0;
       const dispo = dispo_theo * aff;
       const agile = dispo * params.agile_pct;
       const brute = dispo - agile;
@@ -2646,7 +2648,7 @@ function openDashboard() {
 
   const PR = {
     ap: params.agile_pct, bp: params.bogues_pct,
-    lr: params.lead_rate, nr: params.normal_rate
+    lr: 1 - params.raffinage_pct - params.support_pct, nr: 1
   };
 
   const CSS = `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -3092,14 +3094,14 @@ function recompP(si, p) {
     if (WK.has(code)) dt++;
   }
   const isLd = p.role && (p.role.toLowerCase().includes('lead') || p.role.toLowerCase().includes('architect'));
-  const aff = isLd ? (PR.lr || 0.7) : (PR.nr || 1.0);
+  const aff = isLd ? PR.lr : PR.nr;
   const vel = velOf(p.team);
   const alloc = getAlloc(si, p);
   const dispo_theo_adj = dt * alloc;
   const dispo = dispo_theo_adj * aff;
-  const brute = dispo - dispo * (PR.ap || 0.1);
+  const brute = dispo - dispo * PR.ap;
   const caf_b = vel > 0 ? brute / vel : 0;
-  const bog_sp = caf_b * (PR.bp || 0.1);
+  const bog_sp = caf_b * PR.bp;
   const nette = brute - bog_sp * vel;
   const caf_n = vel > 0 ? nette / vel : 0;
   return { dispo_theo: dispo_theo_adj, brute: brute, bog_sp: bog_sp, nette: nette, caf_n: caf_n };
