@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Bug Dashboard v2 — « Bug movie » : les photos du journal rejouées.
+   Bug movie : les photos du journal du Bug Dashboard rejouées.
    Chaque ticket est un point coloré (équipe ou version) qui se déplace de
    statut en statut, version par version. Un ticket qui sort d'une version va
    dans le nuage ; un ticket rejeté (Declined, Duplicate, Not replicable,
@@ -11,8 +11,9 @@
    ════════════════════════════════════════════════════════════════════ */
 (function (root) {
   'use strict';
-  var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config, APP = root.BDV2App, HI = root.BDV2History;
-  var esc = APP.esc, $ = function (id) { return document.getElementById(id); };
+  var C = root.BDV2Core, P = root.BDV2Palette, CFG = root.BDV2Config;
+  var esc = function (s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var $ = function (id) { return document.getElementById(id); };
 
   // Résolutions qui envoient un ticket à la poubelle (comparées sans accents ni casse).
   var REJECT = [['Declined', /declin|reject/], ['Duplicate', /duplic/], ['Not replicable', /not.?replic|cannot.?repro|not.?reprod|non.?repro/], ['Incomplete', /incomplet/], ['Abandoned', /abandon|won.?t.?do|wont.?do/]];
@@ -423,7 +424,7 @@
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
       '<span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></div></div></div>';
-    $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(true); });
+    $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(ui.items, ui.rootEl, true); });
     $('mvPlay').addEventListener('click', function () { setPlay(!ui.playing); });
     $('mvSlider').addEventListener('input', function () { ui.t = this.value / 6000 * M.T[M.T.length - 1]; render(); });
     rootEl.addEventListener('click', function (e) {
@@ -436,23 +437,18 @@
     sizeCanvases();
   }
 
-  // ── Rendu (appelé à chaque rerender de l'application) ──────────────
-  function renderMovie(force) {
-    // Avec des données analysées, la carte suit l'évolution dans le tableau de bord ;
-    // sans, elle se pose sous le journal, comme lui.
-    var dash = $('dashboard'), hasData = dash && !dash.classList.contains('hidden');
-    var rootEl = $(hasData ? 'movieRoot' : 'emptyMovieRoot'), other = $(hasData ? 'emptyMovieRoot' : 'movieRoot');
-    if (!rootEl) return; if (other && other.innerHTML) other.innerHTML = '';
-    var items = HI && HI.get ? HI.get().items : [];
+  // ── Rendu ──────────────────────────────────────────────────────────
+  // `items` : les analyses du journal, de la plus ancienne à la plus récente.
+  function renderMovie(items, rootEl, force) {
+    if (!rootEl) return;
     var sig = items.length + '|' + (items.length ? items[items.length - 1].at : '') + '|' + ui.nVers;
     if (!force && ui.built === sig && rootEl.querySelector('#mvBoard')) return;
-    ui.built = sig; ui.playing = false;
+    ui.built = sig; ui.playing = false; ui.items = items; ui.rootEl = rootEl;
     M = build(items, ui.nVers);
     if (!M) { rootEl.innerHTML = items.length ? '<div class="card"><h2>🎬 Bug movie</h2><div class="sub">Il faut au moins deux photos du journal qui contiennent une même version (Target date, 5 tickets minimum) pour rejouer son mouvement.</div></div>' : ''; return; }
     ui.t = Math.min(ui.t, M.T[M.T.length - 1]) || M.T[M.T.length - 1] * .5;
     mount(rootEl);
   }
-  APP.hooks.render.push(function () { renderMovie(false); });
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (M && $('mvBoard')) sizeCanvases(); }, 120); });
-  root.BDV2Movie = { render: function () { renderMovie(false); }, build: build, rejectReason: rejectReason };
+  root.BDV2Movie = { render: function (items, rootEl) { renderMovie(items, rootEl, false); }, build: build, rejectReason: rejectReason };
 })(window);
