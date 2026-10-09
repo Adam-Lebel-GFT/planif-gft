@@ -12,20 +12,23 @@
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* ════════════════════════════════════════════════════════════════════
-   Analyse de vélocité — maquette « compteur »
-   Un compteur d'usine pour toutes les équipes, puis un par équipe :
-   l'aiguille = tickets en cours par personne présente ; vert = zone
-   idéale, jaune = à surveiller, rouge = surcharge.
+   Analyse de vélocité — maquette
+   Squelette du Bug Dashboard : une barre de filtres collante en tête, puis
+   les compteurs de WIP (tickets en cours par personne) et une grille de
+   cartes configurables (mesure, axe, découpage, style, largeur).
    ════════════════════════════════════════════════════════════════════ */
 :root {
   --v-page: #F4F5F7;
   --v-surface: #FFFFFF;
+  --v-surface-2: #F3F5F8;
   --v-ink: #0C1A2E;
   --v-ink-2: #3D4B60;
   --v-ink-3: #6B7A90;
   --v-line: #E8EAED;
+  --v-line-2: #CDD3DC;
   --v-texture: rgba(12, 26, 46, .03);
   --v-accent: #0C447C;
+  --v-accent-wash: #EAF1F8;
   --v-good: #0ca30c;
   --v-warn: #fab219;
   --v-critical: #d03b3b;
@@ -35,134 +38,206 @@
   --v-good-wash: rgba(12, 163, 12, .12);
   --v-warn-wash: rgba(250, 178, 25, .20);
   --v-bad-wash: rgba(208, 59, 59, .13);
+  --v-zone: rgba(12, 163, 12, .10);
   --v-shadow: 0 1px 3px rgba(12, 26, 46, .05);
-  --v-st-a: #2a78d6; --v-st-d: #eb6834; --v-st-q: #1baf7a;
+  /* Séries : une seule mesure, les étapes (rampe ordonnée bleue), les équipes */
+  --v-s0: #2a78d6;
+  --v-st-a: #86b6ef; --v-st-d: #2a78d6; --v-st-q: #104281;
+  --v-eq-1: #eb6834; --v-eq-2: #1baf7a; --v-eq-3: #eda100; --v-eq-4: #4a3aa7;
   --v-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --v-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --v-page: #0A111C; --v-surface: #111A28; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC; --v-line: #223047;
-    --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8;
+    --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+    --v-line: #223047; --v-line-2: #33445C; --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14);
     --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
-    --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24);
+    --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .16);
     --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
-    --v-st-a: #3987e5; --v-st-d: #d95926; --v-st-q: #199e70;
+    --v-s0: #3987e5; --v-st-a: #86b6ef; --v-st-d: #3987e5; --v-st-q: #1c5cab;
+    --v-eq-1: #d95926; --v-eq-2: #199e70; --v-eq-3: #c98500; --v-eq-4: #9085e9;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --v-page: #0A111C; --v-surface: #111A28; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC; --v-line: #223047;
-  --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8;
+  --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+  --v-line: #223047; --v-line-2: #33445C; --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14);
   --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
-  --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24);
+  --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .16);
   --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
-  --v-st-a: #3987e5; --v-st-d: #d95926; --v-st-q: #199e70;
+  --v-s0: #3987e5; --v-st-a: #86b6ef; --v-st-d: #3987e5; --v-st-q: #1c5cab;
+  --v-eq-1: #d95926; --v-eq-2: #199e70; --v-eq-3: #c98500; --v-eq-4: #9085e9;
   color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: var(--v-page); color: var(--v-ink); font-family: var(--v-font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--v-page); color: var(--v-ink); font-family: var(--v-font); font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(var(--v-texture) 1px, transparent 1px), linear-gradient(90deg, var(--v-texture) 1px, transparent 1px); background-size: 40px 40px; }
+button, select, input { font-family: inherit; }
 :focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
-.av { position: relative; z-index: 1; max-width: 1040px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 40px); padding-block: 28px 56px; }
+[hidden] { display: none !important; }
+.av { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 40px); padding-block: 24px 56px; }
 
-.intro { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
-.intro h1 { margin: 0; font-size: clamp(26px, 4vw, 32px); font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
-.intro p { margin: 6px 0 0; color: var(--v-ink-3); max-width: 60ch; }
-.demo-note { font-size: 11.5px; font-weight: 700; color: var(--v-warn-ink); background: var(--v-warn-wash); padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.intro { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 2px solid var(--v-ink); }
+.intro h1 { margin: 0; font-size: clamp(22px, 3.4vw, 26px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.intro p { margin: 4px 0 0; color: var(--v-ink-3); max-width: 70ch; }
+.demo-note { font-size: 11.5px; font-weight: 700; color: var(--v-warn-ink); background: var(--v-warn-wash); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
 
-.card { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 12px; padding: 22px 24px; box-shadow: var(--v-shadow); min-width: 0; }
+/* ── Barre de filtres (comme le Bug Dashboard) ───────────────────── */
+.filterbar { position: sticky; top: var(--tk-stick, 56px); z-index: 30; background: var(--v-page); background: color-mix(in srgb, var(--v-page) 95%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); padding: 10px 0 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--v-line); }
+.filter-head, .filter-body { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
+.filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); font-weight: 800; }
+.filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-summary { margin-left: auto; font-size: 12px; color: var(--v-ink-3); }
+.filter-summary.is-filtered { color: var(--v-accent); font-weight: 700; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--v-line-2); border-radius: 8px; overflow: hidden; background: var(--v-surface); }
+.seg button { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: transparent; border: 0; border-right: 1px solid var(--v-line); padding: 7px 11px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
+.fchip { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 999px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.fchip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.fchip[aria-pressed="true"] { color: var(--v-ink); border-color: var(--v-ink); background: var(--v-accent-wash); }
+.fchip[aria-pressed="false"] .dot { opacity: .3; }
+.vbtn { font-size: 12px; font-weight: 700; color: var(--v-ink-3); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 8px; padding: 6px 11px; cursor: pointer; white-space: nowrap; }
+.vbtn:hover { border-color: var(--v-ink); color: var(--v-ink); }
+.vbtn .chev { display: inline-block; transition: transform .15s ease; }
+.vbtn.is-collapsed .chev { transform: rotate(-90deg); }
+
+/* ── Sections ────────────────────────────────────────────────────── */
+.section-title { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; }
+.section-title h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--v-ink-3); font-weight: 800; white-space: nowrap; }
+.section-title .line { flex: 1; height: 1px; background: var(--v-line); }
+.section-title .hint { font-size: 12px; color: var(--v-ink-3); }
+.card { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--v-shadow); min-width: 0; }
 .k { font-family: var(--v-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--v-ink-3); }
-
-/* Compteur principal */
-.main { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 28px; align-items: center; }
-.main .gauge { max-width: 250px; width: 100%; margin: 0 auto; }
-.lecture { display: flex; flex-direction: column; gap: 14px; }
-.big { font-size: 15px; color: var(--v-ink-2); margin: 0; }
-.big b { color: var(--v-ink); }
-.cible { font-size: 18px; font-weight: 800; line-height: 1.3; margin: 0; }
-.zones { display: grid; gap: 6px; font-size: 13px; color: var(--v-ink-2); }
-.zones span { display: flex; align-items: center; gap: 8px; }
-.zones i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-
-/* Compteur (SVG) */
-.gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
-.g-arc { fill: none; }
-.g-good { stroke: var(--v-good); } .g-warn { stroke: var(--v-warn); } .g-bad { stroke: var(--v-critical); }
-.g-tick { fill: var(--v-ink-3); font-family: var(--v-mono); font-size: 11px; }
-.g-needle { stroke: var(--v-ink); stroke-width: 4; stroke-linecap: round; }
-.g-hub { fill: var(--v-ink); stroke: var(--v-surface); stroke-width: 3; }
-.g-val { text-align: center; margin-top: 4px; }
-.g-val b { display: block; font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
-.g-val small { font-size: 12px; color: var(--v-ink-3); }
-.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .pill.good { background: var(--v-good-wash); color: var(--v-good-ink); }
 .pill.warn { background: var(--v-warn-wash); color: var(--v-warn-ink); }
 .pill.bad { background: var(--v-bad-wash); color: var(--v-bad-ink); }
 
-/* Compteurs par équipe */
-h2 { margin: 30px 0 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--v-ink-3); }
-.teams { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.team { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 12px; }
-.team h3 { margin: 0; font-size: 15px; font-weight: 800; }
-.team .gauge { width: 100%; max-width: 130px; }
-.team .g-val b { font-size: 20px; }
+/* ── Compteurs ───────────────────────────────────────────────────── */
+.gauges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.g-main { grid-column: span 2; display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 14px; align-items: center; }
+.g-main .lecture { display: flex; flex-direction: column; gap: 8px; }
+.g-main .big { margin: 0; font-size: 13px; color: var(--v-ink-2); }
+.g-main .big b, .g-main .cible { color: var(--v-ink); }
+.g-main .cible { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.3; }
+.team { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 10px; }
+.team h3 { margin: 0; font-size: 13.5px; font-weight: 800; }
+.team .gauge { width: 100%; max-width: 120px; }
+.team .lim { font-size: 12px; color: var(--v-ink-2); margin: 0; line-height: 1.4; }
+.team .lim b { color: var(--v-ink); }
+.gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
+.g-arc { fill: none; }
+.g-good { stroke: var(--v-good); } .g-warn { stroke: var(--v-warn); } .g-bad { stroke: var(--v-critical); }
+.g-tick { fill: var(--v-ink-3); font-family: var(--v-mono); font-size: 12px; }
+.g-needle { stroke: var(--v-ink); stroke-width: 5; stroke-linecap: round; }
+.g-hub { fill: var(--v-ink); stroke: var(--v-surface); stroke-width: 3; }
+.g-val { text-align: center; margin-top: 4px; }
+.g-val b { display: block; font-size: 26px; font-weight: 800; line-height: 1; }
+.g-val small { font-size: 11px; color: var(--v-ink-3); }
+.team .g-val b { font-size: 19px; }
 .team .g-val small, .team .g-tick { display: none; }
-.team .lim { font-size: 13px; color: var(--v-ink-2); margin: 0; }
-.team .lim b { color: var(--v-ink); font-size: 15px; }
+.zones { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--v-ink-2); }
+.zones span { display: inline-flex; align-items: center; gap: 6px; }
+.zones i { width: 10px; height: 10px; border-radius: 2px; }
 
-/* Vélocité : jours par ticket, découpés par étape */
-.velo-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 16px; }
-.velo-head p { margin: 0; color: var(--v-ink-2); max-width: 70ch; }
-.velo-head p b { color: var(--v-ink); }
-.vrows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
-.vrows .nom { font-weight: 800; font-size: 13px; white-space: nowrap; }
-.vrows .tous { color: var(--v-ink-3); }
-.vbar { display: flex; gap: 2px; height: 22px; }
-.vbar span { height: 100%; display: flex; align-items: center; justify-content: center; font-family: var(--v-mono); font-size: 11px; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; }
-.vbar span:first-child { border-radius: 4px 0 0 4px; } .vbar span:last-child { border-radius: 0 4px 4px 0; }
-.st-a { background: var(--v-st-a); } .st-d { background: var(--v-st-d); } .st-q { background: var(--v-st-q); color: #0C1A2E !important; }
-.vtot { font-family: var(--v-mono); font-size: 13px; white-space: nowrap; text-align: right; }
-.vtot b { font-family: var(--v-font); font-size: 15px; }
-.vtot .up { color: var(--v-bad-ink); } .vtot .down { color: var(--v-good-ink); }
-.vleg { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 12px; color: var(--v-ink-2); }
-.vleg span { display: inline-flex; align-items: center; gap: 6px; }
-.vleg i { width: 11px; height: 11px; border-radius: 2px; }
-.vleg small { color: var(--v-ink-3); font-family: var(--v-mono); font-size: 10.5px; }
+/* ── Cartes configurables ────────────────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.cards .card.w-full { grid-column: 1 / -1; }
+.c-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.c-ident { display: flex; align-items: center; gap: 6px; }
+.c-title { flex: 1; min-width: 0; border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 2px 4px; font-size: 14.5px; font-weight: 800; color: var(--v-ink); }
+.c-title:hover { border-color: var(--v-line); }
+.c-title:focus { border-color: var(--v-accent); background: var(--v-surface); outline: none; }
+.icon-btn { background: transparent; border: 1px solid transparent; color: var(--v-ink-3); padding: 3px 7px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.icon-btn:hover { border-color: var(--v-line); color: var(--v-ink); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.c-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-top: 7px; border-top: 1px dashed var(--v-line); }
+.c-tools label { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; color: var(--v-ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.sel { font-weight: 700; font-size: 11.5px; border: 1px solid var(--v-line-2); border-radius: 6px; padding: 4px 6px; background: var(--v-surface); color: var(--v-ink-2); max-width: 170px; text-transform: none; letter-spacing: 0; }
+.style-seg { display: inline-flex; border: 1px solid var(--v-line-2); border-radius: 6px; overflow: hidden; margin-left: auto; }
+.style-seg button { background: var(--v-surface); border: 0; border-right: 1px solid var(--v-line); color: var(--v-ink-3); padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.style-seg button:last-child { border-right: 0; }
+.style-seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
+.c-sub { font-size: 12px; color: var(--v-ink-3); margin: -4px 0 10px; }
+.c-body { min-height: 80px; }
+.card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 150px; border: 2px dashed var(--v-line-2); background: transparent; box-shadow: none; color: var(--v-ink-3); font-size: 12.5px; font-weight: 700; cursor: pointer; border-radius: 12px; }
+.card-add:hover { border-color: var(--v-accent); color: var(--v-accent); }
+.card-add .plus { font-size: 30px; line-height: 1; font-weight: 400; }
+.empty { padding: 30px 10px; text-align: center; color: var(--v-ink-3); }
 
-/* Vélocité par version : colonnes empilées Analyse / Dev / QA */
-.vv-wrap { overflow-x: auto; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--v-line); }
-.vv-titre { font-weight: 800; font-size: 13px; margin: 0; }
-.vv-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 4px; }
-.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--v-line); border-radius: 8px; overflow: hidden; background: var(--v-surface); }
-.seg button { font: 700 12px/1 var(--v-font); color: var(--v-ink-3); background: transparent; border: 0; border-right: 1px solid var(--v-line); padding: 7px 11px; cursor: pointer; }
-.seg button:last-child { border-right: 0; }
-.seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
-.vv-sub { font-size: 12px; color: var(--v-ink-3); margin: 0 0 14px; }
-.vv { display: flex; align-items: flex-end; gap: 6px; min-width: 560px; height: 210px; }
-.vv-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
-.vv-tot { font-family: var(--v-mono); font-size: 10.5px; color: var(--v-ink-2); margin-bottom: 3px; }
-.vv-pile { width: min(24px, 70%); display: flex; flex-direction: column-reverse; gap: 2px; }
-.vv-pile span:last-child { border-radius: 4px 4px 0 0; }
-.vv-ax { display: flex; gap: 6px; min-width: 560px; border-top: 1px solid var(--v-line); padding-top: 4px; }
-.vv-ax span { flex: 1; text-align: center; font-family: var(--v-mono); font-size: 10px; color: var(--v-ink-3); min-width: 0; line-height: 1.3; }
-.vv-ax span b { display: block; color: var(--v-ink-2); font-weight: 500; }
-.vv-ax span.rec b { color: var(--v-ink); font-weight: 700; }
+/* couleurs des séries */
+.c-0 { background: var(--v-s0); fill: var(--v-s0); stroke: var(--v-s0); }
+.c-a { background: var(--v-st-a); fill: var(--v-st-a); stroke: var(--v-st-a); }
+.c-d { background: var(--v-st-d); fill: var(--v-st-d); stroke: var(--v-st-d); }
+.c-q { background: var(--v-st-q); fill: var(--v-st-q); stroke: var(--v-st-q); }
+.c-T1 { background: var(--v-eq-1); fill: var(--v-eq-1); stroke: var(--v-eq-1); }
+.c-T2 { background: var(--v-eq-2); fill: var(--v-eq-2); stroke: var(--v-eq-2); }
+.c-T3 { background: var(--v-eq-3); fill: var(--v-eq-3); stroke: var(--v-eq-3); }
+.c-T4 { background: var(--v-eq-4); fill: var(--v-eq-4); stroke: var(--v-eq-4); }
 
-details { margin-top: 24px; }
+/* colonnes */
+.cols-wrap { overflow-x: auto; }
+.cols { display: flex; align-items: flex-end; gap: 4px; height: 200px; }
+.col { flex: 1; min-width: 26px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.col-tot { font-family: var(--v-mono); font-size: 10.5px; color: var(--v-ink-2); margin-bottom: 3px; white-space: nowrap; }
+.pile { width: min(24px, 76%); display: flex; flex-direction: column-reverse; gap: 2px; }
+.pile span:last-child { border-radius: 4px 4px 0 0; }
+.grp { display: flex; align-items: flex-end; gap: 1px; height: 100%; width: min(40px, 90%); justify-content: center; }
+.grp span { flex: 1; max-width: 9px; border-radius: 3px 3px 0 0; }
+.axis { display: flex; gap: 4px; border-top: 1px solid var(--v-line-2); padding-top: 4px; }
+.axis span { flex: 1; min-width: 26px; text-align: center; font-family: var(--v-mono); font-size: 10px; color: var(--v-ink-3); white-space: nowrap; overflow: hidden; }
+/* barres */
+.brows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; }
+.brows .lbl { font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.track { display: flex; gap: 2px; height: 20px; }
+.track span { height: 100%; display: flex; align-items: center; justify-content: center; font-family: var(--v-mono); font-size: 10.5px; color: #fff; overflow: hidden; white-space: nowrap; min-width: 0; }
+.track span:first-child { border-radius: 4px 0 0 4px; } .track span:last-child { border-radius: 0 4px 4px 0; }
+.track span.c-a { color: #0C1A2E; }
+.gtrack { display: flex; flex-direction: column; gap: 2px; }
+.gtrack span { height: 7px; border-radius: 0 3px 3px 0; }
+.bval { font-family: var(--v-mono); font-size: 12px; color: var(--v-ink-2); text-align: right; white-space: nowrap; }
+/* courbe */
+.viz { display: block; overflow: visible; }
+.viz text { font-family: var(--v-mono); font-size: 10px; fill: var(--v-ink-3); }
+.viz .grid { stroke: var(--v-line); stroke-width: 1; }
+.viz .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz .pt { stroke: var(--v-surface); stroke-width: 2; }
+.viz .zone { fill: var(--v-zone); }
+.viz .zone-t { fill: var(--v-good-ink); font-family: var(--v-font); font-weight: 700; }
+/* tableau */
+.tbl-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data th { font-family: var(--v-mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--v-ink-3); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--v-line); font-weight: 500; white-space: nowrap; }
+.data td { padding: 6px 8px; border-bottom: 1px solid var(--v-line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--v-ink-2); }
+.data th:first-child, .data td:first-child { text-align: left; }
+.data td:first-child { font-weight: 700; color: var(--v-ink); }
+.data tr.tot td { font-weight: 800; color: var(--v-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11.5px; color: var(--v-ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; }
+
+details.card { margin-top: 22px; }
 details summary { cursor: pointer; font-weight: 800; }
-details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); display: grid; gap: 6px; }
-.foot { margin-top: 28px; font-size: 11.5px; color: var(--v-ink-3); }
+details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); display: grid; gap: 5px; }
+.foot { margin-top: 26px; font-size: 11.5px; color: var(--v-ink-3); }
 
+@media (max-width: 1100px) {
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gauges .g-main { grid-column: 1 / -1; }
+}
 @media (max-width: 900px) {
-  .main { grid-template-columns: minmax(0, 1fr); }
-  .teams { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .filterbar { position: static; }
+  .filter-summary { margin-left: 0; width: 100%; }
 }
 @media (max-width: 520px) {
-  .teams { grid-template-columns: minmax(0, 1fr); }
-  .card { padding: 18px 16px; }
+  .g-main { grid-template-columns: minmax(0, 1fr); }
+  .g-main .gauge { max-width: 190px; margin: 0 auto; }
+  .card { padding: 14px 12px; }
+  .style-seg { margin-left: 0; }
 }
 </style>
 </head>
@@ -180,39 +255,40 @@ details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
 <main class="av">
   <section class="intro">
     <div>
-      <h1>Analyse de vélocité</h1>
-      <p>Combien de tickets chaque personne mène de front. Dans le vert, les versions de stabilisation sortent à l'heure.</p>
+      <h1>Analyse de vélocité — WIP et jours par ticket</h1>
+      <p>Combien de tickets chaque personne mène de front, et combien de jours il faut pour livrer un ticket, version par version.</p>
     </div>
     <span class="demo-note">Maquette · données simulées</span>
   </section>
 
-  <section class="card main" aria-labelledby="hMain">
-    <div id="gMain" class="gauge"></div>
-    <div class="lecture" id="lecture"></div>
-  </section>
-
-  <h2 id="hEquipes">Par équipe</h2>
-  <section class="teams" id="equipes" aria-labelledby="hEquipes"></section>
-
-  <h2 id="hVelo">Vélocité : jours par ticket</h2>
-  <section class="card" aria-labelledby="hVelo">
-    <div class="velo-head"><p id="veloTxt"></p><span class="k" id="veloPer"></span></div>
-    <div class="vrows" id="velo"></div>
-    <div class="vleg" id="veloLeg"></div>
-    <div class="vv-wrap">
-      <div class="vv-head"><p class="vv-titre" id="vvTitre"></p><div class="seg" id="vvSel" role="group" aria-label="Équipe affichée"></div></div>
-      <p class="vv-sub" id="vvSub"></p>
-      <div class="vv" id="vv" role="img"></div>
-      <div class="vv-ax" id="vvAx"></div>
+  <!-- Barre de filtres : elle s'applique à toute la page. Ce qui restreint
+       l'affichage reste lisible dans l'en-tête, même repliée. -->
+  <div class="filterbar" id="filterbar" role="toolbar" aria-label="Filtres">
+    <div class="filter-head">
+      <span class="filter-label">Filtres</span>
+      <span class="filter-summary" id="fResume"></span>
+      <button type="button" class="vbtn" id="fReset">Réinitialiser</button>
+      <button type="button" class="vbtn" id="fToggle" aria-expanded="true"><span class="chev">▾</span> <span class="lbl">Masquer</span></button>
     </div>
-  </section>
+    <div class="filter-body" id="fBody">
+      <div class="filter-group"><span class="filter-label">Historique</span><div class="seg" id="fPeriode"></div></div>
+      <div class="filter-group"><span class="filter-label">Équipes</span><span id="fEquipes" class="filter-group"></span></div>
+      <div class="filter-group"><span class="filter-label">Étapes</span><span id="fEtapes" class="filter-group"></span></div>
+    </div>
+  </div>
+
+  <div class="section-title"><h2>WIP : tickets en cours par personne</h2><span class="line"></span><span class="hint" id="gHint"></span></div>
+  <section class="gauges" id="gauges"></section>
+
+  <div class="section-title"><h2>Vélocité</h2><span class="line"></span><button type="button" class="vbtn" id="cardsReset" title="Revenir aux cartes livrées avec l'outil">Cartes par défaut</button></div>
+  <section class="cards" id="cards"></section>
 
   <details class="card">
-    <summary>D'où viennent les zones ?</summary>
+    <summary>D'où viennent les zones et les étapes ?</summary>
     <ul id="pourquoi"></ul>
   </details>
 
-  <p class="foot">Maquette : données simulées (21 versions, 4 équipes). La version finale lira le Plan de livraisons, l'Analyse de capacité et le journal du Bug Dashboard.</p>
+  <p class="foot">Maquette : données simulées (21 versions, 4 équipes). Filtres et cartes sont conservés dans ce navigateur ; la version finale les partagera entre utilisateurs comme le Bug Dashboard, et lira le Plan de livraisons, l'Analyse de capacité et l'historique des statuts Jira.</p>
 </main>
 
 <script src="../acces/config.js"></script>
@@ -232,6 +308,7 @@ details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   //   caf          CAF réelle du chargement au gel (JP) ; etp = caf ÷ 5 jours
   //   wip          tickets en cours (In Progress → QA Testing), moyenne des photos
   //   engages, gel tickets engagés au chargement, livrés au gel de code
+  //   derog        tickets livrés après le gel (dérogation)
   //   delai        jours ouvrés In Progress → Dev done (moyenne)
   // ════════════════════════════════════════════════════════════════════
   var DATA = {
@@ -358,23 +435,42 @@ details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   var MAX = 3.5;     // fond d'échelle du compteur
   var BANDE = 0.32;  // largeur du lissage, en tickets par personne
   var REGLE = { debit: 0.95, delai: 1.3, tenue: 0.05 };  // bornes de la zone verte
+  var CLE = 'analyse-velocite:v2';
   var NB = ' ';
 
   var TEAMS = DATA.teams, VERS = DATA.versions, ROWS = DATA.rows;
   var DONE = VERS.filter(function (v) { return v.etat === 'livree'; });
   var NEXT = VERS.filter(function (v) { return v.etat === 'prevision'; })[0];
   var DERNIERES = DONE.slice(-3);
+  var TOUS = TEAMS.map(function (t) { return t.id; });
+  var NOM = {}; TEAMS.forEach(function (t) { NOM[t.id] = t.nom; });
+
+  // Groupes d'états : chaque statut Jira tombe dans une étape.
+  var ETAPES = [
+    { cle: 'a', nom: 'Analyse', statuts: ['Open', 'Analysis'] },
+    { cle: 'd', nom: 'Dev', statuts: ['In Progress', 'In Progress - Completed', 'Code Review', 'Code Review - Completed'] },
+    { cle: 'q', nom: 'QA', statuts: ['Ready for Testing', 'Quality Assurance Testing', 'Quality Assurance Test Completed'] }
+  ];
+  var NOM_ETAPE = {}; ETAPES.forEach(function (e) { NOM_ETAPE[e.cle] = e.nom; });
+  // Maquette : la répartition par étape est simulée à partir du délai. La
+  // version finale la lira dans l'historique des statuts Jira de chaque ticket.
+  function jEtapes(r) {
+    var k = { T1: 1.05, T2: 0.9, T3: 1.15, T4: 1.0 }[r.eq] || 1;
+    return { a: 0.9 + 0.12 * r.delai, d: 0.52 * r.delai, q: 0.48 * r.delai * k };
+  }
 
   function $(s) { return document.querySelector(s); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function sum(a, f) { var s = 0; a.forEach(function (x) { s += typeof f === 'function' ? f(x) : x[f]; }); return s; }
-  function nf(x, d) { return x.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
-  function pc(x) { return nf(x * 100) + NB + '%'; }
+  function nf(x, d) { return x == null || !isFinite(x) ? '–' : x.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function pc(x) { return x == null || !isFinite(x) ? '–' : nf(x * 100) + NB + '%'; }
   function dans(v, liste) { return liste.some(function (x) { return x.v === v; }); }
+  function court(v) { return v.replace(/\.0$/, ''); }
 
   // ── Zone verte : où l'on livre le plus au gel sans dégrader délai ni tenue ──
   // Régression linéaire locale (noyau gaussien) du débit, de la tenue et du
-  // délai en fonction des tickets en cours par personne, sur les versions livrées.
+  // délai en fonction des tickets en cours par personne, sur tout l'historique
+  // livré : la référence ne bouge pas quand on filtre.
   var OBS = ROWS.filter(function (r) { return r.gel != null; }).map(function (r) {
     return { w: r.wip / r.etp, debit: r.gel / r.etp, tenue: r.gel / r.engages, delai: r.delai, r: r };
   });
@@ -387,20 +483,19 @@ details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var mx = sx / sw, my = sy / sw, vx = sxx / sw - mx * mx;
     return my + (vx > 1e-9 ? (sxy / sw - mx * my) / vx : 0) * (x - mx);
   }
-  var lo = Math.min.apply(null, OBS.map(function (o) { return o.w; }));
-  var hi = Math.max.apply(null, OBS.map(function (o) { return o.w; }));
-  var G = [];
-  for (var x = lo; x <= hi; x += 0.02) G.push({ x: x, debit: lisse('debit', x), tenue: lisse('tenue', x), delai: lisse('delai', x) });
-  var dMax = Math.max.apply(null, G.map(function (g) { return g.debit; }));
-  var iLo = 0;
-  while (G[iLo].debit < REGLE.debit * dMax) iLo++;
-  var iHi = iLo;
-  for (var i = iLo + 1; i < G.length; i++) {
-    if (G[i].debit < REGLE.debit * dMax || G[i].tenue < G[iLo].tenue - REGLE.tenue || G[i].delai > REGLE.delai * G[iLo].delai) break;
-    iHi = i;
-  }
-  var Z = { lo: Math.round(G[iLo].x * 10) / 10, hi: Math.round(G[iHi].x * 10) / 10, ideal: Math.round((G[iLo].x + G[iHi].x) / 2 * 10) / 10 };
-
+  var Z = (function () {
+    var lo = Math.min.apply(null, OBS.map(function (o) { return o.w; })), hi = Math.max.apply(null, OBS.map(function (o) { return o.w; }));
+    var G = [];
+    for (var x = lo; x <= hi; x += 0.02) G.push({ x: x, debit: lisse('debit', x), tenue: lisse('tenue', x), delai: lisse('delai', x) });
+    var dMax = Math.max.apply(null, G.map(function (g) { return g.debit; })), iLo = 0;
+    while (G[iLo].debit < REGLE.debit * dMax) iLo++;
+    var iHi = iLo;
+    for (var i = iLo + 1; i < G.length; i++) {
+      if (G[i].debit < REGLE.debit * dMax || G[i].tenue < G[iLo].tenue - REGLE.tenue || G[i].delai > REGLE.delai * G[iLo].delai) break;
+      iHi = i;
+    }
+    return { lo: Math.round(G[iLo].x * 10) / 10, hi: Math.round(G[iHi].x * 10) / 10, ideal: Math.round((G[iLo].x + G[iHi].x) / 2 * 10) / 10 };
+  })();
   function etat(w) {
     if (w > ROUGE) return { cls: 'bad', txt: '✕ Surcharge' };
     if (w > Z.hi) return { cls: 'warn', txt: '⚠ À surveiller' };
@@ -408,137 +503,355 @@ details ul { margin: 12px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     return { cls: 'good', txt: '✓ Dans la zone' };
   }
 
-  // ── Compteur : demi-cercle, aiguille sur la valeur ─────────────────────
+  // ════════════════════════════════════════════════════════════════════
+  // État : filtres + cartes, conservés dans ce navigateur
+  // ════════════════════════════════════════════════════════════════════
+  var MESURES = {
+    jours:  { nom: 'Jours par ticket', unite: 'j', dec: 1, additif: false, decoupes: ['', 'etape', 'equipe'] },
+    livres: { nom: 'Tickets livrés', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
+    wipp:   { nom: 'Tickets en cours par personne', unite: '/ pers.', dec: 1, additif: false, decoupes: ['', 'equipe'], zone: true },
+    wip:    { nom: 'Tickets en cours', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
+    tenue:  { nom: 'Tenue au gel', unite: '%', dec: 0, additif: false, decoupes: ['', 'equipe'], pct: true },
+    caf:    { nom: 'Capacité à faire (CAF)', unite: 'JP', dec: 0, additif: true, decoupes: ['', 'equipe'] }
+  };
+  var AXES = { version: 'Par version', equipe: 'Par équipe' };
+  var DECOUPES = { '': 'Sans découpage', etape: 'Par étape', equipe: 'Par équipe' };
+  var STYLES = { colonnes: ['▥', 'Colonnes'], barres: ['▤', 'Barres'], courbe: ['⟋', 'Courbe'], tableau: ['▦', 'Tableau'] };
+  var LARGEURS = { demi: '1 colonne', pleine: 'Pleine largeur' };
+
+  function cartesParDefaut() {
+    return [
+      { id: 'c1', titre: 'Jours par ticket, version par version', mesure: 'jours', axe: 'version', decoupe: 'etape', style: 'colonnes', largeur: 'pleine' },
+      { id: 'c2', titre: 'Jours par ticket, par équipe', mesure: 'jours', axe: 'equipe', decoupe: 'etape', style: 'barres', largeur: 'demi' },
+      { id: 'c3', titre: 'Tickets en cours par personne', mesure: 'wipp', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' },
+      { id: 'c4', titre: 'Tickets livrés par version', mesure: 'livres', axe: 'version', decoupe: 'equipe', style: 'colonnes', largeur: 'pleine' }
+    ];
+  }
+  function etatParDefaut() { return { periode: 'all', equipes: TOUS.slice(), etapes: ['a', 'd', 'q'], replie: false, cartes: cartesParDefaut() }; }
+  var S = etatParDefaut();
+  try {
+    var m = JSON.parse(localStorage.getItem(CLE) || 'null');
+    if (m && typeof m === 'object') {
+      if (['all', '12', '6'].indexOf(m.periode) !== -1) S.periode = m.periode;
+      if (Array.isArray(m.equipes)) { var eq = TOUS.filter(function (id) { return m.equipes.indexOf(id) !== -1; }); if (eq.length) S.equipes = eq; }
+      if (Array.isArray(m.etapes)) { var et = ['a', 'd', 'q'].filter(function (c) { return m.etapes.indexOf(c) !== -1; }); if (et.length) S.etapes = et; }
+      S.replie = !!m.replie;
+      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && MESURES[c.mesure] && AXES[c.axe]; });
+    }
+  } catch (e) { /* stockage indisponible : valeurs par défaut */ }
+  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* idem */ } }
+  function normaliser(c) {
+    if (MESURES[c.mesure].decoupes.indexOf(c.decoupe) === -1) c.decoupe = '';
+    if (c.axe === 'equipe' && c.decoupe === 'equipe') c.decoupe = '';
+    if (!STYLES[c.style]) c.style = 'colonnes';
+    if (!LARGEURS[c.largeur]) c.largeur = 'demi';
+    return c;
+  }
+  S.cartes.forEach(normaliser);
+
+  function versionsVues() { return S.periode === 'all' ? DONE : DONE.slice(-Number(S.periode)); }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Calcul d'une valeur : une mesure sur un ensemble de lignes
+  // (« par version » = moyenne par version pour les comptes additifs)
+  // ════════════════════════════════════════════════════════════════════
+  function valeur(mesure, rs, etapes) {
+    if (!rs.length) return null;
+    var nbV = {}; rs.forEach(function (r) { nbV[r.v] = 1; });
+    var n = Object.keys(nbV).length;
+    if (mesure === 'jours') {
+      var g = sum(rs, 'gel');
+      if (!g) return null;
+      return sum(rs, function (r) { var j = jEtapes(r); return etapes.reduce(function (a, c) { return a + j[c]; }, 0) * r.gel; }) / g;
+    }
+    if (mesure === 'livres') return sum(rs, function (r) { return r.gel + r.derog; }) / n;
+    if (mesure === 'wip') return sum(rs, 'wip') / n;
+    if (mesure === 'wipp') return sum(rs, 'wip') / sum(rs, 'etp');
+    if (mesure === 'tenue') return sum(rs, 'gel') / sum(rs, 'engages');
+    if (mesure === 'caf') return sum(rs, 'caf') / n;
+    return null;
+  }
+  // Tableau croisé d'une carte : catégories (axe) × séries (découpage).
+  function pivot(c) {
+    var vs = versionsVues(), base = ROWS.filter(function (r) { return r.gel != null && S.equipes.indexOf(r.eq) !== -1 && dans(r.v, vs); });
+    var cats = c.axe === 'version' ? vs.map(function (v) { return { cle: v.v, nom: court(v.v), filtre: function (r) { return r.v === v.v; } }; })
+      : S.equipes.map(function (id) { return { cle: id, nom: NOM[id], filtre: function (r) { return r.eq === id; } }; });
+    var series;
+    if (c.decoupe === 'etape') series = S.etapes.map(function (k) { return { cle: k, nom: NOM_ETAPE[k], cls: 'c-' + k, etapes: [k], filtre: function () { return true; } }; });
+    else if (c.decoupe === 'equipe') series = S.equipes.map(function (id) { return { cle: id, nom: NOM[id], cls: 'c-' + id, etapes: S.etapes, filtre: function (r) { return r.eq === id; } }; });
+    else series = [{ cle: '', nom: MESURES[c.mesure].nom, cls: 'c-0', etapes: S.etapes, filtre: function () { return true; } }];
+    var empile = c.decoupe === 'etape' || (c.decoupe === 'equipe' && MESURES[c.mesure].additif);
+    var lignes = cats.map(function (cat) {
+      var rs = base.filter(cat.filtre);
+      return { cat: cat, vals: series.map(function (s) { return valeur(c.mesure, rs.filter(s.filtre), s.etapes); }), total: valeur(c.mesure, rs, S.etapes) };
+    });
+    return { cats: cats, series: series, lignes: lignes, empile: empile, m: MESURES[c.mesure] };
+  }
+  function fmt(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec); }
+  function fmtU(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec) + NB + p.m.unite; }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Rendus d'une carte
+  // ════════════════════════════════════════════════════════════════════
+  function titreSeg(p, l, i) { return l.cat.nom + ' · ' + p.series[i].nom + ' : ' + fmtU(p, l.vals[i]); }
+  function maxDe(p) {
+    var m = 0;
+    p.lignes.forEach(function (l) {
+      if (p.empile) m = Math.max(m, sum(l.vals, function (v) { return v || 0; }));
+      else l.vals.forEach(function (v) { m = Math.max(m, v || 0); });
+      if (!p.empile && p.series.length > 1) m = Math.max(m, l.total || 0);
+    });
+    return m || 1;
+  }
+  function colonnes(p) {
+    var mx = maxDe(p) * 1.08, H = 176, seule = p.series.length === 1;
+    var h = '<div class="cols-wrap"><div class="cols">' + p.lignes.map(function (l) {
+      var corps;
+      if (p.empile || seule) {
+        corps = '<div class="pile">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="height:' + ((v || 0) / mx * H).toFixed(1) + 'px" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      } else {
+        corps = '<div class="grp" style="height:auto">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="height:' + ((v || 0) / mx * H).toFixed(1) + 'px" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      }
+      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : seule ? l.vals[0] : l.total;
+      return '<div class="col"><span class="col-tot">' + fmt(p, tot) + '</span>' + corps + '</div>';
+    }).join('') + '</div><div class="axis">' + p.lignes.map(function (l) { return '<span>' + esc(l.cat.nom) + '</span>'; }).join('') + '</div></div>';
+    return h;
+  }
+  function barres(p) {
+    var mx = maxDe(p), seule = p.series.length === 1;
+    return '<div class="brows">' + p.lignes.map(function (l) {
+      var corps, tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : seule ? l.vals[0] : l.total;
+      if (p.empile || seule) {
+        corps = '<div class="track">' + l.vals.map(function (v, i) {
+          var w = (v || 0) / mx * 100;
+          return '<span class="' + p.series[i].cls + '" style="width:' + w.toFixed(1) + '%" title="' + esc(titreSeg(p, l, i)) + '">' + (w > 10 && !seule ? fmt(p, v) : '') + '</span>';
+        }).join('') + '</div>';
+      } else {
+        corps = '<div class="gtrack">' + l.vals.map(function (v, i) { return '<span class="' + p.series[i].cls + '" style="width:' + ((v || 0) / mx * 100).toFixed(1) + '%" title="' + esc(titreSeg(p, l, i)) + '"></span>'; }).join('') + '</div>';
+      }
+      return '<span class="lbl">' + esc(l.cat.nom) + '</span>' + corps + '<span class="bval">' + fmtU(p, tot) + '</span>';
+    }).join('') + '</div>';
+  }
+  function courbe(p, hote, zone) {
+    var W = Math.max(280, hote.clientWidth || 600), H = 210, pl = 40, pr = 12, pt = 14, pb = 26;
+    var n = p.lignes.length, bw = (W - pl - pr) / Math.max(1, n);
+    var mx = maxDe(p) * 1.1;
+    if (zone) mx = Math.max(mx, ROUGE + 0.3);
+    function X(i) { return pl + bw * (i + 0.5); }
+    function Y(v) { return pt + (H - pt - pb) * (1 - v / mx); }
+    var s = '<svg class="viz" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(p.m.nom) + '">';
+    if (zone) s += '<rect class="zone" x="' + pl + '" y="' + Y(Z.hi).toFixed(1) + '" width="' + (W - pl - pr) + '" height="' + (Y(Z.lo) - Y(Z.hi)).toFixed(1) + '"/><text class="zone-t" x="' + (pl + 4) + '" y="' + (Y(Z.hi) - 4).toFixed(1) + '">Zone idéale ' + nf(Z.lo, 1) + ' – ' + nf(Z.hi, 1) + '</text>';
+    var pas = mx > 50 ? Math.ceil(mx / 4 / 10) * 10 : mx > 10 ? Math.ceil(mx / 4) : mx > 2 ? 1 : 0.25;
+    if (p.m.pct) pas = 0.25;
+    for (var t = 0; t <= mx + 1e-9; t += pas) s += '<line class="grid" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(t).toFixed(1) + '" y2="' + Y(t).toFixed(1) + '"/><text x="' + (pl - 6) + '" y="' + (Y(t) + 3.5).toFixed(1) + '" text-anchor="end">' + (p.m.pct ? nf(t * 100) + '%' : nf(t, pas < 1 ? 2 : 0)) + '</text>';
+    var series = p.empile && p.series.length > 1 ? p.series.map(function (sr, i) { return { sr: sr, i: i }; }) : p.series.map(function (sr, i) { return { sr: sr, i: i }; });
+    series.forEach(function (o) {
+      var pts = [];
+      p.lignes.forEach(function (l, k) { var v = l.vals[o.i]; if (v != null) pts.push([X(k), Y(v), l, v]); });
+      s += '<path class="ln ' + o.sr.cls + '" style="fill:none" d="' + pts.map(function (q, k) { return (k ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('') + '"/>';
+      pts.forEach(function (q) { s += '<circle class="pt ' + o.sr.cls + '" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="4"><title>' + esc(titreSeg(p, q[2], o.i)) + '</title></circle>'; });
+    });
+    var pasL = Math.max(1, Math.ceil(30 / bw));
+    p.lignes.forEach(function (l, k) { if (k % pasL === 0) s += '<text x="' + X(k).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(l.cat.nom) + '</text>'; });
+    return s + '</svg>';
+  }
+  function tableau(p) {
+    var multi = p.series.length > 1;
+    var h = '<div class="tbl-wrap"><table class="data"><thead><tr><th>' + (p.cats.length && p.cats[0].cle in NOM ? 'Équipe' : 'Version') + '</th>' +
+      (multi ? p.series.map(function (s) { return '<th>' + esc(s.nom) + '</th>'; }).join('') : '') + '<th>' + esc(multi ? (p.empile ? 'Total' : 'Ensemble') : p.m.nom) + '</th></tr></thead><tbody>';
+    h += p.lignes.map(function (l) {
+      var tot = p.empile ? sum(l.vals, function (v) { return v || 0; }) : multi ? l.total : l.vals[0];
+      return '<tr><td>' + esc(l.cat.nom) + '</td>' + (multi ? l.vals.map(function (v) { return '<td>' + fmt(p, v) + '</td>'; }).join('') : '') + '<td>' + fmt(p, tot) + '</td></tr>';
+    }).join('');
+    return h + '</tbody></table></div>';
+  }
+  function sousTitre(c, p) {
+    var vs = versionsVues(), per = vs.length === DONE.length ? 'tout l\'historique' : 'les ' + vs.length + ' dernières versions';
+    var txt = c.axe === 'equipe' ? 'Moyenne sur ' + per + '.' : 'Versions ' + court(vs[0].v) + ' à ' + court(vs[vs.length - 1].v) + '.';
+    if (c.mesure === 'jours') txt += ' De l\'entrée en ' + NOM_ETAPE[S.etapes[0]] + ' à la fin de ' + NOM_ETAPE[S.etapes[S.etapes.length - 1]] + '.';
+    if (p.series.length > 1 && !p.empile) txt += ' Séries côte à côte : elles ne s\'additionnent pas.';
+    return txt;
+  }
+
+  var ICONES_HAUT = '↑', ICONES_BAS = '↓';
+  function rendreCartes() {
+    var hote = $('#cards');
+    var h = S.cartes.map(function (c, i) {
+      var m = MESURES[c.mesure];
+      var opt = function (obj, cur, permis) { return Object.keys(obj).filter(function (k) { return !permis || permis.indexOf(k) !== -1; }).map(function (k) { return '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + esc(Array.isArray(obj[k]) ? obj[k][1] : (obj[k].nom || obj[k])) + '</option>'; }).join(''); };
+      var decPermis = m.decoupes.filter(function (d) { return !(c.axe === 'equipe' && d === 'equipe'); });
+      return '<article class="card' + (c.largeur === 'pleine' ? ' w-full' : '') + '" data-id="' + esc(c.id) + '">' +
+        '<div class="c-head"><div class="c-ident"><input class="c-title" value="' + esc(c.titre) + '" aria-label="Titre de la carte" data-f="titre">' +
+        '<button type="button" class="icon-btn" data-act="haut" title="Monter la carte"' + (i === 0 ? ' disabled' : '') + '>' + ICONES_HAUT + '</button>' +
+        '<button type="button" class="icon-btn" data-act="bas" title="Descendre la carte"' + (i === S.cartes.length - 1 ? ' disabled' : '') + '>' + ICONES_BAS + '</button>' +
+        '<button type="button" class="icon-btn" data-act="suppr" title="Supprimer la carte">🗑</button></div>' +
+        '<div class="c-tools">' +
+        '<label>Mesure <select class="sel" data-f="mesure">' + opt(MESURES, c.mesure) + '</select></label>' +
+        '<label>Axe <select class="sel" data-f="axe">' + opt(AXES, c.axe) + '</select></label>' +
+        '<label>Découpage <select class="sel" data-f="decoupe">' + opt(DECOUPES, c.decoupe, decPermis) + '</select></label>' +
+        '<label>Largeur <select class="sel" data-f="largeur">' + opt(LARGEURS, c.largeur) + '</select></label>' +
+        '<span class="style-seg">' + Object.keys(STYLES).map(function (k) { return '<button type="button" data-style="' + k + '" aria-pressed="' + (c.style === k) + '" title="' + STYLES[k][1] + '">' + STYLES[k][0] + '</button>'; }).join('') + '</span>' +
+        '</div></div><p class="c-sub"></p><div class="c-body"></div><div class="legend"></div></article>';
+    }).join('');
+    hote.innerHTML = h + '<button type="button" class="card-add" id="cardAdd"><span class="plus">+</span>Ajouter une carte</button>';
+    S.cartes.forEach(function (c) { dessinerCarte(c); });
+  }
+  function dessinerCarte(c) {
+    var el = document.querySelector('#cards .card[data-id="' + c.id + '"]');
+    if (!el) return;
+    var p = pivot(c), corps = el.querySelector('.c-body');
+    el.querySelector('.c-sub').textContent = sousTitre(c, p);
+    if (!p.lignes.length) { corps.innerHTML = '<div class="empty">Aucune donnée pour ces filtres.</div>'; return; }
+    corps.innerHTML = c.style === 'barres' ? barres(p) : c.style === 'tableau' ? tableau(p) : c.style === 'courbe' ? '' : colonnes(p);
+    if (c.style === 'courbe') corps.innerHTML = courbe(p, corps, !!p.m.zone && p.series.length === 1);
+    el.querySelector('.legend').innerHTML = p.series.length > 1 ? p.series.map(function (s) { return '<span><i class="' + s.cls + '"></i>' + esc(s.nom) + '</span>'; }).join('') : '';
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Compteurs de WIP
+  // ════════════════════════════════════════════════════════════════════
   function compteur(w, titre) {
-    var cx = 160, cy = 160, r = 128, ep = 24;
+    var cx = 160, cy = 160, r = 128, ep = 26;
     function pt(v, rr) { var a = Math.PI * (1 - Math.min(v, MAX) / MAX); return [cx + rr * Math.cos(a), cy - rr * Math.sin(a)]; }
     function arc(a, b, cls) {
       var p = pt(a, r), q = pt(b, r);
       return '<path class="g-arc ' + cls + '" stroke-width="' + ep + '" d="M' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' A' + r + ',' + r + ' 0 0 1 ' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + '"/>';
     }
-    var g = 0.03; // petit écart entre deux zones
+    var g = 0.03;
     var s = '<svg viewBox="0 0 320 172" role="img" aria-label="' + esc(titre + ' : ' + nf(w, 1) + ' ticket en cours par personne, ' + etat(w).txt.slice(2)) + '">';
     s += arc(0, Z.lo - g, 'g-warn') + arc(Z.lo + g, Z.hi - g, 'g-good') + arc(Z.hi + g, ROUGE - g, 'g-warn') + arc(ROUGE + g, MAX, 'g-bad');
-    [0, 1, 2, 3].forEach(function (t) { var p = pt(t, r - 30); s += '<text class="g-tick" x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="middle">' + t + '</text>'; });
+    [0, 1, 2, 3].forEach(function (t) { var p = pt(t, r - 32); s += '<text class="g-tick" x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="middle">' + t + '</text>'; });
     var n = pt(w, r - 8);
-    s += '<line class="g-needle" x1="' + cx + '" y1="' + cy + '" x2="' + n[0].toFixed(1) + '" y2="' + n[1].toFixed(1) + '"/><circle class="g-hub" cx="' + cx + '" cy="' + cy + '" r="10"/></svg>';
+    s += '<line class="g-needle" x1="' + cx + '" y1="' + cy + '" x2="' + n[0].toFixed(1) + '" y2="' + n[1].toFixed(1) + '"/><circle class="g-hub" cx="' + cx + '" cy="' + cy + '" r="11"/></svg>';
     return s + '<div class="g-val"><b>' + nf(w, 1) + '</b><small>ticket en cours par personne</small></div>';
   }
-
-  // ── Situation actuelle (3 dernières versions) et limite de la prochaine ──
   function actuel(ids) {
     var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && dans(r.v, DERNIERES); });
     return { wip: sum(rs, 'wip') / DERNIERES.length, w: sum(rs, 'wip') / sum(rs, 'etp') };
   }
-  function prochaine(ids) {
-    var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v; });
-    return { etp: sum(rs, 'etp'), limite: sum(rs, function (r) { return Math.max(1, Math.round(Z.ideal * r.etp)); }) };
+  function limite(ids) { return sum(ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v; }), function (r) { return Math.max(1, Math.round(Z.ideal * r.etp)); }); }
+  function rendreCompteurs() {
+    var ids = S.equipes, now = actuel(ids), e = etat(now.w), tousLa = ids.length === TOUS.length;
+    $('#gHint').textContent = 'Versions ' + court(DERNIERES[0].v) + ' à ' + court(DERNIERES[2].v) + ' · limites pour la ' + NEXT.v;
+    var h = '<article class="card g-main"><div class="gauge">' + compteur(now.w, tousLa ? 'Dispositif entier' : 'Équipes sélectionnées') + '</div><div class="lecture">' +
+      '<span class="k">' + (tousLa ? 'Dispositif entier' : ids.map(function (id) { return NOM[id]; }).join(' + ')) + '</span>' +
+      '<span><span class="pill ' + e.cls + '">' + e.txt + '</span></span>' +
+      '<p class="big"><b>' + nf(now.wip) + ' tickets</b> en cours, soit <b>' + nf(now.w, 1) + ' par personne</b> (bon niveau : ' + nf(Z.ideal, 1) + ').</p>' +
+      '<p class="cible">' + esc(NEXT.v) + ' : ' + nf(limite(ids)) + ' tickets en cours au maximum.</p>' +
+      '<div class="zones"><span><i style="background:var(--v-good)"></i>' + nf(Z.lo, 1) + '–' + nf(Z.hi, 1) + '</span><span><i style="background:var(--v-warn)"></i>à surveiller</span><span><i style="background:var(--v-critical)"></i>&gt; ' + nf(ROUGE, 1) + '</span></div></div></article>';
+    h += ids.map(function (id) {
+      var a = actuel([id]), et = etat(a.w);
+      return '<article class="card team"><h3>' + esc(NOM[id]) + '</h3><div class="gauge">' + compteur(a.w, NOM[id]) + '</div><span class="pill ' + et.cls + '">' + et.txt + '</span>' +
+        '<p class="lim">' + nf(a.wip) + ' en cours · limite <b>' + nf(limite([id])) + '</b></p></article>';
+    }).join('');
+    var g = $('#gauges');
+    // Le compteur global prend deux colonnes, chaque équipe une.
+    g.style.gridTemplateColumns = window.matchMedia('(max-width: 1100px)').matches ? '' : 'repeat(' + (ids.length + 2) + ', minmax(0, 1fr))';
+    g.innerHTML = h;
   }
 
-  var tous = TEAMS.map(function (t) { return t.id; });
-  var now = actuel(tous), nx = prochaine(tous), e = etat(now.w);
-  $('#gMain').innerHTML = compteur(now.w, 'Toutes les équipes');
-  $('#lecture').innerHTML =
-    '<div><span class="k">Toutes les équipes · versions ' + DERNIERES[0].v.replace(/\.0$/, '') + ' à ' + DERNIERES[2].v.replace(/\.0$/, '') + '</span></div>' +
-    '<div><span class="pill ' + e.cls + '">' + e.txt + '</span></div>' +
-    '<p class="big">Aujourd\'hui, <b>' + nf(now.wip) + ' tickets</b> sont en cours en même temps, soit <b>' + nf(now.w, 1) + ' par personne</b>. Le bon niveau est autour de <b>' + nf(Z.ideal, 1) + '</b>.</p>' +
-    '<p class="cible">Pour la ' + esc(NEXT.v) + ' : ' + nf(nx.limite) + ' tickets en cours au maximum.</p>' +
-    '<div class="zones">' +
-    '<span><i style="background:var(--v-good)"></i>Vert, de ' + nf(Z.lo, 1) + ' à ' + nf(Z.hi, 1) + ' : zone idéale</span>' +
-    '<span><i style="background:var(--v-warn)"></i>Jaune : à surveiller (ou capacité inemployée sous ' + nf(Z.lo, 1) + ')</span>' +
-    '<span><i style="background:var(--v-critical)"></i>Rouge, au-delà de ' + nf(ROUGE, 1) + ' : surcharge</span></div>';
-
-  $('#equipes').innerHTML = TEAMS.map(function (t) {
-    var a = actuel([t.id]), p = prochaine([t.id]), et = etat(a.w);
-    return '<article class="card team"><h3>' + esc(t.nom) + '</h3><div class="gauge">' + compteur(a.w, t.nom) + '</div>' +
-      '<span class="pill ' + et.cls + '">' + et.txt + '</span>' +
-      '<p class="lim">' + nf(a.wip) + ' tickets en cours aujourd\'hui<br>Limite ' + esc(NEXT.v) + ' : <b>' + nf(p.limite) + '</b></p></article>';
-  }).join('');
-
-  // ── Vélocité : jours par ticket, par étape ─────────────────────────────
-  // Groupes d'états (modifiables) : chaque statut Jira tombe dans une étape.
-  var ETAPES = [
-    { cle: 'a', nom: 'Analyse', statuts: ['Open', 'Analysis'] },
-    { cle: 'd', nom: 'Dev', statuts: ['In Progress', 'In Progress - Completed', 'Code Review', 'Code Review - Completed'] },
-    { cle: 'q', nom: 'QA', statuts: ['Ready for Testing', 'Quality Assurance Testing', 'Quality Assurance Test Completed'] }
-  ];
-  // Maquette : la répartition par étape est simulée à partir du délai. La
-  // version finale la lira dans l'historique des statuts Jira de chaque ticket.
-  function etapes(r) {
-    var k = { T1: 1.05, T2: 0.9, T3: 1.15, T4: 1.0 }[r.eq] || 1;
-    return { a: 0.9 + 0.12 * r.delai, d: 0.52 * r.delai, q: 0.48 * r.delai * k };
+  // ════════════════════════════════════════════════════════════════════
+  // Filtres
+  // ════════════════════════════════════════════════════════════════════
+  function rendreFiltres() {
+    $('#fPeriode').innerHTML = [['all', 'Tout (' + DONE.length + ')'], ['12', '12 dernières'], ['6', '6 dernières']].map(function (o) {
+      return '<button type="button" data-val="' + o[0] + '" aria-pressed="' + (S.periode === o[0]) + '">' + o[1] + '</button>';
+    }).join('');
+    $('#fEquipes').innerHTML = TEAMS.map(function (t) {
+      return '<button type="button" class="fchip" data-eq="' + t.id + '" aria-pressed="' + (S.equipes.indexOf(t.id) !== -1) + '"><span class="dot c-' + t.id + '"></span>' + esc(t.nom) + '</button>';
+    }).join('');
+    $('#fEtapes').innerHTML = ETAPES.map(function (e) {
+      return '<button type="button" class="fchip" data-et="' + e.cle + '" aria-pressed="' + (S.etapes.indexOf(e.cle) !== -1) + '" title="' + esc(e.statuts.join(', ')) + '"><span class="dot c-' + e.cle + '"></span>' + esc(e.nom) + '</button>';
+    }).join('');
+    var parts = [], filtre = false;
+    var vs = versionsVues();
+    parts.push(vs.length + ' versions');
+    parts.push(S.equipes.length === TOUS.length ? '4 équipes' : S.equipes.map(function (id) { return NOM[id]; }).join(', '));
+    if (S.etapes.length < 3) parts.push('étapes : ' + S.etapes.map(function (k) { return NOM_ETAPE[k]; }).join(' + '));
+    filtre = S.periode !== 'all' || S.equipes.length < TOUS.length || S.etapes.length < 3;
+    var r = $('#fResume');
+    r.textContent = parts.join(' · ');
+    r.className = 'filter-summary' + (filtre ? ' is-filtered' : '');
+    $('#fReset').hidden = !filtre;
+    $('#fBody').hidden = S.replie;
+    var tg = $('#fToggle');
+    tg.classList.toggle('is-collapsed', S.replie);
+    tg.setAttribute('aria-expanded', String(!S.replie));
+    tg.querySelector('.lbl').textContent = S.replie ? 'Afficher' : 'Masquer';
   }
-  function jours(ids, liste) {
-    var rs = ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && dans(r.v, liste); }), g = sum(rs, 'gel'), o = { a: 0, d: 0, q: 0 };
-    rs.forEach(function (r) { var e = etapes(r); ['a', 'd', 'q'].forEach(function (c) { o[c] += e[c] * r.gel / g; }); });
-    o.tot = o.a + o.d + o.q;
-    return o;
-  }
-  var AVANT = DONE.slice(-6, -3);
-  var lignesV = TEAMS.map(function (t) { return { nom: t.nom, ids: [t.id] }; }).concat([{ nom: 'Dispositif', ids: tous, tous: true }]);
-  var maxTot = Math.max.apply(null, lignesV.map(function (l) { return jours(l.ids, DERNIERES).tot; }));
-  $('#velo').innerHTML = lignesV.map(function (l) {
-    var j = jours(l.ids, DERNIERES), av = jours(l.ids, AVANT), d = j.tot - av.tot;
-    var bar = ETAPES.map(function (e) {
-      var v = j[e.cle], w = v / maxTot * 100;
-      return '<span class="st-' + e.cle + '" style="width:' + w.toFixed(1) + '%" title="' + esc(e.nom + ' : ' + nf(v, 1) + ' j') + '">' + (w > 9 ? nf(v, 1) : '') + '</span>';
-    }).join('');
-    return '<span class="nom' + (l.tous ? ' tous' : '') + '">' + esc(l.nom) + '</span><div class="vbar">' + bar + '</div>' +
-      '<span class="vtot"><b>' + nf(j.tot, 1) + NB + 'j</b> <span class="' + (d > 0.05 ? 'up' : d < -0.05 ? 'down' : '') + '">' + (d >= 0 ? '+' : '−') + nf(Math.abs(d), 1) + '</span></span>';
-  }).join('');
-  var jt = jours(tous, DERNIERES), pire = ETAPES.slice().sort(function (a, b) { return jt[b.cle] - jt[a.cle]; })[0];
-  $('#veloPer').textContent = 'Versions ' + DERNIERES[0].v.replace(/\.0$/, '') + ' à ' + DERNIERES[2].v.replace(/\.0$/, '') + ' · écart avec les 3 précédentes';
-  $('#veloTxt').innerHTML = 'Un ticket met en moyenne <b>' + nf(jt.tot, 1) + ' jours ouvrés</b> de l\'analyse à la fin de la QA. L\'étape la plus longue est <b>' + pire.nom + '</b> (' + nf(jt[pire.cle], 1) + NB + 'j, ' + pc(jt[pire.cle] / jt.tot) + ' du temps).';
-  $('#veloLeg').innerHTML = ETAPES.map(function (e) { return '<span><i class="st-' + e.cle + '"></i>' + esc(e.nom) + ' <small>' + esc(e.statuts.join(' · ')) + '</small></span>'; }).join('');
 
-  // Vélocité version par version : dispositif entier ou une équipe (sélecteur)
-  var choixVV = 'tous';
-  try { choixVV = localStorage.getItem('analyse-velocite:vv') || 'tous'; } catch (e) { /* stockage indisponible */ }
-  function rendreVV() {
-    var ids = choixVV === 'tous' ? tous : [choixVV];
-    if (choixVV !== 'tous' && !TEAMS.some(function (t) { return t.id === choixVV; })) { choixVV = 'tous'; ids = tous; }
-    var nom = choixVV === 'tous' ? 'Dispositif entier' : TEAMS.filter(function (t) { return t.id === choixVV; })[0].nom;
-    $('#vvSel').innerHTML = [['tous', 'Dispositif entier']].concat(TEAMS.map(function (t) { return [t.id, t.nom]; })).map(function (o) {
-      return '<button type="button" data-val="' + o[0] + '" aria-pressed="' + (o[0] === choixVV) + '">' + esc(o[1]) + '</button>';
-    }).join('');
-    var parV = DONE.map(function (v) {
-      var rs = ROWS.filter(function (r) { return r.v === v.v && ids.indexOf(r.eq) !== -1; });
-      return { v: v, j: jours(ids, [v]), livres: sum(rs, function (r) { return r.gel + r.derog; }), recent: dans(v.v, DERNIERES) };
-    });
-    // Même échelle pour toutes les vues : on compare une équipe au dispositif d'un coup d'œil.
-    var vMax = Math.max.apply(null, [tous].concat(TEAMS.map(function (t) { return [t.id]; })).map(function (l) {
-      return Math.max.apply(null, DONE.map(function (v) { return jours(l, [v]).tot; }));
-    })) * 1.08;
-    var vMin = parV.reduce(function (a, b) { return b.j.tot < a.j.tot ? b : a; }), vPire = parV.reduce(function (a, b) { return b.j.tot > a.j.tot ? b : a; });
-    $('#vvTitre').textContent = nom + ', version par version';
-    $('#vvSub').textContent = 'Jours par ticket (analyse à fin de QA) et tickets livrés à chaque version. Plus rapide : ' + vMin.v.v + ' (' + nf(vMin.j.tot, 1) + ' j) ; plus lente : ' + vPire.v.v + ' (' + nf(vPire.j.tot, 1) + ' j).';
-    $('#vv').setAttribute('aria-label', nom + ' : jours par ticket par version, de ' + nf(vMin.j.tot, 1) + ' à ' + nf(vPire.j.tot, 1) + ' jours');
-    $('#vv').innerHTML = parV.map(function (x) {
-      var titre = x.v.v + ' : ' + nf(x.j.tot, 1) + ' j par ticket (' + ETAPES.map(function (e) { return e.nom + ' ' + nf(x.j[e.cle], 1); }).join(', ') + ') · ' + x.livres + ' tickets livrés';
-      return '<div class="vv-col" title="' + esc(titre) + '"><span class="vv-tot">' + nf(x.j.tot, 1) + '</span><div class="vv-pile">' +
-        ETAPES.map(function (e) { return '<span class="st-' + e.cle + '" style="height:' + (x.j[e.cle] / vMax * 180).toFixed(1) + 'px"></span>'; }).join('') + '</div></div>';
-    }).join('');
-    $('#vvAx').innerHTML = parV.map(function (x) {
-      return '<span' + (x.recent ? ' class="rec"' : '') + '><b>' + x.v.v.replace(/\.0$/, '') + '</b>' + x.livres + ' tk</span>';
-    }).join('');
+  function rendrePourquoi() {
+    function bilan(l) { var g = sum(l, function (o) { return o.r.gel; }); return { tenue: g / sum(l, function (o) { return o.r.engages; }), delai: sum(l, function (o) { return o.r.delai * o.r.gel; }) / g, n: l.length }; }
+    function ligne(nom, b) { return '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours de développement par ticket (' + b.n + ' cas).</li>'; }
+    $('#pourquoi').innerHTML =
+      ligne('Dans le vert', bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }))) +
+      ligne('Dans le jaune', bilan(OBS.filter(function (o) { return o.w > Z.hi && o.w <= ROUGE; }))) +
+      ligne('Dans le rouge', bilan(OBS.filter(function (o) { return o.w > ROUGE; }))) +
+      '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, toutes équipes, et ne changent pas avec les filtres. La limite d\'une version = ' + nf(Z.ideal, 1) + ' × personnes présentes prévues dans l\'Analyse de capacité.</li>' +
+      ETAPES.map(function (e) { return '<li><b>' + e.nom + '</b> regroupe les statuts Jira : ' + esc(e.statuts.join(', ')) + '.</li>'; }).join('');
   }
-  $('#vvSel').addEventListener('click', function (e) {
+
+  function tout() { rendreFiltres(); rendreCompteurs(); rendreCartes(); }
+
+  // ── Interactions ──────────────────────────────────────────────────────
+  $('#filterbar').addEventListener('click', function (e) {
     var b = e.target.closest('button');
     if (!b) return;
-    choixVV = b.getAttribute('data-val');
-    try { localStorage.setItem('analyse-velocite:vv', choixVV); } catch (er) { /* idem */ }
-    rendreVV();
+    if (b.id === 'fToggle') { S.replie = !S.replie; sauver(); rendreFiltres(); return; }
+    if (b.id === 'fReset') { S.periode = 'all'; S.equipes = TOUS.slice(); S.etapes = ['a', 'd', 'q']; }
+    else if (b.closest('#fPeriode')) S.periode = b.getAttribute('data-val');
+    else if (b.hasAttribute('data-eq')) {
+      var id = b.getAttribute('data-eq'), i = S.equipes.indexOf(id);
+      if (i !== -1 && S.equipes.length === 1) return;
+      if (i !== -1) S.equipes.splice(i, 1); else S.equipes = TOUS.filter(function (x) { return x === id || S.equipes.indexOf(x) !== -1; });
+    } else if (b.hasAttribute('data-et')) {
+      var k = b.getAttribute('data-et'), j = S.etapes.indexOf(k);
+      if (j !== -1 && S.etapes.length === 1) return;
+      if (j !== -1) S.etapes.splice(j, 1); else S.etapes = ['a', 'd', 'q'].filter(function (x) { return x === k || S.etapes.indexOf(x) !== -1; });
+    } else return;
+    sauver(); tout();
   });
-  rendreVV();
+  var cartesHote = $('#cards');
+  function carteDe(el) { var a = el.closest('.card[data-id]'); return a ? S.cartes.filter(function (c) { return c.id === a.getAttribute('data-id'); })[0] : null; }
+  cartesHote.addEventListener('change', function (e) {
+    var f = e.target.getAttribute('data-f'), c = carteDe(e.target);
+    if (!f || !c) return;
+    c[f] = e.target.value;
+    if (f === 'titre') { sauver(); return; }
+    normaliser(c); sauver(); rendreCartes();
+  });
+  cartesHote.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'cardAdd') {
+      S.cartes.push({ id: 'c' + Date.now().toString(36), titre: 'Nouvelle carte', mesure: 'jours', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' });
+      sauver(); rendreCartes();
+      var ins = cartesHote.querySelectorAll('.c-title'); ins[ins.length - 1].focus(); ins[ins.length - 1].select();
+      return;
+    }
+    var c = carteDe(b);
+    if (!c) return;
+    var i = S.cartes.indexOf(c);
+    if (b.hasAttribute('data-style')) c.style = b.getAttribute('data-style');
+    else if (b.getAttribute('data-act') === 'suppr') S.cartes.splice(i, 1);
+    else if (b.getAttribute('data-act') === 'haut' && i > 0) { S.cartes.splice(i, 1); S.cartes.splice(i - 1, 0, c); }
+    else if (b.getAttribute('data-act') === 'bas' && i < S.cartes.length - 1) { S.cartes.splice(i, 1); S.cartes.splice(i + 1, 0, c); }
+    else return;
+    sauver(); rendreCartes();
+  });
+  $('#cardsReset').addEventListener('click', function () { S.cartes = cartesParDefaut(); sauver(); rendreCartes(); });
+  // Les courbes se dessinent à la largeur réelle de leur carte.
+  var largeur = 0;
+  function redimension() {
+    var w = $('.av').clientWidth;
+    if (w === largeur) return;
+    largeur = w;
+    S.cartes.forEach(function (c) { if (c.style === 'courbe') dessinerCarte(c); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(redimension).observe($('.av')); else window.addEventListener('resize', redimension);
 
-  // ── D'où viennent les zones : trois chiffres tirés de l'historique ────
-  function bilan(l) { var g = sum(l, function (o) { return o.r.gel; }); return { tenue: g / sum(l, function (o) { return o.r.engages; }), delai: sum(l, function (o) { return o.r.delai * o.r.gel; }) / g, n: l.length }; }
-  var vert = bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }));
-  var jaune = bilan(OBS.filter(function (o) { return o.w > Z.hi && o.w <= ROUGE; }));
-  var rouge = bilan(OBS.filter(function (o) { return o.w > ROUGE; }));
-  function ligne(nom, b) { return '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours pour traiter un ticket (' + b.n + ' cas).</li>'; }
-  $('#pourquoi').innerHTML = ligne('Dans le vert', vert) + ligne('Dans le jaune', jaune) + ligne('Dans le rouge', rouge) +
-    '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, équipe par équipe. La limite d\'une version = ' + nf(Z.ideal, 1) + ' × personnes présentes prévues dans l\'Analyse de capacité : elle baisse d\'elle-même en période de congés.</li>';
+  rendrePourquoi();
+  tout();
 })();
 </script>
 <script>
