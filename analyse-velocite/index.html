@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<!-- Les autres outils du toolkit sont en thème clair : data-theme="light" fige ce thème.
+     Retirer l'attribut laisse la page suivre le thème du système (jetons sombres prêts). -->
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyse de vélocité — Agile Toolkit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Thème partagé de la plateforme (entête commune). Les styles ci-dessous, déclarés après, restent prioritaires. -->
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   Analyse de vélocité — maquette
+   Mise en page : une colonne de 1240 px au plus, sur le fond quadrillé du
+   toolkit. L'ordre de lecture suit l'ordre de décision : synthèse, preuves
+   (versions × capacité, courbe du WIP), action (simulateur), détail
+   (matrice, méthode).
+   Couleurs : jetons --v-* ; les statuts (bon / alerte / sérieux / critique)
+   sont réservés aux jugements, les séries prennent le bleu du Bug Dashboard.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --v-page: #F4F5F7;
+  --v-surface: #FFFFFF;
+  --v-surface-2: #F6F7F9;
+  --v-ink: #0C1A2E;
+  --v-ink-2: #3D4B60;
+  --v-ink-3: #6B7A90;
+  --v-line: #E8EAED;
+  --v-line-2: #CDD3DC;
+  --v-grid: #EEF0F3;
+  --v-texture: rgba(12, 26, 46, .03);
+  --v-accent: #0C447C;
+  --v-accent-wash: #EAF1F8;
+  --v-hover: rgba(12, 26, 46, .05);
+  --v-hero: #0C1A2E;
+  --v-on-hero: #FFFFFF;
+  --v-on-hero-2: rgba(255, 255, 255, .68);
+  --v-series: #2a78d6;
+  --v-series-soft: #9ec5f4;
+  --v-series-wash: rgba(42, 120, 214, .14);
+  --v-fit: #3D4B60;
+  --v-band: rgba(12, 26, 46, .08);
+  --v-ghost: #9AA4B3;
+  --v-good: #0ca30c;
+  --v-warn: #fab219;
+  --v-serious: #ec835a;
+  --v-critical: #d03b3b;
+  --v-good-ink: #006300;
+  --v-warn-ink: #8A5A00;
+  --v-bad-ink: #B42E2E;
+  --v-good-wash: rgba(12, 163, 12, .12);
+  --v-warn-wash: rgba(250, 178, 25, .20);
+  --v-bad-wash: rgba(208, 59, 59, .13);
+  --v-zone: rgba(12, 163, 12, .09);
+  --v-tip-bg: #0C1A2E;
+  --v-tip-ink: #FFFFFF;
+  --v-shadow: 0 1px 3px rgba(12, 26, 46, .05);
+  /* Rampes de la matrice : divergente autour de la zone idéale (bleu = sous,
+     gris = dans la zone, rouge = au-dessus), séquentielles bleue et orange. */
+  --v-db3: #256abf; --v-db2: #6da7ec; --v-db1: #cde2fb; --v-d0: #f0efec;
+  --v-dr1: #f9cfc8; --v-dr2: #e8776b; --v-dr3: #b03030;
+  --v-s1: #e8f1fc; --v-s2: #b7d3f6; --v-s3: #6da7ec; --v-s4: #2a78d6; --v-s5: #184f95;
+  --v-o1: #fdeee6; --v-o2: #f9c9b0; --v-o3: #f29a6e; --v-o4: #eb6834; --v-o5: #b2461b;
+  --v-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --v-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --v-radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+    --v-line: #223047; --v-line-2: #33445C; --v-grid: #1C2738; --v-texture: rgba(255, 255, 255, .025);
+    --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14); --v-hover: rgba(255, 255, 255, .06);
+    --v-hero: #17294A; --v-on-hero: #FFFFFF; --v-on-hero-2: rgba(255, 255, 255, .72);
+    --v-series: #3987e5; --v-series-soft: #2B5C99; --v-series-wash: rgba(57, 135, 229, .20); --v-fit: #D3DCE8; --v-band: rgba(255, 255, 255, .10); --v-ghost: #66758C;
+    --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
+    --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .14);
+    --v-tip-bg: #EEF2F7; --v-tip-ink: #0C1A2E; --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    --v-db3: #5598e7; --v-db2: #2f68ad; --v-db1: #1d3a5f; --v-d0: #383835; --v-dr1: #5c2523; --v-dr2: #a63a33; --v-dr3: #e66767;
+    --v-s1: #172538; --v-s2: #1d3d66; --v-s3: #2a5f9e; --v-s4: #3987e5; --v-s5: #86b6ef;
+    --v-o1: #2a1c15; --v-o2: #563019; --v-o3: #8f4421; --v-o4: #d95926; --v-o5: #f29a6e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
+  --v-line: #223047; --v-line-2: #33445C; --v-grid: #1C2738; --v-texture: rgba(255, 255, 255, .025);
+  --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14); --v-hover: rgba(255, 255, 255, .06);
+  --v-hero: #17294A; --v-on-hero: #FFFFFF; --v-on-hero-2: rgba(255, 255, 255, .72);
+  --v-series: #3987e5; --v-series-soft: #2B5C99; --v-series-wash: rgba(57, 135, 229, .20); --v-fit: #D3DCE8; --v-band: rgba(255, 255, 255, .10); --v-ghost: #66758C;
+  --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
+  --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .14);
+  --v-tip-bg: #EEF2F7; --v-tip-ink: #0C1A2E; --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  --v-db3: #5598e7; --v-db2: #2f68ad; --v-db1: #1d3a5f; --v-d0: #383835; --v-dr1: #5c2523; --v-dr2: #a63a33; --v-dr3: #e66767;
+  --v-s1: #172538; --v-s2: #1d3d66; --v-s3: #2a5f9e; --v-s4: #3987e5; --v-s5: #86b6ef;
+  --v-o1: #2a1c15; --v-o2: #563019; --v-o3: #8f4421; --v-o4: #d95926; --v-o5: #f29a6e;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--v-page); color: var(--v-ink); font-family: var(--v-font); font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(var(--v-texture) 1px, transparent 1px), linear-gradient(90deg, var(--v-texture) 1px, transparent 1px); background-size: 40px 40px; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.av { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 40px); padding-block: 28px 56px; }
+.tk-topbar__actions .tk-btn { padding: 8px 14px; }
+
+/* ── En-tête ─────────────────────────────────────────────────────── */
+.hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 32px; padding-bottom: 20px; margin-bottom: 18px; border-bottom: 2px solid var(--v-ink); }
+.hero-txt { min-width: 0; flex: 1 1 520px; }
+.eyebrow { font-family: var(--v-mono); font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--v-accent); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.eyebrow::before { content: ''; width: 18px; height: 2px; background: currentColor; }
+.hero h1 { margin: 0; font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -.03em; line-height: 1.1; color: var(--v-ink); text-wrap: balance; }
+.lede { margin: 10px 0 0; max-width: 68ch; color: var(--v-ink-3); font-size: 14px; }
+.demo-note { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: var(--v-warn-ink); background: var(--v-warn-wash); padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.demo-note .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--v-warn); }
+
+/* ── Sources ─────────────────────────────────────────────────────── */
+.sources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.src { display: flex; align-items: center; gap: 12px; background: var(--v-surface); border: 1px solid var(--v-line); border-radius: 10px; padding: 10px 14px; min-width: 0; }
+.src-ic { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--v-surface-2); border: 1px solid var(--v-line); font-size: 17px; flex: none; }
+.src-txt { min-width: 0; flex: 1; }
+.src-name { font-weight: 700; font-size: 12.5px; color: var(--v-ink); }
+.src-meta { font-family: var(--v-mono); font-size: 10.5px; color: var(--v-ink-3); line-height: 1.4; }
+.src-ok { font-size: 11px; font-weight: 700; color: var(--v-good-ink); white-space: nowrap; flex: none; }
+
+/* ── Barre de filtres ────────────────────────────────────────────── */
+.filterbar { position: sticky; top: var(--tk-stick, 56px); z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 10px 0; margin-bottom: 6px; background: var(--v-page); background: color-mix(in srgb, var(--v-page) 94%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-bottom: 1px solid var(--v-line); }
+.fgroup { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.flabel { font-family: var(--v-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--v-ink-3); }
+.fsummary { margin-left: auto; font-size: 12px; color: var(--v-ink-3); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--v-line-2); border-radius: 8px; overflow: hidden; background: var(--v-surface); }
+.seg button { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: transparent; border: 0; border-right: 1px solid var(--v-line); padding: 7px 12px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--v-hover); color: var(--v-ink); }
+.seg button[aria-pressed="true"] { background: var(--v-ink); color: var(--v-surface); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; font-weight: 700; line-height: 1; color: var(--v-ink-3); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 999px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--v-line-2); }
+.chip[aria-pressed="true"] { color: var(--v-ink); border-color: var(--v-ink); background: var(--v-accent-wash); }
+.chip[aria-pressed="true"]::before { background: var(--v-ink); border-color: var(--v-ink); }
+
+/* ── Sections & cartes ───────────────────────────────────────────── */
+.block { margin-top: 28px; }
+.section-title { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; }
+.section-title h2 { margin: 0; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--v-ink-3); }
+.section-title .line { flex: 1 1 40px; height: 1px; background: var(--v-line); }
+.section-title .hint { font-size: 11.5px; color: var(--v-ink-3); }
+.card { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-radius); padding: 18px 20px; box-shadow: var(--v-shadow); min-width: 0; }
+.card + .card { margin-top: 14px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 20px; flex-wrap: wrap; margin-bottom: 14px; }
+.card-head > div:first-child { min-width: 0; flex: 1 1 320px; }
+.card h3 { margin: 0; font-size: 15px; font-weight: 800; color: var(--v-ink); letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card .sub { margin: 4px 0 0; font-size: 12.5px; color: var(--v-ink-3); max-width: 86ch; }
+.vbtn { font-size: 12px; font-weight: 700; color: var(--v-ink); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 8px; padding: 8px 12px; cursor: pointer; line-height: 1.1; }
+.vbtn:hover { border-color: var(--v-ink); }
+.vbtn--pri { background: var(--v-ink); border-color: var(--v-ink); color: var(--v-surface); }
+.vbtn--pri:hover { background: var(--v-accent); border-color: var(--v-accent); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; line-height: 1.2; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--v-good-wash); color: var(--v-good-ink); }
+.pill.warn { background: var(--v-warn-wash); color: var(--v-warn-ink); }
+.pill.bad { background: var(--v-bad-wash); color: var(--v-bad-ink); }
+.pill.info { background: var(--v-accent-wash); color: var(--v-accent); }
+.pill.mute { background: var(--v-surface-2); color: var(--v-ink-3); border: 1px solid var(--v-line); }
+.empty { padding: 36px 16px; text-align: center; color: var(--v-ink-3); font-size: 13px; }
+.note-warn { margin-bottom: 12px; padding: 9px 12px; border-radius: 8px; background: var(--v-warn-wash); color: var(--v-warn-ink); font-size: 12.5px; font-weight: 600; }
+
+/* ── Bandeau exécutif ────────────────────────────────────────────── */
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.kpi { position: relative; overflow: hidden; background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-radius); padding: 14px 16px 12px 19px; box-shadow: var(--v-shadow); min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--v-line-2); }
+.kpi.tone-good::before { background: var(--v-good); }
+.kpi.tone-warn::before { background: var(--v-warn); }
+.kpi.tone-serious::before { background: var(--v-serious); }
+.kpi.tone-critical::before { background: var(--v-critical); }
+.kpi-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); }
+.kpi-val { font-size: 26px; font-weight: 800; line-height: 1; color: var(--v-ink); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.kpi-val small { font-size: 12.5px; font-weight: 700; color: var(--v-ink-3); }
+.delta { font-size: 11.5px; font-weight: 800; margin-left: auto; white-space: nowrap; }
+.delta.up { color: var(--v-good-ink); } .delta.down { color: var(--v-bad-ink); } .delta.flat { color: var(--v-ink-3); }
+.kpi .spark { width: 100%; height: 28px; display: block; margin-top: auto; padding-top: 4px; }
+.spark .sp-l { fill: none; stroke: var(--v-ghost); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark .sp-d { fill: var(--v-ink); stroke: var(--v-surface); stroke-width: 2; }
+.kpi-sub { font-size: 11.5px; color: var(--v-ink-3); line-height: 1.35; }
+.kpi.kpi-hero { grid-column: span 2; background: var(--v-hero); border-color: var(--v-hero); color: var(--v-on-hero); padding: 16px 20px; gap: 8px; }
+.kpi.kpi-hero::before { display: none; }
+.kpi.kpi-hero .kpi-lbl { color: var(--v-on-hero-2); font-family: var(--v-mono); font-weight: 500; letter-spacing: .2em; }
+.hero-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hero-val { font-size: 58px; font-weight: 800; line-height: .9; letter-spacing: -.04em; }
+.hero-unit { font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--v-on-hero-2); padding-bottom: 4px; }
+.hero-foot { font-size: 12px; line-height: 1.45; color: var(--v-on-hero-2); }
+.hero-foot b { color: var(--v-on-hero); }
+
+/* Jauge : zone idéale, cible et valeur actuelle sur une même échelle */
+.gauge { position: relative; padding: 15px 0 15px; margin: 2px 4px 0; }
+.g-track { position: relative; height: 8px; border-radius: 4px; background: var(--v-line); }
+.g-zone { position: absolute; top: -3px; bottom: -3px; border-radius: 4px; background: var(--v-good-wash); box-shadow: inset 0 0 0 1px var(--v-good); }
+.g-mk { position: absolute; top: -5px; width: 3px; height: 18px; margin-left: -1.5px; border-radius: 2px; }
+.g-ideal { background: var(--v-good); }
+.g-now { background: var(--v-serious); }
+.g-l { position: absolute; transform: translateX(-50%); font-family: var(--v-mono); font-size: 10px; white-space: nowrap; color: var(--v-ink-2); }
+.g-l.top { top: 0; } .g-l.bot { bottom: 0; }
+.g-l.edge-l { transform: none; } .g-l.edge-r { transform: translateX(-100%); }
+.kpi.kpi-hero .g-track { background: rgba(255, 255, 255, .16); }
+.kpi.kpi-hero .g-zone { background: rgba(12, 163, 12, .40); box-shadow: inset 0 0 0 1px rgba(120, 220, 120, .7); }
+.kpi.kpi-hero .g-ideal { background: #FFFFFF; }
+.kpi.kpi-hero .g-l { color: var(--v-on-hero-2); }
+
+/* ── Verdict ─────────────────────────────────────────────────────── */
+.verdict { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 22px; margin-top: 14px; }
+.v-k { font-family: var(--v-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--v-ink-3); margin-bottom: 10px; }
+.findings { display: grid; gap: 12px; }
+.finding { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.finding .ic { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+.finding .ic.bad { background: var(--v-bad-wash); color: var(--v-bad-ink); }
+.finding .ic.good { background: var(--v-good-wash); color: var(--v-good-ink); }
+.finding .ic.info { background: var(--v-accent-wash); color: var(--v-accent); font-family: var(--v-mono); font-size: 10px; }
+.finding p { margin: 3px 0 0; font-size: 13px; color: var(--v-ink-2); }
+.finding b { color: var(--v-ink); }
+.reco { background: var(--v-accent-wash); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.reco p { margin: 0; font-size: 13px; color: var(--v-ink-2); }
+.reco b { color: var(--v-ink); }
+.limits { display: flex; flex-wrap: wrap; gap: 6px; }
+.limit { font-family: var(--v-mono); font-size: 11.5px; color: var(--v-ink); background: var(--v-surface); border: 1px solid var(--v-line-2); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.reco-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+
+/* ── Graphiques ──────────────────────────────────────────────────── */
+.chart { position: relative; width: 100%; min-height: 60px; }
+.chart svg { display: block; overflow: visible; }
+.viz text { font-family: var(--v-mono); font-size: 10px; fill: var(--v-ink-3); }
+.viz .ptitle { font-family: var(--v-font); font-size: 12px; font-weight: 800; fill: var(--v-ink); }
+.viz .punit { font-family: var(--v-mono); font-size: 10px; font-weight: 400; fill: var(--v-ink-3); }
+.viz .grid { stroke: var(--v-grid); stroke-width: 1; }
+.viz .base { stroke: var(--v-line-2); stroke-width: 1; }
+.viz .xl.strong { fill: var(--v-ink); font-weight: 500; }
+.viz .lbl { fill: var(--v-ink-2); font-weight: 500; }
+.viz .note { fill: var(--v-ink-3); font-family: var(--v-font); font-weight: 700; font-size: 10.5px; }
+.viz .region { fill: var(--v-surface-2); }
+.viz .selband { fill: var(--v-accent-wash); }
+.viz .hoverband { fill: var(--v-hover); pointer-events: none; }
+.viz .m-series { fill: var(--v-series); }
+.viz .m-soft { fill: var(--v-series-soft); }
+.viz .m-good { fill: var(--v-good); }
+.viz .m-warn { fill: var(--v-warn); }
+.viz .m-crit { fill: var(--v-critical); }
+.viz .m-hollow { fill: none; stroke: var(--v-ink-3); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.viz .m-diamond { fill: var(--v-series); stroke: var(--v-surface); stroke-width: 2; }
+.viz .ln { fill: none; stroke: var(--v-series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz .ln-reco { fill: none; stroke: var(--v-series); stroke-width: 2; stroke-dasharray: 5 4; }
+.viz .ln-sq { fill: none; stroke: var(--v-ghost); stroke-width: 2; stroke-dasharray: 5 4; }
+.viz .dot { fill: var(--v-series); stroke: var(--v-surface); stroke-width: 2; }
+.viz .dot-reco { fill: var(--v-surface); stroke: var(--v-series); stroke-width: 2; }
+.viz .dot-sq { fill: var(--v-surface); stroke: var(--v-ghost); stroke-width: 2; }
+.viz .zone { fill: var(--v-zone); }
+.viz .zone-lbl { fill: var(--v-good-ink); font-family: var(--v-font); font-weight: 700; font-size: 10.5px; }
+.viz .ref-good { stroke: var(--v-good); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.viz .ref-plan { stroke: var(--v-ink-3); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.viz .ref-lbl { fill: var(--v-ink-2); font-size: 10px; }
+.viz .chip-good { fill: var(--v-good-wash); }
+.viz .chip-warn { fill: var(--v-warn-wash); }
+.viz .chip-bad { fill: var(--v-bad-wash); }
+.viz .chip-mute { fill: var(--v-surface-2); stroke: var(--v-line); }
+.viz .chip-t { fill: var(--v-ink); font-size: 9.5px; font-weight: 500; }
+.viz .hit { fill: transparent; cursor: pointer; }
+.viz .hit:focus { outline: none; }
+.viz .hit:focus-visible { stroke: var(--v-accent); stroke-width: 2; }
+.viz .band { fill: var(--v-band); }
+.viz .fit { fill: none; stroke: var(--v-fit); stroke-width: 2; stroke-linejoin: round; }
+.viz .pt { fill: var(--v-series); stroke: var(--v-surface); stroke-width: 2; opacity: .85; transition: opacity .15s ease; }
+.viz .pt.dim { opacity: .13; }
+.viz .pt.on { opacity: 1; }
+.viz .traj { fill: none; stroke: var(--v-series); stroke-width: 1.5; opacity: 0; transition: opacity .15s ease; pointer-events: none; }
+.viz .traj.on { opacity: .55; }
+.viz .whit { fill: transparent; }
+.viz .l-ideal { stroke: var(--v-good); stroke-width: 2; }
+.viz .l-now { stroke: var(--v-serious); stroke-width: 2; }
+.viz .tag-ideal { fill: var(--v-good); }
+.viz .tag-now { fill: var(--v-serious); }
+.viz .tag-t { fill: #FFFFFF; font-family: var(--v-font); font-size: 10.5px; font-weight: 800; }
+.viz .tag-t.dark { fill: #0C1A2E; }
+.viz .dens { fill: var(--v-series-wash); }
+.viz .dens-l { fill: none; stroke: var(--v-series); stroke-width: 2; stroke-linejoin: round; }
+.viz .dens-q { fill: none; stroke: var(--v-ghost); stroke-width: 2; stroke-linejoin: round; }
+.viz .mk-vise { stroke: var(--v-ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.viz .mk-p85 { stroke: var(--v-series); stroke-width: 1.5; }
+.viz .mk-lbl { fill: var(--v-ink); font-family: var(--v-font); font-size: 11px; font-weight: 700; }
+.viz .xhair { stroke: var(--v-ink-3); stroke-width: 1; pointer-events: none; }
+.viz .hhit { fill: transparent; cursor: crosshair; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 12px; font-size: 11.5px; color: var(--v-ink-2); }
+.lgrp { display: inline-flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.lgrp .gname { font-family: var(--v-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--v-ink-3); }
+.lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.sw.series { background: var(--v-series); } .sw.soft { background: var(--v-series-soft); }
+.sw.good { background: var(--v-good); } .sw.warn { background: var(--v-warn); } .sw.crit { background: var(--v-critical); }
+.sw.hollow { background: transparent; border: 1.5px dashed var(--v-ink-3); }
+.sw.diamond { width: 8px; height: 8px; background: var(--v-series); transform: rotate(45deg); }
+.sw.zone { background: var(--v-zone); box-shadow: inset 0 0 0 1px var(--v-good); }
+.sw.band { background: var(--v-band); }
+.sw.wgood { background: var(--v-good-wash); } .sw.wwarn { background: var(--v-warn-wash); } .sw.wbad { background: var(--v-bad-wash); }
+.sw.line { width: 16px; height: 2px; border-radius: 1px; background: var(--v-series); }
+.sw.line.fit { background: var(--v-fit); } .sw.line.ideal { background: var(--v-good); } .sw.line.now { background: var(--v-serious); } .sw.line.sq { background: var(--v-ghost); }
+.sw.area { width: 14px; height: 10px; border-radius: 0; background: var(--v-series-wash); border-top: 2px solid var(--v-series); }
+.sw.dash { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed var(--v-series); }
+.sw.dash.sq { border-top-color: var(--v-ghost); } .sw.dash.good { border-top-color: var(--v-good); } .sw.dash.plan { border-top: 2px dotted var(--v-ink-3); } .sw.dash.ink { border-top-color: var(--v-ink); }
+.sw.ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--v-series); background: var(--v-surface); }
+.sw.ring.sq { border-color: var(--v-ghost); }
+.sw.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--v-series); }
+
+/* ── Détail d'une version ────────────────────────────────────────── */
+.d-nav { display: flex; gap: 6px; }
+.d-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--v-line); border: 1px solid var(--v-line); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.d-stat { background: var(--v-surface); padding: 10px 12px; min-width: 0; }
+.d-stat .k { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); }
+.d-stat .v { font-size: 19px; font-weight: 800; color: var(--v-ink); margin-top: 3px; line-height: 1.1; }
+.d-stat .v small { font-size: 11.5px; font-weight: 700; color: var(--v-ink-3); }
+.d-stat .s { font-size: 11px; color: var(--v-ink-3); margin-top: 2px; }
+.reading { margin: 12px 0 0; font-size: 12.5px; color: var(--v-ink-2); }
+
+/* ── Tableaux ────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data caption { text-align: left; font-size: 11.5px; color: var(--v-ink-3); padding-bottom: 8px; }
+.data th { font-family: var(--v-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--v-ink-3); text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--v-line); white-space: nowrap; font-weight: 500; }
+.data th:first-child, .data td:first-child { text-align: left; }
+.data td { padding: 7px 10px; border-bottom: 1px solid var(--v-line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--v-ink-2); }
+.data td:first-child { font-weight: 700; color: var(--v-ink); }
+.data tr:last-child td { border-bottom: 0; }
+.data tr.tot td { font-weight: 800; color: var(--v-ink); border-top: 1px solid var(--v-line-2); }
+.data .t-good { color: var(--v-good-ink); font-weight: 700; } .data .t-warn { color: var(--v-warn-ink); font-weight: 700; } .data .t-bad { color: var(--v-bad-ink); font-weight: 700; }
+
+/* ── Recommandations par équipe ──────────────────────────────────── */
+.teams { --n: 4; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.tcard { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; box-shadow: var(--v-shadow); transition: border-color .15s ease; }
+.tcard:hover, .tcard:focus-within, .tcard:focus { border-color: var(--v-ink-3); outline: none; }
+.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tc-head h4 { margin: 0; font-size: 14px; font-weight: 800; color: var(--v-ink); }
+.tc-meta { font-size: 11.5px; color: var(--v-ink-3); }
+.tc-nums { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: end; }
+.tc-nums .k { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); }
+.tc-nums .v { display: block; font-size: 24px; font-weight: 800; line-height: 1.1; color: var(--v-ink); }
+.tc-nums .s { display: block; font-size: 11px; color: var(--v-ink-3); }
+.tc-nums .arrow { color: var(--v-ink-3); font-size: 18px; padding-bottom: 14px; }
+.tc-eff { margin: 0; font-size: 12px; color: var(--v-ink-2); }
+
+/* ── Simulateur ──────────────────────────────────────────────────── */
+.sim { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.45fr); gap: 26px; }
+.sim-ctrl { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sim-res { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.slider { position: relative; height: 30px; margin: 0 2px; }
+.slider-zone { position: absolute; top: 9px; height: 12px; border-radius: 4px; background: var(--v-good-wash); box-shadow: inset 0 0 0 1px var(--v-good); }
+.slider input[type=range] { position: relative; width: 100%; height: 30px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.slider input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--v-line-2); }
+.slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8px; border-radius: 50%; background: var(--v-ink); border: 3px solid var(--v-surface); box-shadow: 0 0 0 1px var(--v-ink-3); }
+.slider input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--v-line-2); }
+.slider input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--v-ink); border: 3px solid var(--v-surface); box-shadow: 0 0 0 1px var(--v-ink-3); }
+.slider input[type=range]:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 4px; border-radius: 6px; }
+.slider-scale { position: relative; height: 16px; margin: 0 2px; font-family: var(--v-mono); font-size: 10px; color: var(--v-ink-3); }
+.slider-scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.slider-scale .s-ideal { color: var(--v-good-ink); font-weight: 500; }
+.slider-scale .s-now { color: var(--v-bad-ink); font-weight: 500; }
+.slider-val { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.slider-val output { font-size: 13px; color: var(--v-ink-2); }
+.slider-val output b { font-size: 20px; color: var(--v-ink); }
+.res { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.rt { border: 1px solid var(--v-line); border-radius: 10px; padding: 10px 12px; background: var(--v-surface-2); min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rt-l { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); }
+.rt-v { font-size: 22px; font-weight: 800; color: var(--v-ink); line-height: 1.1; display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+.rt-v small { font-size: 11.5px; color: var(--v-ink-3); font-weight: 700; }
+.rt-s { font-size: 11.5px; color: var(--v-ink-3); }
+.sim-msg { margin: 0; font-size: 13px; color: var(--v-ink-2); background: var(--v-surface-2); border-radius: 10px; padding: 12px 14px; }
+.sim-msg b { color: var(--v-ink); }
+
+/* ── Matrice ─────────────────────────────────────────────────────── */
+table.matrix { border-collapse: separate; border-spacing: 2px; font-family: var(--v-mono); font-size: 11px; }
+.matrix th { font-weight: 500; color: var(--v-ink-3); padding: 4px 6px; white-space: nowrap; }
+.matrix th.row { position: sticky; left: 0; z-index: 1; background: var(--v-surface); text-align: left; font-family: var(--v-font); font-size: 12px; font-weight: 800; color: var(--v-ink); padding-right: 14px; }
+.matrix td { min-width: 42px; height: 32px; padding: 0 4px; text-align: center; border-radius: 4px; font-weight: 500; cursor: default; font-variant-numeric: tabular-nums; }
+.matrix td:hover { outline: 2px solid var(--v-ink); outline-offset: -2px; }
+.matrix tr.total th.row { color: var(--v-ink-3); }
+.matrix tr.total td { box-shadow: inset 0 2px 0 var(--v-surface); }
+.matrix td.na { background: var(--v-surface-2); color: var(--v-ink-3); }
+.scale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; font-size: 11.5px; color: var(--v-ink-2); }
+.scale .cells { display: inline-flex; gap: 2px; }
+.scale .cells span { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 20px; padding: 0 4px; border-radius: 3px; font-family: var(--v-mono); font-size: 9.5px; }
+
+/* ── Méthode ─────────────────────────────────────────────────────── */
+details.method summary { cursor: pointer; font-weight: 800; font-size: 14px; color: var(--v-ink); list-style: none; display: flex; align-items: center; gap: 10px; }
+details.method summary::-webkit-details-marker { display: none; }
+details.method summary::before { content: '▸'; color: var(--v-ink-3); transition: transform .15s ease; display: inline-block; }
+details.method[open] summary::before { transform: rotate(90deg); }
+.method-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; margin-top: 14px; }
+.method-body dl { margin: 0; }
+.method-body dt { font-weight: 800; font-size: 12.5px; color: var(--v-ink); margin-top: 10px; }
+.method-body dd { margin: 2px 0 0; font-size: 12.5px; color: var(--v-ink-2); }
+.method-body code { font-family: var(--v-mono); font-size: 11.5px; background: var(--v-surface-2); padding: 1px 5px; border-radius: 4px; }
+
+.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--v-line); display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; font-size: 11.5px; color: var(--v-ink-3); }
+.foot .mono { font-family: var(--v-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+
+/* ── Infobulle & message ─────────────────────────────────────────── */
+.tip { position: fixed; z-index: 200; pointer-events: none; min-width: 190px; max-width: min(320px, calc(100vw - 16px)); background: var(--v-tip-bg); color: var(--v-tip-ink); border-radius: 10px; padding: 10px 12px; box-shadow: 0 10px 30px rgba(12, 26, 46, .28); font-size: 12px; line-height: 1.35; }
+.tip-t { font-weight: 800; font-size: 12.5px; }
+.tip-s { font-size: 11px; opacity: .72; margin-top: 2px; }
+.tip-rows { margin-top: 8px; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; }
+.tip-k { width: 12px; height: 2px; border-radius: 1px; }
+.tip-k.k-series { background: var(--v-series); } .tip-k.k-good { background: var(--v-good); } .tip-k.k-warn { background: var(--v-warn); } .tip-k.k-crit { background: var(--v-critical); } .tip-k.k-ghost { background: var(--v-ghost); }
+.tip-l { opacity: .78; }
+.tip-v { font-family: var(--v-mono); font-weight: 500; text-align: right; white-space: nowrap; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 210; width: max-content; max-width: min(520px, calc(100vw - 32px)); background: var(--v-tip-bg); color: var(--v-tip-ink); padding: 12px 16px; border-radius: 10px; font-size: 12.5px; box-shadow: 0 10px 30px rgba(12, 26, 46, .3); }
+
+/* ── Points de rupture : 640 / 1024 (assets/theme.css) ──────────── */
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .teams[data-n="4"] { --n: 2; }
+  .res { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 960px) {
+  .sources { grid-template-columns: minmax(0, 1fr); }
+  .verdict, .sim { grid-template-columns: minmax(0, 1fr); }
+  .method-body { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .filterbar { position: static; }
+  .fsummary { margin-left: 0; width: 100%; }
+  .tk-topbar__actions { display: none; }
+  .teams { --n: 1 !important; }
+}
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: minmax(0, 1fr); }
+  .kpi.kpi-hero { grid-column: auto; }
+  .hero-val { font-size: 48px; }
+  .d-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card { padding: 16px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Analyse de vélocité</span>
+  <span class="tk-topbar__version">MAQUETTE</span>
+  <div class="tk-topbar__actions">
+    <button type="button" class="tk-btn tk-btn--on-dark" id="btnRapport">Rapport direction</button>
+  </div>
+</header>
+
+<main class="av">
+
+  <section class="hero">
+    <div class="hero-txt">
+      <div class="eyebrow">Stabilisation × capacité à faire</div>
+      <h1>Analyse de vélocité</h1>
+      <p class="lede">Ce que vos équipes livrent à chaque version de stabilisation, rapporté à leur capacité à faire. L'outil en tire la vélocité réelle et le WIP idéal, c'est-à-dire le nombre de tickets à mener de front pour livrer le plus, au plus vite.</p>
+    </div>
+    <span class="demo-note"><span class="dot" aria-hidden="true"></span>Maquette · données simulées</span>
+  </section>
+
+  <section class="sources" id="sources" aria-label="Sources de données"></section>
+
+  <div class="filterbar" id="filterbar" role="toolbar" aria-label="Filtres de l'analyse">
+    <div class="fgroup"><span class="flabel" id="lblPeriode">Historique</span><div class="seg" id="fPeriode" role="group" aria-labelledby="lblPeriode"></div></div>
+    <div class="fgroup"><span class="flabel" id="lblEquipes">Équipes</span><div class="chips" id="fEquipes" role="group" aria-labelledby="lblEquipes"></div></div>
+    <div class="fgroup"><span class="flabel" id="lblUnite">Unité livrée</span><div class="seg" id="fUnite" role="group" aria-labelledby="lblUnite"></div></div>
+    <span class="fsummary" id="fResume"></span>
+  </div>
+
+  <section class="block" aria-labelledby="hSynthese">
+    <div class="section-title"><h2 id="hSynthese">Synthèse</h2><span class="line"></span><span class="hint" id="synthHint"></span></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="card verdict" id="verdict"></div>
+  </section>
+
+  <section class="block" aria-labelledby="hVersions">
+    <div class="section-title"><h2 id="hVersions">Versions de stabilisation × capacité</h2><span class="line"></span></div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Le train des versions</h3>
+          <p class="sub">Une colonne par version. De haut en bas : la capacité disponible, le résultat au gel de code, les tickets menés de front par personne et l'effort nécessaire pour livrer un ticket. Survolez une colonne pour ses chiffres, cliquez-la pour l'ouvrir.</p>
+        </div>
+        <div class="seg" id="vueTrain" role="group" aria-label="Affichage du train des versions"></div>
+      </div>
+      <div class="chart" id="trainChart"></div>
+      <div class="table-wrap" id="trainTable" hidden></div>
+      <div class="legend" id="trainLegend"></div>
+    </div>
+    <div class="card" id="versionDetail"></div>
+  </section>
+
+  <section class="block" aria-labelledby="hWip">
+    <div class="section-title"><h2 id="hWip">WIP idéal</h2><span class="line"></span></div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>La courbe du WIP</h3>
+          <p class="sub">Chaque point est une équipe sur une version livrée. Plus une équipe mène de tickets de front par personne présente, plus son délai s'allonge ; au-delà de la zone verte, son débit baisse et elle tient de moins en moins son engagement. Survolez un point pour suivre la trajectoire de son équipe.</p>
+        </div>
+        <div class="seg" id="vueWip" role="group" aria-label="Affichage de la courbe du WIP"></div>
+      </div>
+      <div class="note-warn" id="wipAvert" hidden></div>
+      <div class="chart" id="wipChart"></div>
+      <div class="table-wrap" id="wipTable" hidden></div>
+      <div class="legend" id="wipLegend"></div>
+    </div>
+    <div class="teams" id="equipes"></div>
+  </section>
+
+  <section class="block" aria-labelledby="hSim">
+    <div class="section-title"><h2 id="hSim">Simulateur</h2><span class="line"></span><span class="hint">Une version à venir, un nombre de tickets à mener de front : ce que la capacité prévue permet de livrer au gel.</span></div>
+    <div class="card sim" id="sim">
+      <div class="sim-ctrl">
+        <div class="field"><span class="flabel" id="lblSimV">Version</span><div class="seg" id="simVersion" role="group" aria-labelledby="lblSimV"></div></div>
+        <div class="field">
+          <label class="flabel" for="simW">Tickets en cours par personne présente</label>
+          <div class="slider"><div class="slider-zone" id="simZone"></div><input type="range" id="simW" min="0.6" max="3.4" step="0.1" value="1.4"></div>
+          <div class="slider-scale" id="simScale" aria-hidden="true"></div>
+          <div class="slider-val"><output id="simWOut" for="simW"></output><button type="button" class="vbtn" id="simIdeal">Revenir au WIP idéal</button></div>
+        </div>
+        <div class="table-wrap"><table class="data" id="simTable"></table></div>
+      </div>
+      <div class="sim-res">
+        <div class="res" id="simTiles"></div>
+        <div class="chart" id="simChart"></div>
+        <div class="legend" id="simLegend"></div>
+        <p class="sim-msg" id="simMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="hMatrice">
+    <div class="section-title"><h2 id="hMatrice">Équipes × versions</h2><span class="line"></span></div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>La matrice des équipes</h3>
+          <p class="sub" id="matSub"></p>
+        </div>
+        <div class="seg" id="matMesure" role="group" aria-label="Mesure affichée dans la matrice"></div>
+      </div>
+      <div class="table-wrap"><table class="matrix" id="matrix"></table></div>
+      <div class="scale" id="matScale"></div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="hMethode">
+    <div class="section-title"><h2 id="hMethode">Méthode</h2><span class="line"></span></div>
+    <details class="card method">
+      <summary>Sources, définitions et calculs</summary>
+      <div class="method-body">
+        <dl>
+          <dt>Sources</dt>
+          <dd>Le <b>Plan de livraisons</b> donne les versions et leurs jalons (chargement, gel de code, Go / No-go, déploiement). L'<b>Analyse de capacité</b> donne la CAF réelle de chaque personne, jour par jour. Le <b>journal du Bug Dashboard</b> donne, photo après photo, le statut, l'équipe et la Target date de chaque ticket.</dd>
+          <dt>Fenêtre d'une version</dt>
+          <dd>Du chargement au gel de code, soit 5 jours ouvrés. La <b>CAF réelle</b> est la somme de la capacité sur cette fenêtre, après affectation, tâches de lead, cérémonies, bogues et sprint planning. <b>ETP présents</b> = CAF réelle ÷ 5.</dd>
+          <dt>WIP</dt>
+          <dd>Tickets dont le statut va de « In Progress » à « Quality Assurance Testing », en moyenne sur les photos de la fenêtre. <b>Tickets en cours par personne</b> = WIP ÷ ETP présents : c'est la mesure qui permet de comparer une équipe de 4 et une équipe de 9, ou une semaine d'août et une semaine de septembre.</dd>
+          <dt>Résultat d'une version</dt>
+          <dd><b>Engagés</b> : tickets rattachés à la version au chargement (Target date). <b>Livrés au gel</b> : terminés avant le gel de code. <b>Dérogation</b> : terminés après le gel et acceptés au Go / No-go. <b>Reportés</b> : le reste. <b>Tenue au gel</b> = livrés au gel ÷ engagés.</dd>
+          <dt>Vélocité observée</dt>
+          <dd>CAF réelle ÷ (livrés au gel + dérogations), en JP par ticket ou par story point. C'est l'unité du paramètre « Vélocité (JP par SP) » de l'Analyse de capacité, que l'outil peut ainsi recalibrer.</dd>
+        </dl>
+        <dl>
+          <dt>Courbes lissées</dt>
+          <dd>Régression linéaire locale à noyau gaussien (largeur 0,32 ticket par personne), avec un intervalle de confiance à 80 % sur la courbe. Seules les versions livrées comptent ; la version en cours n'entre pas dans le calcul.</dd>
+          <dt>Zone idéale</dt>
+          <dd>Elle commence au plus petit WIP par personne qui atteint 95 % du débit maximal observé. Elle s'arrête dès que le débit repasse sous ce seuil, que le délai dépasse de 30 % celui du début de zone, ou que la tenue perd 5 points. Le <b>WIP idéal</b> est le centre de la zone.</dd>
+          <dt>Limite de WIP d'une version</dt>
+          <dd>WIP idéal × ETP prévus de chaque équipe dans l'Analyse de capacité, arrondi au ticket. Une semaine de congés ou un jour férié fait donc baisser la limite d'elle-même.</dd>
+          <dt>Prévision</dt>
+          <dd>4 000 tirages Monte-Carlo du débit au gel, avec un aléa commun à la version et un aléa par équipe, estimés sur les écarts observés autour de la courbe. « 85 % de chances » = le nombre atteint ou dépassé dans 85 tirages sur 100.</dd>
+          <dt>Loi de Little</dt>
+          <dd>Délai ≈ WIP ÷ débit. Mener plus de tickets de front sans plus de capacité allonge le délai sans augmenter le débit : c'est ce que montre la courbe du WIP.</dd>
+        </dl>
+      </div>
+    </details>
+  </section>
+
+  <footer class="foot">
+    <span>Maquette de présentation : toutes les données sont simulées (21 versions, 4 équipes). La version finale lira le Plan de livraisons, l'Analyse de capacité et le journal du Bug Dashboard.</span>
+    <span class="mono">Agile&nbsp;Toolkit · Analyse de vélocité</span>
+  </footer>
+
+</main>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
+<script src="../assets/nav.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ════════════════════════════════════════════════════════════════════
+  // Données de démonstration (simulées)
+  // 21 versions du train hebdomadaire (3.1.0 → 3.21.0) × 4 équipes. Dans la
+  // version finale, chaque ligne se construit depuis le Plan de livraisons
+  // (versions, jalons), l'Analyse de capacité (CAF) et le journal du Bug
+  // Dashboard (WIP, engagés, livrés au gel, délais).
+  //   caf / cafTheo        CAF réelle / théorique, du chargement au gel (JP)
+  //   etp                  ETP présents = caf ÷ 5 jours ouvrés
+  //   wip                  tickets en cours (In Progress → QA Testing), moyenne des photos
+  //   engages              tickets rattachés à la version au chargement
+  //   gel, derog, reportes livrés au gel, livrés en dérogation, reportés
+  //   delai                jours ouvrés In Progress → Dev done (moyenne)
+  //   regressions          régressions trouvées en test IAT
+  //   spGel, spDerog, spReportes  mêmes comptes en story points
+  //   vise                 périmètre déjà visé (Target date) d'une version à venir
+  // ════════════════════════════════════════════════════════════════════
+  var DATA = {
+    "genere": "2026-10-09",
+    "teams": [
+      {"id":"T1","nom":"TEAM 1","personnes":8,"canada":true},
+      {"id":"T2","nom":"TEAM 2","personnes":7,"canada":false},
+      {"id":"T3","nom":"TEAM 3","personnes":9,"canada":false},
+      {"id":"T4","nom":"TEAM 4","personnes":6,"canada":true}
+    ],
+    "versions": [
+      {"v":"3.1.0","n":1,"debut":"2026-06-08","gel":"2026-06-12","gonogo":"2026-06-15","deploiement":"2026-06-16","etat":"livree"},
+      {"v":"3.2.0","n":2,"debut":"2026-06-15","gel":"2026-06-19","gonogo":"2026-06-22","deploiement":"2026-06-23","etat":"livree"},
+      {"v":"3.3.0","n":3,"debut":"2026-06-22","gel":"2026-06-26","gonogo":"2026-06-29","deploiement":"2026-06-30","etat":"livree"},
+      {"v":"3.4.0","n":4,"debut":"2026-06-29","gel":"2026-07-03","gonogo":"2026-07-06","deploiement":"2026-07-07","etat":"livree"},
+      {"v":"3.5.0","n":5,"debut":"2026-07-06","gel":"2026-07-10","gonogo":"2026-07-13","deploiement":"2026-07-14","etat":"livree"},
+      {"v":"3.6.0","n":6,"debut":"2026-07-13","gel":"2026-07-17","gonogo":"2026-07-20","deploiement":"2026-07-21","etat":"livree"},
+      {"v":"3.7.0","n":7,"debut":"2026-07-20","gel":"2026-07-24","gonogo":"2026-07-27","deploiement":"2026-07-28","etat":"livree"},
+      {"v":"3.8.0","n":8,"debut":"2026-07-27","gel":"2026-07-31","gonogo":"2026-08-03","deploiement":"2026-08-04","etat":"livree"},
+      {"v":"3.9.0","n":9,"debut":"2026-08-03","gel":"2026-08-07","gonogo":"2026-08-10","deploiement":"2026-08-11","etat":"livree"},
+      {"v":"3.10.0","n":10,"debut":"2026-08-10","gel":"2026-08-14","gonogo":"2026-08-17","deploiement":"2026-08-18","etat":"livree"},
+      {"v":"3.11.0","n":11,"debut":"2026-08-17","gel":"2026-08-21","gonogo":"2026-08-24","deploiement":"2026-08-25","etat":"livree"},
+      {"v":"3.12.0","n":12,"debut":"2026-08-24","gel":"2026-08-28","gonogo":"2026-08-31","deploiement":"2026-09-01","etat":"livree"},
+      {"v":"3.13.0","n":13,"debut":"2026-08-31","gel":"2026-09-04","gonogo":"2026-09-07","deploiement":"2026-09-08","etat":"livree"},
+      {"v":"3.14.0","n":14,"debut":"2026-09-07","gel":"2026-09-11","gonogo":"2026-09-14","deploiement":"2026-09-15","etat":"livree"},
+      {"v":"3.15.0","n":15,"debut":"2026-09-14","gel":"2026-09-18","gonogo":"2026-09-21","deploiement":"2026-09-22","etat":"livree"},
+      {"v":"3.16.0","n":16,"debut":"2026-09-21","gel":"2026-09-25","gonogo":"2026-09-28","deploiement":"2026-09-29","etat":"livree"},
+      {"v":"3.17.0","n":17,"debut":"2026-09-28","gel":"2026-10-02","gonogo":"2026-10-05","deploiement":"2026-10-06","etat":"livree","iatEnCours":true},
+      {"v":"3.18.0","n":18,"debut":"2026-10-05","gel":"2026-10-09","gonogo":"2026-10-12","deploiement":"2026-10-13","etat":"en-cours"},
+      {"v":"3.19.0","n":19,"debut":"2026-10-12","gel":"2026-10-16","gonogo":"2026-10-19","deploiement":"2026-10-20","etat":"prevision"},
+      {"v":"3.20.0","n":20,"debut":"2026-10-19","gel":"2026-10-23","gonogo":"2026-10-26","deploiement":"2026-10-27","etat":"prevision"},
+      {"v":"3.21.0","n":21,"debut":"2026-10-26","gel":"2026-10-30","gonogo":"2026-11-02","deploiement":"2026-11-03","etat":"prevision"}
+    ],
+    "rows": [
+      {"v":"3.1.0","n":1,"eq":"T1","caf":26.5,"cafTheo":38,"etp":5.3,"wip":3.6,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2,"regressions":0,"spGel":11,"spDerog":0,"spReportes":0},
+      {"v":"3.1.0","n":1,"eq":"T2","caf":26.5,"cafTheo":33.5,"etp":5.3,"wip":3.4,"engages":8,"gel":7,"derog":0,"reportes":1,"delai":2.4,"regressions":0,"spGel":8,"spDerog":0,"spReportes":1},
+      {"v":"3.1.0","n":1,"eq":"T3","caf":31.5,"cafTheo":43,"etp":6.3,"wip":3.9,"engages":9,"gel":9,"derog":0,"reportes":0,"delai":2.3,"regressions":0,"spGel":13,"spDerog":0,"spReportes":0},
+      {"v":"3.1.0","n":1,"eq":"T4","caf":20.5,"cafTheo":28.5,"etp":4.1,"wip":2.9,"engages":6,"gel":5,"derog":0,"reportes":1,"delai":2.4,"regressions":0,"spGel":6,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T1","caf":27,"cafTheo":38.5,"etp":5.4,"wip":4.8,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.6,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T2","caf":26,"cafTheo":33.5,"etp":5.2,"wip":4.3,"engages":8,"gel":7,"derog":0,"reportes":1,"delai":2.8,"regressions":0,"spGel":7,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T3","caf":31,"cafTheo":43,"etp":6.2,"wip":5.2,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.6,"regressions":1,"spGel":13,"spDerog":0,"spReportes":1},
+      {"v":"3.2.0","n":2,"eq":"T4","caf":21,"cafTheo":29,"etp":4.2,"wip":3.2,"engages":6,"gel":6,"derog":0,"reportes":0,"delai":2.8,"regressions":0,"spGel":7,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T1","caf":24.5,"cafTheo":34,"etp":4.9,"wip":3.7,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2.6,"regressions":0,"spGel":8,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T2","caf":23.5,"cafTheo":33.5,"etp":4.7,"wip":4.5,"engages":9,"gel":9,"derog":0,"reportes":0,"delai":2.4,"regressions":0,"spGel":11,"spDerog":0,"spReportes":0},
+      {"v":"3.3.0","n":3,"eq":"T3","caf":30,"cafTheo":43,"etp":6,"wip":6,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.3.0","n":3,"eq":"T4","caf":18.5,"cafTheo":25.5,"etp":3.7,"wip":3.5,"engages":7,"gel":7,"derog":0,"reportes":0,"delai":3,"regressions":0,"spGel":9,"spDerog":0,"spReportes":0},
+      {"v":"3.4.0","n":4,"eq":"T1","caf":23.5,"cafTheo":33,"etp":4.7,"wip":5.2,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.8,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.4.0","n":4,"eq":"T2","caf":26,"cafTheo":32.5,"etp":5.2,"wip":5.8,"engages":11,"gel":11,"derog":0,"reportes":0,"delai":2.9,"regressions":1,"spGel":12,"spDerog":0,"spReportes":0},
+      {"v":"3.4.0","n":4,"eq":"T3","caf":31,"cafTheo":42,"etp":6.2,"wip":6.7,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3,"regressions":0,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.4.0","n":4,"eq":"T4","caf":17.5,"cafTheo":24.5,"etp":3.5,"wip":4.6,"engages":8,"gel":8,"derog":0,"reportes":0,"delai":2.8,"regressions":0,"spGel":9,"spDerog":0,"spReportes":0},
+      {"v":"3.5.0","n":5,"eq":"T1","caf":29,"cafTheo":37.5,"etp":5.8,"wip":7.5,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.6,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T2","caf":26,"cafTheo":33,"etp":5.2,"wip":6,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":2.7,"regressions":1,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T3","caf":30,"cafTheo":42.5,"etp":6,"wip":7.4,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":15,"spDerog":0,"spReportes":1},
+      {"v":"3.5.0","n":5,"eq":"T4","caf":20.5,"cafTheo":28,"etp":4.1,"wip":4.5,"engages":9,"gel":8,"derog":0,"reportes":1,"delai":2.9,"regressions":0,"spGel":10,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T1","caf":26.5,"cafTheo":35,"etp":5.3,"wip":9.3,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":4.1,"regressions":0,"spGel":12,"spDerog":1,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T2","caf":23.5,"cafTheo":31,"etp":4.7,"wip":7.4,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.9,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T3","caf":28.5,"cafTheo":39.5,"etp":5.7,"wip":7.6,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.5,"regressions":1,"spGel":15,"spDerog":0,"spReportes":1},
+      {"v":"3.6.0","n":6,"eq":"T4","caf":20,"cafTheo":26.5,"etp":4,"wip":8.4,"engages":9,"gel":7,"derog":1,"reportes":1,"delai":4.7,"regressions":0,"spGel":7,"spDerog":1,"spReportes":1},
+      {"v":"3.7.0","n":7,"eq":"T1","caf":23,"cafTheo":31.5,"etp":4.6,"wip":11.7,"engages":11,"gel":8,"derog":1,"reportes":2,"delai":6,"regressions":1,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.7.0","n":7,"eq":"T2","caf":20,"cafTheo":27.5,"etp":4,"wip":11.3,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":8.8,"regressions":1,"spGel":7,"spDerog":1,"spReportes":2},
+      {"v":"3.7.0","n":7,"eq":"T3","caf":25.5,"cafTheo":35.5,"etp":5.1,"wip":12.7,"engages":12,"gel":9,"derog":1,"reportes":2,"delai":6,"regressions":1,"spGel":11,"spDerog":1,"spReportes":3},
+      {"v":"3.7.0","n":7,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"wip":10.2,"engages":9,"gel":5,"derog":1,"reportes":3,"delai":8.6,"regressions":0,"spGel":6,"spDerog":1,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T1","caf":21,"cafTheo":28.5,"etp":4.2,"wip":12.4,"engages":10,"gel":6,"derog":2,"reportes":2,"delai":6.7,"regressions":1,"spGel":7,"spDerog":2,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T2","caf":17.5,"cafTheo":25,"etp":3.5,"wip":11,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":8.3,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.8.0","n":8,"eq":"T3","caf":22.5,"cafTheo":32,"etp":4.5,"wip":13.1,"engages":11,"gel":7,"derog":2,"reportes":2,"delai":7.6,"regressions":1,"spGel":10,"spDerog":2,"spReportes":3},
+      {"v":"3.8.0","n":8,"eq":"T4","caf":16,"cafTheo":21.5,"etp":3.2,"wip":10.3,"engages":7,"gel":4,"derog":1,"reportes":2,"delai":8.9,"regressions":0,"spGel":5,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T1","caf":18.5,"cafTheo":26.5,"etp":3.7,"wip":11,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":9.1,"regressions":0,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T2","caf":17,"cafTheo":23,"etp":3.4,"wip":10.5,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":7.9,"regressions":2,"spGel":7,"spDerog":1,"spReportes":2},
+      {"v":"3.9.0","n":9,"eq":"T3","caf":21,"cafTheo":29.5,"etp":4.2,"wip":12.9,"engages":9,"gel":6,"derog":1,"reportes":2,"delai":10,"regressions":0,"spGel":7,"spDerog":1,"spReportes":3},
+      {"v":"3.9.0","n":9,"eq":"T4","caf":15,"cafTheo":20,"etp":3,"wip":10.5,"engages":7,"gel":3,"derog":1,"reportes":3,"delai":13.5,"regressions":1,"spGel":3,"spDerog":1,"spReportes":4},
+      {"v":"3.10.0","n":10,"eq":"T1","caf":20,"cafTheo":27,"etp":4,"wip":11.5,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":6.7,"regressions":0,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.10.0","n":10,"eq":"T2","caf":17,"cafTheo":24,"etp":3.4,"wip":11,"engages":9,"gel":5,"derog":1,"reportes":3,"delai":8.6,"regressions":0,"spGel":6,"spDerog":1,"spReportes":3},
+      {"v":"3.10.0","n":10,"eq":"T3","caf":22.5,"cafTheo":30.5,"etp":4.5,"wip":14.3,"engages":11,"gel":6,"derog":2,"reportes":3,"delai":9.7,"regressions":0,"spGel":7,"spDerog":2,"spReportes":4},
+      {"v":"3.10.0","n":10,"eq":"T4","caf":15,"cafTheo":20.5,"etp":3,"wip":8.3,"engages":7,"gel":5,"derog":1,"reportes":1,"delai":8.1,"regressions":0,"spGel":6,"spDerog":1,"spReportes":1},
+      {"v":"3.11.0","n":11,"eq":"T1","caf":23,"cafTheo":31,"etp":4.6,"wip":13.2,"engages":11,"gel":7,"derog":1,"reportes":3,"delai":7.3,"regressions":0,"spGel":9,"spDerog":1,"spReportes":4},
+      {"v":"3.11.0","n":11,"eq":"T2","caf":20.5,"cafTheo":27.5,"etp":4.1,"wip":11.2,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":7,"regressions":1,"spGel":8,"spDerog":1,"spReportes":2},
+      {"v":"3.11.0","n":11,"eq":"T3","caf":25,"cafTheo":35,"etp":5,"wip":15.2,"engages":12,"gel":7,"derog":1,"reportes":4,"delai":7.9,"regressions":0,"spGel":9,"spDerog":1,"spReportes":5},
+      {"v":"3.11.0","n":11,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"wip":11.8,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":10.2,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.12.0","n":12,"eq":"T1","caf":26,"cafTheo":35.5,"etp":5.2,"wip":11.2,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":5.1,"regressions":1,"spGel":12,"spDerog":1,"spReportes":1},
+      {"v":"3.12.0","n":12,"eq":"T2","caf":23.5,"cafTheo":31,"etp":4.7,"wip":7.3,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.3,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.12.0","n":12,"eq":"T3","caf":28,"cafTheo":40,"etp":5.6,"wip":14.8,"engages":11,"gel":8,"derog":1,"reportes":2,"delai":6.8,"regressions":1,"spGel":10,"spDerog":1,"spReportes":3},
+      {"v":"3.12.0","n":12,"eq":"T4","caf":19.5,"cafTheo":26.5,"etp":3.9,"wip":10.3,"engages":10,"gel":7,"derog":1,"reportes":2,"delai":6.7,"regressions":1,"spGel":9,"spDerog":1,"spReportes":2},
+      {"v":"3.13.0","n":13,"eq":"T1","caf":27,"cafTheo":37.5,"etp":5.4,"wip":11.4,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":5.9,"regressions":1,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T2","caf":25.5,"cafTheo":33,"etp":5.1,"wip":8,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":4.4,"regressions":1,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T3","caf":32,"cafTheo":42.5,"etp":6.4,"wip":13.2,"engages":15,"gel":13,"derog":1,"reportes":1,"delai":4.7,"regressions":0,"spGel":18,"spDerog":1,"spReportes":1},
+      {"v":"3.13.0","n":13,"eq":"T4","caf":21,"cafTheo":28,"etp":4.2,"wip":9.5,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.2,"regressions":0,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T1","caf":25,"cafTheo":33,"etp":5,"wip":12.9,"engages":12,"gel":8,"derog":1,"reportes":3,"delai":6.9,"regressions":1,"spGel":10,"spDerog":1,"spReportes":4},
+      {"v":"3.14.0","n":14,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":8.3,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.4,"regressions":0,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T3","caf":33.5,"cafTheo":43,"etp":6.7,"wip":11.4,"engages":14,"gel":13,"derog":0,"reportes":1,"delai":4.6,"regressions":0,"spGel":17,"spDerog":0,"spReportes":1},
+      {"v":"3.14.0","n":14,"eq":"T4","caf":18,"cafTheo":24.5,"etp":3.6,"wip":10.6,"engages":8,"gel":5,"derog":1,"reportes":2,"delai":8.7,"regressions":1,"spGel":6,"spDerog":1,"spReportes":2},
+      {"v":"3.15.0","n":15,"eq":"T1","caf":28.5,"cafTheo":39,"etp":5.7,"wip":11,"engages":12,"gel":10,"derog":1,"reportes":1,"delai":4.9,"regressions":0,"spGel":14,"spDerog":1,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T2","caf":24,"cafTheo":34,"etp":4.8,"wip":7.5,"engages":10,"gel":9,"derog":0,"reportes":1,"delai":3.9,"regressions":0,"spGel":10,"spDerog":0,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T3","caf":32,"cafTheo":43.5,"etp":6.4,"wip":11.6,"engages":15,"gel":14,"derog":0,"reportes":1,"delai":3.7,"regressions":0,"spGel":21,"spDerog":0,"spReportes":1},
+      {"v":"3.15.0","n":15,"eq":"T4","caf":20.5,"cafTheo":29,"etp":4.1,"wip":9.9,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.8,"regressions":1,"spGel":9,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T1","caf":28,"cafTheo":38.5,"etp":5.6,"wip":12.1,"engages":11,"gel":9,"derog":1,"reportes":1,"delai":6,"regressions":2,"spGel":11,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T2","caf":24.5,"cafTheo":33.5,"etp":4.9,"wip":7.3,"engages":11,"gel":10,"derog":0,"reportes":1,"delai":3.9,"regressions":1,"spGel":11,"spDerog":0,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T3","caf":33.5,"cafTheo":43,"etp":6.7,"wip":14.3,"engages":14,"gel":12,"derog":1,"reportes":1,"delai":5.9,"regressions":0,"spGel":17,"spDerog":1,"spReportes":1},
+      {"v":"3.16.0","n":16,"eq":"T4","caf":22,"cafTheo":29,"etp":4.4,"wip":9.2,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5,"regressions":1,"spGel":8,"spDerog":1,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T1","caf":30.5,"cafTheo":38,"etp":6.1,"wip":12.2,"engages":13,"gel":11,"derog":1,"reportes":1,"delai":5.7,"regressions":0,"spGel":13,"spDerog":1,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":8.4,"engages":12,"gel":11,"derog":0,"reportes":1,"delai":3.9,"regressions":1,"spGel":12,"spDerog":0,"spReportes":1},
+      {"v":"3.17.0","n":17,"eq":"T3","caf":29,"cafTheo":43,"etp":5.8,"wip":13.2,"engages":14,"gel":10,"derog":1,"reportes":3,"delai":5.3,"regressions":0,"spGel":12,"spDerog":1,"spReportes":3},
+      {"v":"3.17.0","n":17,"eq":"T4","caf":21,"cafTheo":28.5,"etp":4.2,"wip":9.2,"engages":10,"gel":8,"derog":1,"reportes":1,"delai":5.4,"regressions":0,"spGel":10,"spDerog":1,"spReportes":1},
+      {"v":"3.18.0","n":18,"eq":"T1","caf":29,"cafTheo":38.5,"etp":5.8,"wip":11.2,"engages":13},
+      {"v":"3.18.0","n":18,"eq":"T2","caf":25.5,"cafTheo":33.5,"etp":5.1,"wip":7.1,"engages":11},
+      {"v":"3.18.0","n":18,"eq":"T3","caf":33,"cafTheo":43,"etp":6.6,"wip":12.7,"engages":15},
+      {"v":"3.18.0","n":18,"eq":"T4","caf":21,"cafTheo":29,"etp":4.2,"wip":9.5,"engages":10},
+      {"v":"3.19.0","n":19,"eq":"T1","caf":23,"cafTheo":31,"etp":4.6,"vise":11},
+      {"v":"3.19.0","n":19,"eq":"T2","caf":25.5,"cafTheo":32.5,"etp":5.1,"vise":9},
+      {"v":"3.19.0","n":19,"eq":"T3","caf":30.5,"cafTheo":42,"etp":6.1,"vise":13},
+      {"v":"3.19.0","n":19,"eq":"T4","caf":17.5,"cafTheo":23.5,"etp":3.5,"vise":8},
+      {"v":"3.20.0","n":20,"eq":"T1","caf":26,"cafTheo":38,"etp":5.2,"vise":6},
+      {"v":"3.20.0","n":20,"eq":"T2","caf":27.5,"cafTheo":33.5,"etp":5.5,"vise":5},
+      {"v":"3.20.0","n":20,"eq":"T3","caf":31,"cafTheo":43,"etp":6.2,"vise":8},
+      {"v":"3.20.0","n":20,"eq":"T4","caf":21.5,"cafTheo":28.5,"etp":4.3,"vise":4},
+      {"v":"3.21.0","n":21,"eq":"T1","caf":27.5,"cafTheo":37,"etp":5.5,"vise":3},
+      {"v":"3.21.0","n":21,"eq":"T2","caf":24.5,"cafTheo":32,"etp":4.9,"vise":2},
+      {"v":"3.21.0","n":21,"eq":"T3","caf":29,"cafTheo":41.5,"etp":5.8,"vise":3},
+      {"v":"3.21.0","n":21,"eq":"T4","caf":22,"cafTheo":27.5,"etp":4.4,"vise":1}
+    ]
+  };
+
+  // ── Réglages de l'analyse ─────────────────────────────────────────────
+  var PLAN_VELOCITE = 2.0;  // paramètre « Vélocité (JP par SP) » de l'Analyse de capacité
+  var REGLE = { debit: 0.95, delai: 1.3, tenue: 0.05 };  // bornes de la zone idéale
+  var BANDE = 0.32;         // largeur du noyau de lissage, en tickets par personne
+  var PAS = 0.02;           // pas de la grille des courbes
+  var TIRAGES = 4000;       // tirages Monte-Carlo du simulateur
+  var CLE = 'analyse-velocite:etat';
+  var NB = ' ';
+
+  var TEAMS = DATA.teams, VERS = DATA.versions, ROWS = DATA.rows;
+  var EQ = {};
+  TEAMS.forEach(function (t) { EQ[t.id] = t; });
+  var DONE = VERS.filter(function (v) { return v.etat === 'livree'; });
+  var NEXT = VERS.filter(function (v) { return v.etat === 'prevision'; });
+  var DERNIERES = DONE.slice(-3), PRECEDENTES = DONE.slice(-6, -3);
+
+  // Story points par ticket observés par équipe : convertit en SP l'engagement
+  // de la version en cours et le périmètre visé, comptés en tickets.
+  var SPF = {};
+  TEAMS.forEach(function (t) {
+    var tk = 0, sp = 0;
+    ROWS.forEach(function (r) {
+      if (r.eq === t.id && r.gel != null) { tk += r.engages; sp += r.spGel + r.spDerog + r.spReportes; }
+    });
+    SPF[t.id] = tk ? sp / tk : 1;
+  });
+
+  var UNITES = {
+    t: {
+      court: 'tickets', un: 'ticket', vel: 'JP par ticket livré', velCourt: 'JP / ticket',
+      gel: function (r) { return r.gel; }, derog: function (r) { return r.derog; }, rep: function (r) { return r.reportes; },
+      eng: function (r) { return r.engages; }, engEnCours: function (r) { return r.engages; },
+      vise: function (r) { return r.vise || 0; }
+    },
+    sp: {
+      court: 'SP', un: 'SP', vel: 'JP par SP livré', velCourt: 'JP / SP',
+      gel: function (r) { return r.spGel; }, derog: function (r) { return r.spDerog; }, rep: function (r) { return r.spReportes; },
+      eng: function (r) { return r.spGel + r.spDerog + r.spReportes; },
+      engEnCours: function (r) { return Math.round(r.engages * SPF[r.eq]); },
+      vise: function (r) { return Math.round((r.vise || 0) * SPF[r.eq]); }
+    }
+  };
+
+  // ── Utilitaires ───────────────────────────────────────────────────────
+  function $(s, el) { return (el || document).querySelector(s); }
+  function $$(s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+  function sum(a, f) {
+    var g = typeof f === 'function' ? f : function (x) { return x[f]; }, s = 0;
+    a.forEach(function (x) { var v = g(x); if (v != null && isFinite(v)) s += v; });
+    return s;
+  }
+  function moyenne(a) { return a.length ? sum(a, function (x) { return x; }) / a.length : null; }
+  function nf(x, d) {
+    if (x == null || !isFinite(x)) return '–';
+    d = d || 0;
+    return x.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function pc(x) { return x == null || !isFinite(x) ? '–' : nf(x * 100) + NB + '%'; }
+  // Probabilité : jamais « 0 % » ni « 100 % » pour un tirage qui n'est pas certain.
+  function chance(p) { return p < 0.01 ? 'moins de 1' + NB + '%' : p > 0.99 ? 'plus de 99' + NB + '%' : pc(p); }
+  function sgn(x, d, suffixe) {
+    if (x == null || !isFinite(x)) return '–';
+    var r = Math.round(Math.abs(x) * Math.pow(10, d || 0)) / Math.pow(10, d || 0);
+    return (r === 0 ? '±' : x > 0 ? '+' : '−') + nf(r, d) + (suffixe || '');
+  }
+  function vcourt(v) { return v.replace(/\.0$/, ''); }
+  function jour(iso, avecJour) {
+    var d = new Date(iso + 'T12:00:00');
+    var s = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    return avecJour ? d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + s : s;
+  }
+  function enListe(v, liste) {
+    for (var i = 0; i < liste.length; i++) if (liste[i].v === v) return true;
+    return false;
+  }
+  function lignes(v, eqs) {
+    return ROWS.filter(function (r) { return r.v === v && (!eqs || eqs.indexOf(r.eq) !== -1); });
+  }
+  function versionDe(v) { return VERS.filter(function (x) { return x.v === v; })[0]; }
+  function libelleEtat(v) {
+    if (v.etat === 'livree') return v.iatEnCours ? 'Livrée · test IAT en cours' : 'Livrée';
+    if (v.etat === 'en-cours') return v.gel === DATA.genere ? 'En cours · gel aujourd’hui' : 'En cours';
+    return 'À venir';
+  }
+  function tonTenue(t) { return t == null ? 'mute' : t >= 0.85 ? 'good' : t >= 0.7 ? 'warn' : 'bad'; }
+
+  // Générateur pseudo-aléatoire à graine : la simulation donne toujours le
+  // même résultat pour les mêmes réglages (pas de chiffres qui bougent seuls).
+  function hasard(graine) {
+    var a = graine >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gaussien(r) {
+    var u = 0, v = 0;
+    while (!u) u = r();
+    while (!v) v = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function quantile(trie, q) { return trie[clamp(Math.floor(q * trie.length), 0, trie.length - 1)]; }
+
+  // ── État de l'écran (conservé dans ce navigateur) ─────────────────────
+  var S = {
+    periode: 'all', equipes: TEAMS.map(function (t) { return t.id; }), unite: 't',
+    sel: DONE[DONE.length - 1].v, simV: NEXT[0].v, simW: null, simTouche: false,
+    mesure: 'w', vues: { train: 'chart', wip: 'chart' }
+  };
+  try {
+    var mem = JSON.parse(localStorage.getItem(CLE) || 'null');
+    if (mem && typeof mem === 'object') {
+      if (['all', '12', '6'].indexOf(mem.periode) !== -1) S.periode = mem.periode;
+      if (Array.isArray(mem.equipes)) {
+        var eqm = mem.equipes.filter(function (x) { return EQ[x]; });
+        if (eqm.length) S.equipes = TEAMS.map(function (t) { return t.id; }).filter(function (id) { return eqm.indexOf(id) !== -1; });
+      }
+      if (mem.unite === 'sp') S.unite = 'sp';
+      if (versionDe(mem.sel)) S.sel = mem.sel;
+      if (NEXT.some(function (v) { return v.v === mem.simV; })) S.simV = mem.simV;
+      if (['w', 'tenue', 'delai'].indexOf(mem.mesure) !== -1) S.mesure = mem.mesure;
+    }
+  } catch (e) { /* stockage indisponible : valeurs par défaut */ }
+  function sauver() {
+    try {
+      localStorage.setItem(CLE, JSON.stringify({ periode: S.periode, equipes: S.equipes, unite: S.unite, sel: S.sel, simV: S.simV, mesure: S.mesure }));
+    } catch (e) { /* idem */ }
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Calcul
+  // ════════════════════════════════════════════════════════════════════
+  var M = null;
+
+  function agreger(v, u, eqs) {
+    var rs = lignes(v.v, eqs);
+    var a = { v: v, rs: rs, caf: sum(rs, 'caf'), cafTheo: sum(rs, 'cafTheo'), etp: sum(rs, 'etp') };
+    if (v.etat !== 'prevision') { a.wip = sum(rs, 'wip'); a.w = a.wip / a.etp; }
+    if (v.etat === 'livree') {
+      a.eng = sum(rs, u.eng); a.gel = sum(rs, u.gel); a.derog = sum(rs, u.derog); a.rep = sum(rs, u.rep);
+      a.tenue = a.eng ? a.gel / a.eng : null;
+      a.livres = a.gel + a.derog;
+      a.vel = a.livres ? a.caf / a.livres : null;
+      var g = sum(rs, 'gel');
+      a.delai = g ? sum(rs, function (r) { return r.delai * r.gel; }) / g : null;
+      a.reg = sum(rs, 'regressions');
+    } else if (v.etat === 'en-cours') {
+      a.eng = sum(rs, u.engEnCours);
+    } else {
+      a.vise = sum(rs, u.vise);
+    }
+    return a;
+  }
+
+  // Régression linéaire locale à noyau gaussien.
+  function noyau(a, x) { var z = (a - x) / BANDE; return Math.exp(-0.5 * z * z); }
+  function lisse(obs, k, x) {
+    var sw = 0, sw2 = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    obs.forEach(function (o) {
+      var y = o[k];
+      if (y == null) return;
+      var p = noyau(o.w, x);
+      sw += p; sw2 += p * p; sx += p * o.w; sy += p * y; sxx += p * o.w * o.w; sxy += p * o.w * y;
+    });
+    var mx = sx / sw, my = sy / sw, vx = sxx / sw - mx * mx, c = sxy / sw - mx * my;
+    return { y: my + (vx > 1e-9 ? c / vx : 0) * (x - mx), sw: sw, sw2: sw2 };
+  }
+  function ajuster(obs) {
+    var o = obs.filter(function (p) { return p.tenue != null; });
+    if (o.length < 8) return null;
+    var lo = Infinity, hi = -Infinity;
+    o.forEach(function (p) { lo = Math.min(lo, p.w); hi = Math.max(hi, p.w); });
+    if (hi - lo < 0.4) return null;
+    var cles = ['tenue', 'debit', 'delai'], res = {};
+    cles.forEach(function (k) { res[k] = o.map(function (p) { return p[k] - lisse(o, k, p.w).y; }); });
+    var grille = [], N = Math.floor((hi - lo) / PAS + 1e-9);
+    for (var i = 0; i <= N; i++) {
+      var x = lo + i * PAS, g = { x: x };
+      cles.forEach(function (k) {
+        var f = lisse(o, k, x), s2 = 0;
+        o.forEach(function (p, j) { s2 += noyau(p.w, x) * res[k][j] * res[k][j]; });
+        var sd = Math.sqrt(s2 / f.sw), neff = f.sw * f.sw / f.sw2;
+        g[k] = f.y; g[k + 'Sd'] = sd; g[k + 'Se'] = sd / Math.sqrt(Math.max(1, neff));
+      });
+      grille.push(g);
+    }
+    return { lo: lo, hi: hi, grille: grille, n: o.length };
+  }
+  // Valeur d'une courbe en x (interpolation ; bornée aux WIP observés).
+  function at(k, x) {
+    var f = M.fit;
+    if (!f) return null;
+    var g = f.grille;
+    if (g.length === 1) return g[0][k];
+    var xx = clamp(x, g[0].x, g[g.length - 1].x);
+    var i = clamp(Math.floor((xx - g[0].x) / PAS), 0, g.length - 2);
+    var a = g[i], b = g[i + 1], t = clamp((xx - a.x) / (b.x - a.x), 0, 1);
+    return a[k] + (b[k] - a[k]) * t;
+  }
+  function zoneIdeale(fit) {
+    var g = fit.grille, max = -Infinity, iMax = 0;
+    g.forEach(function (p, i) { if (p.debit > max) { max = p.debit; iMax = i; } });
+    var iLo = 0;
+    while (iLo < g.length - 1 && g[iLo].debit < REGLE.debit * max) iLo++;
+    var iHi = iLo;
+    for (var i = iLo + 1; i < g.length; i++) {
+      var p = g[i];
+      if (p.debit < REGLE.debit * max || p.tenue < g[iLo].tenue - REGLE.tenue || p.delai > REGLE.delai * g[iLo].delai) break;
+      iHi = i;
+    }
+    var lo = g[iLo].x, hi = g[iHi].x;
+    return { lo: lo, hi: hi, ideal: Math.round((lo + hi) / 2 * 10) / 10, pic: g[iMax].x, debitMax: max };
+  }
+  // WIP moyen des 3 dernières versions livrées : le « rythme actuel » de l'équipe.
+  function etatEquipe(id) {
+    var rs = ROWS.filter(function (r) { return r.eq === id && enListe(r.v, DERNIERES); });
+    var wip = sum(rs, 'wip') / rs.length, etp = sum(rs, 'etp') / rs.length;
+    return { wip: wip, etp: etp, w: wip / etp };
+  }
+  // Projection déterministe d'une version à venir. w = WIP par personne visé
+  // (même valeur pour toutes les équipes), ou null pour le statu quo : chaque
+  // équipe garde le nombre de tickets qu'elle mène aujourd'hui.
+  function projection(v, w) {
+    var rs = lignes(v.v, S.equipes), p = { wip: 0, etp: 0, caf: 0, p50: 0, tenue: 0, delai: 0, vise: 0, eq: [] };
+    rs.forEach(function (r) {
+      var lim = w == null ? M.now[r.eq].wip : Math.max(1, Math.round(w * r.etp));
+      var we = lim / r.etp, liv = at('debit', we) * r.etp;
+      p.wip += lim; p.etp += r.etp; p.caf += r.caf; p.p50 += liv;
+      p.tenue += at('tenue', we) * r.etp; p.delai += at('delai', we) * r.etp; p.vise += M.u.vise(r);
+      p.eq.push({ id: r.eq, etp: r.etp, caf: r.caf, lim: lim, w: we, p50: liv, vise: M.u.vise(r) });
+    });
+    p.w = p.wip / p.etp; p.tenue /= p.etp; p.delai /= p.etp;
+    return p;
+  }
+  // Monte-Carlo du livré au gel : aléa commun à la version + aléa par équipe.
+  function simuler(v, w) {
+    var r = hasard(20261012), out = new Array(TIRAGES);
+    var eqs = projection(v, w).eq.map(function (e) {
+      var mu = at('debit', e.w), sd = at('debitSd', e.w) / Math.max(0.2, mu);
+      return { mu: mu * e.etp, sd: sd };
+    });
+    for (var i = 0; i < TIRAGES; i++) {
+      var c = 0.05 * gaussien(r), tot = 0;
+      for (var j = 0; j < eqs.length; j++) tot += Math.max(0, eqs[j].mu * (1 + c + eqs[j].sd * gaussien(r)));
+      out[i] = tot;
+    }
+    out.sort(function (a, b) { return a - b; });
+    return out;
+  }
+  function bloc(liste) {
+    var u = M.u, rs = ROWS.filter(function (r) { return r.gel != null && S.equipes.indexOf(r.eq) !== -1 && enListe(r.v, liste); });
+    if (!rs.length) return null;
+    var g = sum(rs, 'gel'), liv = sum(rs, function (r) { return u.gel(r) + u.derog(r); });
+    return {
+      w: sum(rs, 'wip') / sum(rs, 'etp'),
+      tenue: sum(rs, u.gel) / sum(rs, u.eng),
+      vel: sum(rs, 'caf') / liv,
+      delai: sum(rs, function (r) { return r.delai * r.gel; }) / g
+    };
+  }
+
+  function calculer() {
+    var u = UNITES[S.unite], eqs = S.equipes;
+    var done = S.periode === 'all' ? DONE : DONE.slice(-Number(S.periode));
+    var vue = done.concat(VERS.filter(function (v) { return v.etat !== 'livree'; }));
+    var obs = [];
+    ROWS.forEach(function (r) {
+      if (r.gel == null || eqs.indexOf(r.eq) === -1 || !enListe(r.v, done)) return;
+      var e = u.eng(r);
+      obs.push({ r: r, v: r.v, n: r.n, eq: r.eq, w: r.wip / r.etp, tenue: e ? u.gel(r) / e : null, debit: u.gel(r) / r.etp, delai: r.delai });
+    });
+    M = { u: u, done: done, vue: vue, obs: obs, now: {} };
+    eqs.forEach(function (id) { M.now[id] = etatEquipe(id); });
+    var nw = sum(eqs, function (id) { return M.now[id].wip; }), ne = sum(eqs, function (id) { return M.now[id].etp; });
+    M.nowW = nw / ne;
+    M.fit = ajuster(obs);
+    M.zone = M.fit ? zoneIdeale(M.fit) : null;
+    M.fiable = !!M.fit && obs.length >= 16 && M.fit.hi - M.fit.lo >= 1;
+    M.aggs = vue.map(function (v) { return agreger(v, u, eqs); });
+    if (M.zone) {
+      M.aggs.forEach(function (a) {
+        if (a.v.etat === 'prevision') { a.reco = projection(a.v, M.zone.ideal); a.sq = projection(a.v, null); }
+      });
+      // Vélocité observée dans la zone idéale : la référence du panneau vélocité.
+      var dz = obs.filter(function (o) { return o.w >= M.zone.lo && o.w <= M.zone.hi; });
+      var liv = sum(dz, function (o) { return u.gel(o.r) + u.derog(o.r); });
+      M.velZone = liv ? sum(dz, function (o) { return o.r.caf; }) / liv : null;
+      if (!S.simTouche || S.simW == null) S.simW = M.zone.ideal;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Petites briques d'affichage
+  // ════════════════════════════════════════════════════════════════════
+  function r1(x) { return Math.round(x * 10) / 10; }
+  function T(x, y, s, cls, ancre, extra) {
+    return '<text x="' + r1(x) + '" y="' + r1(y) + '"' + (cls ? ' class="' + cls + '"' : '') + (ancre ? ' text-anchor="' + ancre + '"' : '') + (extra || '') + '>' + esc(s) + '</text>';
+  }
+  function L(x1, y1, x2, y2, cls) { return '<line x1="' + r1(x1) + '" y1="' + r1(y1) + '" x2="' + r1(x2) + '" y2="' + r1(y2) + '" class="' + cls + '"/>'; }
+  function R(x, y, w, h, cls, extra) { return '<rect x="' + r1(x) + '" y="' + r1(y) + '" width="' + r1(Math.max(0, w)) + '" height="' + r1(Math.max(0, h)) + '" class="' + cls + '"' + (extra || '') + '/>'; }
+  // Barre à sommet arrondi (4 px), base carrée sur la ligne de base.
+  function barre(x, y, w, h, r) {
+    if (h <= 0.4) return '';
+    r = Math.min(r, w / 2, h);
+    return 'M' + r1(x) + ',' + r1(y + h) + 'V' + r1(y + r) + 'Q' + r1(x) + ',' + r1(y) + ' ' + r1(x + r) + ',' + r1(y) +
+      'H' + r1(x + w - r) + 'Q' + r1(x + w) + ',' + r1(y) + ' ' + r1(x + w) + ',' + r1(y + r) + 'V' + r1(y + h) + 'Z';
+  }
+  function bloc4(x, y, w, h) { return h <= 0.4 ? '' : 'M' + r1(x) + ',' + r1(y) + 'h' + r1(w) + 'v' + r1(h) + 'h' + r1(-w) + 'Z'; }
+  function chemin(pts) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + r1(p[0]) + ',' + r1(p[1]); }).join(''); }
+  function pasNet(etendue, n) {
+    var brut = etendue / Math.max(1, n), p = Math.pow(10, Math.floor(Math.log(brut) / Math.LN10)), f = brut / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function graduer(lo, hi, n) {
+    var st = pasNet(hi - lo, n), out = [];
+    // « + 0 » : Math.ceil(-1e-9) vaut -0, qui s'afficherait « -0 ».
+    for (var v = Math.ceil(lo / st - 1e-9) * st; v <= hi + 1e-9; v += st) out.push(Math.round(v * 1e6) / 1e6 + 0);
+    return out;
+  }
+  function plafond(x, n) { var st = pasNet(x, n || 4); return Math.ceil(x / st - 1e-9) * st || st; }
+  // Nombre sans zéros inutiles : 0,5 · 1 · 1,5 · 2,25
+  function nfa(x) { return x.toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
+  function echelle(lo, hi, haut, bas) { return function (v) { return bas - (v - lo) / (hi - lo || 1) * (bas - haut); }; }
+  function titrePanneau(p, x) {
+    return '<text x="' + x + '" y="' + r1(p.haut - 10) + '"><tspan class="ptitle">' + esc(p.titre) + '</tspan><tspan class="punit" dx="8">' + esc(p.unite) + '</tspan></text>';
+  }
+  function grilleY(ticks, sy, x0, x1, fmt) {
+    return ticks.map(function (t) { return L(x0, sy(t), x1, sy(t), 'grid') + T(x0 - 7, sy(t) + 3.5, fmt(t), '', 'end'); }).join('');
+  }
+  function legende(groupes) {
+    return groupes.map(function (g) {
+      return '<span class="lgrp">' + (g.nom ? '<span class="gname">' + esc(g.nom) + '</span>' : '') +
+        g.items.map(function (it) { return '<span class="lg"><span class="sw ' + it[0] + '"></span>' + esc(it[1]) + '</span>'; }).join('') + '</span>';
+    }).join('');
+  }
+  function segmente(el, options, actif, choisir) {
+    el.innerHTML = options.map(function (o) {
+      return '<button type="button" data-val="' + esc(o[0]) + '" aria-pressed="' + (String(o[0]) === String(actif)) + '">' + esc(o[1]) + '</button>';
+    }).join('');
+    el.onclick = function (e) {
+      var b = e.target.closest('button');
+      if (b && el.contains(b)) choisir(b.getAttribute('data-val'));
+    };
+  }
+
+  // ── Infobulle ─────────────────────────────────────────────────────────
+  var TIP = $('#tip');
+  function bulle(titre, sous, rangs) {
+    var d = document.createElement('div');
+    var t = document.createElement('div'); t.className = 'tip-t'; t.textContent = titre; d.appendChild(t);
+    if (sous) { var s = document.createElement('div'); s.className = 'tip-s'; s.textContent = sous; d.appendChild(s); }
+    if (rangs && rangs.length) {
+      var g = document.createElement('div'); g.className = 'tip-rows';
+      rangs.forEach(function (rg) {
+        var k = document.createElement('span'); k.className = 'tip-k' + (rg[0] ? ' k-' + rg[0] : '');
+        var l = document.createElement('span'); l.className = 'tip-l'; l.textContent = rg[1];
+        var v = document.createElement('span'); v.className = 'tip-v'; v.textContent = rg[2];
+        g.appendChild(k); g.appendChild(l); g.appendChild(v);
+      });
+      d.appendChild(g);
+    }
+    return d;
+  }
+  function montrer(contenu, x, y) {
+    TIP.innerHTML = '';
+    TIP.appendChild(contenu);
+    TIP.hidden = false;
+    placer(x, y);
+  }
+  function placer(x, y) {
+    var r = TIP.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+    var gx = x + 16, gy = y + 16;
+    if (gx + r.width > vw - 8) gx = x - r.width - 16;
+    if (gy + r.height > vh - 8) gy = y - r.height - 16;
+    TIP.style.left = Math.max(8, gx) + 'px';
+    TIP.style.top = Math.max(8, gy) + 'px';
+  }
+  function cacher() { TIP.hidden = true; }
+
+  var toastT = null;
+  function annonce(msg) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { t.hidden = true; }, 4500);
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Sources & filtres
+  // ════════════════════════════════════════════════════════════════════
+  function rendreSources() {
+    var tickets = sum(ROWS, function (r) { return (r.engages || 0) + (r.vise || 0); });
+    var personnes = sum(TEAMS, 'personnes');
+    function src(ic, nom, meta) {
+      return '<div class="src"><span class="src-ic" aria-hidden="true">' + ic + '</span><div class="src-txt"><div class="src-name">' + esc(nom) +
+        '</div><div class="src-meta">' + esc(meta) + '</div></div><span class="src-ok">✓ Synchronisé</span></div>';
+    }
+    $('#sources').innerHTML =
+      src('🚆', 'Plan de livraisons', VERS.length + ' versions · train hebdomadaire · publié le 05/10') +
+      src('📡', 'Journal du Bug Dashboard', '148 photos · ' + nf(tickets) + ' tickets suivis · dernière analyse le 09/10 à 08:12') +
+      src('📈', 'Analyse de capacité', 'Planning du 05/10 · ' + personnes + ' personnes · ' + TEAMS.length + ' équipes');
+  }
+
+  function rendreFiltres() {
+    segmente($('#fPeriode'), [['all', 'Tout (' + DONE.length + ')'], ['12', '12 dernières'], ['6', '6 dernières']], S.periode, function (v) {
+      S.periode = v; sauver(); tout();
+    });
+    var ch = $('#fEquipes');
+    ch.innerHTML = TEAMS.map(function (t) {
+      return '<button type="button" class="chip" data-eq="' + t.id + '" aria-pressed="' + (S.equipes.indexOf(t.id) !== -1) + '">' + esc(t.nom) + '</button>';
+    }).join('');
+    ch.onclick = function (e) {
+      var b = e.target.closest('.chip');
+      if (!b) return;
+      var id = b.getAttribute('data-eq'), i = S.equipes.indexOf(id);
+      if (i !== -1 && S.equipes.length === 1) { annonce('Gardez au moins une équipe sélectionnée.'); return; }
+      if (i !== -1) S.equipes.splice(i, 1); else S.equipes.push(id);
+      S.equipes = TEAMS.map(function (t) { return t.id; }).filter(function (x) { return S.equipes.indexOf(x) !== -1; });
+      sauver(); tout();
+    };
+    segmente($('#fUnite'), [['t', 'Tickets'], ['sp', 'Story points']], S.unite, function (v) { S.unite = v; sauver(); tout(); });
+    $('#fResume').textContent = M.done.length + ' versions livrées · ' + S.equipes.length + ' équipe' + (S.equipes.length > 1 ? 's' : '') + ' · ' + M.obs.length + ' observations';
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Synthèse : bandeau exécutif et verdict
+  // ════════════════════════════════════════════════════════════════════
+  function jauge(lo, hi, cible, actuel, libCible, libActuel, max) {
+    max = max || 3.5;
+    function p(x) { return clamp(x / max * 100, 0, 100); }
+    function bord(x) { return p(x) < 9 ? ' edge-l' : p(x) > 91 ? ' edge-r' : ''; }
+    return '<div class="gauge" aria-hidden="true">' +
+      '<span class="g-l top' + bord(cible) + '" style="left:' + p(cible) + '%">' + esc(libCible) + '</span>' +
+      '<div class="g-track"><div class="g-zone" style="left:' + p(lo) + '%;width:' + (p(hi) - p(lo)) + '%"></div>' +
+      '<div class="g-mk g-ideal" style="left:' + p(cible) + '%"></div><div class="g-mk g-now" style="left:' + p(actuel) + '%"></div></div>' +
+      '<span class="g-l bot' + bord(actuel) + '" style="left:' + p(actuel) + '%">' + esc(libActuel) + '</span></div>';
+  }
+  function spark(vals) {
+    var v = vals.filter(function (x) { return x != null && isFinite(x); });
+    if (v.length < 2) return '';
+    var w = 200, h = 26, mn = Math.min.apply(null, v), mx = Math.max.apply(null, v);
+    if (mx === mn) mx = mn + 1;
+    var pts = v.map(function (x, i) { return [3 + i / (v.length - 1) * (w - 6), h - 4 - (x - mn) / (mx - mn) * (h - 8)]; });
+    var d = pts[pts.length - 1];
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><path class="sp-l" vector-effect="non-scaling-stroke" d="' + chemin(pts) + '"/>' +
+      '<circle class="sp-d" cx="' + r1(d[0]) + '" cy="' + r1(d[1]) + '" r="3.5"/></svg>';
+  }
+  function tuile(o) {
+    var delta = '';
+    if (o.delta != null && isFinite(o.delta)) {
+      var cl = Math.abs(o.delta) < o.plat ? 'flat' : ((o.delta > 0) === o.hausseBonne ? 'up' : 'down');
+      delta = '<span class="delta ' + cl + '" title="Par rapport aux 3 versions précédentes">' + sgn(o.delta, o.dd, o.du) + '</span>';
+    }
+    return '<div class="kpi tone-' + o.ton + '"><div class="kpi-lbl">' + esc(o.lbl) + '</div>' +
+      '<div class="kpi-val">' + o.val + (o.unite ? '<small>' + esc(o.unite) + '</small>' : '') + delta + '</div>' +
+      '<div class="kpi-sub">' + o.sub + '</div>' + spark(o.serie) + '</div>';
+  }
+  function versionSim() { return versionDe(S.simV) || NEXT[0]; }
+
+  function rendreKpis() {
+    var el = $('#kpis'), z = M.zone, u = M.u;
+    $('#synthHint').textContent = 'Rythme actuel : ' + vcourt(DERNIERES[0].v) + ' → ' + vcourt(DERNIERES[DERNIERES.length - 1].v) + ' · comparé aux 3 versions précédentes';
+    if (!z) { el.innerHTML = '<div class="kpi kpi-hero"><div class="kpi-lbl">WIP idéal</div><div class="hero-foot">Pas assez d’observations pour calculer la zone idéale. Élargissez l’historique ou ajoutez des équipes.</div></div>'; return; }
+    var fv = versionSim(), reco = projection(fv, z.ideal);
+    var a = bloc(DERNIERES), b = bloc(PRECEDENTES);
+    var liv = M.aggs.filter(function (x) { return x.v.etat === 'livree'; });
+    var serie = function (k) { return liv.map(function (x) { return x[k]; }); };
+    var h = '<div class="kpi kpi-hero"><div class="kpi-lbl">WIP idéal</div>' +
+      '<div class="hero-row"><div class="hero-val">' + nf(z.ideal, 1) + '</div><div class="hero-unit">ticket en cours<br>par personne présente</div></div>' +
+      jauge(z.lo, z.hi, z.ideal, M.nowW, 'idéal ' + nf(z.ideal, 1), 'actuel ' + nf(M.nowW, 1)) +
+      '<div class="hero-foot">Zone idéale de ' + nf(z.lo, 1) + ' à ' + nf(z.hi, 1) + '. Pour la <b>' + esc(fv.v) + '</b> : <b>' + nf(reco.wip) + ' tickets en cours</b> au maximum (' + nf(reco.etp, 1) + ' ETP prévus, CAF ' + nf(reco.caf, 1) + NB + 'JP).</div></div>';
+    var ecart = M.nowW / z.ideal - 1;
+    h += tuile({
+      lbl: 'WIP actuel', val: nf(a.w, 1), unite: '/ pers.', ton: a.w > z.hi ? 'serious' : a.w < z.lo ? 'neutral' : 'good',
+      delta: a.w - b.w, dd: 1, du: '', hausseBonne: false, plat: 0.05, serie: serie('w'),
+      sub: a.w > z.hi ? sgn(ecart * 100, 0, NB + '%') + ' au-dessus du WIP idéal' : a.w < z.lo ? 'Sous la zone idéale : capacité inemployée' : 'Dans la zone idéale'
+    });
+    h += tuile({
+      lbl: 'Tenue au gel', val: pc(a.tenue), unite: '', ton: a.tenue >= 0.85 ? 'good' : a.tenue >= 0.7 ? 'warn' : 'critical',
+      delta: (a.tenue - b.tenue) * 100, dd: 0, du: NB + 'pts', hausseBonne: true, plat: 0.5, serie: serie('tenue'),
+      sub: 'Livré au gel ÷ engagé au chargement'
+    });
+    h += tuile({
+      lbl: 'Vélocité observée', val: nf(a.vel, 2), unite: u.velCourt, ton: S.unite === 'sp' && a.vel > PLAN_VELOCITE * 1.1 ? 'warn' : 'neutral',
+      delta: a.vel - b.vel, dd: 2, du: '', hausseBonne: false, plat: 0.02, serie: serie('vel'),
+      sub: S.unite === 'sp' ? 'Paramètre de planification : ' + nf(PLAN_VELOCITE, 1) + NB + 'JP / SP' : 'CAF réelle ÷ tickets livrés (gel + dérogations)'
+    });
+    var dRef = at('delai', z.ideal);
+    h += tuile({
+      lbl: 'Délai de traitement', val: nf(a.delai, 1), unite: 'j ouvrés', ton: a.delai > dRef * 1.3 ? 'warn' : 'good',
+      delta: a.delai - b.delai, dd: 1, du: NB + 'j', hausseBonne: false, plat: 0.05, serie: serie('delai'),
+      sub: 'De « In Progress » à « Dev done » · ' + nf(dRef, 1) + NB + 'j au WIP idéal'
+    });
+    el.innerHTML = h;
+  }
+
+  function constats() {
+    var z = M.zone, u = M.u, out = [];
+    if (!z) return out;
+    function tenueDe(l) { var e = sum(l, function (o) { return u.eng(o.r); }); return e ? sum(l, function (o) { return u.gel(o.r); }) / e : null; }
+    function delaiDe(l) { var g = sum(l, function (o) { return o.r.gel; }); return g ? sum(l, function (o) { return o.r.delai * o.r.gel; }) / g : null; }
+    function velDe(l) { var lv = sum(l, function (o) { return u.gel(o.r) + u.derog(o.r); }); return lv ? sum(l, function (o) { return o.r.caf; }) / lv : null; }
+    function wDe(l) { return sum(l, function (o) { return o.r.wip; }) / sum(l, function (o) { return o.r.etp; }); }
+
+    // 1. La tenue et le délai suivent le WIP par personne.
+    var dans = M.obs.filter(function (o) { return o.w <= z.hi; });
+    var seuil = 2.5, sur = M.obs.filter(function (o) { return o.w >= seuil; });
+    if (sur.length < 4) { seuil = Math.round((z.hi + 0.4) * 10) / 10; sur = M.obs.filter(function (o) { return o.w >= seuil; }); }
+    if (dans.length >= 4 && sur.length >= 4) {
+      out.push({ ton: 'bad', ic: '!', html: '<b>La tenue suit le WIP.</b> Jusqu’à ' + nf(z.hi, 1) + ' ticket en cours par personne, vos équipes livrent ' +
+        pc(tenueDe(dans)) + ' de leur engagement au gel. Au-delà de ' + nf(seuil, 1) + ', elles n’en livrent plus que ' + pc(tenueDe(sur)) +
+        ' et le délai passe de ' + nf(delaiDe(dans), 1) + ' à ' + nf(delaiDe(sur), 1) + ' jours.' });
+    }
+    // 2. Quand la capacité baisse, le WIP ne suit pas.
+    var liv = M.aggs.filter(function (a) { return a.v.etat === 'livree'; });
+    if (liv.length >= 4) {
+      var iMin = 0;
+      liv.forEach(function (a, i) { if (a.caf < liv[iMin].caf) iMin = i; });
+      var max = Math.max.apply(null, liv.map(function (a) { return a.caf; })), ref = null;
+      for (var i = iMin - 1; i >= 0; i--) if (liv[i].caf >= 0.9 * max) { ref = liv[i]; break; }
+      var bas = liv[iMin];
+      if (ref && bas.caf <= 0.85 * ref.caf && bas.w > ref.w * 1.2) {
+        out.push({ ton: 'bad', ic: '↘', html: '<b>Quand la capacité baisse, le WIP ne suit pas.</b> Entre la ' + esc(ref.v.v) + ' et la ' + esc(bas.v.v) +
+          ', la CAF a baissé de ' + nf((1 - bas.caf / ref.caf) * 100) + NB + '% mais les tickets en cours par personne sont passés de ' +
+          nf(ref.w, 1) + ' à ' + nf(bas.w, 1) + '. La tenue au gel est tombée de ' + pc(ref.tenue) + ' à ' + pc(bas.tenue) + '.' });
+      }
+    }
+    // 3. Une équipe qui limite déjà son WIP : la preuve par l'exemple.
+    var best = null;
+    S.equipes.forEach(function (id) {
+      var serie = M.done.map(function (v) { return M.obs.filter(function (o) { return o.eq === id && o.v === v.v; })[0]; }).filter(Boolean);
+      if (serie.length < 6) return;
+      var k = serie.length;
+      while (k > 0 && serie[k - 1].w <= z.hi + 0.15) k--;
+      var run = serie.slice(k), avant = serie.slice(Math.max(0, k - 5), k);
+      if (run.length < 3 || !avant.length || wDe(avant) <= z.hi + 0.3) return;
+      var gain = tenueDe(run) - tenueDe(avant);
+      if (!best || gain > best.gain) best = { id: id, run: run, avant: avant, gain: gain };
+    });
+    if (best && best.gain > 0.08) {
+      out.push({ ton: 'good', ic: '✓', html: '<b>' + esc(EQ[best.id].nom) + ' limite son WIP depuis la ' + esc(best.run[0].v) + '.</b> ' +
+        nf(wDe(best.run), 1) + ' ticket en cours par personne au lieu de ' + nf(wDe(best.avant), 1) + ' : tenue ' + pc(tenueDe(best.run)) +
+        ' (' + sgn(best.gain * 100, 0, NB + 'pts') + '), délai ' + nf(delaiDe(best.run), 1) + NB + 'j au lieu de ' + nf(delaiDe(best.avant), 1) + NB + 'j.' });
+    }
+    // 4. La vélocité est meilleure dans la zone (comparée à la forte surcharge du constat 1).
+    var zi = M.obs.filter(function (o) { return o.w >= z.lo && o.w <= z.hi; });
+    var zl = M.obs.filter(function (o) { return o.w < z.lo; });
+    if (zi.length >= 3 && sur.length >= 3) {
+      var txt = '<b>La vélocité est meilleure dans la zone.</b> Il faut ' + nf(velDe(zi), 1) + NB + u.vel + ' dans la zone idéale, contre ' +
+        nf(velDe(sur), 1) + ' au-delà de ' + nf(seuil, 1) + ' tickets en cours par personne';
+      txt += zl.length >= 3 ? ' et ' + nf(velDe(zl), 1) + ' sous la zone, où une partie de la capacité reste inemployée.' : '.';
+      if (S.unite === 'sp') {
+        var vz = velDe(zi), plan = nf(PLAN_VELOCITE, 1) + NB + 'JP par SP';
+        txt += Math.abs(vz - PLAN_VELOCITE) <= 0.15
+          ? ' Votre paramètre de planification (' + plan + ') n’est réaliste que dans la zone.'
+          : vz > PLAN_VELOCITE
+            ? ' Même dans la zone, votre paramètre de planification (' + plan + ') est optimiste : le recalibrer à ' + nf(vz, 1) + '.'
+            : ' Dans la zone, vous faites mieux que votre paramètre de planification (' + plan + ').';
+      }
+      out.push({ ton: 'info', ic: 'JP', html: txt });
+    }
+    return out;
+  }
+
+  function rendreVerdict() {
+    var el = $('#verdict'), z = M.zone;
+    if (!z) { el.innerHTML = '<div class="empty">Le verdict apparaît dès que la courbe du WIP peut être tracée.</div>'; return; }
+    var fv = versionSim(), reco = projection(fv, z.ideal), sq = projection(fv, null);
+    var items = constats();
+    el.innerHTML = '<div><div class="v-k">Ce que disent les données</div><div class="findings">' +
+      items.map(function (it) { return '<div class="finding"><span class="ic ' + it.ton + '" aria-hidden="true">' + esc(it.ic) + '</span><p>' + it.html + '</p></div>'; }).join('') +
+      '</div></div>' +
+      '<div class="reco"><div class="v-k" style="margin:0">Recommandation</div>' +
+      '<p><b>Piloter le WIP par la capacité.</b> À chaque version, limiter les tickets en cours à ' + nf(z.ideal, 1) + ' par personne présente, d’après la CAF prévue dans l’Analyse de capacité.</p>' +
+      '<p>Pour la <b>' + esc(fv.v) + '</b> (' + nf(reco.etp, 1) + ' ETP prévus) : <b>' + nf(reco.wip) + ' tickets en cours au maximum</b>, contre ' + nf(sq.wip) + ' au rythme actuel. Effet attendu : tenue ' +
+      sgn((reco.tenue - sq.tenue) * 100, 0, NB + 'pts') + ', délai ' + sgn(reco.delai - sq.delai, 1, NB + 'j') + '.</p>' +
+      '<div class="limits">' + reco.eq.map(function (e) { return '<span class="limit">' + esc(EQ[e.id].nom) + ' · ' + e.lim + '</span>'; }).join('') + '</div>' +
+      '<div class="reco-act"><button type="button" class="vbtn vbtn--pri" data-act="appliquer">Appliquer au Sprint Planning</button><button type="button" class="vbtn" data-act="simuler">Ouvrir le simulateur</button></div></div>';
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Le train des versions (4 panneaux alignés sur les versions)
+  // ════════════════════════════════════════════════════════════════════
+  var GEO_TRAIN = null;
+
+  function dessinerTrain() {
+    var hote = $('#trainChart');
+    if (!hote || S.vues.train !== 'chart') return;
+    var W = Math.max(300, Math.floor(hote.clientWidth)), u = M.u, A = M.aggs, n = A.length, z = M.zone;
+    var padL = 46, padR = 14, plotW = W - padL - padR, band = plotW / n, cw = clamp(band * 0.58, 4, 22), etroit = W < 600;
+    function X(i) { return padL + band * (i + 0.5); }
+    var P = [
+      { cle: 'caf', titre: 'Capacité à faire réelle', unite: 'JP', h: 84 },
+      { cle: 'res', titre: 'Engagement et résultat au gel', unite: u.court, h: 112 },
+      { cle: 'w', titre: 'Tickets en cours par personne', unite: etroit ? 'WIP ÷ ETP' : 'WIP ÷ ETP présents', h: 86 },
+      { cle: 'vel', titre: 'Vélocité observée', unite: u.velCourt + (etroit ? '' : ' · plus bas = plus efficace'), h: 78 }
+    ];
+    var y = 0;
+    P.forEach(function (p) { p.haut = y + 26; p.bas = p.haut + p.h; y = p.bas + 12; });
+    var axe = P[3].bas, puces = band >= 30, H = axe + 22 + (puces ? 22 : 0);
+    var iPrev = -1, iCours = -1, iSel = -1;
+    A.forEach(function (a, i) {
+      if (iPrev < 0 && a.v.etat === 'prevision') iPrev = i;
+      if (a.v.etat === 'en-cours') iCours = i;
+      if (a.v.v === S.sel) iSel = i;
+    });
+    GEO_TRAIN = { padL: padL, band: band, H: H };
+    var s = [];
+    s.push('<svg class="viz" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Train des versions : capacité, résultat au gel, tickets en cours par personne et vélocité, de la ' + esc(A[0].v.v) + ' à la ' + esc(A[n - 1].v.v) + '">');
+    if (iPrev >= 0) {
+      var x0 = padL + band * iPrev;
+      s.push(R(x0, 0, padL + plotW - x0, axe + 4, 'region'));
+      if (padL + plotW - x0 >= 70) s.push(T(padL + plotW - 6, P[0].haut - 10, 'Prévisions', 'note', 'end'));
+    }
+    if (iSel >= 0) s.push(R(padL + band * iSel + 1, 0, band - 2, H, 'selband'));
+    s.push('<rect class="hoverband" x="0" y="0" width="0" height="' + H + '"/>');
+
+    // Panneau 1 — capacité à faire réelle
+    (function (p) {
+      var hi = plafond(Math.max.apply(null, A.map(function (a) { return a.caf; })) * 1.12), sy = echelle(0, hi, p.haut, p.bas);
+      s.push(titrePanneau(p, 0), grilleY(graduer(0, hi, 3), sy, padL, padL + plotW, nfa));
+      var iMin = -1, iV = -1;
+      A.forEach(function (a, i) {
+        s.push('<path class="' + (a.v.etat === 'prevision' ? 'm-soft' : 'm-series') + '" d="' + barre(X(i) - cw / 2, sy(a.caf), cw, p.bas - sy(a.caf), 4) + '"/>');
+        if (a.v.etat === 'livree' && (iMin < 0 || a.caf < A[iMin].caf)) iMin = i;
+        if (a.v.v === S.simV) iV = i;
+      });
+      [iMin, iV].forEach(function (i) { if (i >= 0 && band >= 22) s.push(T(X(i), sy(A[i].caf) - 5, nf(A[i].caf), 'lbl', 'middle')); });
+      s.push(L(padL, p.bas, padL + plotW, p.bas, 'base'));
+    })(P[0]);
+
+    // Panneau 2 — engagement et résultat au gel
+    (function (p) {
+      var vals = [1];
+      A.forEach(function (a) { vals.push(a.eng || 0, a.vise || 0, a.reco ? a.reco.p50 : 0); });
+      var hi = plafond(Math.max.apply(null, vals) * 1.1), sy = echelle(0, hi, p.haut, p.bas);
+      s.push(titrePanneau(p, 0), grilleY(graduer(0, hi, 3), sy, padL, padL + plotW, nfa));
+      A.forEach(function (a, i) {
+        var x = X(i) - cw / 2;
+        if (a.v.etat === 'livree') {
+          var segs = [[a.gel, 'm-good'], [a.derog, 'm-warn'], [a.rep, 'm-crit']].filter(function (sg) { return sg[0] > 0; });
+          var base = p.bas;
+          segs.forEach(function (sg, k) {
+            var h = p.bas - sy(sg[0]), top = base - h, dernier = k === segs.length - 1;
+            // 2 px de fond entre deux segments : l'écart sépare, pas un trait.
+            s.push('<path class="' + sg[1] + '" d="' + (dernier ? barre(x, top, cw, h, 4) : bloc4(x, top + 2, cw, h - 2)) + '"/>');
+            base = top;
+          });
+        } else if (a.v.etat === 'en-cours') {
+          s.push('<path class="m-hollow" d="' + barre(x, sy(a.eng), cw, p.bas - sy(a.eng), 4) + '"/>');
+        } else {
+          if (a.vise > 0) s.push('<path class="m-hollow" d="' + barre(x, sy(a.vise), cw, p.bas - sy(a.vise), 4) + '"/>');
+          if (a.reco) {
+            var yy = sy(a.reco.p50), xc = X(i), d = 5.5;
+            s.push('<path class="m-diamond" d="M' + r1(xc) + ',' + r1(yy - d) + 'L' + r1(xc + d) + ',' + r1(yy) + 'L' + r1(xc) + ',' + r1(yy + d) + 'L' + r1(xc - d) + ',' + r1(yy) + 'Z"/>');
+          }
+        }
+      });
+      s.push(L(padL, p.bas, padL + plotW, p.bas, 'base'));
+    })(P[1]);
+
+    // Panneau 3 — tickets en cours par personne, zone idéale, projections
+    (function (p) {
+      var vals = [3.5];
+      A.forEach(function (a) { vals.push(a.w || 0, a.sq ? a.sq.w : 0); });
+      var hi = Math.ceil(Math.max.apply(null, vals) * 2 + 0.2) / 2, sy = echelle(0, hi, p.haut, p.bas);
+      s.push(titrePanneau(p, 0));
+      if (z) {
+        s.push(R(padL, sy(z.hi), plotW, sy(z.lo) - sy(z.hi), 'zone'));
+        // Sur un graphique étroit, la courbe traverserait l'étiquette : la légende suffit.
+        if (band >= 34) s.push(T(padL + 6, sy(z.hi) - 4, 'Zone idéale ' + nf(z.lo, 1) + ' – ' + nf(z.hi, 1), 'zone-lbl'));
+      }
+      s.push(grilleY(graduer(0, hi, 3), sy, padL, padL + plotW, nfa));
+      var pts = [];
+      A.forEach(function (a, i) { if (a.w != null) pts.push([X(i), sy(a.w), i]); });
+      var dern = pts[pts.length - 1];
+      if (dern && iPrev >= 0 && z) {
+        var reco = [[dern[0], dern[1]]], sq = [[dern[0], dern[1]]];
+        A.forEach(function (a, i) { if (a.reco) { reco.push([X(i), sy(a.reco.w)]); sq.push([X(i), sy(a.sq.w)]); } });
+        s.push('<path class="ln-sq" d="' + chemin(sq) + '"/><path class="ln-reco" d="' + chemin(reco) + '"/>');
+        sq.slice(1).forEach(function (q) { s.push('<circle class="dot-sq" cx="' + r1(q[0]) + '" cy="' + r1(q[1]) + '" r="4"/>'); });
+        reco.slice(1).forEach(function (q) { s.push('<circle class="dot-reco" cx="' + r1(q[0]) + '" cy="' + r1(q[1]) + '" r="4"/>'); });
+      }
+      s.push('<path class="ln" d="' + chemin(pts) + '"/>');
+      pts.forEach(function (q) { s.push('<circle class="dot" cx="' + r1(q[0]) + '" cy="' + r1(q[1]) + '" r="4"/>'); });
+      var iMax = -1;
+      A.forEach(function (a, i) { if (a.v.etat === 'livree' && (iMax < 0 || a.w > A[iMax].w)) iMax = i; });
+      if (iMax >= 0) s.push(T(X(iMax), sy(A[iMax].w) - 9, nf(A[iMax].w, 1), 'lbl', 'middle'));
+      if (dern && dern[2] !== iMax) s.push(T(dern[0], dern[1] - 9, nf(A[dern[2]].w, 1), 'lbl', 'middle'));
+      s.push(L(padL, p.bas, padL + plotW, p.bas, 'base'));
+    })(P[2]);
+
+    // Panneau 4 — vélocité observée et références
+    (function (p) {
+      var vals = A.filter(function (a) { return a.vel != null; }).map(function (a) { return a.vel; });
+      var refs = [];
+      if (M.velZone) refs.push({ v: M.velZone, cls: 'ref-good', lbl: 'zone idéale ' + nf(M.velZone, 1) });
+      if (S.unite === 'sp') refs.push({ v: PLAN_VELOCITE, cls: 'ref-plan', lbl: 'paramètre de planification ' + nf(PLAN_VELOCITE, 1) });
+      var tous = vals.concat(refs.map(function (r) { return r.v; }));
+      var lo = Math.floor((Math.min.apply(null, tous) - 0.1) * 2) / 2, hi = Math.ceil((Math.max.apply(null, tous) + 0.1) * 2) / 2;
+      var sy = echelle(lo, hi, p.haut, p.bas);
+      s.push(titrePanneau(p, 0), grilleY(graduer(lo, hi, 3), sy, padL, padL + plotW, function (t) { return nf(t, 1); }));
+      var dernY = null;
+      refs.sort(function (a, b) { return b.v - a.v; }).forEach(function (rf) {
+        var yy = sy(rf.v), ly = yy - 4;
+        if (dernY != null && ly - dernY < 12) ly = yy + 12;
+        s.push(L(padL, yy, padL + plotW, yy, rf.cls));
+        if (iPrev >= 0 && padL + plotW - (padL + band * iPrev) >= 120) s.push(T(padL + plotW - 4, ly, rf.lbl, 'ref-lbl', 'end'));
+        dernY = ly;
+      });
+      var pts = [];
+      A.forEach(function (a, i) { if (a.vel != null) pts.push([X(i), sy(a.vel)]); });
+      s.push('<path class="ln" d="' + chemin(pts) + '"/>');
+      pts.forEach(function (q) { s.push('<circle class="dot" cx="' + r1(q[0]) + '" cy="' + r1(q[1]) + '" r="4"/>'); });
+      s.push(L(padL, p.bas, padL + plotW, p.bas, 'base'));
+    })(P[3]);
+
+    // Axe des versions et puces de tenue au gel. Les versions en cours et
+    // sélectionnée gardent toujours leur libellé ; les autres s'effacent
+    // quand elles tomberaient trop près.
+    var pasLbl = Math.max(1, Math.ceil(32 / band)), forts = iSel >= 0 ? [iSel] : [];
+    if (iCours >= 0 && (iSel < 0 || Math.abs(iCours - iSel) >= pasLbl)) forts.push(iCours);
+    A.forEach(function (a, i) {
+      var fort = forts.indexOf(i) !== -1;
+      var libre = i % pasLbl === 0 && !forts.some(function (f) { return f !== i && Math.abs(f - i) < pasLbl; });
+      if (fort || libre) s.push(T(X(i), axe + 14, vcourt(a.v.v), fort ? 'xl strong' : 'xl', 'middle'));
+      if (!puces) return;
+      var pw = Math.min(band - 4, 40), yy = axe + 21, txt, cls;
+      if (a.v.etat === 'livree') { cls = 'chip-' + tonTenue(a.tenue); txt = nf(a.tenue * 100) + NB + '%'; }
+      else { cls = 'chip-mute'; txt = a.v.etat === 'en-cours' ? (band >= 44 ? 'en cours' : '…') : (band >= 36 ? 'prév.' : '·'); }
+      s.push('<rect x="' + r1(X(i) - pw / 2) + '" y="' + yy + '" width="' + r1(pw) + '" height="16" rx="4" class="' + cls + '"/>');
+      s.push(T(X(i), yy + 11.5, txt, 'chip-t', 'middle'));
+    });
+
+    // Zones de survol (une par version)
+    A.forEach(function (a, i) {
+      s.push('<rect class="hit" data-i="' + i + '" x="' + r1(padL + band * i) + '" y="0" width="' + r1(band) + '" height="' + H + '" tabindex="0" role="button" aria-label="Version ' + esc(a.v.v) + ', ' + esc(libelleEtat(a.v)) + ' : ouvrir le détail"/>');
+    });
+    s.push('</svg>');
+    hote.innerHTML = s.join('');
+  }
+
+  function bulleVersion(a) {
+    var v = a.v, u = M.u, z = M.zone, r = [];
+    var sous = 'Chargement ' + jour(v.debut, 1) + ' · gel ' + jour(v.gel, 1) + ' · déploiement ' + jour(v.deploiement, 1);
+    if (v.etat === 'prevision') {
+      r.push(['series', 'CAF prévue', nf(a.caf, 1) + NB + 'JP'], ['', 'ETP prévus', nf(a.etp, 1)]);
+      if (a.vise) r.push(['', 'Périmètre visé', nf(a.vise) + ' ' + u.court]);
+      if (a.reco) {
+        r.push(['series', 'Limite de WIP (idéal)', nf(a.reco.wip) + ' · ' + nf(a.reco.w, 1) + ' / pers.']);
+        r.push(['ghost', 'Statu quo', nf(a.sq.wip) + ' · ' + nf(a.sq.w, 1) + ' / pers.']);
+        r.push(['series', 'Livrable au gel (idéal)', nf(a.reco.p50) + ' ' + u.court]);
+      }
+    } else {
+      r.push(['series', 'CAF réelle', nf(a.caf, 1) + NB + 'JP (théorique ' + nf(a.cafTheo) + ')']);
+      r.push(['series', 'Tickets en cours', nf(a.wip) + ' · ' + nf(a.w, 1) + ' / pers.']);
+      r.push(['', 'Engagés', nf(a.eng) + ' ' + u.court]);
+      if (v.etat === 'livree') {
+        r.push(['good', 'Livrés au gel', nf(a.gel)], ['warn', 'En dérogation', nf(a.derog)], ['crit', 'Reportés', nf(a.rep)]);
+        r.push(['', 'Tenue au gel', pc(a.tenue)], ['', 'Délai', nf(a.delai, 1) + NB + 'j'], ['series', 'Vélocité', nf(a.vel, 2) + ' ' + u.velCourt], ['', 'Régressions IAT', nf(a.reg)]);
+      }
+    }
+    if (z && a.w != null) r.push(['', 'Par rapport à la zone', a.w > z.hi ? 'au-dessus' : a.w < z.lo ? 'en dessous' : 'dans la zone']);
+    return bulle('Version ' + v.v + ' · ' + libelleEtat(v), sous, r);
+  }
+
+  function survolTrain(i) {
+    var hb = $('#trainChart .hoverband');
+    if (!hb || !GEO_TRAIN) return;
+    if (i < 0) { hb.setAttribute('width', 0); return; }
+    hb.setAttribute('x', GEO_TRAIN.padL + GEO_TRAIN.band * i);
+    hb.setAttribute('width', GEO_TRAIN.band);
+  }
+  function choisirVersion(v, focus) {
+    S.sel = v; sauver();
+    dessinerTrain(); rendreTableTrain(); rendreDetail();
+    if (focus) { var i = -1; M.aggs.forEach(function (a, k) { if (a.v.v === v) i = k; }); var h = $('#trainChart .hit[data-i="' + i + '"]'); if (h) h.focus(); }
+  }
+
+  function rendreLegendeTrain() {
+    var g = [
+      { nom: 'Capacité', items: [['series', 'Réalisée'], ['soft', 'Prévue']] },
+      { nom: 'Résultat', items: [['good', 'Livré au gel'], ['warn', 'Livré en dérogation'], ['crit', 'Reporté'], ['hollow', 'Engagé (en cours) ou visé (à venir)'], ['diamond', 'Livrable au gel au WIP idéal']] },
+      { nom: 'Tickets en cours', items: [['line', 'Mesuré'], ['ring', 'Recommandé'], ['ring sq', 'Statu quo'], ['zone', 'Zone idéale']] },
+      { nom: 'Vélocité', items: [['line', 'Observée'], ['dash good', 'Dans la zone idéale']].concat(S.unite === 'sp' ? [['dash plan', 'Paramètre de planification']] : []) },
+      { nom: 'Tenue au gel', items: [['wgood', '≥ 85 %'], ['wwarn', '70 à 85 %'], ['wbad', '< 70 %']] }
+    ];
+    $('#trainLegend').innerHTML = legende(g);
+  }
+
+  function rendreTableTrain() {
+    var el = $('#trainTable'), u = M.u;
+    if (S.vues.train !== 'table') return;
+    var h = '<table class="data"><caption>Une ligne par version · ' + esc(u.court) + ' · équipes sélectionnées</caption><thead><tr><th scope="col">Version</th><th scope="col">État</th><th scope="col">CAF réelle</th><th scope="col">ETP</th><th scope="col">WIP</th><th scope="col">WIP / pers.</th><th scope="col">Engagés</th><th scope="col">Au gel</th><th scope="col">Dérog.</th><th scope="col">Reportés</th><th scope="col">Tenue</th><th scope="col">Délai (j)</th><th scope="col">Vélocité</th><th scope="col">Régr. IAT</th></tr></thead><tbody>';
+    M.aggs.forEach(function (a) {
+      var l = a.v.etat === 'livree', f = a.v.etat === 'prevision';
+      h += '<tr><td>' + esc(a.v.v) + '</td><td>' + esc(libelleEtat(a.v)) + '</td><td>' + nf(a.caf, 1) + '</td><td>' + nf(a.etp, 1) + '</td>' +
+        '<td>' + (f ? (a.reco ? nf(a.reco.wip) + ' (limite)' : '–') : nf(a.wip)) + '</td><td>' + (f ? (a.reco ? nf(a.reco.w, 1) : '–') : nf(a.w, 2)) + '</td>' +
+        '<td>' + (f ? nf(a.vise) + ' (visé)' : nf(a.eng)) + '</td><td>' + (l ? nf(a.gel) : f && a.reco ? '≈ ' + nf(a.reco.p50) : '–') + '</td><td>' + (l ? nf(a.derog) : '–') + '</td><td>' + (l ? nf(a.rep) : '–') + '</td>' +
+        '<td class="' + (l ? 't-' + tonTenue(a.tenue) : '') + '">' + (l ? pc(a.tenue) : '–') + '</td><td>' + (l ? nf(a.delai, 1) : '–') + '</td><td>' + (l ? nf(a.vel, 2) : '–') + '</td><td>' + (l ? nf(a.reg) : '–') + '</td></tr>';
+    });
+    el.innerHTML = h + '</tbody></table>';
+  }
+
+  function rendreDetail() {
+    var el = $('#versionDetail'), u = M.u, z = M.zone;
+    var a = M.aggs.filter(function (x) { return x.v.v === S.sel; })[0];
+    if (!a) { a = M.aggs.filter(function (x) { return x.v.etat === 'livree'; }).pop() || M.aggs[0]; S.sel = a.v.v; }
+    var v = a.v, i = M.aggs.indexOf(a);
+    var ton = v.etat === 'livree' ? tonTenue(a.tenue) : v.etat === 'en-cours' ? 'info' : 'mute';
+    var h = '<div class="card-head"><div><h3>Version ' + esc(v.v) + ' <span class="pill ' + ton + '">' + esc(libelleEtat(v)) + '</span></h3>' +
+      '<p class="sub">Chargement ' + jour(v.debut, 1) + ' · gel de code ' + jour(v.gel, 1) + ' · Go / No-go ' + jour(v.gonogo, 1) + ' · déploiement ' + jour(v.deploiement, 1) + '</p></div>' +
+      '<div class="d-nav"><button type="button" class="vbtn" data-nav="-1"' + (i <= 0 ? ' disabled' : '') + ' aria-label="Version précédente">←</button><button type="button" class="vbtn" data-nav="1"' + (i >= M.aggs.length - 1 ? ' disabled' : '') + ' aria-label="Version suivante">→</button></div></div>';
+    function stat(k, val, unite, sous) { return '<div class="d-stat"><div class="k">' + esc(k) + '</div><div class="v">' + val + (unite ? ' <small>' + esc(unite) + '</small>' : '') + '</div>' + (sous ? '<div class="s">' + sous + '</div>' : '') + '</div>'; }
+    var rows = a.rs, head, corps;
+    if (v.etat === 'prevision') {
+      var p = a.reco, q = a.sq;
+      h += '<div class="d-stats">' + stat('CAF prévue', nf(a.caf, 1), 'JP', 'théorique ' + nf(a.cafTheo)) + stat('ETP prévus', nf(a.etp, 1), '', '') +
+        stat('Périmètre visé', nf(a.vise), u.court, 'Target dates posées') + stat('Limite de WIP', p ? nf(p.wip) : '–', 'tickets', p ? nf(p.w, 1) + ' / pers.' : '') +
+        stat('Statu quo', q ? nf(q.wip) : '–', 'tickets', q ? nf(q.w, 1) + ' / pers.' : '') + stat('Livrable au gel', p ? nf(p.p50) : '–', u.court, 'au WIP idéal (P50)') + '</div>';
+      head = ['Équipe', 'CAF prévue', 'ETP prévus', 'Visé', 'Limite WIP', 'Statu quo', 'Livrable au gel'];
+      corps = (p ? p.eq : []).map(function (e) {
+        var sqe = q.eq.filter(function (x) { return x.id === e.id; })[0];
+        return [EQ[e.id].nom, nf(e.caf, 1), nf(e.etp, 1), nf(e.vise), nf(e.lim) + ' · ' + nf(e.w, 1) + '/p', nf(sqe.lim) + ' · ' + nf(sqe.w, 1) + '/p', nf(e.p50)];
+      });
+    } else if (v.etat === 'en-cours') {
+      h += '<div class="d-stats">' + stat('CAF réelle', nf(a.caf, 1), 'JP', 'théorique ' + nf(a.cafTheo)) + stat('ETP présents', nf(a.etp, 1), '', '') +
+        stat('Tickets en cours', nf(a.wip), '', nf(a.w, 1) + ' / pers.') + stat('Engagés', nf(a.eng), u.court, '') +
+        stat('Gel de code', jour(v.gel, 1), '', 'résultat ce soir') + stat('Zone idéale', z ? nf(z.lo, 1) + '–' + nf(z.hi, 1) : '–', '/ pers.', '') + '</div>';
+      head = ['Équipe', 'CAF réelle', 'ETP', 'WIP', 'WIP / pers.', 'Engagés'];
+      corps = rows.map(function (r) { return [EQ[r.eq].nom, nf(r.caf, 1), nf(r.etp, 1), nf(r.wip, 1), nf(r.wip / r.etp, 2), nf(u.engEnCours(r))]; });
+    } else {
+      h += '<div class="d-stats">' + stat('CAF réelle', nf(a.caf, 1), 'JP', 'théorique ' + nf(a.cafTheo)) + stat('Tickets en cours', nf(a.w, 1), '/ pers.', nf(a.wip) + ' pour ' + nf(a.etp, 1) + ' ETP') +
+        stat('Tenue au gel', pc(a.tenue), '', nf(a.gel) + ' sur ' + nf(a.eng) + ' ' + u.court) + stat('Délai', nf(a.delai, 1), 'j ouvrés', '') +
+        stat('Vélocité', nf(a.vel, 2), u.velCourt, nf(a.livres) + ' ' + u.court + ' livrés') + stat('Régressions IAT', nf(a.reg), '', v.iatEnCours ? 'test IAT en cours' : '') + '</div>';
+      head = ['Équipe', 'CAF réelle', 'ETP', 'WIP', 'WIP / pers.', 'Engagés', 'Au gel', 'Dérog.', 'Reportés', 'Tenue', 'Délai (j)', 'Vélocité', 'Régr.'];
+      corps = rows.map(function (r) {
+        var e = u.eng(r), t = e ? u.gel(r) / e : null, lv = u.gel(r) + u.derog(r);
+        return [EQ[r.eq].nom, nf(r.caf, 1), nf(r.etp, 1), nf(r.wip, 1), nf(r.wip / r.etp, 2), nf(e), nf(u.gel(r)), nf(u.derog(r)), nf(u.rep(r)),
+          { t: pc(t), c: 't-' + tonTenue(t) }, nf(r.delai, 1), nf(lv ? r.caf / lv : null, 2), nf(r.regressions)];
+      });
+    }
+    h += '<div class="table-wrap"><table class="data"><thead><tr>' + head.map(function (c) { return '<th scope="col">' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      corps.map(function (ln) { return '<tr>' + ln.map(function (c) { return typeof c === 'object' && c ? '<td class="' + c.c + '">' + esc(c.t) + '</td>' : '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    if (z && v.etat === 'livree') {
+      var pos = a.w > z.hi ? 'au-dessus de la zone idéale (' + nf(z.lo, 1) + ' à ' + nf(z.hi, 1) + ')' : a.w < z.lo ? 'sous la zone idéale : une partie de la capacité attendait du travail' : 'dans la zone idéale';
+      h += '<p class="reading">' + nf(a.w, 1) + ' ticket en cours par personne, ' + pos + '. Tenue au gel ' + pc(a.tenue) + ', délai ' + nf(a.delai, 1) + NB + 'j, ' + nf(a.vel, 2) + ' ' + esc(u.vel) + '.</p>';
+    } else if (z && v.etat === 'prevision' && a.reco) {
+      h += '<p class="reading">La limite de WIP suit la capacité prévue : ' + nf(z.ideal, 1) + ' × ' + nf(a.etp, 1) + ' ETP ≈ ' + nf(a.reco.wip) + ' tickets en cours. Au rythme actuel, les équipes en mèneraient ' + nf(a.sq.wip) + ', soit ' + nf(a.sq.w, 1) + ' par personne.</p>';
+    }
+    el.innerHTML = h;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // La courbe du WIP (3 panneaux alignés sur le WIP par personne)
+  // ════════════════════════════════════════════════════════════════════
+  var EMPH_CARTE = null;
+
+  function dessinerWip() {
+    var hote = $('#wipChart');
+    if (!hote || S.vues.wip !== 'chart') return;
+    var av = $('#wipAvert');
+    if (!M.fit) {
+      hote.innerHTML = '<div class="empty">Pas assez d’observations pour tracer la courbe. Élargissez l’historique ou ajoutez des équipes.</div>';
+      av.hidden = true;
+      return;
+    }
+    av.hidden = M.fiable;
+    av.textContent = 'Peu d’observations ou des WIP trop semblables : la zone idéale est indicative. Élargissez l’historique pour la fiabiliser.';
+    var W = Math.max(300, Math.floor(hote.clientWidth)), u = M.u, z = M.zone, O = M.obs, g = M.fit.grille;
+    var ws = O.map(function (o) { return o.w; });
+    var xlo = Math.min(0.5, Math.floor(Math.min.apply(null, ws) * 2) / 2), xhi = Math.max(3.5, Math.ceil(Math.max.apply(null, ws) * 2) / 2);
+    var padL = 48, padR = 16, plotW = W - padL - padR, etroit = W < 600;
+    function X(x) { return padL + (x - xlo) / (xhi - xlo) * plotW; }
+    var P = [
+      { cle: 'tenue', titre: 'Tenue au gel', unite: etroit ? '% de l’engagement' : 'part de l’engagement livrée au gel', h: 116, fmt: function (t) { return nf(t * 100) + NB + '%'; } },
+      { cle: 'debit', titre: 'Débit au gel', unite: u.court + (etroit ? ' / pers.' : ' livrés au gel par personne'), h: 116, fmt: nfa },
+      { cle: 'delai', titre: 'Délai de traitement', unite: 'jours ouvrés', h: 116, fmt: nfa }
+    ];
+    var y = 0;
+    P.forEach(function (p) { p.haut = y + 26; p.bas = p.haut + p.h; y = p.bas + 14; });
+    var axe = P[2].bas, H = axe + 62;
+    var s = ['<svg class="viz" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Courbe du WIP : tenue au gel, débit et délai selon les tickets en cours par personne. Zone idéale de ' + nf(z.lo, 1) + ' à ' + nf(z.hi, 1) + '.">'];
+    s.push(R(X(z.lo), P[0].haut, X(z.hi) - X(z.lo), axe - P[0].haut, 'zone'));
+    P.forEach(function (p) {
+      var vals = O.map(function (o) { return o[p.cle]; }).concat(g.map(function (q) { return q[p.cle] + 1.28 * q[p.cle + 'Se']; }));
+      var lo, hi;
+      if (p.cle === 'tenue') { lo = Math.min(0.5, Math.floor(Math.min.apply(null, O.map(function (o) { return o.tenue; })) * 10) / 10); hi = 1; }
+      else { lo = 0; hi = plafond(Math.max.apply(null, vals) * 1.05, 3); }
+      var sy = echelle(lo, hi, p.haut, p.bas);
+      p.sy = sy;
+      s.push(titrePanneau(p, 0), grilleY(graduer(lo, hi, 3), sy, padL, padL + plotW, p.fmt));
+      var haut = g.map(function (q) { return [X(q.x), sy(Math.min(hi, q[p.cle] + 1.28 * q[p.cle + 'Se']))]; });
+      var bas = g.map(function (q) { return [X(q.x), sy(Math.max(lo, q[p.cle] - 1.28 * q[p.cle + 'Se']))]; }).reverse();
+      s.push('<path class="band" d="' + chemin(haut.concat(bas)) + 'Z"/>');
+      s.push('<path class="fit" d="' + chemin(g.map(function (q) { return [X(q.x), sy(clamp(q[p.cle], lo, hi))]; })) + '"/>');
+      S.equipes.forEach(function (id) {
+        var tr = O.filter(function (o) { return o.eq === id; }).sort(function (a, b) { return a.n - b.n; });
+        if (tr.length > 1) s.push('<path class="traj t-' + id + '" d="' + chemin(tr.map(function (o) { return [X(o.w), sy(o[p.cle])]; })) + '"/>');
+      });
+      O.forEach(function (o) { s.push('<circle class="pt t-' + o.eq + '" cx="' + r1(X(o.w)) + '" cy="' + r1(sy(o[p.cle])) + '" r="4"/>'); });
+      s.push(L(padL, p.bas, padL + plotW, p.bas, 'base'));
+    });
+    // WIP idéal et WIP actuel, sur toute la hauteur
+    s.push(L(X(z.ideal), P[0].haut - 4, X(z.ideal), axe, 'l-ideal'), L(X(M.nowW), P[0].haut - 4, X(M.nowW), axe, 'l-now'));
+    if (!etroit) s.push(T(X(z.lo) + 5, P[0].haut + 12, 'Zone idéale', 'zone-lbl'));
+    // Axe horizontal, gradué tous les 0,5 (ou 1 sur un écran étroit)
+    graduer(xlo, xhi, Math.max(3, Math.floor(plotW / 110))).forEach(function (t) {
+      s.push(L(X(t), axe, X(t), axe + 4, 'base'), T(X(t), axe + 15, nfa(t), '', 'middle'));
+    });
+    s.push(T(padL + plotW / 2, axe + 31, 'Tickets en cours par personne présente (WIP ÷ ETP)', '', 'middle'));
+    // Étiquettes « idéal » et « actuel » sous l'axe
+    var tags = [{ x: X(z.ideal), t: 'idéal ' + nf(z.ideal, 1), c: 'tag-ideal', tc: 'tag-t' }, { x: X(M.nowW), t: 'actuel ' + nf(M.nowW, 1), c: 'tag-now', tc: 'tag-t dark' }];
+    // Chaque étiquette se centre sous sa ligne ; si elles se touchent, la
+    // seconde s'écarte du côté où se trouve sa ligne.
+    var ty = axe + 40;
+    tags.forEach(function (tg) { tg.w = tg.t.length * 6.4 + 14; tg.g = clamp(tg.x - tg.w / 2, 2, W - tg.w - 2); });
+    var a0 = tags[0], a1 = tags[1];
+    if (a1.g < a0.g + a0.w + 6 && a1.g + a1.w + 6 > a0.g) {
+      a1.g = a1.x >= a0.x ? Math.min(W - a1.w - 2, a0.g + a0.w + 6) : Math.max(2, a0.g - a1.w - 6);
+    }
+    tags.forEach(function (tg) {
+      s.push('<rect x="' + r1(tg.g) + '" y="' + ty + '" width="' + r1(tg.w) + '" height="18" rx="9" class="' + tg.c + '"/>', T(tg.g + tg.w / 2, ty + 12.5, tg.t, tg.tc, 'middle'));
+    });
+    // Cibles de survol : 24 px autour de chaque point
+    P.forEach(function (p) {
+      O.forEach(function (o, k) { s.push('<circle class="whit" data-o="' + k + '" cx="' + r1(X(o.w)) + '" cy="' + r1(p.sy(o[p.cle])) + '" r="12"/>'); });
+    });
+    s.push('</svg>');
+    hote.innerHTML = s.join('');
+    emphase(EMPH_CARTE);
+  }
+
+  function emphase(id) {
+    $$('#wipChart .pt').forEach(function (c) {
+      c.classList.toggle('dim', !!id && !c.classList.contains('t-' + id));
+      c.classList.toggle('on', !!id && c.classList.contains('t-' + id));
+    });
+    $$('#wipChart .traj').forEach(function (p) { p.classList.toggle('on', !!id && p.classList.contains('t-' + id)); });
+  }
+  function bulleObs(o) {
+    var u = M.u;
+    return bulle(EQ[o.eq].nom + ' · version ' + o.v, nf(o.r.wip, 1) + ' tickets en cours pour ' + nf(o.r.etp, 1) + ' ETP présents', [
+      ['series', 'Tickets en cours / pers.', nf(o.w, 2)],
+      ['', 'Tenue au gel', pc(o.tenue)],
+      ['', 'Débit au gel', nf(o.debit, 2) + ' ' + u.court + ' / pers.'],
+      ['', 'Délai', nf(o.delai, 1) + NB + 'j']
+    ]);
+  }
+  function rendreLegendeWip() {
+    $('#wipLegend').innerHTML = legende([{ items: [['dot', 'Une équipe sur une version'], ['line fit', 'Courbe lissée'], ['band', 'Intervalle de confiance 80 %'], ['zone', 'Zone idéale'], ['line ideal', 'WIP idéal'], ['line now', 'WIP actuel']] }]);
+  }
+  function rendreTableWip() {
+    if (S.vues.wip !== 'table') return;
+    var u = M.u, o = M.obs.slice().sort(function (a, b) { return a.w - b.w; });
+    $('#wipTable').innerHTML = '<table class="data"><caption>Une ligne par équipe et par version livrée, triées par tickets en cours par personne</caption><thead><tr><th scope="col">Équipe</th><th scope="col">Version</th><th scope="col">WIP / pers.</th><th scope="col">Tenue au gel</th><th scope="col">Débit (' + esc(u.court) + ' / pers.)</th><th scope="col">Délai (j)</th><th scope="col">Zone</th></tr></thead><tbody>' +
+      o.map(function (x) {
+        var zz = M.zone ? (x.w > M.zone.hi ? 'au-dessus' : x.w < M.zone.lo ? 'en dessous' : 'dans la zone') : '–';
+        return '<tr><td>' + esc(EQ[x.eq].nom) + '</td><td>' + esc(x.v) + '</td><td>' + nf(x.w, 2) + '</td><td class="t-' + tonTenue(x.tenue) + '">' + pc(x.tenue) + '</td><td>' + nf(x.debit, 2) + '</td><td>' + nf(x.delai, 1) + '</td><td>' + zz + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // ── Recommandations par équipe ────────────────────────────────────────
+  function rendreEquipes() {
+    var el = $('#equipes'), z = M.zone, fv = versionSim();
+    el.setAttribute('data-n', S.equipes.length);
+    el.style.setProperty('--n', S.equipes.length);
+    if (!z) { el.innerHTML = ''; return; }
+    var reco = projection(fv, z.ideal), sq = projection(fv, null);
+    el.innerHTML = reco.eq.map(function (e) {
+      var t = EQ[e.id], now = M.now[e.id], q = sq.eq.filter(function (x) { return x.id === e.id; })[0];
+      var etat = now.w > z.hi + 0.05 ? ['bad', '⚠ Au-dessus de la zone'] : now.w < z.lo - 0.05 ? ['info', '◌ Sous la zone'] : ['good', '✓ Dans la zone'];
+      var dT = at('tenue', e.w) - at('tenue', q.w), dD = at('delai', e.w) - at('delai', q.w);
+      return '<article class="tcard" data-team="' + e.id + '" tabindex="0" aria-label="' + esc(t.nom) + ' : limite de WIP ' + e.lim + ' pour la ' + esc(fv.v) + '">' +
+        '<div class="tc-head"><h4>' + esc(t.nom) + '</h4><span class="pill ' + etat[0] + '">' + etat[1] + '</span></div>' +
+        '<div class="tc-meta">' + t.personnes + ' personnes · ' + nf(e.etp, 1) + ' ETP prévus sur la ' + esc(fv.v) + '</div>' +
+        '<div class="tc-nums"><div><span class="k">WIP actuel</span><span class="v">' + nf(now.wip, 1) + '</span><span class="s">' + nf(now.w, 1) + ' / pers.</span></div>' +
+        '<div class="arrow" aria-hidden="true">→</div>' +
+        '<div><span class="k">Limite ' + esc(vcourt(fv.v)) + '</span><span class="v">' + e.lim + '</span><span class="s">' + nf(e.w, 1) + ' / pers.</span></div></div>' +
+        jauge(z.lo, z.hi, e.w, now.w, 'cible ' + nf(e.w, 1), 'actuel ' + nf(now.w, 1)) +
+        '<p class="tc-eff">' + (Math.abs(e.lim - q.lim) < 0.5 ? 'Déjà au bon niveau : garder ce rythme.' :
+          'Effet attendu sur la ' + esc(fv.v) + ' : tenue <b>' + sgn(dT * 100, 0, NB + 'pts') + '</b>, délai <b>' + sgn(dD, 1, NB + 'j') + '</b>.') + '</p></article>';
+    }).join('');
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Simulateur
+  // ════════════════════════════════════════════════════════════════════
+  var SIM = null;
+
+  function majSimulateur() {
+    var z = M.zone, fv = versionSim(), u = M.u;
+    segmente($('#simVersion'), NEXT.map(function (v) { return [v.v, v.v]; }), fv.v, function (v) { S.simV = v; sauver(); tout(); });
+    var inp = $('#simW');
+    if (!z) { $('#simTiles').innerHTML = ''; $('#simChart').innerHTML = '<div class="empty">Simulation indisponible sans courbe du WIP.</div>'; $('#simMsg').textContent = ''; return; }
+    var min = Number(inp.min), max = Number(inp.max);
+    function pos(x) { var p = clamp((x - min) / (max - min), 0, 1); return 'calc(10px + (100% - 20px) * ' + p.toFixed(4) + ')'; }
+    if (Math.abs(Number(inp.value) - S.simW) > 1e-6) inp.value = S.simW;
+    var zl = $('#simZone');
+    zl.style.left = pos(z.lo);
+    zl.style.width = 'calc((100% - 20px) * ' + ((Math.min(z.hi, max) - Math.max(z.lo, min)) / (max - min)).toFixed(4) + ')';
+    var sc = [1, 2, 3].filter(function (t) { return Math.abs(t - z.ideal) > 0.35 && Math.abs(t - M.nowW) > 0.35; })
+      .map(function (t) { return '<span style="left:' + pos(t) + '">' + t + '</span>'; });
+    sc.push('<span class="s-ideal" style="left:' + pos(z.ideal) + '">▲ idéal</span>');
+    if (Math.abs(M.nowW - z.ideal) > 0.45) sc.push('<span class="s-now" style="left:' + pos(M.nowW) + '">▲ actuel</span>');
+    $('#simScale').innerHTML = sc.join('');
+    var sc2 = projection(fv, S.simW), sq = projection(fv, null);
+    $('#simWOut').innerHTML = '<b>' + nf(S.simW, 1) + '</b> ticket en cours par personne · ' + nf(sc2.wip) + ' au total';
+    $('#simIdeal').disabled = Math.abs(S.simW - z.ideal) < 0.05;
+    var mcS = simuler(fv, S.simW), mcQ = simuler(fv, null);
+    var p50 = Math.round(quantile(mcS, 0.5)), p85 = Math.round(quantile(mcS, 0.15));
+    var q50 = Math.round(quantile(mcQ, 0.5)), q85 = Math.round(quantile(mcQ, 0.15));
+    var vise = sc2.vise;
+    function part(arr, x) { var k = 0; arr.forEach(function (v) { if (v >= x - 0.5) k++; }); return k / arr.length; }
+    var probS = vise ? part(mcS, vise) : null, probQ = vise ? part(mcQ, vise) : null;
+    SIM = { mcS: mcS, mcQ: mcQ, vise: vise, p85: p85, p50: p50 };
+
+    function rt(lbl, val, unite, delta, bonne, sous) {
+      var d = '';
+      if (delta != null && isFinite(delta)) {
+        var cl = Math.abs(delta) < 0.05 ? 'flat' : (delta > 0) === bonne ? 'up' : 'down';
+        d = '<span class="delta ' + cl + '" title="Par rapport au statu quo">' + delta + '</span>';
+      }
+      return '<div class="rt"><span class="rt-l">' + esc(lbl) + '</span><span class="rt-v">' + val + (unite ? '<small>' + esc(unite) + '</small>' : '') + '</span><span class="rt-s">' + sous + '</span></div>';
+    }
+    $('#simTiles').innerHTML =
+      rt('Tickets en cours', nf(sc2.wip), 'au plus', null, false, 'Statu quo : ' + nf(sq.wip) + ' (' + nf(sq.w, 1) + ' / pers.)') +
+      rt('Livré au gel', nf(p50), u.court, null, true, 'Au moins ' + nf(p85) + ' dans 85 % des cas · statu quo ' + nf(q50)) +
+      rt('Tenue attendue', pc(sc2.tenue), '', null, true, 'Statu quo : ' + pc(sq.tenue)) +
+      rt('Délai de traitement', nf(sc2.delai, 1), 'j ouvrés', null, false, 'Statu quo : ' + nf(sq.delai, 1) + NB + 'j');
+
+    var msg = 'Avec <b>' + nf(sc2.wip) + ' tickets en cours</b> au maximum (' + nf(S.simW, 1) + ' par personne), la ' + esc(fv.v) + ' livre <b>' + nf(p50) + ' ' + u.court + '</b> au gel dans un cas sur deux, et <b>au moins ' + nf(p85) + '</b> dans 85 % des cas. ';
+    if (vise) {
+      var incomplet = fv.v !== NEXT[0].v ? ' (Target dates encore incomplètes)' : '';
+      if (probS < 0.5) {
+        msg += 'Le périmètre visé, ' + nf(vise) + ' ' + u.court + incomplet + ', ' + (probS < 0.01 ? 'a <b>' : 'n’a que <b>') + chance(probS) + ' de chances</b> d’être livré en entier au gel. Engager ' + nf(p85) + ' ' + u.court + ' et en reporter ' + nf(Math.max(0, vise - p85)) + ' dès le chargement sécurise la version.';
+      } else {
+        msg += 'Le périmètre visé, ' + nf(vise) + ' ' + u.court + incomplet + ', a <b>' + chance(probS) + ' de chances</b> d’être livré en entier au gel.';
+      }
+      msg += ' Au rythme actuel (' + nf(sq.wip) + ' tickets en cours) : ' + nf(q50) + ' livrés au gel, au moins ' + nf(q85) + ' dans 85 % des cas, ' + chance(probQ) + ' de chances de tenir le périmètre.';
+    } else {
+      msg += 'Au rythme actuel (' + nf(sq.wip) + ' tickets en cours) : ' + nf(q50) + ' livrés au gel, au moins ' + nf(q85) + ' dans 85 % des cas.';
+    }
+    $('#simMsg').innerHTML = msg;
+
+    var sqById = {};
+    sq.eq.forEach(function (e) { sqById[e.id] = e; });
+    $('#simTable').innerHTML = '<caption>Capacité prévue par l’Analyse de capacité pour la ' + esc(fv.v) + '</caption><thead><tr><th scope="col">Équipe</th><th scope="col">ETP prévus</th><th scope="col">Limite WIP</th><th scope="col">Statu quo</th><th scope="col">Livré au gel</th></tr></thead><tbody>' +
+      sc2.eq.map(function (e) { return '<tr><td>' + esc(EQ[e.id].nom) + '</td><td>' + nf(e.etp, 1) + '</td><td>' + e.lim + '</td><td>' + nf(sqById[e.id].lim, 0) + '</td><td>≈ ' + nf(e.p50) + '</td></tr>'; }).join('') +
+      '<tr class="tot"><td>Total</td><td>' + nf(sc2.etp, 1) + '</td><td>' + nf(sc2.wip) + '</td><td>' + nf(sq.wip) + '</td><td>≈ ' + nf(sc2.p50) + '</td></tr></tbody>';
+    $('#simLegend').innerHTML = legende([{ items: [['area', 'Votre scénario'], ['line sq', 'Statu quo']].concat(vise ? [['dash ink', 'Périmètre visé']] : []).concat([['line', 'Seuil à 85 % de chances']]) }]);
+    dessinerHisto();
+  }
+
+  // Part des tirages qui livrent au moins n (tirages triés, n entier).
+  function auMoins(trie, n) {
+    var a = 0, b = trie.length;
+    while (a < b) { var m = (a + b) >> 1; if (trie[m] < n - 0.5) a = m + 1; else b = m; }
+    return (trie.length - a) / trie.length;
+  }
+
+  // Distribution du livré au gel : densité lissée (noyau gaussien) plutôt
+  // qu'un mur de barres ; le scénario en lavis + trait, le statu quo en trait gris.
+  function dessinerHisto() {
+    var hote = $('#simChart');
+    if (!hote || !SIM) return;
+    var c = SIM, u = M.u;
+    var W = Math.max(280, Math.floor(hote.clientWidth)), H = 214, padL = 12, padR = 12, top = 44, bot = 30;
+    var lo = Math.floor(Math.min(quantile(c.mcS, 0.002), quantile(c.mcQ, 0.002)));
+    var hi = Math.ceil(Math.max(quantile(c.mcS, 0.998), quantile(c.mcQ, 0.998), c.vise ? c.vise + 1 : 0));
+    if (hi - lo < 8) hi = lo + 8;
+    var N = 160, pas = (hi - lo) / N, bandeK = Math.max(0.6, (hi - lo) / 24);
+    function densite(arr) {
+      var fin = [], g = [], k, j, tot = 0;
+      for (k = 0; k <= N; k++) { fin.push(0); g.push(0); }
+      arr.forEach(function (x) { var i = Math.round((x - lo) / pas); if (i >= 0 && i <= N) fin[i]++; });
+      var rayon = Math.ceil(3 * bandeK / pas);
+      for (k = 0; k <= N; k++) {
+        for (j = Math.max(0, k - rayon); j <= Math.min(N, k + rayon); j++) { var e = (j - k) * pas / bandeK; g[k] += fin[j] * Math.exp(-0.5 * e * e); }
+        tot += g[k];
+      }
+      return g.map(function (v) { return v / tot; });
+    }
+    var dS = densite(c.mcS), dQ = densite(c.mcQ), ymax = Math.max(Math.max.apply(null, dS), Math.max.apply(null, dQ)) * 1.1;
+    var plotW = W - padL - padR, plotH = H - top - bot, base = top + plotH;
+    function X(x) { return padL + (x - lo) / (hi - lo) * plotW; }
+    function Y(p) { return base - p / ymax * plotH; }
+    function courbe(d) { return d.map(function (p, k) { return [X(lo + k * pas), Y(p)]; }); }
+    var cS = courbe(dS), cQ = courbe(dQ);
+    var s = ['<svg class="viz" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Distribution du livré au gel : votre scénario et le statu quo">'];
+    s.push('<path class="dens" d="' + chemin([[X(lo), base]].concat(cS, [[X(hi), base]])) + 'Z"/>');
+    s.push('<path class="dens-q" d="' + chemin(cQ) + '"/>', '<path class="dens-l" d="' + chemin(cS) + '"/>');
+    s.push(L(padL, base, padL + plotW, base, 'base'));
+    function etiquette(x, yy, t) {
+      var anc = x > W - 120 ? 'end' : x < 120 ? 'start' : 'middle';
+      return T(anc === 'end' ? x + 4 : anc === 'start' ? x - 4 : x, yy, t, 'mk-lbl', anc);
+    }
+    if (c.vise) { var xv = X(c.vise); s.push(L(xv, 18, xv, base, 'mk-vise'), etiquette(xv, 13, 'Périmètre visé : ' + nf(c.vise))); }
+    var x85 = X(c.p85);
+    s.push(L(x85, 33, x85, base, 'mk-p85'), etiquette(x85, 29, '85 % de chances : au moins ' + nf(c.p85)));
+    graduer(lo, hi, Math.max(3, Math.floor(plotW / 70))).forEach(function (t) {
+      if (t % 1) return;
+      s.push(L(X(t), base, X(t), base + 4, 'base'), T(X(t), base + 16, nf(t), '', 'middle'));
+    });
+    s.push('<line class="xhair" x1="0" y1="' + top + '" x2="0" y2="' + base + '" visibility="hidden"/>');
+    s.push('<rect class="hhit" x="' + padL + '" y="' + top + '" width="' + r1(plotW) + '" height="' + plotH + '"/>');
+    s.push('</svg>');
+    hote.innerHTML = s.join('');
+    SIM.geo = { lo: lo, hi: hi, padL: padL, plotW: plotW, unite: u.court };
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Matrice équipes × versions
+  // ════════════════════════════════════════════════════════════════════
+  var MESURES = {
+    w: { nom: 'Tickets en cours / pers.', court: 'WIP / pers.' },
+    tenue: { nom: 'Tenue au gel', court: 'Tenue au gel' },
+    delai: { nom: 'Délai de traitement', court: 'Délai' }
+  };
+  function couleurTexte(nomVar) {
+    var hex = getComputedStyle(document.documentElement).getPropertyValue(nomVar).trim();
+    var m = /^#([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return 'var(--v-ink)';
+    var n = parseInt(m[1], 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.36 ? '#0C1A2E' : '#FFFFFF';
+  }
+  function classeCellule(v, mes, z) {
+    if (v == null || !isFinite(v)) return null;
+    if (mes === 'w') {
+      if (v < z.lo) { var d = z.lo - v; return d < 0.3 ? '--v-db1' : d < 0.6 ? '--v-db2' : '--v-db3'; }
+      if (v > z.hi) { var e = v - z.hi; return e < 0.4 ? '--v-dr1' : e < 0.9 ? '--v-dr2' : '--v-dr3'; }
+      return '--v-d0';
+    }
+    if (mes === 'tenue') return v < 0.6 ? '--v-s1' : v < 0.7 ? '--v-s2' : v < 0.8 ? '--v-s3' : v < 0.9 ? '--v-s4' : '--v-s5';
+    return v < 3 ? '--v-o1' : v < 4.5 ? '--v-o2' : v < 6 ? '--v-o3' : v < 7.5 ? '--v-o4' : '--v-o5';
+  }
+  function valeurMatrice(rs, mes) {
+    var u = M.u;
+    if (!rs.length) return null;
+    if (mes === 'w') return rs[0].wip == null ? null : sum(rs, 'wip') / sum(rs, 'etp');
+    if (rs[0].gel == null) return null;
+    if (mes === 'tenue') { var e = sum(rs, u.eng); return e ? sum(rs, u.gel) / e : null; }
+    var g = sum(rs, 'gel');
+    return g ? sum(rs, function (r) { return r.delai * r.gel; }) / g : null;
+  }
+  function formatMatrice(v, mes) { return v == null ? '–' : mes === 'tenue' ? nf(v * 100) : nf(v, 1); }
+
+  function rendreMatrice() {
+    var z = M.zone, mes = S.mesure;
+    segmente($('#matMesure'), [['w', 'WIP / pers.'], ['tenue', 'Tenue au gel'], ['delai', 'Délai']], mes, function (v) { S.mesure = v; sauver(); rendreMatrice(); });
+    var el = $('#matrix');
+    if (!z) { el.innerHTML = ''; return; }
+    $('#matSub').textContent = mes === 'w'
+      ? 'Tickets en cours par personne, par équipe et par version : en rouge au-dessus de la zone idéale, en bleu en dessous, en gris dans la zone.'
+      : mes === 'tenue' ? 'Part de l’engagement livrée au gel de code (%), par équipe et par version. Plus foncé = meilleure tenue.'
+        : 'Délai de traitement moyen (jours ouvrés), par équipe et par version. Plus foncé = plus long.';
+    var cols = M.vue.filter(function (v) { return v.etat === 'livree' || (mes === 'w' && v.etat === 'en-cours'); });
+    var rangs = S.equipes.map(function (id) { return { id: id, nom: EQ[id].nom, eqs: [id] }; });
+    if (S.equipes.length > 1) rangs.push({ id: '*', nom: 'Ensemble', eqs: S.equipes, total: true });
+    var cache = {};
+    var h = '<thead><tr><th class="row" scope="col">Équipe</th>' + cols.map(function (v) { return '<th scope="col">' + esc(vcourt(v.v)) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rangs.forEach(function (rg) {
+      h += '<tr' + (rg.total ? ' class="total"' : '') + '><th class="row" scope="row">' + esc(rg.nom) + '</th>';
+      cols.forEach(function (v) {
+        var val = valeurMatrice(lignes(v.v, rg.eqs), mes), cl = classeCellule(val, mes, z);
+        if (!cl) { h += '<td class="na">–</td>'; return; }
+        if (!cache[cl]) cache[cl] = couleurTexte(cl);
+        h += '<td style="background:var(' + cl + ');color:' + cache[cl] + '" data-v="' + esc(v.v) + '" data-eq="' + esc(rg.id) + '">' + formatMatrice(val, mes) + '</td>';
+      });
+      h += '</tr>';
+    });
+    el.innerHTML = h + '</tbody>';
+    var echelleCases;
+    if (mes === 'w') {
+      echelleCases = [['--v-db3', 'sous'], ['--v-db2', ''], ['--v-db1', ''], ['--v-d0', 'zone'], ['--v-dr1', ''], ['--v-dr2', ''], ['--v-dr3', 'au-dessus']];
+      $('#matScale').innerHTML = '<span>Sous la zone idéale</span><span class="cells">' + echelleCases.map(function (c) { return '<span style="background:var(' + c[0] + ');color:' + couleurTexte(c[0]) + '">' + esc(c[1]) + '</span>'; }).join('') + '</span><span>Au-dessus · zone ' + nf(z.lo, 1) + ' à ' + nf(z.hi, 1) + '</span>';
+    } else if (mes === 'tenue') {
+      echelleCases = [['--v-s1', '< 60'], ['--v-s2', '60–70'], ['--v-s3', '70–80'], ['--v-s4', '80–90'], ['--v-s5', '≥ 90']];
+      $('#matScale').innerHTML = '<span>Tenue au gel (%)</span><span class="cells">' + echelleCases.map(function (c) { return '<span style="background:var(' + c[0] + ');color:' + couleurTexte(c[0]) + '">' + esc(c[1]) + '</span>'; }).join('') + '</span>';
+    } else {
+      echelleCases = [['--v-o1', '< 3'], ['--v-o2', '3–4,5'], ['--v-o3', '4,5–6'], ['--v-o4', '6–7,5'], ['--v-o5', '≥ 7,5']];
+      $('#matScale').innerHTML = '<span>Délai (jours ouvrés)</span><span class="cells">' + echelleCases.map(function (c) { return '<span style="background:var(' + c[0] + ');color:' + couleurTexte(c[0]) + '">' + esc(c[1]) + '</span>'; }).join('') + '</span>';
+    }
+  }
+  function bulleCellule(v, eq) {
+    var u = M.u, ver = versionDe(v), rs = lignes(v, eq === '*' ? S.equipes : [eq]);
+    var nom = eq === '*' ? 'Ensemble' : EQ[eq].nom, r = [];
+    r.push(['series', 'Tickets en cours / pers.', nf(sum(rs, 'wip') / sum(rs, 'etp'), 2)]);
+    if (ver.etat === 'livree') {
+      var e = sum(rs, u.eng), g = sum(rs, 'gel');
+      r.push(['', 'Tenue au gel', pc(sum(rs, u.gel) / e)], ['', 'Délai', nf(sum(rs, function (x) { return x.delai * x.gel; }) / g, 1) + NB + 'j'], ['', 'CAF réelle', nf(sum(rs, 'caf'), 1) + NB + 'JP']);
+    } else {
+      r.push(['', 'Engagés', nf(sum(rs, u.engEnCours)) + ' ' + u.court]);
+    }
+    return bulle(nom + ' · version ' + v, libelleEtat(ver), r);
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Rendu d'ensemble et interactions
+  // ════════════════════════════════════════════════════════════════════
+  function vues() {
+    segmente($('#vueTrain'), [['chart', 'Graphique'], ['table', 'Tableau']], S.vues.train, function (v) { S.vues.train = v; vues(); });
+    segmente($('#vueWip'), [['chart', 'Graphique'], ['table', 'Tableau']], S.vues.wip, function (v) { S.vues.wip = v; vues(); });
+    $('#trainChart').hidden = S.vues.train !== 'chart';
+    $('#trainTable').hidden = S.vues.train !== 'table';
+    $('#wipChart').hidden = S.vues.wip !== 'chart';
+    $('#wipTable').hidden = S.vues.wip !== 'table';
+    dessinerTrain(); rendreTableTrain(); dessinerWip(); rendreTableWip();
+  }
+
+  function tout() {
+    cacher();
+    calculer();
+    rendreFiltres();
+    rendreKpis();
+    rendreVerdict();
+    rendreLegendeTrain();
+    rendreLegendeWip();
+    vues();
+    rendreDetail();
+    rendreEquipes();
+    majSimulateur();
+    rendreMatrice();
+  }
+
+  function brancher() {
+    // Train : survol, clic, clavier
+    var tr = $('#trainChart');
+    function idx(e) { var h = e.target.closest ? e.target.closest('.hit') : null; return h ? Number(h.getAttribute('data-i')) : -1; }
+    tr.addEventListener('pointermove', function (e) {
+      var i = idx(e);
+      if (i < 0) { survolTrain(-1); cacher(); return; }
+      survolTrain(i);
+      montrer(bulleVersion(M.aggs[i]), e.clientX, e.clientY);
+    });
+    tr.addEventListener('pointerleave', function () { survolTrain(-1); cacher(); });
+    tr.addEventListener('click', function (e) { var i = idx(e); if (i >= 0) choisirVersion(M.aggs[i].v.v, false); });
+    tr.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var i = idx(e);
+      if (i >= 0) { e.preventDefault(); choisirVersion(M.aggs[i].v.v, true); }
+    });
+    tr.addEventListener('focusin', function (e) {
+      var i = idx(e);
+      if (i < 0) return;
+      survolTrain(i);
+      var r = e.target.getBoundingClientRect();
+      montrer(bulleVersion(M.aggs[i]), r.left + r.width / 2, r.top + 60);
+    });
+    tr.addEventListener('focusout', function () { survolTrain(-1); cacher(); });
+
+    $('#versionDetail').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-nav]');
+      if (!b) return;
+      var i = -1;
+      M.aggs.forEach(function (a, k) { if (a.v.v === S.sel) i = k; });
+      var j = clamp(i + Number(b.getAttribute('data-nav')), 0, M.aggs.length - 1);
+      choisirVersion(M.aggs[j].v.v, false);
+    });
+
+    // Courbe du WIP : un point → infobulle + trajectoire de son équipe
+    var wp = $('#wipChart');
+    wp.addEventListener('pointerover', function (e) {
+      var h = e.target.closest ? e.target.closest('.whit') : null;
+      if (!h) return;
+      var o = M.obs[Number(h.getAttribute('data-o'))];
+      if (!o) return;
+      emphase(o.eq);
+      montrer(bulleObs(o), e.clientX, e.clientY);
+    });
+    wp.addEventListener('pointermove', function (e) { if (!TIP.hidden && e.target.closest && e.target.closest('.whit')) placer(e.clientX, e.clientY); });
+    wp.addEventListener('pointerout', function (e) {
+      var vers = e.relatedTarget && e.relatedTarget.closest ? e.relatedTarget.closest('.whit') : null;
+      if (e.target.closest && e.target.closest('.whit') && !vers) { emphase(EMPH_CARTE); cacher(); }
+    });
+
+    // Cartes d'équipe → mise en évidence sur la courbe
+    var eqs = $('#equipes');
+    function carte(e) { var c = e.target.closest ? e.target.closest('.tcard') : null; return c ? c.getAttribute('data-team') : null; }
+    eqs.addEventListener('pointerover', function (e) { var id = carte(e); if (id && id !== EMPH_CARTE) { EMPH_CARTE = id; emphase(id); } });
+    eqs.addEventListener('pointerleave', function () { EMPH_CARTE = null; emphase(null); });
+    eqs.addEventListener('focusin', function (e) { var id = carte(e); if (id) { EMPH_CARTE = id; emphase(id); } });
+    eqs.addEventListener('focusout', function () { EMPH_CARTE = null; emphase(null); });
+
+    // Simulateur
+    $('#simW').addEventListener('input', function (e) { S.simW = Math.round(Number(e.target.value) * 10) / 10; S.simTouche = true; majSimulateur(); });
+    $('#simIdeal').addEventListener('click', function () { if (!M.zone) return; S.simW = M.zone.ideal; S.simTouche = false; majSimulateur(); });
+    var hc = $('#simChart');
+    // Réticule : il suit le pointeur, se cale sur un nombre entier et donne la
+    // probabilité de livrer au moins ce nombre au gel, pour les deux scénarios.
+    hc.addEventListener('pointermove', function (e) {
+      var h = e.target.closest ? e.target.closest('.hhit') : null, xh = $('#simChart .xhair');
+      if (!h || !SIM || !SIM.geo || !xh) { cacher(); if (xh) xh.setAttribute('visibility', 'hidden'); return; }
+      var g = SIM.geo, svg = h.ownerSVGElement.getBoundingClientRect();
+      var n = Math.round(g.lo + clamp((e.clientX - svg.left - g.padL) / g.plotW, 0, 1) * (g.hi - g.lo));
+      var x = g.padL + (n - g.lo) / (g.hi - g.lo) * g.plotW;
+      xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.setAttribute('visibility', 'visible');
+      montrer(bulle('Au moins ' + nf(n) + ' ' + g.unite + ' livrés au gel', 'Part des ' + nf(TIRAGES) + ' tirages', [['series', 'Votre scénario', chance(auMoins(SIM.mcS, n))], ['ghost', 'Statu quo', chance(auMoins(SIM.mcQ, n))]]), e.clientX, e.clientY);
+    });
+    hc.addEventListener('pointerleave', function () { cacher(); var xh = $('#simChart .xhair'); if (xh) xh.setAttribute('visibility', 'hidden'); });
+
+    // Matrice
+    var mx = $('#matrix');
+    mx.addEventListener('pointermove', function (e) {
+      var td = e.target.closest ? e.target.closest('td[data-v]') : null;
+      if (!td) { cacher(); return; }
+      montrer(bulleCellule(td.getAttribute('data-v'), td.getAttribute('data-eq')), e.clientX, e.clientY);
+    });
+    mx.addEventListener('pointerleave', cacher);
+
+    // Actions de la maquette
+    $('#btnRapport').addEventListener('click', function () {
+      annonce('Maquette : le rapport direction (synthèse, train des versions, courbe du WIP, limites par équipe) sortira en PowerPoint dans la version finale.');
+    });
+    $('#verdict').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (!b) return;
+      if (b.getAttribute('data-act') === 'simuler') { $('#hSim').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#simW').focus({ preventScroll: true }); }
+      else annonce('Maquette : les limites de WIP par équipe seront envoyées au Sprint Planning de la ' + versionSim().v + ' dans la version finale.');
+    });
+
+    // Largeur : on redessine les graphiques à la taille réelle (texte à taille fixe)
+    var larg = 0, rafId = 0;
+    function redessiner() {
+      var w = $('.av').clientWidth;
+      if (w === larg) return;
+      larg = w;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(function () { cacher(); dessinerTrain(); dessinerWip(); dessinerHisto(); });
+    }
+    if (window.ResizeObserver) new ResizeObserver(redessiner).observe($('.av'));
+    else window.addEventListener('resize', redessiner);
+
+    // Thème : la matrice calcule la couleur de ses textes
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mq && mq.addEventListener) mq.addEventListener('change', rendreMatrice);
+    if (window.MutationObserver) new MutationObserver(rendreMatrice).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
+  rendreSources();
+  brancher();
+  tout();
+})();
+</script>
+<script>
+if (window.PlanifAuth) window.PlanifAuth.surveillerInactiviteOutil().catch(function (e) { console.warn(e); });
+</script>
+</body>
+</html>
