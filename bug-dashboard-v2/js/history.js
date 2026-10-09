@@ -411,7 +411,7 @@
       if (days >= 0.5) rate = (points[points.length - 1].v - points[0].v) / days;
     }
     return CH.burnupChart({
-      start: pv.start, end: versionEnd(pv, gate), deadline: gate,
+      start: pv.start, end: versionEnd(pv, gate), deadline: gate, kickoff: pv.start,
       deadlineLabel: gateLabel(pv),
       startPct: cfg.burnup ? cfg.burnup.startPct : 25,
       openFrom: openWin().a, openTo: openWin().z,
@@ -468,7 +468,7 @@
     if (!points.length) return null;
     return CH.areaTimeChart({
       start: pv.start, end: versionEnd(pv, gate), today: C.startOfDay(S.refDate),
-      deadline: gate, deadlineLabel: gateLabel(pv),
+      deadline: gate, kickoff: pv.start, deadlineLabel: gateLabel(pv),
       openFrom: openWin().a, openTo: openWin().z, points: points, series: series,
       threshold: cfg.history.threshold, thresholdLabel: 'tickets'
     });

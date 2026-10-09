@@ -681,6 +681,12 @@
       marks += '<line class="mark" x1="' + xOf(fz).toFixed(1) + '" x2="' + xOf(fz).toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
         '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="end">' + esc(opts.deadlineLabel || 'Code freeze') + '</text>';
     }
+    // Coup d'envoi : le début de la version est toujours la fin du gel de la précédente.
+    if (opts.kickoff && opts.kickoff.getTime() >= t0 && opts.kickoff.getTime() <= t1) {
+      var ko = xOf(opts.kickoff.getTime());
+      marks += '<line class="mark kick" x1="' + ko.toFixed(1) + '" x2="' + ko.toFixed(1) + '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l kick" x="' + (ko + 5).toFixed(1) + '" y="' + (yOf(0) - 6).toFixed(1) + '" text-anchor="start">' + esc(opts.kickoffLabel || 'Coup d\'envoi') + '</text>';
+    }
     // Week-ends en gris : personne n'avance, alors que la rampe, elle, monte —
     // c'est la moitié de l'explication d'un écart un lundi matin.
     var bands = '', cur = new Date(t0); cur.setHours(0, 0, 0, 0);
@@ -830,6 +836,12 @@
         // libellés se chevauchaient.
         '<text class="mark-l" x="' + (xOf(fz) - 5).toFixed(1) + '" y="' + (padT + 24) + '" text-anchor="end">' +
         esc(opts.deadlineLabel || 'Code freeze') + '</text>';
+    }
+    if (opts.kickoff) {
+      var kk = opts.kickoff.getTime();
+      if (kk >= t0 && kk <= t1) marks += '<line class="mark kick" x1="' + xOf(kk).toFixed(1) + '" x2="' + xOf(kk).toFixed(1) +
+        '" y1="' + padT + '" y2="' + yOf(0).toFixed(1) + '"/>' +
+        '<text class="mark-l kick" x="' + (xOf(kk) + 5).toFixed(1) + '" y="' + (padT + 24) + '" text-anchor="start">' + esc(opts.kickoffLabel || 'Coup d\'envoi') + '</text>';
     }
     if (opts.today && dansFenetre(opts.today, t0, t1)) {
       var d0 = new Date(opts.today.getFullYear(), opts.today.getMonth(), opts.today.getDate()).getTime();
