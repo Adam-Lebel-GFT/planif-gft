@@ -25,6 +25,7 @@
     { slug: 'whiteboard',        label: 'Whiteboard' },
     { slug: 'releases-planning', label: 'Plan de livraisons' },
     { slug: 'bug-dashboard-v2',  label: 'Bug Dashboard' },
+    { slug: 'bug-movie',         label: 'Bug movie' },
     { slug: 'analyse-velocite',  label: 'Analyse de vélocité' },
     { slug: 'admin',             label: 'Administration (accès dynamique)' }
   ];

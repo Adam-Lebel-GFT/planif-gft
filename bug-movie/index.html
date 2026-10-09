@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug movie — Agile Toolkit GFT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Même langage visuel que le Bug Dashboard dont il lit le journal. -->
+<link rel="stylesheet" href="../bug-dashboard-v2/css/app.css">
+<link rel="stylesheet" href="movie.css">
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+
+<header class="tk-topbar">
+  <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
+    <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
+  </a>
+  <span class="tk-topbar__sep" aria-hidden="true"></span>
+  <span class="tk-topbar__tool">Bug movie</span>
+  <span class="tk-topbar__version">BETA</span>
+  <div class="tk-topbar__actions">
+    <span class="tk-topbar__user" id="topbarUser"></span>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div>
+      <h1>Bug movie</h1>
+      <p>Les photos du journal du Bug Dashboard rejouées : chaque ticket est un point qui avance de statut en statut, version par version.</p>
+      <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
+    </div>
+  </div>
+  <div id="movieRoot"></div>
+</main>
+
+<script src="../acces/config.js"></script>
+<script src="../acces/supabase.js"></script>
+<script src="../acces/auth.js"></script>
+<script src="../assets/nav.js"></script>
+<script src="../bug-dashboard-v2/js/core.js"></script>
+<script src="../bug-dashboard-v2/js/palette.js"></script>
+<script src="../bug-dashboard-v2/js/config.js"></script>
+<script src="movie.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.BDV2Core, CFG = window.BDV2Config;
+  var rootEl = document.getElementById('movieRoot'), badge = document.getElementById('modeBadge');
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function loadLocal() { try { return JSON.parse(localStorage.getItem('bdv2:history') || '[]'); } catch (e) { return []; } }
+
+  async function charger() {
+    var A = window.PlanifAuth, items = null;
+    if (A) {
+      try {
+        var session = await A.getSession();
+        if (session) {
+          var client = A.getClient(), profil = null;
+          try { profil = await A.monProfil(); } catch (e) {}
+          document.getElementById('topbarUser').innerHTML = 'Connecté : <b>' + esc(profil ? profil.nom_utilisateur : 'connecté') + '</b>';
+          await CFG.loadRemote(client, session.user.id);
+          var res = await client.from('bdv2_analyses').select('id,cree_le,nom,hash,nb_tickets,tickets,epingle').order('cree_le', { ascending: true }).limit(120);
+          if (!res.error) {
+            items = (res.data || []).map(function (r) { return { id: r.id, at: r.cree_le, nom: r.nom, hash: r.hash, nb: r.nb_tickets, tickets: r.tickets || [], epingle: r.epingle }; });
+            badge.className = 'mode-badge'; badge.innerHTML = '● Journal partagé du Bug Dashboard';
+          }
+          try { await A.surveillerInactiviteOutil(); } catch (e) { console.warn(e); }
+        }
+      } catch (e) { console.warn(e); }
+    }
+    if (!items) {
+      items = loadLocal();
+      badge.className = 'mode-badge local';
+      badge.innerHTML = 'Journal local de ce navigateur — <a href="../">connectez-vous depuis le lanceur</a> pour lire le journal partagé';
+    }
+    window.BDV2Movie.render(items, rootEl);
+  }
+  charger();
+})();
+</script>
+</body>
+</html>

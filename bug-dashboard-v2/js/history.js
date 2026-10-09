@@ -725,20 +725,16 @@
     bindFolds(rootEl);
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
     $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; ui.touched = true; renderHistory(); });
-    if (root.BDV2Movie) root.BDV2Movie.render();
   }
 
   // ── Repli des journaux ─────────────────────────────────────────────
-  // Repliés par défaut : on ouvre cette section pour le graphique d'évolution,
-  // la liste des analyses ne se consulte qu'à l'occasion. Le choix est conservé
-  // dans ce navigateur, comme les autres replis du tableau de bord.
-  var FOLD_KEY = 'bdv2:histFold', folds = null;
-  function foldState() {
-    if (!folds) { try { folds = JSON.parse(localStorage.getItem(FOLD_KEY) || 'null'); } catch (e) {} if (!folds) folds = {}; }
-    return folds;
-  }
-  function isFolded(id) { var f = foldState()[id]; return f === undefined ? true : !!f; }
-  function setFolded(id, v) { foldState()[id] = v; try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) {} }
+  // Repliés à chaque ouverture ou rafraîchissement de la page : on ouvre cette
+  // section pour le graphique d'évolution, la liste des analyses ne se consulte
+  // qu'à l'occasion. Un dépliage reste valable tant que la page n'est pas
+  // rechargée (il survit aux nouveaux rendus), mais n'est pas conservé après.
+  var folds = {};
+  function isFolded(id) { var f = folds[id]; return f === undefined ? true : !!f; }
+  function setFolded(id, v) { folds[id] = v; }
   // `label` fixe : le chevron dit déjà l'état, inutile de renommer le bouton
   // quand il porte un décompte (« 3 analyses de travail »).
   function foldBtn(id, label) {
