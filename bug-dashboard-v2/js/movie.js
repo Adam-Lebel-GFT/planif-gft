@@ -65,6 +65,10 @@
       if (!teamSet[lab]) { teamSet[lab] = 1; fakeTeams.push({ team: t.tm || 'Non affecté', teamLabel: lab }); }
     }); });
     var statuses = C.DIMS.status.order(Object.keys(statSet), cfg, []);
+    // Les deux dernières colonnes sont toujours dev done puis closed, quelle que soit l'échelle configurée.
+    var nz = function (x) { return C.normalize(x); };
+    statuses = statuses.filter(function (x) { return nz(x) !== 'dev done' && nz(x) !== 'closed'; })
+      .concat(statuses.filter(function (x) { return nz(x) === 'dev done'; }), statuses.filter(function (x) { return nz(x) === 'closed'; }));
     var colOf = {}; statuses.forEach(function (s, i) { colOf[s] = i; });
     var doneSet = {}; (cfg.statuses.done || []).forEach(function (s) { doneSet[C.normalize(s)] = true; });
     var teamLabels = C.DIMS.team.order(Object.keys(teamSet), cfg, fakeTeams);
