@@ -23,6 +23,7 @@
   }
   var VERSION_COLORS = ['#0d366b', '#c026d3', '#14b8a6', '#6366f1', '#5b8def'];
   var DUR = 0.45;
+  var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une autre version</span><span>✦ flash et traînée : recule d\'un statut</span>';
   var ui = { nVers: 3, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null };
   var M = null;          // données construites (photos, tickets, positions)
   var DOW = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -62,7 +63,7 @@
     var teamColors = P.colorsForDim('team', teamLabels, cfg, fakeTeams);
     // tickets et état par photo
     var keys = [], idx = {}, tk = [];
-    photos.forEach(function (p) { p.tickets.forEach(function (t) { if (rowOf[t.td] != null && idx[t.k] == null) { idx[t.k] = keys.length; keys.push(t.k); tk.push({ k: t.k, team: (cfg.teams.alias && cfg.teams.alias[t.tm]) || t.tm || 'Non affecté', first: -1, res: null }); } }); });
+    photos.forEach(function (p) { p.tickets.forEach(function (t) { if (rowOf[t.td] != null && idx[t.k] == null) { idx[t.k] = keys.length; keys.push(t.k); tk.push({ moveAt: -1, k: t.k, team: (cfg.teams.alias && cfg.teams.alias[t.tm]) || t.tm || 'Non affecté', first: -1, res: null }); } }); });
     var N = keys.length;
     // st[i][j] = { kind: 'board'|'cloud'|'trash', row, col } ou null (pas encore vu)
     var st = photos.map(function () { return new Array(N).fill(null); });
@@ -82,6 +83,8 @@
         var prev = i > 0 ? st[i - 1][j] : null;
         st[i][j] = prev && prev.kind === 'trash' ? prev : { kind: 'cloud', row: prev ? prev.row : 0, col: prev ? prev.col : 0, why: null };
       }
+      // ticket repoussé : sa version (ligne) change d'une photo à l'autre ; on garde la première fois
+      if (i > 0) for (var q = 0; q < N; q++) { var s0 = st[i - 1][q], s1 = st[i][q]; if (s0 && s1 && s0.row !== s1.row && tk[q].moveAt < 0) tk[q].moveAt = i; }
     });
     return { photos: photos, T: T, tds: tds, statuses: statuses, colOf: colOf, doneSet: doneSet, tk: tk, st: st, counts: counts, teamLabels: teamLabels, teamColors: teamColors, doneCols: statuses.map(function (s) { return !!doneSet[C.normalize(s)]; }), t0: t0 };
   }
@@ -203,13 +206,34 @@
       if (!b) { b = [g.PW / 2 + (hash(M.tk[j].k) % 40 - 20), g.H / 2]; alpha = Math.min(1, p + .05); }   // nouveau : vient du nuage
       var x = b[0] + (a[0] - b[0]) * e, y = b[1] + (a[1] - b[1]) * e + Math.sin(e * Math.PI) * ((hash(M.tk[j].k) % 5) - 2) * 3;
       moving = p < 1 && (a[0] !== b[0] || a[1] !== b[1]);
-      dots.push({ x: x, y: y, j: j, alpha: alpha, moving: moving, done: s.kind === 'board' && M.doneCols[s.col] });
+      var ps = i > 0 ? M.st[prevI][j] : null, age = i > 0 ? t - M.T[i] : 99;
+      var back = !!(ps && ps.kind === 'board' && s.kind === 'board' && s.row === ps.row && s.col < ps.col);
+      var path = null;
+      if (back && age < 1.1) { path = []; var top = Math.min(1, p); for (var u = 0; u <= 10; u++) { var eu = ease(top * u / 10); path.push([b[0] + (a[0] - b[0]) * eu, b[1] + (a[1] - b[1]) * eu - Math.sin(eu * Math.PI) * 6]); } }
+      dots.push({ x: x, y: y, j: j, alpha: alpha, moving: moving, done: s.kind === 'board' && M.doneCols[s.col], back: back, age: age, path: path, pushed: M.tk[j].moveAt >= 0 && M.tk[j].moveAt <= i && s.kind !== 'trash' });
       if (s.kind === 'board') { var ck = s.row + ':' + s.col; cells[ck] = (cells[ck] || 0) + 1; } else if (s.kind === 'cloud') cnt.cloud++; else { cnt.trash++; why[s.why]++; }
     }
     dots.forEach(function (d) { if (d.moving) { ctx.strokeStyle = rgba(dotColor(d.j), .45 * (1 - p)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(d.x, d.y, 3.4 + p * 8, 0, 7); ctx.stroke(); } });
     var rad = Math.max(2.2, Math.min(3.6, G.cellPitch * .38));
-    dots.forEach(function (d) { ctx.globalAlpha = d.alpha * (d.done && !d.moving ? .9 : 1); ctx.fillStyle = dotColor(d.j); ctx.beginPath(); ctx.arc(d.x, d.y, d.moving ? rad + .5 : rad, 0, 7); ctx.fill(); });
+    // étoile filante : traînée effilée du point de départ vers la nouvelle place, qui s'estompe
+    dots.forEach(function (d) {
+      if (!d.path || d.path.length < 2) return; var fade = Math.max(0, 1 - Math.max(0, d.age - .45) / .65);
+      for (var k = 1; k < d.path.length; k++) { var f = k / (d.path.length - 1); ctx.strokeStyle = rgba(dotColor(d.j), (.15 + .75 * f) * fade); ctx.lineWidth = .8 + f * 2.8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(d.path[k - 1][0], d.path[k - 1][1]); ctx.lineTo(d.path[k][0], d.path[k][1]); ctx.stroke(); }
+    });
+    dots.forEach(function (d) {
+      ctx.globalAlpha = d.alpha * (d.done && !d.moving ? .9 : 1);
+      var flash = d.back && d.age < 1.1 && Math.floor(d.age * 9) % 2 === 0;
+      ctx.fillStyle = flash ? '#ffffff' : dotColor(d.j); ctx.beginPath(); ctx.arc(d.x, d.y, d.moving ? rad + .5 : rad, 0, 7); ctx.fill();
+      if (d.back && d.age < 1.1) { ctx.strokeStyle = rgba(dotColor(d.j), .9 * (1 - d.age / 1.1)); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(d.x, d.y, rad + 2 + 3 * Math.abs(Math.sin(d.age * 14)), 0, 7); ctx.stroke(); }
+    });
     ctx.globalAlpha = 1;
+    // cible rouge : le ticket a été repoussé vers une autre version, elle le suit
+    ctx.strokeStyle = cs.red; ctx.lineWidth = 1.2;
+    dots.forEach(function (d) {
+      if (!d.pushed) return; var r1 = rad + 3.2; ctx.beginPath(); ctx.arc(d.x, d.y, r1, 0, 7);
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (v) { ctx.moveTo(d.x + v[0] * (r1 - 1.2), d.y + v[1] * (r1 - 1.2)); ctx.lineTo(d.x + v[0] * (r1 + 2.6), d.y + v[1] * (r1 + 2.6)); });
+      ctx.stroke();
+    });
     // compteurs
     ctx.font = '600 10.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillStyle = cs.muted;
     Object.keys(cells).forEach(function (k) { var rc = k.split(':'); ctx.fillText(cells[k], g.bx + (+rc[1] + 1) * g.cw - 5, g.HEAD + (+rc[0] + 1) * g.ROWH - 7); });
@@ -270,17 +294,17 @@
       $('mvPc' + r).textContent = pc; $('mvBr' + r).style.width = pc + '%';
       $('mvSub' + r).textContent = tot[r].o + ' ouverts · ' + tot[r].d + ' terminés · ' + n + ' au total';
     });
-    var ent = 0, rem = 0, tr = 0, mv = 0, cl = 0;
+    var ent = 0, rem = 0, tr = 0, mv = 0, cl = 0, push = 0, back = 0;
     if (i > 0) for (var j = 0; j < M.tk.length; j++) {
       var a = M.st[i - 1][j], b = M.st[i][j]; if (!b) continue;
       if (!a) { if (b.kind === 'board') ent++; continue; }
-      if (a.kind === b.kind && a.kind === 'board') { if (a.col !== b.col || a.row !== b.row) { mv++; if (M.doneCols[b.col] && !M.doneCols[a.col]) cl++; } }
+      if (a.kind === b.kind && a.kind === 'board') { if (a.row !== b.row) push++; else if (a.col !== b.col) { mv++; if (b.col < a.col) back++; if (M.doneCols[b.col] && !M.doneCols[a.col]) cl++; } }
       else if (b.kind === 'cloud' && a.kind !== 'cloud') rem++;
       else if (b.kind === 'trash' && a.kind !== 'trash') tr++;
       else if (a.kind === 'cloud' && b.kind === 'board') ent++;
     }
     $('mvFlow').innerHTML = i === 0 ? '<span>Première photo : état de départ</span>' :
-      '<span class="mv-pos">+' + ent + ' entrés</span><span class="mv-neg">−' + rem + ' sortis (nuage)</span><span class="mv-neg">' + tr + ' à la poubelle</span><span>' + mv + ' changements de statut</span><span class="mv-pos">' + cl + ' clôturés</span>';
+      '<span class="mv-pos">+' + ent + ' entrés</span><span class="mv-neg">−' + rem + ' sortis (nuage)</span><span class="mv-neg">' + tr + ' à la poubelle</span><span>' + mv + ' changements de statut</span><span class="mv-neg">' + back + ' reculs</span><span class="mv-neg">' + push + ' repoussés</span><span class="mv-pos">' + cl + ' clôturés</span>';
     $('mvFlowLbl').textContent = i === 0 ? 'Photo 1 / ' + M.T.length : 'Photo ' + (i + 1) + ' / ' + M.T.length + ' · depuis la précédente (' + Math.round((M.T[i] - M.T[i - 1]) * 24) + ' h)';
   }
 
@@ -335,7 +359,7 @@
       '<div class="mv-ctl"><button type="button" class="ghost small" id="mvPlay">▶ Lire</button><input type="range" id="mvSlider" min="0" max="6000" value="0" aria-label="Date de l\'animation"><span class="mv-date" id="mvDate"></span>' +
       '<span class="seg" role="group" aria-label="Vitesse">' + [[.5, '×0,5'], [1, '×1'], [2, '×2'], [4, '×4']].map(function (s) { return '<button type="button" data-mv-speed="' + s[0] + '"' + (ui.speed === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span></div>' +
       '<div class="mv-scroll"><canvas id="mvBoard"></canvas></div>' +
-      '<div class="mv-legend" id="mvLegend">' + legendHtml() + '<span>Anneau : vient de bouger</span></div>' +
+      '<div class="mv-legend" id="mvLegend">' + legendHtml() + '<span>Anneau : vient de bouger</span>' + LEG2 + '</div>' +
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
       '<span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></div></div></div>';
@@ -347,7 +371,7 @@
       var pick = function (btn, attr, fn) { fn(btn.getAttribute(attr)); [].forEach.call(btn.parentNode.children, function (x) { x.classList.toggle('is-on', x === btn); }); };
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
-      if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml() + '<span>Anneau : vient de bouger</span>'; render(); }
+      if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml() + '<span>Anneau : vient de bouger</span>' + LEG2; render(); }
     });
     sizeCanvases();
   }
