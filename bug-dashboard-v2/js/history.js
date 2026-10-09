@@ -725,6 +725,7 @@
     bindFolds(rootEl);
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
     $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; ui.touched = true; renderHistory(); });
+    if (root.BDV2Movie) root.BDV2Movie.render();
   }
 
   // ── Repli des journaux ─────────────────────────────────────────────
