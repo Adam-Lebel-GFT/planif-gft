@@ -68,6 +68,15 @@
     // st[i][j] = { kind: 'board'|'cloud'|'trash', row, col } ou null (pas encore vu)
     var st = photos.map(function () { return new Array(N).fill(null); });
     var counts = tds.map(function () { return photos.map(function () { return { open: 0, done: 0 }; }); });
+    // Une photo ne parle d'une version que si elle la couvre : les analyses du journal sont des
+    // extraits séparés (une autre version, un extrait filtré). Dans une photo qui ne contient
+    // qu'une poignée des tickets d'une version, leur absence ne veut pas dire « sortis » ni « zéro ».
+    var maxTd = {};
+    photos.forEach(function (p) { var c = {}; p.tickets.forEach(function (t) { if (rowOf[t.td] != null) c[t.td] = (c[t.td] || 0) + 1; }); Object.keys(c).forEach(function (td) { maxTd[td] = Math.max(maxTd[td] || 0, c[td]); }); });
+    var covered = photos.map(function (p) {
+      var c = {}; p.tickets.forEach(function (t) { if (rowOf[t.td] != null) c[t.td] = (c[t.td] || 0) + 1; });
+      return tds.map(function (td) { return (c[td] || 0) >= Math.max(5, .5 * (maxTd[td] || 0)); });
+    });
     photos.forEach(function (p, i) {
       var seen = {};
       p.tickets.forEach(function (t) {
@@ -81,8 +90,10 @@
       for (var j = 0; j < N; j++) {
         if (seen[j] || tk[j].first < 0) continue;
         var prev = i > 0 ? st[i - 1][j] : null;
+        if (prev && !covered[i][prev.row]) { st[i][j] = prev; continue; }   // photo hors sujet pour sa version : rien de nouveau
         st[i][j] = prev && prev.kind === 'trash' ? prev : { kind: 'cloud', row: prev ? prev.row : 0, col: prev ? prev.col : 0, why: null };
       }
+      tds.forEach(function (td, r) { if (i > 0 && !covered[i][r]) counts[r][i] = counts[r][i - 1]; });
       // ticket qui change de version (ligne) d'une photo à l'autre : repoussé (dir +1, version plus tardive) ou ramené (dir -1)
       if (i > 0) for (var q = 0; q < N; q++) { var s0 = st[i - 1][q], s1 = st[i][q]; if (s0 && s1 && s0.row !== s1.row) tk[q].moves.push({ i: i, dir: s1.row > s0.row ? 1 : -1 }); }
     });
