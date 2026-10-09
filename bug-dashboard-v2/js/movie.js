@@ -77,6 +77,22 @@
       var c = {}; p.tickets.forEach(function (t) { if (rowOf[t.td] != null) c[t.td] = (c[t.td] || 0) + 1; });
       return tds.map(function (td) { return (c[td] || 0) >= Math.max(5, .5 * (maxTd[td] || 0)); });
     });
+    // Version terminée et officielle : sa photo épinglée (celle dont la date du nom est la Target
+    // date, à défaut la plus récente des épinglées qui la contiennent) reste en place, les photos
+    // suivantes ne la modifient plus. « Terminée » : la Target date est atteinte à la dernière photo.
+    var lastAt = new Date(photos[photos.length - 1].at);
+    var officialK = tds.map(function (td, r) {
+      if (new Date(td + 'T00:00:00') > lastAt) return -1;
+      var best = -1, bestMatch = false;
+      photos.forEach(function (p, i) {
+        if (!p.epingle || !covered[i][r]) return;
+        var mm = (p.nom || '').match(/(\d{4})-(\d{2})-(\d{2})/), m2 = (p.nom || '').match(/(\d{2})\.(\d{2})\.(\d{4})/);
+        var nameTd = mm ? mm[1] + '-' + mm[2] + '-' + mm[3] : m2 ? m2[3] + '-' + m2[2] + '-' + m2[1] : '';
+        var match = nameTd === td;
+        if (best < 0 || (match && !bestMatch) || (match === bestMatch && i > best)) { best = i; bestMatch = match; }
+      });
+      return best;
+    });
     photos.forEach(function (p, i) {
       var seen = {};
       p.tickets.forEach(function (t) {
@@ -94,6 +110,16 @@
         st[i][j] = prev && prev.kind === 'trash' ? prev : { kind: 'cloud', row: prev ? prev.row : 0, col: prev ? prev.col : 0, why: null };
       }
       tds.forEach(function (td, r) { if (i > 0 && !covered[i][r]) counts[r][i] = counts[r][i - 1]; });
+      // figer les versions officielles terminées sur leur photo officielle
+      tds.forEach(function (td, r) {
+        var k = officialK[r]; if (k < 0 || i <= k) return;
+        counts[r][i] = counts[r][k];
+        for (var j = 0; j < N; j++) {
+          var s0 = st[k][j];
+          if (s0 && s0.row === r) st[i][j] = s0;
+          else if (st[i][j] && st[i][j].row === r) st[i][j] = i > 0 ? st[i - 1][j] : null;   // arrivé après la photo officielle : ignoré
+        }
+      });
       // ticket qui change de version (ligne) d'une photo à l'autre : repoussé (dir +1, version plus tardive) ou ramené (dir -1)
       if (i > 0) for (var q = 0; q < N; q++) { var s0 = st[i - 1][q], s1 = st[i][q]; if (s0 && s1 && s0.row !== s1.row) tk[q].moves.push({ i: i, dir: s1.row > s0.row ? 1 : -1 }); }
     });
