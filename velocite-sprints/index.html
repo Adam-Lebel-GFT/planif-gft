@@ -640,21 +640,23 @@ function renderChartB(){
   if(!list.length){ $('#chartB').innerHTML='<p class="empty">Aucun sprint à afficher.</p>'; $('#legB').innerHTML=''; return; }
   var W=1240, H=280, L=46, Rr=70, T=16, B=34, iw=W-L-Rr, ih=H-T-B;
   var series=[];
-  if(ui.norm==='team') teams.forEach(function(t){ series.push({ t:t, v:list.map(function(s){ var d=M.data[t.id][s.i]; return d.hc&&d.sp&&s.status!=='current'? cap(d)/d.sp : null; }) }); });
+  if(ui.norm==='team') teams.forEach(function(t){ series.push({ t:t, v:list.map(function(s){ var d=M.data[t.id][s.i]; return d.hc&&cap(d)&&d.sp&&s.status!=='current'? cap(d)/d.sp : null; }) }); });
   var aggv=list.map(function(s){ return s.status==='current'?null:jps(agg(s).rate); });
   var all=[].concat.apply(aggv, series.map(function(x){ return x.v; })).filter(function(v){ return v!=null; });
-  // Axe plafonné à 3× la médiane : un sprint presque sans SP donnerait un JP/SP démesuré.
-  var srt=all.slice().sort(function(a,b){ return a-b; }), med=srt.length?srt[Math.floor(srt.length/2)]:1;
+  // Axe plafonné à 3× la médiane de la courbe principale : un sprint presque sans SP donnerait un JP/SP démesuré.
+  var srt=aggv.filter(function(v){ return v!=null; }).sort(function(a,b){ return a-b; }), med=srt.length?srt[Math.floor(srt.length/2)]:1;
   var max=Math.max(.4, Math.ceil(Math.min(Math.max.apply(null,all.concat([0])), med*3)*1.1*5)/5);
   var step=max>10?2:max>5?1:max>2?.5:.2;
   var dx=iw/(Math.max(list.length-1,1)), g='';
   function X(ix){ return L+ix*dx; } function Y(v){ return T+ih-ih*Math.min(v,max)/max; }
   for(var k=0;k<=max+1e-9;k+=step){ var y=Y(k); g+='<line class="grid" x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-8)+'" y="'+(y+3.5)+'" text-anchor="end">'+f1(k)+'</text>'; }
-  var d=winSprints(), mrate=rateOver(d), mean=jps(mrate)||0, rates=d.map(function(s){ return jps(agg(s).rate); }).filter(function(v){ return v!=null; });
-  var sd=Math.sqrt(rates.reduce(function(a,v){ return a+(v-mean)*(v-mean); },0)/(rates.length||1));
+  // Écart-type calculé sur le taux SP/JP (borné), puis converti en JP/SP : un sprint quasi vide n'élargit pas la bande.
+  var d=winSprints(), mrate=rateOver(d), mean=jps(mrate), rates=d.map(function(s){ return agg(s).rate; });
+  var sd=Math.sqrt(rates.reduce(function(a,v){ return a+(v-mrate)*(v-mrate); },0)/(rates.length||1));
+  var bHi=mrate-sd>0?1/(mrate-sd):max, bLo=1/(mrate+sd||1);
   var ld=list.filter(function(s){ return s.status==='done'; }).length-1;
-  if(ld>=0){
-    g+='<rect x="'+L+'" y="'+Y(mean+sd)+'" width="'+Math.max(X(ld)-L,2)+'" height="'+(Y(Math.max(mean-sd,0))-Y(mean+sd))+'" fill="#EAF1F8"/>';
+  if(ld>=0 && mean!=null){
+    g+='<rect x="'+L+'" y="'+Y(bHi)+'" width="'+Math.max(X(ld)-L,2)+'" height="'+(Y(bLo)-Y(bHi))+'" fill="#EAF1F8"/>';
     g+='<line x1="'+L+'" x2="'+X(ld)+'" y1="'+Y(mean)+'" y2="'+Y(mean)+'" stroke="#0C447C" stroke-dasharray="5 4"/><text x="'+(X(ld)+6)+'" y="'+(Y(mean)+3.5)+'" style="fill:#0C447C">moy. '+f2(mean)+'</text>';
   }
   function line(v, color, wdt, op, dash){
@@ -664,8 +666,9 @@ function renderChartB(){
     return segs.map(function(sg){ return '<polyline fill="none" stroke="'+color+'" stroke-width="'+wdt+'" stroke-linejoin="round" opacity="'+(op||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+' points="'+sg.join(' ')+'"/>'; }).join('');
   }
   series.forEach(function(sr){ g+=line(sr.v,'var('+sr.t.c+')',1.8,.9);
-    sr.v.forEach(function(val,ix){ if(val==null) return; var s=list[ix], dd=M.data[sr.t.id][s.i]; g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(val)+'" r="3" fill="var('+sr.t.c+')"'+tipAttr('<b>'+esc(s.name)+' · '+esc(sr.t.id)+'</b><br><span class="m">'+f2(val)+' JP / SP<br>'+f0(dd.sp)+' SP · '+f1(cap(dd))+' JP · '+dd.hc+' pers.</span>')+'/>'; }); });
-  var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; return (v+aggv[ix-1]+aggv[ix-2])/3; });
+    sr.v.forEach(function(val,ix){ if(val==null) return; var s=list[ix], dd=M.data[sr.t.id][s.i]; g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(val)+'" r="3" fill="var('+sr.t.c+')"'+tipAttr('<b>'+esc(s.name)+' · '+esc(sr.t.id)+'</b><br><span class="m">'+f2(val)+' JP / SP<br>'+f0(dd.sp)+' SP · '+f1(cap(dd))+' '+capLbl()+' · '+dd.hc+' pers.</span>')+'/>'; }); });
+  // Moyenne glissante : ratio des totaux sur 3 sprints (Σ JP ÷ Σ SP).
+  var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; var c=0,p=0; [0,1,2].forEach(function(k){ var a=agg(list[ix-k]); c+=a.cap; p+=a.sp; }); return p?c/p:null; });
   g+=line(aggv,'#0C1A2E',2.6);
   g+=line(roll,'#6B7A90',1.6,.9,'2 4');
   var every=Math.ceil(list.length/26);
@@ -673,8 +676,10 @@ function renderChartB(){
     var a=agg(s), cur=s.status==='current';
     // SP hypothétiques : capacité du sprint × vélocité moyenne de l'historique choisi.
     var hyp=mrate*a.cap, dlt=a.sp-hyp, v=aggv[ix];
-    if(v!=null && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(Y(v)-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
-    if(v!=null) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(v)+'" r="4.5" fill="#0C1A2E" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+f2(v)+' JP / SP<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+f2(mean)+' JP/SP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
+    // Sprint terminé avec capacité mais sans SP (JP/SP infini) ou hors axe : point creux rouge en haut du graphique.
+    var off=!cur && a.cap && (v==null || v>max), py=off?Y(max):v!=null?Y(v):0;
+    if((v!=null||off) && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(py-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
+    if(v!=null||off) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+py+'" r="4.5" fill="'+(off?'#FFFFFF':'#0C1A2E')+'" stroke="'+(off?'#B42318':'#0C1A2E')+'" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+(v!=null?f2(v)+' JP / SP'+(off?' (hors échelle)':''):'aucun SP livré')+'<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+(mean!=null?f2(mean):'—')+' JP/SP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
@@ -683,15 +688,16 @@ function renderChartB(){
 
 // ── Matrice ──
 function renderMatrix(){
-  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), mean=jps(rateOver(winSprints()));
+  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), mrate=rateOver(winSprints());
   if(!list.length){ $('#matrix').innerHTML=''; return; }
   var h='<thead><tr><th>Sprint</th><th>Story points</th><th>Stories</th><th>Capacité ('+capLbl()+')</th><th>Personnes</th><th>JP / SP</th><th>SP / personne</th></tr></thead><tbody>';
   list.forEach(function(s){
-    var cur=s.status==='current', a=agg(s), v=jps(a.rate), dv=mean&&v!=null?(v-mean)/mean:0;
-    var bg= cur||!a.cap ? '' : dv<-.12?'background:var(--good-wash)' : dv>.12?'background:var(--bad-wash)' : '';
+    var cur=s.status==='current', a=agg(s), v=jps(a.rate), dv=mrate&&a.cap?(a.rate-mrate)/mrate:0;
+    // Seuils ±12 % appliqués au taux SP/JP : plus de SP par JP = JP/SP plus bas = vert.
+    var bg= cur||!a.cap ? '' : dv>.12?'background:var(--good-wash)' : dv<-.12?'background:var(--bad-wash)' : '';
     h+='<tr'+(cur?' class="cur"':'')+'><td><span class="sprint-n">'+esc(s.name)+'</span><span class="sprint-d">'+fmtD(s.start)+' → '+fmtD(s.end)+(cur?' · en cours':'')+'</span></td>'+
       '<td class="n">'+f0(a.sp)+'</td><td class="n">'+a.n+'</td><td class="n">'+f1(a.cap)+'</td><td class="n">'+a.hc+'</td>'+
-      '<td class="n" style="'+bg+'"><b>'+(v!=null?f2(v):'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
+      '<td class="n" style="'+bg+'"><b>'+(v!=null?f2(v):a.cap&&!cur?'∞':'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
   });
   $('#matrix').innerHTML=h+'</tbody>';
 }
