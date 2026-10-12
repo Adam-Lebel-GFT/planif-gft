@@ -621,7 +621,12 @@ function renderChartA(){
     if(ix%every===0) g+='<text x="'+(L+ix*bw+bw/2)+'" y="'+(H-B+29)+'" text-anchor="middle" style="font-size:9px">'+fmtD(s.start)+'</text>';
   });
   g+='<polyline fill="none" stroke="#0C1A2E" stroke-width="2" points="'+pts.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ')+'"/>';
-  pts.forEach(function(p){ g+='<circle class="hov" cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="#FFFFFF" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(p[2].name)+'</b><br><span class="m">'+f1(p[3].cap)+' '+capLbl()+' · '+p[3].hc+' pers.</span>')+'/>'; });
+  // Infobulle de la capacité exprimée en SP hypothétiques : capacité × vélocité moyenne de l'historique choisi.
+  var mean=rateOver(winSprints());
+  pts.forEach(function(p){ var s=p[2], a=p[3], hyp=mean*a.cap, dlt=a.sp-hyp;
+    var tip='<b>'+esc(s.name)+'</b><br>≈ <b>'+f0(hyp)+' SP</b> hypothétiques<br><span class="m">'+f1(a.cap)+' '+capLbl()+' × '+f2(mean)+' SP/JP · '+a.hc+' pers.</span>'+
+      (s.status==='done'?'<br><span class="m">Livrés : '+f0(a.sp)+' SP ('+(dlt>=0?'+':'')+f0(dlt)+')</span>':'');
+    g+='<circle class="hov" cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="#FFFFFF" stroke="#0C1A2E" stroke-width="2"'+tipAttr(tip)+'/>'; });
   g+='<text x="'+(L-8)+'" y="'+(T-6)+'" text-anchor="end">SP</text><text x="'+(W-Rr+8)+'" y="'+(T-6)+'">JP</text>';
   $('#chartA').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Story points livrés par sprint et capacité">'+g+'</svg>';
   $('#legA').innerHTML=teams.map(function(t){ return '<span><i style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join('')+'<span><i class="ln" style="background:#0C1A2E"></i>Capacité ('+capLbl()+')</span>'+(next()?'<span><i style="border:1px dashed #0C447C"></i>Prévision prochain sprint</span>':'');
