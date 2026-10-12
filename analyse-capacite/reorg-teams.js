@@ -4,8 +4,8 @@
 (function(){
 'use strict';
 var LV={1:'Junior',2:'Intermédiaire',3:'Senior'}, CW=196, CH=60, ZW=432, HEAD=90, KEY='tk-reorg-teams-v1';
-var root=null, board=null, zones=[], people=[], pop=null, zTop=10, BW=1180, BH=760, src=[];
-var CSS="#reorg{position:fixed;inset:0;z-index:2000;background:#F4F5F7;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;font-size:12px;line-height:1.35;color:#0C1A2E;\n  --board:#FBFBFC;--dot:#C9D0DA;--surface:#fff;--line:#E1E5EB;--line2:#B9C1CD;--muted:#667589;--accent:#1A3A8A;--accent-bg:#EEF3FF;\n  --zone:rgba(26,58,138,.045);--zone-line:#9FB0D0;--zone-over:rgba(26,58,138,.12);\n  --s1:#BFE3DC;--s2:#4FB3A3;--s3:#14705F;--s1t:#0C3B33;--s2t:#04201B;--s3t:#fff;--up:#1A7A42;--down:#C0392B;--warn:#8A5A00;--warn-bg:#FFF4D6;\n  --shadow:0 1px 2px rgba(12,26,46,.18),0 3px 8px rgba(12,26,46,.08)}\n#reorg *{box-sizing:border-box}\n#reorg[hidden]{display:none}\n#reorg .num{font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace}\n#reorg .rg-bar{background:#0C1A2E;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}\n#reorg .rg-bar h2{margin:0;font-size:15px;font-weight:800;letter-spacing:-.2px}\n#reorg .stat{display:flex;gap:6px;align-items:baseline;color:#8FA0B8}\n#reorg .stat b{color:#fff;font-size:14px}\n#reorg .rg-legend{display:flex;gap:12px;align-items:center;color:#8FA0B8;margin-left:auto;flex-wrap:wrap}\n#reorg .rg-legend span{display:inline-flex;gap:5px;align-items:center}\n#reorg .dot{width:9px;height:9px;border-radius:50%;display:inline-block}\n#reorg .d1{background:var(--s1)}#reorg .d2{background:var(--s2)}#reorg .d3{background:var(--s3)}\n#reorg .btn{border:1px solid #33496B;background:transparent;color:#fff;border-radius:6px;padding:5px 10px;font:600 11px 'Manrope',sans-serif;cursor:pointer}\n#reorg .btn:hover{background:#1A2E4A}\n#reorg .pop .btn{border-color:var(--line2);color:inherit;margin-top:5px}\n#reorg .pop .btn:hover{background:var(--accent-bg)}\n#reorg :focus-visible{outline:2px solid var(--accent);outline-offset:1px}\n#reorg .scroll{flex:1;overflow:auto;background:var(--board)}\n#reorg .board{position:relative;background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;touch-action:none}\n#reorg .foot{padding:6px 16px;color:var(--muted);font-size:11px;background:#fff;border-top:1px solid var(--line)}\n#reorg .zone{position:absolute;background:var(--zone);border:1.5px dashed var(--zone-line);border-radius:14px}\n#reorg .zone.over{background:var(--zone-over);border-style:solid;border-color:var(--accent)}\n#reorg .z-head{display:flex;justify-content:space-between;gap:8px;padding:8px 10px 0;cursor:grab;user-select:none}\n#reorg .z-name{font-weight:800;font-size:12px;letter-spacing:.4px}\n#reorg .z-sub{font-size:10px;color:var(--muted)}\n#reorg .z-score{text-align:right;line-height:1}\n#reorg .z-score .big{font-size:20px;font-weight:700}\n#reorg .z-score .dl{display:block;font-size:9.5px;margin-top:3px;color:var(--muted)}\n#reorg .dl.up{color:var(--up)}#reorg .dl.down{color:var(--down)}\n#reorg .z-dist{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--line);margin:6px 10px 0}\n#reorg .z-dist i{display:block}\n#reorg .a1{background:var(--s1)}#reorg .a2{background:var(--s2)}#reorg .a3{background:var(--s3)}\n#reorg .z-warn{margin:5px 10px 0;display:inline-block;font-size:9.5px;font-weight:600;background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:1px 6px}\n#reorg .grow{position:absolute;right:3px;bottom:3px;width:14px;height:14px;cursor:nwse-resize;opacity:.6;background:linear-gradient(135deg,transparent 50%,var(--line2) 50%,var(--line2) 58%,transparent 58%,transparent 72%,var(--line2) 72%,var(--line2) 80%,transparent 80%)}\n#reorg .rg-chip{position:absolute;display:block;width:196px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;box-shadow:var(--shadow);padding:6px 8px 7px;cursor:grab;user-select:none;border-left:4px solid var(--line2);z-index:2}\n#reorg .rg-chip.r1{border-left-color:var(--s1)}#reorg .rg-chip.r2{border-left-color:var(--s2)}#reorg .rg-chip.r3{border-left-color:var(--s3)}\n#reorg .rg-chip.norate{border-style:dashed}\n#reorg .rg-chip.drag{cursor:grabbing;box-shadow:0 8px 20px rgba(12,26,46,.28)}\n#reorg .c-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n#reorg .c-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px}\n#reorg .c-role{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}\n#reorg .c-role em{font-style:normal;color:var(--accent);font-weight:700}\n#reorg .rate{display:flex;gap:4px;flex:none;align-items:center}\n#reorg .rate button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);font:500 13px 'DM Mono',monospace;padding:0;cursor:pointer;line-height:1;color:#0C1A2E}\n#reorg .rate button.on1{background:var(--s1);color:var(--s1t);border-color:var(--s1)}\n#reorg .rate button.on2{background:var(--s2);color:var(--s2t);border-color:var(--s2)}\n#reorg .rate button.on3{background:var(--s3);color:var(--s3t);border-color:var(--s3)}\n#reorg .rate .nb{border:0;background:transparent;width:auto;border-radius:0;color:var(--muted);font-size:17px;padding:0 2px;height:24px;width:24px}\n#reorg .rate .nb.has{color:var(--accent)}\n#reorg .rate .nb.has::after{content:\"\";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:1px;vertical-align:top}\n#reorg .pop{position:absolute;z-index:80;width:210px;background:var(--surface);border:1px solid var(--line2);border-radius:8px;box-shadow:var(--shadow);padding:8px}\n#reorg .pop b{display:block;font-size:11px;margin-bottom:4px}\n#reorg .pop textarea{width:100%;height:64px;resize:none;border:1px solid var(--line2);border-radius:5px;background:var(--board);padding:5px 6px;font:11.5px 'Manrope',sans-serif}\n#reorg .rg-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}";
+var root=null, board=null, zones=[], people=[], pop=null, zTop=10, BW=1180, BH=760, src=[], formEl=null;
+var CSS="#reorg{position:fixed;inset:0;z-index:2000;background:#F4F5F7;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;font-size:12px;line-height:1.35;color:#0C1A2E;\n  --board:#FBFBFC;--dot:#C9D0DA;--surface:#fff;--line:#E1E5EB;--line2:#B9C1CD;--muted:#667589;--accent:#1A3A8A;--accent-bg:#EEF3FF;\n  --zone:rgba(26,58,138,.045);--zone-line:#9FB0D0;--zone-over:rgba(26,58,138,.12);\n  --s1:#BFE3DC;--s2:#4FB3A3;--s3:#14705F;--s1t:#0C3B33;--s2t:#04201B;--s3t:#fff;--up:#1A7A42;--down:#C0392B;--warn:#8A5A00;--warn-bg:#FFF4D6;\n  --shadow:0 1px 2px rgba(12,26,46,.18),0 3px 8px rgba(12,26,46,.08)}\n#reorg *{box-sizing:border-box}\n#reorg[hidden]{display:none}\n#reorg .num{font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace}\n#reorg .rg-bar{background:#0C1A2E;color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}\n#reorg .rg-bar h2{margin:0;font-size:15px;font-weight:800;letter-spacing:-.2px}\n#reorg .stat{display:flex;gap:6px;align-items:baseline;color:#8FA0B8}\n#reorg .stat b{color:#fff;font-size:14px}\n#reorg .rg-legend{display:flex;gap:12px;align-items:center;color:#8FA0B8;margin-left:auto;flex-wrap:wrap}\n#reorg .rg-legend span{display:inline-flex;gap:5px;align-items:center}\n#reorg .dot{width:9px;height:9px;border-radius:50%;display:inline-block}\n#reorg .d1{background:var(--s1)}#reorg .d2{background:var(--s2)}#reorg .d3{background:var(--s3)}\n#reorg .btn{border:1px solid #33496B;background:transparent;color:#fff;border-radius:6px;padding:5px 10px;font:600 11px 'Manrope',sans-serif;cursor:pointer}\n#reorg .btn:hover{background:#1A2E4A}\n#reorg .pop .btn{border-color:var(--line2);color:inherit;margin-top:5px}\n#reorg .pop .btn:hover{background:var(--accent-bg)}\n#reorg :focus-visible{outline:2px solid var(--accent);outline-offset:1px}\n#reorg .scroll{flex:1;overflow:auto;background:var(--board)}\n#reorg .board{position:relative;background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;touch-action:none}\n#reorg .foot{padding:6px 16px;color:var(--muted);font-size:11px;background:#fff;border-top:1px solid var(--line)}\n#reorg .zone{position:absolute;background:var(--zone);border:1.5px dashed var(--zone-line);border-radius:14px}\n#reorg .zone.over{background:var(--zone-over);border-style:solid;border-color:var(--accent)}\n#reorg .z-head{display:flex;justify-content:space-between;gap:8px;padding:8px 10px 0;cursor:grab;user-select:none}\n#reorg .z-name{font-weight:800;font-size:12px;letter-spacing:.4px}\n#reorg .z-sub{font-size:10px;color:var(--muted)}\n#reorg .z-score{text-align:right;line-height:1}\n#reorg .z-score .big{font-size:20px;font-weight:700}\n#reorg .z-score .dl{display:block;font-size:9.5px;margin-top:3px;color:var(--muted)}\n#reorg .dl.up{color:var(--up)}#reorg .dl.down{color:var(--down)}\n#reorg .z-dist{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--line);margin:6px 10px 0}\n#reorg .z-dist i{display:block}\n#reorg .a1{background:var(--s1)}#reorg .a2{background:var(--s2)}#reorg .a3{background:var(--s3)}\n#reorg .z-warn{margin:5px 10px 0;display:inline-block;font-size:9.5px;font-weight:600;background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:1px 6px}\n#reorg .grow{position:absolute;right:3px;bottom:3px;width:14px;height:14px;cursor:nwse-resize;opacity:.6;background:linear-gradient(135deg,transparent 50%,var(--line2) 50%,var(--line2) 58%,transparent 58%,transparent 72%,var(--line2) 72%,var(--line2) 80%,transparent 80%)}\n#reorg .rg-chip{position:absolute;display:block;width:196px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;box-shadow:var(--shadow);padding:6px 8px 7px;cursor:grab;user-select:none;border-left:4px solid var(--line2);z-index:2}\n#reorg .rg-chip.r1{border-left-color:var(--s1)}#reorg .rg-chip.r2{border-left-color:var(--s2)}#reorg .rg-chip.r3{border-left-color:var(--s3)}\n#reorg .rg-chip.isnew{outline:2px solid var(--accent);outline-offset:1px}#reorg .rg-chip.norate{border-style:dashed}\n#reorg .rg-chip.drag{cursor:grabbing;box-shadow:0 8px 20px rgba(12,26,46,.28)}\n#reorg .c-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n#reorg .c-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px}\n#reorg .c-role{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}\n#reorg .c-role em{font-style:normal;color:var(--accent);font-weight:700}\n#reorg .rate{display:flex;gap:4px;flex:none;align-items:center}\n#reorg .rate button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);font:500 13px 'DM Mono',monospace;padding:0;cursor:pointer;line-height:1;color:#0C1A2E}\n#reorg .rate button.on1{background:var(--s1);color:var(--s1t);border-color:var(--s1)}\n#reorg .rate button.on2{background:var(--s2);color:var(--s2t);border-color:var(--s2)}\n#reorg .rate button.on3{background:var(--s3);color:var(--s3t);border-color:var(--s3)}\n#reorg .rate .nb{border:0;background:transparent;width:auto;border-radius:0;color:var(--muted);font-size:17px;padding:0 2px;height:24px;width:24px}\n#reorg .rate .nb.has{color:var(--accent)}\n#reorg .rate .nb.has::after{content:\"\";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:1px;vertical-align:top}\n#reorg .pop{position:absolute;z-index:80;width:210px;background:var(--surface);border:1px solid var(--line2);border-radius:8px;box-shadow:var(--shadow);padding:8px}\n#reorg .pop b{display:block;font-size:11px;margin-bottom:4px}\n#reorg .pop textarea{width:100%;height:64px;resize:none;border:1px solid var(--line2);border-radius:5px;background:var(--board);padding:5px 6px;font:11.5px 'Manrope',sans-serif}\n#reorg .c-x{position:absolute;top:3px;right:5px;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:0 3px}#reorg .c-x:hover{color:var(--down)}#reorg .rg-form{position:absolute;z-index:3000;top:52px;right:16px;width:300px;background:#fff;border:1px solid var(--line2);border-radius:10px;box-shadow:0 10px 30px rgba(12,26,46,.25);padding:14px;display:flex;flex-direction:column;gap:9px}#reorg .rg-form label{display:flex;flex-direction:column;gap:3px;font-weight:700;font-size:11px;color:var(--muted)}#reorg .rg-form input,#reorg .rg-form select,#reorg .rg-form textarea{border:1px solid var(--line2);border-radius:6px;padding:6px 8px;font:12px 'Manrope',sans-serif;color:#0C1A2E;background:#fff;width:100%}#reorg .rg-form textarea{height:56px;resize:none}#reorg .rg-form .row{display:flex;gap:8px}#reorg .rg-form .row>*{flex:1;min-width:0}#reorg .rg-form .act{display:flex;gap:8px;justify-content:flex-end}#reorg .rg-form .btn{border-color:var(--line2);color:#0C1A2E}#reorg .rg-form .btn.go{background:#0C1A2E;color:#fff;border-color:#0C1A2E}#reorg .rg-form .err{color:var(--down);font-size:11px;min-height:14px}#reorg .rg-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}";
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function f1(x){return x==null?'—':x.toFixed(1).replace('.',',');}
@@ -18,18 +18,19 @@ function ensureRoot(){
   var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
   root=document.createElement('div'); root.id='reorg'; root.hidden=true; root.setAttribute('role','dialog'); root.setAttribute('aria-label','Réorganisation des teams');
   root.innerHTML='<div class="rg-bar"><h2>Réorganisation des teams</h2>'+
-    '<div class="stat">Moyenne <b class="num" id="rg-avg">—</b></div><div class="stat">Déplacés <b class="num" id="rg-moved">0</b></div><div class="stat">Hors équipe <b class="num" id="rg-out">0</b></div>'+
+    '<div class="stat">Moyenne <b class="num" id="rg-avg">—</b></div><div class="stat">Déplacés <b class="num" id="rg-moved">0</b></div><div class="stat">Ajoutés <b class="num" id="rg-new">0</b></div><div class="stat">Hors équipe <b class="num" id="rg-out">0</b></div>'+
     '<div class="rg-legend"><span><i class="dot d1"></i>1 Junior</span><span><i class="dot d2"></i>2 Intermédiaire</span><span><i class="dot d3"></i>3 Senior</span>'+
-    '<button class="btn" id="rg-reset" type="button">Réinitialiser</button><button class="btn" id="rg-close" type="button">Fermer</button></div></div>'+
+    '<button class="btn" id="rg-add" type="button">+ Ajouter un équipier</button><button class="btn" id="rg-reset" type="button">Réinitialiser</button><button class="btn" id="rg-close" type="button">Fermer</button></div></div>'+
     '<div class="scroll"><div class="board" id="rg-board"></div></div>'+
     '<div class="foot">Déplace une équipe par son titre, redimensionne-la par le coin. Glisse un post-it dans une équipe pour l\'y affecter. Clique 1, 2 ou 3 pour noter, ✎ pour la note libre. Note d\'équipe = moyenne des équipiers notés.</div>';
   document.body.appendChild(root);
   board=root.querySelector('#rg-board');
   root.querySelector('#rg-close').onclick=close;
-  root.querySelector('#rg-reset').onclick=function(){ closePop(); layout(); };
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape' && !root.hidden){ if(pop) closePop(); else close(); } });
+  root.querySelector('#rg-reset').onclick=function(){ closePop(); closeForm(); layout(); };
+  root.querySelector('#rg-add').onclick=function(){ if(formEl) closeForm(); else openForm(); };
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape' && !root.hidden){ if(formEl) closeForm(); else if(pop) closePop(); else close(); } });
 }
-function close(){ closePop(); root.hidden=true; document.body.style.overflow=''; }
+function close(){ closePop(); closeForm(); root.hidden=true; document.body.style.overflow=''; }
 
 function layout(){
   board.innerHTML=''; zones=[]; people=[];
@@ -63,19 +64,21 @@ function buildDom(){
       return function(dx,dy){ z.w=clamp(sw+dx,200,BW-z.x); z.h=clamp(sh+dy,120,BH-z.y); place(); refresh(); };
     });
   });
-  people.forEach(function(p){
+  people.forEach(makeChip);
+  place();
+}
+function makeChip(p){
     var e=document.createElement('div'); e.className='rg-chip'; e.tabIndex=0; board.appendChild(e); p.el=e;
     e.innerHTML='<div class="c-name"></div><div class="c-row"><span class="c-role"></span><span class="rate">'+[1,2,3].map(function(n){return '<button type="button" data-n="'+n+'" title="'+n+' · '+LV[n]+'">'+n+'</button>';}).join('')+'<button class="nb" type="button" title="Note">✎</button></span></div>';
     e.querySelector('.c-name').textContent=p.name;
+    if(p.isNew){ var x=document.createElement('button'); x.type='button'; x.className='c-x'; x.textContent='×'; x.title='Retirer ce nouvel équipier'; x.addEventListener('pointerdown',function(ev){ev.stopPropagation();}); x.onclick=function(){ closePop(); p.el.remove(); people.splice(people.indexOf(p),1); refresh(); }; e.appendChild(x); }
     e.querySelectorAll('[data-n]').forEach(function(b){ b.addEventListener('pointerdown',function(ev){ev.stopPropagation();}); b.onclick=function(){ var n=+b.dataset.n; p.rating=(p.rating===n)?null:n; save(); refresh(); }; });
     var nb=e.querySelector('.nb'); nb.addEventListener('pointerdown',function(ev){ev.stopPropagation();}); nb.onclick=function(){ openNote(p); };
     dragger(e,function(){
       var sx=p.x, sy=p.y; closePop(); e.classList.add('drag'); e.style.zIndex=++zTop;
       return function(dx,dy){ p.x=clamp(sx+dx,0,BW-CW); p.y=clamp(sy+dy,0,BH-CH); place(); refresh(true); };
     },function(){ e.classList.remove('drag'); refresh(); });
-  });
-  place();
-}
+  }
 function dragger(el,start,end){
   el.addEventListener('pointerdown',function(ev){
     if(ev.button>0) return; ev.preventDefault();
@@ -103,13 +106,13 @@ function refresh(dragging){
   var base={}; zones.forEach(function(z){ base[z.name]=stats(people.filter(function(p){return p.home===z.name&&p.rating0;}).map(function(p){return {rating:p.rating0};})).avg; });
   var moved=0,out=0,hover=null;
   people.forEach(function(p){
-    var z=teamOf(p); p.team=z?z.name:null; if(!z) out++; else if(z.name!==p.home) moved++;
+    var z=teamOf(p); p.team=z?z.name:null; if(!z) out++; else if(!p.isNew && z.name!==p.home) moved++;
     if(dragging&&p.el.classList.contains('drag')) hover=z;
-    var e=p.el; e.className='rg-chip'+(p.rating?' r'+p.rating:' norate')+(e.classList.contains('drag')?' drag':'');
+    var e=p.el; e.className='rg-chip'+(p.rating?' r'+p.rating:' norate')+(e.classList.contains('drag')?' drag':'')+(p.isNew?' isnew':'');
     e.querySelectorAll('[data-n]').forEach(function(b){ b.className=(p.rating===+b.dataset.n)?'on'+b.dataset.n:''; });
     e.querySelector('.nb').className='nb'+(p.note?' has':'');
-    e.querySelector('.c-role').innerHTML=esc(p.role||'—')+(z&&z.name!==p.home?' · <em>de '+esc(p.home)+'</em>':(!z?' · <em>hors équipe</em>':''));
-    e.title=p.name+' · '+(p.role||'—')+' · '+(p.rating?LV[p.rating]:'non noté')+(p.note?'\n'+p.note:'');
+    e.querySelector('.c-role').innerHTML=esc(p.role||'—')+(p.isNew?'':(z&&z.name!==p.home?' · <em>de '+esc(p.home)+'</em>':(!z?' · <em>hors équipe</em>':'')));
+    e.title=p.name+(p.isNew?' (nouveau)':'')+' · '+(p.role||'—')+' · '+(p.rating?LV[p.rating]:'non noté')+(p.note?'\n'+p.note:'');
   });
   var all=[];
   zones.forEach(function(z){
@@ -126,7 +129,40 @@ function refresh(dragging){
   });
   root.querySelector('#rg-avg').textContent=f1(stats(all).avg);
   root.querySelector('#rg-moved').textContent=moved;
+  root.querySelector('#rg-new').textContent=people.filter(function(p){return p.isNew;}).length;
   root.querySelector('#rg-out').textContent=out;
+}
+function closeForm(){ if(formEl){ formEl.remove(); formEl=null; } }
+function openForm(){
+  closeForm(); closePop();
+  var roles=[]; people.forEach(function(p){ if(p.role&&roles.indexOf(p.role)<0) roles.push(p.role); });
+  formEl=document.createElement('form'); formEl.className='rg-form'; formEl.setAttribute('aria-label','Ajouter un équipier');
+  formEl.innerHTML='<label>Nom<input id="rgf-name" type="text" autocomplete="off" placeholder="Prénom Nom"></label>'+
+    '<div class="row"><label>Rôle<input id="rgf-role" type="text" list="rgf-roles" autocomplete="off" placeholder="DEV, QA, BA…"><datalist id="rgf-roles">'+roles.map(function(r){return '<option value="'+esc(r)+'">';}).join('')+'</datalist></label>'+
+    '<label>Note<select id="rgf-rate"><option value="">Non noté</option><option value="1">1 · Junior</option><option value="2">2 · Intermédiaire</option><option value="3">3 · Senior</option></select></label></div>'+
+    '<label>Équipe<select id="rgf-team">'+zones.map(function(z){return '<option>'+esc(z.name)+'</option>';}).join('')+'</select></label>'+
+    '<label>Note libre<textarea id="rgf-note" placeholder="Petite note…"></textarea></label><div class="err" id="rgf-err"></div>'+
+    '<div class="act"><button type="button" class="btn" id="rgf-cancel">Annuler</button><button type="submit" class="btn go">Ajouter</button></div>';
+  root.appendChild(formEl);
+  formEl.querySelector('#rgf-cancel').onclick=closeForm;
+  formEl.onsubmit=function(e){
+    e.preventDefault();
+    var name=formEl.querySelector('#rgf-name').value.trim();
+    if(!name){ formEl.querySelector('#rgf-err').textContent='Saisis un nom.'; return; }
+    if(people.some(function(p){return p.name.toLowerCase()===name.toLowerCase();})){ formEl.querySelector('#rgf-err').textContent='Ce nom existe déjà dans le tableau.'; return; }
+    addPerson({name:name,role:formEl.querySelector('#rgf-role').value.trim(),rating:+formEl.querySelector('#rgf-rate').value||null,team:formEl.querySelector('#rgf-team').value,note:formEl.querySelector('#rgf-note').value.trim()});
+    closeForm();
+  };
+  formEl.querySelector('#rgf-name').focus();
+}
+function addPerson(o){
+  var z=zones.filter(function(t){return t.name===o.team;})[0]; if(!z) return;
+  var n=people.filter(function(p){return teamOf(p)===z;}).length;
+  var p={id:Date.now(),name:o.name,role:o.role,home:null,isNew:true,rating:o.rating,rating0:null,note:o.note,x:z.x+12+(n%2)*(CW+10),y:z.y+HEAD+Math.floor(n/2)*(CH+8)};
+  var need=p.y+CH+16-z.y; if(need>z.h){ z.h=need; }
+  if(z.y+z.h+30>BH){ BH=z.y+z.h+60; board.style.height=BH+'px'; }
+  people.push(p); makeChip(p); place(); refresh();
+  var sc=board.parentNode; sc.scrollTo({left:Math.max(0,p.x-40),top:Math.max(0,p.y-80),behavior:'smooth'});
 }
 function closePop(){ if(pop){pop.remove();pop=null;} }
 function openNote(p){
