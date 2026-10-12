@@ -21,7 +21,7 @@
    Vélocité des sprints
    Stories terminées (export Jira) × fichier des ressources (Planning Build) :
    points livrés par sprint et par équipe, capacité réelle de chaque sprint,
-   vélocité normalisée (SP par jour-personne) et prévision du prochain sprint.
+   vélocité normalisée (jours-personnes par story point, JP/SP) et prévision du prochain sprint.
    Toutes les stories comptent ; seules les personnes des équipes productives
    forment la capacité.
    ════════════════════════════════════════════════════════════════════ */
@@ -176,7 +176,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   <section class="intro">
     <div>
       <h1>Vélocité des sprints</h1>
-      <p>Les stories terminées depuis le début du projet, croisées avec le fichier des ressources : combien de points chaque sprint a livrés, avec quelle capacité, et ce que cela donne en points par jour-personne.</p>
+      <p>Les stories terminées depuis le début du projet, croisées avec le fichier des ressources : combien de points chaque sprint a livrés, avec quelle capacité, et ce que cela donne en jours-personnes par story point (JP/SP).</p>
     </div>
     <span class="demo" id="demoNote">Données de démonstration : déposez vos deux fichiers</span>
   </section>
@@ -229,7 +229,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   </section>
 
   <section class="card">
-    <div class="sec-h"><h2>Vélocité normalisée</h2><span class="hint">Points livrés par jour-personne disponible : comparable d'un sprint à l'autre même quand la composition des équipes change.</span></div>
+    <div class="sec-h"><h2>Vélocité normalisée</h2><span class="hint">Jours-personnes disponibles par story point livré (JP/SP, plus bas = plus rapide) : comparable d'un sprint à l'autre même quand la composition des équipes change.</span></div>
     <div class="legend" id="legB"></div>
     <div class="chart" id="chartB"></div>
   </section>
@@ -532,6 +532,8 @@ function current(){ return M.sprints.filter(function(s){ return s.status==='curr
 function next(){ return M.sprints.filter(function(s){ return s.status==='next'; })[0]||null; }
 function shown(){ var w=winSprints(), c=current(), n=next(); if(c) w=w.concat([c]); if(n) w=w.concat([n]); return w; }
 function agg(s, teams){ var sp=0,c=0,hc=0,n=0; (teams||selTeams()).forEach(function(t){ var d=M.data[t.id][s.i]; sp+=d.sp; c+=cap(d); hc+=d.hc; n+=d.n; }); return { sp:sp, cap:c, hc:hc, n:n, rate:c?sp/c:0 }; }
+// Vélocité affichée en JP/SP (choix d'Adam) : inverse du taux interne SP/JP.
+function jps(r){ return r>0 ? 1/r : null; }
 function rateOver(list, teams){ var sp=0,c=0; list.forEach(function(s){ var a=agg(s,teams); sp+=a.sp; c+=a.cap; }); return c?sp/c:0; }
 function niceMax(v){ if(!(v>0)) return 1; var p=Math.pow(10,Math.floor(Math.log10(v))), m=v/p; return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p; }
 
@@ -565,7 +567,7 @@ function renderKpis(){
   var v3=avgSp(last3), vp=avgSp(prev3), r=rateOver(d), r3=rateOver(last3), rp=rateOver(prev3);
   var capAvg=d.reduce(function(a,s){ return a+agg(s).cap; },0)/d.length;
   var stories=d.reduce(function(a,s){ return a+agg(s).n; },0);
-  function delta(a,b){ if(!b) return ''; var p=(a-b)/b*100; var c=Math.abs(p)<3?'flat':p>0?'up':'down'; return '<span class="delta '+c+'">'+(p>0?'+':'')+Math.round(p)+' %</span>'; }
+  function delta(a,b,inv){ if(!b) return ''; var p=(a-b)/b*100; var c=Math.abs(p)<3?'flat':(p>0)!==!!inv?'up':'down'; return '<span class="delta '+c+'">'+(p>0?'+':'')+Math.round(p)+' %</span>'; }
   var nx=next(), fc;
   if(nx){
     var nxa=agg(nx), rates=d.slice(-6).map(function(s){ return agg(s).rate; }).filter(function(v){ return v>0; });
@@ -574,7 +576,7 @@ function renderKpis(){
   } else fc='<div class="kpi"><span class="kpi-l">Prévision du prochain sprint</span><span class="kpi-v">—</span><span class="kpi-s">Le fichier des ressources ne contient pas de sprint à venir.</span></div>';
   $('#kpis').innerHTML=
     '<div class="kpi"><span class="kpi-l">Vélocité moyenne, '+last3.length+' derniers sprints</span><span class="kpi-v">'+f0(v3)+'<small>SP / sprint</small></span><span class="kpi-s">'+(prev3.length?delta(v3,vp)+' vs les '+prev3.length+' précédents':'Historique trop court pour comparer')+'</span></div>'+
-    '<div class="kpi hl"><span class="kpi-l">Vélocité normalisée</span><span class="kpi-v">'+f2(r)+'<small>SP / '+(ui.cap==='jp'?'JP':'JP net')+'</small></span><span class="kpi-s">'+last3.length+' derniers : '+f2(r3)+' '+delta(r3,rp)+'</span></div>'+
+    '<div class="kpi hl"><span class="kpi-l">Vélocité normalisée</span><span class="kpi-v">'+(r?f2(jps(r)):'—')+'<small>'+(ui.cap==='jp'?'JP':'JP net')+' / SP</small></span><span class="kpi-s">'+last3.length+' derniers : '+(r3?f2(jps(r3)):'—')+' '+(r3&&rp?delta(jps(r3),jps(rp),true):'')+'</span></div>'+
     '<div class="kpi"><span class="kpi-l">Capacité moyenne par sprint</span><span class="kpi-v">'+f0(capAvg)+'<small>'+capLbl()+'</small></span><span class="kpi-s">'+d.length+' sprints terminés · '+f0(stories)+' stories</span></div>'+fc;
 }
 
@@ -606,12 +608,12 @@ function renderChartA(){
     var x=L+ix*bw+bw*.18, w=bw*.64, y0=T+ih, a=agg(s);
     if(s.status==='next'){
       var pv=a.cap*r3, hh=ih*pv/maxSp;
-      g+='<rect class="hov" x="'+x+'" y="'+(y0-hh)+'" width="'+w+'" height="'+hh+'" fill="url(#hatch)" stroke="#0C447C" stroke-dasharray="3 3"'+tipAttr('<b>'+esc(s.name)+' · prévision</b><br><span class="m">'+f0(a.cap)+' '+capLbl()+' × '+f2(r3)+'</span><br>≈ '+f0(pv)+' SP')+'/>';
+      g+='<rect class="hov" x="'+x+'" y="'+(y0-hh)+'" width="'+w+'" height="'+hh+'" fill="url(#hatch)" stroke="#0C447C" stroke-dasharray="3 3"'+tipAttr('<b>'+esc(s.name)+' · prévision</b><br><span class="m">'+f0(a.cap)+' '+capLbl()+' ÷ '+(r3?f2(jps(r3)):'—')+' JP/SP</span><br>≈ '+f0(pv)+' SP')+'/>';
       if(pv) g+='<text x="'+(x+w/2)+'" y="'+(y0-hh-5)+'" text-anchor="middle" style="fill:#0C447C">≈'+f0(pv)+'</text>';
     } else {
       teams.forEach(function(t){
         var d=M.data[t.id][s.i]; if(!d.sp) return; var hh=ih*d.sp/maxSp; y0-=hh;
-        g+='<rect class="hov" x="'+x+'" y="'+y0+'" width="'+w+'" height="'+Math.max(hh-1,0)+'" fill="var('+t.c+')"'+(s.status==='current'?' opacity=".45"':'')+tipAttr('<b>'+esc(s.name)+' · '+esc(t.id)+'</b>'+(s.status==='current'?' (en cours)':'')+'<br><span class="m">'+f0(d.sp)+' SP · '+d.n+' stories<br>'+f1(cap(d))+' '+capLbl()+' · '+d.hc+' pers.<br>'+(cap(d)?f2(d.sp/cap(d))+' SP / JP':'capacité inconnue')+'</span>')+'/>';
+        g+='<rect class="hov" x="'+x+'" y="'+y0+'" width="'+w+'" height="'+Math.max(hh-1,0)+'" fill="var('+t.c+')"'+(s.status==='current'?' opacity=".45"':'')+tipAttr('<b>'+esc(s.name)+' · '+esc(t.id)+'</b>'+(s.status==='current'?' (en cours)':'')+'<br><span class="m">'+f0(d.sp)+' SP · '+d.n+' stories<br>'+f1(cap(d))+' '+capLbl()+' · '+d.hc+' pers.<br>'+(cap(d)&&d.sp?f2(cap(d)/d.sp)+' JP / SP':'capacité inconnue')+'</span>')+'/>';
       });
       if(a.sp) g+='<text x="'+(x+w/2)+'" y="'+(y0-5)+'" text-anchor="middle" style="fill:#3D4B60">'+f0(a.sp)+'</text>';
     }
@@ -624,7 +626,7 @@ function renderChartA(){
   // Infobulle de la capacité exprimée en SP hypothétiques : capacité × vélocité moyenne de l'historique choisi.
   var mean=rateOver(winSprints());
   pts.forEach(function(p){ var s=p[2], a=p[3], hyp=mean*a.cap, dlt=a.sp-hyp;
-    var tip='<b>'+esc(s.name)+'</b><br>≈ <b>'+f0(hyp)+' SP</b> hypothétiques<br><span class="m">'+f1(a.cap)+' '+capLbl()+' × '+f2(mean)+' SP/JP · '+a.hc+' pers.</span>'+
+    var tip='<b>'+esc(s.name)+'</b><br>≈ <b>'+f0(hyp)+' SP</b> hypothétiques<br><span class="m">'+f1(a.cap)+' '+capLbl()+' ÷ '+(mean?f2(jps(mean)):'—')+' JP/SP · '+a.hc+' pers.</span>'+
       (s.status==='done'?'<br><span class="m">Livrés : '+f0(a.sp)+' SP ('+(dlt>=0?'+':'')+f0(dlt)+')</span>':'');
     g+='<circle class="hov" cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="#FFFFFF" stroke="#0C1A2E" stroke-width="2"'+tipAttr(tip)+'/>'; });
   g+='<text x="'+(L-8)+'" y="'+(T-6)+'" text-anchor="end">SP</text><text x="'+(W-Rr+8)+'" y="'+(T-6)+'">JP</text>';
@@ -638,15 +640,17 @@ function renderChartB(){
   if(!list.length){ $('#chartB').innerHTML='<p class="empty">Aucun sprint à afficher.</p>'; $('#legB').innerHTML=''; return; }
   var W=1240, H=280, L=46, Rr=70, T=16, B=34, iw=W-L-Rr, ih=H-T-B;
   var series=[];
-  if(ui.norm==='team') teams.forEach(function(t){ series.push({ t:t, v:list.map(function(s){ var d=M.data[t.id][s.i]; return d.hc&&cap(d)&&s.status!=='current'? d.sp/cap(d) : null; }) }); });
-  var aggv=list.map(function(s){ return s.status==='current'?null:agg(s).rate; });
+  if(ui.norm==='team') teams.forEach(function(t){ series.push({ t:t, v:list.map(function(s){ var d=M.data[t.id][s.i]; return d.hc&&d.sp&&s.status!=='current'? cap(d)/d.sp : null; }) }); });
+  var aggv=list.map(function(s){ return s.status==='current'?null:jps(agg(s).rate); });
   var all=[].concat.apply(aggv, series.map(function(x){ return x.v; })).filter(function(v){ return v!=null; });
-  var max=Math.max(.4, Math.ceil((Math.max.apply(null,all.concat([0]))*1.1)*5)/5);
-  var step=max>2?.5:.2;
+  // Axe plafonné à 3× la médiane : un sprint presque sans SP donnerait un JP/SP démesuré.
+  var srt=all.slice().sort(function(a,b){ return a-b; }), med=srt.length?srt[Math.floor(srt.length/2)]:1;
+  var max=Math.max(.4, Math.ceil(Math.min(Math.max.apply(null,all.concat([0])), med*3)*1.1*5)/5);
+  var step=max>10?2:max>5?1:max>2?.5:.2;
   var dx=iw/(Math.max(list.length-1,1)), g='';
   function X(ix){ return L+ix*dx; } function Y(v){ return T+ih-ih*Math.min(v,max)/max; }
   for(var k=0;k<=max+1e-9;k+=step){ var y=Y(k); g+='<line class="grid" x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-8)+'" y="'+(y+3.5)+'" text-anchor="end">'+f1(k)+'</text>'; }
-  var d=winSprints(), mean=rateOver(d), rates=d.map(function(s){ return agg(s).rate; });
+  var d=winSprints(), mrate=rateOver(d), mean=jps(mrate)||0, rates=d.map(function(s){ return jps(agg(s).rate); }).filter(function(v){ return v!=null; });
   var sd=Math.sqrt(rates.reduce(function(a,v){ return a+(v-mean)*(v-mean); },0)/(rates.length||1));
   var ld=list.filter(function(s){ return s.status==='done'; }).length-1;
   if(ld>=0){
@@ -660,7 +664,7 @@ function renderChartB(){
     return segs.map(function(sg){ return '<polyline fill="none" stroke="'+color+'" stroke-width="'+wdt+'" stroke-linejoin="round" opacity="'+(op||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+' points="'+sg.join(' ')+'"/>'; }).join('');
   }
   series.forEach(function(sr){ g+=line(sr.v,'var('+sr.t.c+')',1.8,.9);
-    sr.v.forEach(function(val,ix){ if(val==null) return; var s=list[ix], dd=M.data[sr.t.id][s.i]; g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(val)+'" r="3" fill="var('+sr.t.c+')"'+tipAttr('<b>'+esc(s.name)+' · '+esc(sr.t.id)+'</b><br><span class="m">'+f2(val)+' SP / JP<br>'+f0(dd.sp)+' SP · '+f1(cap(dd))+' JP · '+dd.hc+' pers.</span>')+'/>'; }); });
+    sr.v.forEach(function(val,ix){ if(val==null) return; var s=list[ix], dd=M.data[sr.t.id][s.i]; g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(val)+'" r="3" fill="var('+sr.t.c+')"'+tipAttr('<b>'+esc(s.name)+' · '+esc(sr.t.id)+'</b><br><span class="m">'+f2(val)+' JP / SP<br>'+f0(dd.sp)+' SP · '+f1(cap(dd))+' JP · '+dd.hc+' pers.</span>')+'/>'; }); });
   var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; return (v+aggv[ix-1]+aggv[ix-2])/3; });
   g+=line(aggv,'#0C1A2E',2.6);
   g+=line(roll,'#6B7A90',1.6,.9,'2 4');
@@ -668,26 +672,26 @@ function renderChartB(){
   list.forEach(function(s,ix){
     var a=agg(s), cur=s.status==='current';
     // SP hypothétiques : capacité du sprint × vélocité moyenne de l'historique choisi.
-    var hyp=mean*a.cap, dlt=a.sp-hyp;
-    if(!cur && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(Y(a.rate)-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
-    if(!cur) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(a.rate)+'" r="4.5" fill="#0C1A2E" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+f2(a.rate)+' SP / JP<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+f2(mean)+' SP/JP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
+    var hyp=mrate*a.cap, dlt=a.sp-hyp, v=aggv[ix];
+    if(v!=null && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(Y(v)-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
+    if(v!=null) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(v)+'" r="4.5" fill="#0C1A2E" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+f2(v)+' JP / SP<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+f2(mean)+' JP/SP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>SP par JP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité × moyenne)</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
+  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ moyenne JP/SP)</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
 }
 
 // ── Matrice ──
 function renderMatrix(){
-  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), mean=rateOver(winSprints());
+  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), mean=jps(rateOver(winSprints()));
   if(!list.length){ $('#matrix').innerHTML=''; return; }
-  var h='<thead><tr><th>Sprint</th><th>Story points</th><th>Stories</th><th>Capacité ('+capLbl()+')</th><th>Personnes</th><th>SP / JP</th><th>SP / personne</th></tr></thead><tbody>';
+  var h='<thead><tr><th>Sprint</th><th>Story points</th><th>Stories</th><th>Capacité ('+capLbl()+')</th><th>Personnes</th><th>JP / SP</th><th>SP / personne</th></tr></thead><tbody>';
   list.forEach(function(s){
-    var cur=s.status==='current', a=agg(s), dv=mean&&a.cap?(a.rate-mean)/mean:0;
-    var bg= cur||!a.cap ? '' : dv>.12?'background:var(--good-wash)' : dv<-.12?'background:var(--bad-wash)' : '';
+    var cur=s.status==='current', a=agg(s), v=jps(a.rate), dv=mean&&v!=null?(v-mean)/mean:0;
+    var bg= cur||!a.cap ? '' : dv<-.12?'background:var(--good-wash)' : dv>.12?'background:var(--bad-wash)' : '';
     h+='<tr'+(cur?' class="cur"':'')+'><td><span class="sprint-n">'+esc(s.name)+'</span><span class="sprint-d">'+fmtD(s.start)+' → '+fmtD(s.end)+(cur?' · en cours':'')+'</span></td>'+
       '<td class="n">'+f0(a.sp)+'</td><td class="n">'+a.n+'</td><td class="n">'+f1(a.cap)+'</td><td class="n">'+a.hc+'</td>'+
-      '<td class="n" style="'+bg+'"><b>'+(a.cap?f2(a.rate):'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
+      '<td class="n" style="'+bg+'"><b>'+(v!=null?f2(v):'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
   });
   $('#matrix').innerHTML=h+'</tbody>';
 }
