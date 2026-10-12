@@ -139,22 +139,6 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
 .sprint-n{font-weight:700}
 .sprint-d{display:block;font-family:var(--vmono);font-size:10px;color:var(--ink-3)}
 
-/* Cartes d'équipe */
-.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-.tcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
-.tcard-h{display:flex;align-items:center;gap:8px}
-.tcard-h b{font-size:14px}
-.tcard-h .pill{margin-left:auto}
-.tdot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.pill{font-family:var(--vmono);font-size:10.5px;padding:2px 7px;border-radius:999px}
-.pill.good{background:var(--good-wash);color:var(--good)} .pill.warn{background:var(--warn-wash);color:var(--warn)} .pill.bad{background:var(--bad-wash);color:var(--bad)}
-.tstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.tstats div{display:flex;flex-direction:column}
-.tstats span{font-size:10.5px;color:var(--ink-3)}
-.tstats b{font-family:var(--vmono);font-weight:500;font-size:16px}
-.tcard svg{width:100%;height:46px;display:block}
-.tcard p{margin:0;font-size:12px;color:var(--ink-2)}
-
 /* Règles */
 .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
 .rules ul{margin:6px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px;display:flex;flex-direction:column;gap:5px;max-width:70ch}
@@ -228,7 +212,6 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   </details>
 
   <div class="filters" role="toolbar" aria-label="Filtres">
-    <div class="fg"><span class="fl">Équipes</span><span id="fTeams" class="fg"></span></div>
     <div class="fg" id="fExclWrap"><span class="fl">Hors capacité</span><span id="fExcl" class="fg"></span></div>
     <div class="fg"><span class="fl">Historique</span><div class="seg" id="fWin"></div></div>
     <div class="fg"><span class="fl">Capacité</span><div class="seg" id="fCap"></div></div>
@@ -237,28 +220,22 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   <section class="kpis" id="kpis"></section>
 
   <section class="card">
-    <div class="sec-h"><h2>Points livrés et capacité, sprint par sprint</h2><span class="hint">Barres : story points terminés par équipe. Ligne : capacité en jours-personnes tirée du fichier des ressources.</span></div>
+    <div class="sec-h"><h2>Points livrés et capacité, sprint par sprint</h2><span class="hint">Barres : story points terminés, toutes équipes confondues. Ligne : capacité en jours-personnes tirée du fichier des ressources.</span></div>
     <div class="legend" id="legA"></div>
     <div class="chart" id="chartA"></div>
   </section>
 
   <section class="card">
-    <div class="sec-h"><h2>Vélocité normalisée</h2><span class="hint">Points livrés par jour-personne disponible : comparable d'un sprint à l'autre même quand la composition des équipes change.</span>
-      <div class="right"><div class="seg" id="fNorm"></div></div></div>
+    <div class="sec-h"><h2>Vélocité normalisée</h2><span class="hint">Points livrés par jour-personne disponible : comparable d'un sprint à l'autre même quand la composition des équipes change.</span></div>
     <div class="legend" id="legB"></div>
     <div class="chart" id="chartB"></div>
   </section>
 
   <section class="card">
-    <div class="sec-h"><h2>Sprint × équipe</h2><span class="hint">Couleur : écart de plus de 12 % à la moyenne de l'équipe sur l'historique choisi.</span>
-      <div class="right"><div class="seg" id="fMetric"></div></div></div>
+    <div class="sec-h"><h2>Sprint par sprint</h2><span class="hint">Couleur : vélocité normalisée à plus de 12 % de la moyenne de l'historique choisi.</span></div>
     <div class="tbl-wrap"><table id="matrix"></table></div>
   </section>
 
-  <section>
-    <div class="sec-h"><h2>Par équipe</h2><span class="hint">Moyenne des 6 derniers sprints terminés et prévision du prochain sprint selon sa capacité planifiée.</span></div>
-    <div class="teams" id="teams"></div>
-  </section>
 
   <section class="rules">
     <div class="card">
@@ -286,6 +263,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
 var CFG_DEF = { teams:'TEAM 1, TEAM 2, TEAM 3, TEAM 4, TEAM 5, INTEG*', agile:10, bogues:10, raff:20, supp:10 };
 var CFG = load('vs-cfg', CFG_DEF);
 var ui = load('vs-ui', { win:12, cap:'jp', norm:'agg', metric:'rate', hidden:[] });
+ui.norm='agg'; ui.hidden=[];
 function load(k, def){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); if(v) return Object.assign({}, def, v); }catch(e){} return Object.assign({}, def); }
 function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
@@ -325,12 +303,11 @@ function toDS(v){
 function parsePts(v){ if(v==null||v==='') return null; if(typeof v==='number') return v; var n=parseFloat(String(v).replace(',','.')); return isNaN(n)?null:n; }
 function teamRules(){ return CFG.teams.split(',').map(function(s){ return s.trim(); }).filter(Boolean).map(function(s){ return /\*$/.test(s) ? { p:norm(s.slice(0,-1)) } : { e:normTeam(s) }; }); }
 function isProductive(team){ if(!team) return false; var n=norm(team); return teamRules().some(function(r){ return r.e ? r.e===team : n.indexOf(r.p)===0; }); }
-function teamSort(a,b){ var ra=/^TEAM/.test(a)?0:1, rb=/^TEAM/.test(b)?0:1; return ra-rb || a.localeCompare(b,'fr',{numeric:true}); }
 
 // ── Fichier des stories ──
 var STORY_COLS = [
   { k:'key',  lbl:'Clé',          req:true,  m:['cle','key','issue key','cle de ticket','ticket','id de ticket'] },
-  { k:'team', lbl:'Équipe',       req:true,  m:['equipe','team','team name','equipe jira'], inc:['team','equipe'] },
+  { k:'team', lbl:'Équipe',       req:false,  m:['equipe','team','team name','equipe jira'], inc:['team','equipe'] },
   { k:'sprint',lbl:'Sprint',      req:true,  m:['sprint','sprints'], inc:['sprint'], multi:true },
   { k:'pts',  lbl:'Story Points', req:true,  m:['story points','story point estimate','points','sp','points de story','estimation'], inc:['story point','points'] },
   { k:'sum',  lbl:'Résumé',       m:['resume','summary','titre'] },
@@ -350,7 +327,7 @@ function mapHeader(row){
 var RAW = load('vs-stories', { name:null, at:null, rows:[], cols:null });
 function parseStories(rows){
   var hi=-1, map=null;
-  for(var r=0;r<Math.min(rows.length,15);r++){ var m=mapHeader(rows[r]||[]); if(m.key!=null && (m.pts!=null || m.sprint)){ hi=r; map=m; break; } }
+  for(var r=0;r<Math.min(rows.length,15);r++){ var m=mapHeader(rows[r]||[]); if(m.key!=null && m.pts!=null && m.sprint){ hi=r; map=m; break; } }
   if(hi<0) throw new Error('ligne de titres introuvable (il faut au moins les colonnes Clé et Story Points).');
   var out=[];
   for(var i=hi+1;i<rows.length;i++){
@@ -444,7 +421,7 @@ function buildReal(){
   RES.persons.forEach(function(p){
     // Seules les personnes des équipes productives forment la capacité.
     if(!isProductive(p.team)){ excl[p.team]=(excl[p.team]||0)+1; return; }
-    var arr=slot(p.team), lr=isLead(p.role)?Math.max(0,1-rf-su):1;
+    var arr=slot('Story points'), lr=isLead(p.role)?Math.max(0,1-rf-su):1;
     sprints.forEach(function(s,ix){
       var jp=0, any=false;
       for(var d=s.start; d<=s.end; d=addDays(d,1)){
@@ -463,10 +440,11 @@ function buildReal(){
     var best=null, named=false;
     st.s.forEach(function(nm){ named=true; var n=sprintNum(nm), sp=(n!=null && byNum[n]) || byName[norm(nm)]; if(sp && (!best || sp.i>best.i)) best=sp; });
     if(!best){ if(named){ ign.outRange++; if(outEx.length<4) outEx.push(st.k+(st.s.length?' ('+st.s[st.s.length-1]+')':'')); } else ign.noSprint++; return; }
-    // Toutes les stories comptent, quelle que soit leur équipe.
-    var cell=slot(st.t||'(SANS ÉQUIPE)')[best.i]; cell.sp+=st.p; cell.n++; kept++;
+    // Toutes les stories comptent, quelle que soit leur équipe : un seul total par sprint.
+    var cell=slot('Story points')[best.i]; cell.sp+=st.p; cell.n++; kept++;
   });
-  var teams=Object.keys(teamsSet).sort(teamSort).map(function(t,i){ return { id:t, c:PALETTE[i%PALETTE.length] }; });
+  slot('Story points');
+  var teams=[{ id:'Story points', c:'--c0' }];
   // Sprints à capacité nulle mais avec des points (équipe absente du fichier des ressources)
   teams.forEach(function(t){ data[t.id].forEach(function(c){ if(c.sp && !c.jp) ign.noCap+=c.n; }); });
   return { demo:false, sprints:sprints, teams:teams, data:data, ign:ign, kept:kept, excl:excl, outEx:outEx, persons:RES.persons.length };
@@ -488,18 +466,20 @@ function buildDemo(){
   var sprints=[]; for(var i=0;i<26;i++){ var st=addDays(first,14*i), en=addDays(st,11); sprints.push({ i:i, name:'Sprint '+(i+1), num:i+1, start:st, end:en, status: en<today?'done':(st<=today?'current':'next') }); }
   function presence(i){ return i===3?.55 : i===4?.7 : (i>=17&&i<=20)?.74 : .93; }
   var FIB=[1,2,3,5,8,13], data={}, kept=0;
+  var tot=sprints.map(function(){ return { hc:0, jp:0, net:0, sp:0, n:0 }; });
   DEF.forEach(function(t){
-    data[t.id]=sprints.map(function(s){
+    sprints.forEach(function(s){
       var hc=t.hc(s.i), jp=0;
       for(var p=0;p<hc;p++){ jp+=Math.round(10*presence(s.i)*(0.85+R()*0.17))*(R()<.15?.5:1); }
       var rate=t.rate; if(t.ramp!=null){ var k=s.i-t.ramp; rate*= k<0?0 : Math.min(1,.55+.12*k); } if(s.i<2) rate*=.7;
       var sp=0, n=0;
       if(s.status!=='next'){ var target=jp*rate*(0.8+R()*0.4)*(s.status==='current'?.45:1); while(sp<target-1){ sp+=FIB[Math.floor(Math.pow(R(),1.6)*FIB.length)]; n++; } }
       kept+=n;
-      return { hc:hc, jp:jp, net:jp*.79, sp:sp, n:n };
+      var c=tot[s.i]; c.hc+=hc; c.jp+=jp; c.net+=jp*.79; c.sp+=sp; c.n+=n;
     });
   });
-  return { demo:true, sprints:sprints, teams:DEF.map(function(t,i){ return { id:t.id, c:PALETTE[i] }; }), data:data,
+  data['Story points']=tot;
+  return { demo:true, sprints:sprints, teams:[{ id:'Story points', c:'--c0' }], data:data,
     ign:{ noPts:31, noSprint:14, outRange:0, dup:3, noCap:0 }, kept:kept, excl:{ GLOBALE:9, INSIGHT:6, DIGITAL:5, TRANS:3 }, outEx:[], persons:124 };
 }
 
@@ -552,17 +532,11 @@ function seg(el, opts, key){
   el.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var v=b.dataset.v; ui[key]= isNaN(+v)?v:+v; store('vs-ui',ui); render(); };
 }
 function renderFilters(){
-  $('#fTeams').innerHTML=M.teams.map(function(t){ return '<button type="button" class="chip" data-t="'+esc(t.id)+'" aria-pressed="'+(ui.hidden.indexOf(t.id)<0)+'"><span class="dot" style="background:var('+t.c+')"></span>'+esc(t.id)+'</button>'; }).join('');
-  $('#fTeams').onclick=function(e){ var b=e.target.closest('.chip'); if(!b) return; var id=b.dataset.t, k=ui.hidden.indexOf(id);
-    if(k>=0) ui.hidden.splice(k,1); else if(selTeams().length>1) ui.hidden.push(id);
-    store('vs-ui',ui); render(); };
   var ex=Object.keys(M.excl).sort(function(a,b){ return M.excl[b]-M.excl[a]; });
   $('#fExclWrap').hidden=!ex.length;
   $('#fExcl').innerHTML=ex.map(function(x){ return '<span class="chip off" title="'+M.excl[x]+' personne(s) exclue(s) de la capacité : équipe non productive">'+esc(x)+'</span>'; }).join('');
   seg($('#fWin'), [[6,'6 sprints'],[12,'12 sprints'],[0,'Depuis le début']], 'win');
   seg($('#fCap'), [['jp','Présence'],['net','CAF nette']], 'cap');
-  seg($('#fNorm'), [['agg','Dispositif'],['team','Par équipe']], 'norm');
-  seg($('#fMetric'), [['rate','SP / JP'],['sp','SP'],['cap','JP'],['pp','SP / pers.']], 'metric');
 }
 
 // ── Compteurs ──
@@ -675,58 +649,22 @@ function renderChartB(){
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>Équipes sélectionnées</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
+  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>SP par JP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
 }
 
 // ── Matrice ──
-function metricVal(d){ var c=cap(d); if(!d.hc && !d.sp) return null; switch(ui.metric){ case 'sp': return d.sp; case 'cap': return c; case 'pp': return d.hc?d.sp/d.hc:null; default: return c?d.sp/c:null; } }
-function fmtM(v){ return v==null?'—' : (ui.metric==='rate'?f2(v) : ui.metric==='sp'?f0(v) : f1(v)); }
 function renderMatrix(){
-  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), teams=selTeams(), d=winSprints();
+  var list=shown().filter(function(s){ return s.status!=='next'; }).slice().reverse(), mean=rateOver(winSprints());
   if(!list.length){ $('#matrix').innerHTML=''; return; }
-  var means={}; teams.forEach(function(t){ var vs=d.map(function(s){ return metricVal(M.data[t.id][s.i]); }).filter(function(v){ return v!=null; }); means[t.id]=vs.reduce(function(a,v){ return a+v; },0)/(vs.length||1); });
-  var h='<thead><tr><th>Sprint</th>'+teams.map(function(t){ return '<th><span style="color:var('+t.c+')">●</span> '+esc(t.id)+'</th>'; }).join('')+'<th>Dispositif</th><th>Pers.</th></tr></thead><tbody>';
+  var h='<thead><tr><th>Sprint</th><th>Story points</th><th>Stories</th><th>Capacité ('+capLbl()+')</th><th>Personnes</th><th>SP / JP</th><th>SP / personne</th></tr></thead><tbody>';
   list.forEach(function(s){
-    var cur=s.status==='current', a=agg(s);
-    h+='<tr'+(cur?' class="cur"':'')+'><td><span class="sprint-n">'+esc(s.name)+'</span><span class="sprint-d">'+fmtD(s.start)+' → '+fmtD(s.end)+(cur?' · en cours':'')+'</span></td>';
-    teams.forEach(function(t){
-      var dd=M.data[t.id][s.i], v=metricVal(dd);
-      if(v==null){ h+='<td class="cell none">—<span class="sub">'+(dd.hc||dd.sp?'capacité nulle':'pas d\'effectif')+'</span></td>'; return; }
-      var m=means[t.id], dv=m?(v-m)/m:0, bg='';
-      if(!cur && ui.metric!=='cap'){ bg= dv>.12?'background:var(--good-wash)' : dv<-.12?'background:var(--bad-wash)' : ''; }
-      h+='<td class="cell" style="'+bg+'">'+fmtM(v)+'<span class="sub">'+f0(dd.sp)+' SP · '+f1(cap(dd))+' JP · '+dd.hc+' p.</span></td>';
-    });
-    var av=ui.metric==='rate'?a.rate : ui.metric==='sp'?a.sp : ui.metric==='cap'?a.cap : a.sp/(a.hc||1);
-    h+='<td class="cell"><b>'+fmtM(av)+'</b><span class="sub">'+f0(a.sp)+' SP · '+f1(a.cap)+' JP</span></td><td class="n">'+a.hc+'</td></tr>';
+    var cur=s.status==='current', a=agg(s), dv=mean&&a.cap?(a.rate-mean)/mean:0;
+    var bg= cur||!a.cap ? '' : dv>.12?'background:var(--good-wash)' : dv<-.12?'background:var(--bad-wash)' : '';
+    h+='<tr'+(cur?' class="cur"':'')+'><td><span class="sprint-n">'+esc(s.name)+'</span><span class="sprint-d">'+fmtD(s.start)+' → '+fmtD(s.end)+(cur?' · en cours':'')+'</span></td>'+
+      '<td class="n">'+f0(a.sp)+'</td><td class="n">'+a.n+'</td><td class="n">'+f1(a.cap)+'</td><td class="n">'+a.hc+'</td>'+
+      '<td class="n" style="'+bg+'"><b>'+(a.cap?f2(a.rate):'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
   });
   $('#matrix').innerHTML=h+'</tbody>';
-}
-
-// ── Cartes d'équipe ──
-function spark(vals, color){
-  var w=220, hh=46, vs=vals.filter(function(v){ return v!=null; }); if(vs.length<2) return '<svg viewBox="0 0 220 46"></svg>';
-  var mx=Math.max.apply(null,vs)*1.1, mn=Math.min.apply(null,vs)*.9, dx=w/(vals.length-1), p=[];
-  vals.forEach(function(v,i){ if(v!=null) p.push([i*dx, hh-4-(hh-8)*(v-mn)/((mx-mn)||1)]); });
-  var pts=p.map(function(q){ return q[0].toFixed(1)+','+q[1].toFixed(1); }).join(' '), last=p[p.length-1];
-  return '<svg viewBox="0 0 '+w+' '+hh+'" preserveAspectRatio="none" aria-hidden="true"><polygon fill="'+color+'" opacity=".12" points="'+p[0][0]+','+hh+' '+pts+' '+last[0]+','+hh+'"/><polyline fill="none" stroke="'+color+'" stroke-width="2" points="'+pts+'"/><circle cx="'+last[0]+'" cy="'+last[1]+'" r="3" fill="'+color+'"/></svg>';
-}
-function renderTeams(){
-  var d=done(); if(!d.length){ $('#teams').innerHTML=''; return; }
-  var l6=d.slice(-6), p6=d.slice(-12,-6), nx=next();
-  $('#teams').innerHTML=selTeams().map(function(t){
-    var r6=rateOver(l6,[t]), rp=rateOver(p6,[t]);
-    var sp6=l6.reduce(function(a,s){ return a+M.data[t.id][s.i].sp; },0)/l6.length;
-    var hcFirst=null; d.forEach(function(s){ var h=M.data[t.id][s.i].hc; if(hcFirst==null&&h) hcFirst=h; });
-    var hcNow=M.data[t.id][d[d.length-1].i].hc, nxd=nx?M.data[t.id][nx.i]:null;
-    var trend=rp?(r6-rp)/rp:0;
-    var pill= !rp?'<span class="pill warn">historique court</span>' : trend>.05?'<span class="pill good">▲ '+Math.round(trend*100)+' %</span>' : trend<-.05?'<span class="pill bad">▼ '+Math.round(-trend*100)+' %</span>' : '<span class="pill warn">stable</span>';
-    var vals=winSprints().map(function(s){ var x=M.data[t.id][s.i]; return x.hc&&cap(x)?x.sp/cap(x):null; });
-    var hcTxt= hcFirst==null ? 'Aucun effectif sur l\'historique' : hcFirst===hcNow ? hcNow+' personnes depuis le début' : 'De '+hcFirst+' à '+hcNow+' personnes';
-    return '<div class="tcard"><div class="tcard-h"><span class="tdot" style="background:var('+t.c+')"></span><b>'+esc(t.id)+'</b>'+pill+'</div>'+
-      '<div class="tstats"><div><span>SP / JP</span><b>'+f2(r6)+'</b></div><div><span>SP / sprint</span><b>'+f0(sp6)+'</b></div><div><span>Prévision'+(nx&&nx.num!=null?' S'+nx.num:'')+'</span><b>'+(nxd?f0(cap(nxd)*r6):'—')+'</b></div></div>'+
-      spark(vals,'var('+t.c+')')+
-      '<p>'+hcTxt+(nxd?' · '+f0(cap(nxd))+' '+capLbl()+' au prochain sprint':'')+'</p></div>';
-  }).join('');
 }
 
 function renderIgnored(){
@@ -736,14 +674,14 @@ function renderIgnored(){
     '<div><span>Sprint absent du fichier des ressources</span><b>'+f0(g.outRange)+'</b></div>';
   if(M.outEx.length) h+='<div class="ex">ex. : '+esc(M.outEx.join(' · '))+'</div>';
   h+='<div><span>Doublons (même clé)</span><b>'+f0(g.dup)+'</b></div>';
-  if(g.noCap) h+='<div><span>Comptées, mais leur équipe n\'a aucune capacité productive ce sprint-là</span><b>'+f0(g.noCap)+'</b></div>';
+  if(g.noCap) h+='<div><span>Comptées dans un sprint sans capacité productive</span><b>'+f0(g.noCap)+'</b></div>';
   h+='<div><span><b>Retenues pour la vélocité</b></span><b>'+f0(M.kept)+'</b></div>';
   var np=ex.reduce(function(a,x){ return a+M.excl[x]; },0);
   if(np) h+='<div class="ex">Capacité : '+np+' personne(s) d\'équipes non productives écartée(s) ('+esc(ex.slice(0,6).join(', '))+(ex.length>6?'…':'')+')</div>';
   $('#ignored').innerHTML=h;
 }
 
-function render(){ renderFilters(); renderKpis(); renderChartA(); renderChartB(); renderMatrix(); renderTeams(); renderIgnored(); }
+function render(){ renderFilters(); renderKpis(); renderChartA(); renderChartB(); renderMatrix(); renderIgnored(); }
 
 // ── Paramètres ──
 function fillParams(){ $('#pTeams').value=CFG.teams; $('#pAgile').value=CFG.agile; $('#pBogues').value=CFG.bogues; $('#pRaff').value=CFG.raff; $('#pSupp').value=CFG.supp; }
@@ -770,7 +708,7 @@ $('#btnStoriesClear').addEventListener('click', function(){ if(paste){ paste.tex
 // ── Copier-coller habituel (champ partagé assets/paste-field.js : Excel, CSV Jira, navigateur de tickets) ──
 var PASTE_FIELDS = [
   { key:'key',         label:'Clé',          need:'req' },
-  { key:'team',        label:'Équipe',       need:'req' },
+  { key:'team',        label:'Équipe',       need:'opt' },
   { key:'storyPoints', label:'Story Points', need:'req' },
   { key:'sprint',      label:'Sprint',       need:'req' },
   { key:'summary',     label:'Résumé',       need:'opt' },
