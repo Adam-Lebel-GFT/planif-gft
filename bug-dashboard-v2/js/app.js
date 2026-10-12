@@ -286,7 +286,11 @@
     if (prjBlock.length) alerts.push({ level: 'serious', icon: '★', html: '<b>' + prjBlock.length + ' blocker' + (prjBlock.length > 1 ? 's' : '') + ' PRJ301 ouvert' + (prjBlock.length > 1 ? 's' : '') + '</b> — attendus par le projet de test.', tickets: prjBlock, title: 'Blockers PRJ301 ouverts' });
     hooks.alerts.forEach(function (fn) { alerts = alerts.concat(fn(vis, S) || []); });
     var order = { critical: 0, serious: 1, warning: 2, info: 3 };
-    alerts.sort(function (a, b) { return order[a.level] - order[b.level]; });
+    // Les alertes d'immobilité (3, 2 puis 1 jour, `pin`) ouvrent la liste ; le reste suit par gravité.
+    alerts.sort(function (a, b) {
+      if (a.pin || b.pin) return a.pin && b.pin ? b.pin - a.pin : a.pin ? -1 : 1;
+      return order[a.level] - order[b.level];
+    });
     S.alerts = alerts;
     $('alertsList').innerHTML = alerts.length ? alerts.map(function (a, i) {
       return '<div class="alert ' + a.level + '" data-dd="alert" data-idx="' + i + '"><span class="ic">' + a.icon + '</span><span class="txt">' + a.html + '</span><span class="cnt">' + a.tickets.length + '</span></div>';

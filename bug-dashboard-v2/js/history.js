@@ -153,7 +153,7 @@
     STALL_TIERS.forEach(function (tr) {
       var list = stalled[tr[1]]; if (!list.length) return;
       out.push({
-        level: tr[1], icon: '⏸',
+        level: tr[1], icon: '⏸', pin: tr[0],
         html: '<b>' + plural(list.length, 'ticket') + ' dans le même statut depuis ' + tr[0] + ' jour' + (tr[0] > 1 ? 's' : '') + ' ouvré' + (tr[0] > 1 ? 's' : '') + (tr[0] < 3 ? ' (moins de ' + (tr[0] + 1) + ')' : ' ou plus') + '</b> — ' + tr[2] + '.',
         tickets: list, title: 'Immobiles depuis ' + (tr[0] === 3 ? '3 jours ouvrés ou plus' : tr[0] + ' jour' + (tr[0] > 1 ? 's' : '') + ' ouvré' + (tr[0] > 1 ? 's' : ''))
       });
