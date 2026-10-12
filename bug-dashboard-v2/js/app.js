@@ -271,7 +271,9 @@
     var bnoTeam = open.filter(function (t) { return t.isBlocker && t.team === 'Non affecté'; });
     if (bnoTeam.length) alerts.push({ level: 'critical', icon: '!', html: '<b>' + bnoTeam.length + ' blocker' + (bnoTeam.length > 1 ? 's' : '') + ' ouvert' + (bnoTeam.length > 1 ? 's' : '') + ' sans équipe</b> — personne ne les porte.', tickets: bnoTeam, title: 'Blockers sans équipe' });
     var k = C.computeKpis(vis);
-    if (k.doneNoFix) alerts.push({ level: 'warning', icon: '?', html: '<b>' + k.doneNoFix + ' ticket' + (k.doneNoFix > 1 ? 's' : '') + ' terminé' + (k.doneNoFix > 1 ? 's' : '') + ' sans Fix Version</b> sur ' + k.done + ' terminés — vérifier la résolution (déclinés, doublons, non reproductibles…).', tickets: vis.filter(function (t) { return t.isDone && !t.hasFix; }), title: 'Terminés sans Fix Version' });
+    // Un doublon n'a pas de Fix Version à renseigner : son jumeau la porte.
+    var doneNoFix = vis.filter(function (t) { return t.isDone && !t.hasFix && !/duplic/.test(C.normalize(t.resolution || '')); });
+    if (doneNoFix.length) alerts.push({ level: 'warning', icon: '?', html: '<b>' + doneNoFix.length + ' ticket' + (doneNoFix.length > 1 ? 's' : '') + ' terminé' + (doneNoFix.length > 1 ? 's' : '') + ' sans Fix Version</b> sur ' + k.done + ' terminés — vérifier la résolution (déclinés, non reproductibles…) ; les doublons ne sont pas comptés.', tickets: doneNoFix, title: 'Terminés sans Fix Version' });
     var late = open.filter(function (t) { return t.isOverdue; });
     if (late.length) {
       var byTeam = {}; late.forEach(function (t) { byTeam[t.teamLabel] = (byTeam[t.teamLabel] || 0) + 1; });
