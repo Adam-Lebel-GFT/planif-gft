@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="../assets/loader.js"></script>
 <script src="../assets/planning-store.js"></script>
+<script src="../assets/paste-field.js"></script>
 <script src="../acces/config.js"></script>
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
@@ -57,6 +58,7 @@ main.vs{max-width:1320px;margin:0 auto;padding:22px 24px 60px;display:flex;flex-
 .src-h .st.err{color:var(--bad);background:var(--bad-wash)}
 .src .file{font-family:var(--vmono);font-size:12px;color:var(--ink-2);overflow-wrap:anywhere}
 .cols{display:flex;flex-wrap:wrap;gap:5px}
+.cols[hidden]{display:none}
 .col{font-family:var(--vmono);font-size:11px;padding:2px 7px;border-radius:4px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
 .col.req{border-color:var(--accent);color:var(--accent);background:var(--accent-wash)}
 .col.found{border-color:var(--good);color:var(--good);background:var(--good-wash)}
@@ -68,6 +70,7 @@ main.vs{max-width:1320px;margin:0 auto;padding:22px 24px 60px;display:flex;flex-
 .btn:hover{border-color:var(--accent)}
 .btn:focus-visible,.chip:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #planning-store .tk-ps{margin-top:0}
+#storiesPaste .tkp{margin-top:4px}
 
 /* Paramètres */
 details.params{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 16px}
@@ -194,10 +197,11 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
     <div class="src" id="srcStoriesCard">
       <input type="file" id="fileStories" accept=".xlsx,.xls,.csv">
       <div class="src-h"><b>Stories terminées</b><span class="st" id="srcStories">Aucun fichier</span></div>
-      <div class="file" id="srcStoriesName">Export Jira (.xlsx ou .csv) des stories terminées depuis le début du projet</div>
+      <div class="file" id="srcStoriesName">Stories terminées depuis le début du projet, collées depuis Excel ou Jira</div>
+      <div id="storiesPaste"></div>
       <div class="cols" id="colsStories"></div>
-      <small>Colonnes nécessaires en bleu, reconnues en français ou en anglais. Glissez le fichier sur cette carte ou choisissez-le.</small>
-      <div class="src-actions"><button class="btn" type="button" id="btnStories">Choisir le fichier…</button><button class="btn" type="button" id="btnStoriesClear" hidden>Retirer</button></div>
+      <small>Colonnes nécessaires en bleu, reconnues en français ou en anglais. Vous pouvez aussi glisser un export (.xlsx ou .csv) sur cette carte.</small>
+      <div class="src-actions"><button class="btn" type="button" id="btnStories">Choisir un fichier…</button><button class="btn" type="button" id="btnStoriesClear" hidden>Retirer les stories</button></div>
     </div>
     <div class="src" id="srcResCard">
       <input type="file" id="fileRes" accept=".xlsx,.xls">
@@ -508,9 +512,11 @@ function renderSources(){
   $('#srcStoriesCard').classList.toggle('loaded', !!hasS);
   $('#srcResCard').classList.toggle('loaded', hasR);
   $('#btnStoriesClear').hidden=!hasS;
-  if(hasS){ setSrc('#srcStories', f0(RAW.rows.length)+' stories lues', 'ok'); $('#srcStoriesName').textContent=RAW.name+(RAW.at?' · chargé le '+new Date(RAW.at).toLocaleDateString('fr-CA'):''); }
+  if(hasS){ setSrc('#srcStories', f0(RAW.rows.length)+' stories lues', 'ok'); $('#srcStoriesName').textContent=(RAW.name==='Collage'?'Stories collées':RAW.name)+(RAW.at?' · chargé le '+new Date(RAW.at).toLocaleDateString('fr-CA'):''); }
   else if($('#srcStories').className.indexOf('err')<0) setSrc('#srcStories','Aucun fichier');
   if(hasR){ setSrc('#srcRes', RES.persons.length+' personnes · '+RES.sprints.length+' sprints', 'ok'); $('#srcResName').textContent=RES.name+' · onglet « Planning Build »'; }
+  // Après un collage, le champ affiche déjà les colonnes reconnues.
+  $('#colsStories').hidden = !!hasS && RAW.name==='Collage';
   $('#colsStories').innerHTML=STORY_COLS.map(function(c){
     var cls = hasS && RAW.cols ? (RAW.cols[c.k] ? 'found' : (c.req ? 'miss' : '')) : (c.req ? 'req' : '');
     return '<span class="col '+cls+'"'+(cls==='miss'?' title="Colonne introuvable dans le fichier"':'')+'>'+c.lbl+'</span>';
@@ -760,7 +766,41 @@ function wireDrop(card, input, btn, handler){
 }
 wireDrop($('#srcStoriesCard'), $('#fileStories'), $('#btnStories'), handleStories);
 wireDrop($('#srcResCard'), $('#fileRes'), $('#btnRes'), handleRes);
-$('#btnStoriesClear').addEventListener('click', function(){ RAW={ name:null, at:null, rows:[], cols:null }; try{ localStorage.removeItem('vs-stories'); }catch(e){} rebuild(); });
+$('#btnStoriesClear').addEventListener('click', function(){ if(paste){ paste.textarea.value=''; paste.msg('',''); paste.element.querySelector('.tkp-chips').innerHTML=''; } RAW={ name:null, at:null, rows:[], cols:null }; try{ localStorage.removeItem('vs-stories'); }catch(e){} rebuild(); });
+
+// ── Copier-coller habituel (champ partagé assets/paste-field.js : Excel, CSV Jira, navigateur de tickets) ──
+var PASTE_FIELDS = [
+  { key:'key',         label:'Clé',          need:'req' },
+  { key:'team',        label:'Équipe',       need:'req' },
+  { key:'storyPoints', label:'Story Points', need:'req' },
+  { key:'sprint',      label:'Sprint',       need:'any', group:'quand' },
+  { key:'resolved',    label:'Résolue le',   need:'any', group:'quand', candidates:['resolved','résolue','résolue le','date de résolution','resolution date','date résolution'] },
+  { key:'lastChange',  label:'Dernier changement de statut', need:'opt', candidates:['last time status changed','dernier changement de statut','status category changed'] },
+  { key:'summary',     label:'Résumé',       need:'opt' },
+  { key:'type',        label:'Type',         need:'opt' },
+  { key:'status',      label:'Statut',       need:'opt' }
+];
+var paste = window.TKPaste ? TKPaste.mount({
+  mount:'storiesPaste',
+  placeholder:'Collez ici vos stories terminées (Ctrl+V), en-têtes compris…',
+  analyzeLabel:'Calculer la vélocité',
+  fields:PASTE_FIELDS,
+  onParse:function(res){
+    var cell=function(r,k){ return res.cols[k]>=0 ? TKPaste.cellAt(r, res.headers, res.cols[k]) : ''; };
+    var rows=res.rows.map(function(r){
+      var key=String(cell(r,'key')).trim(); if(!key) return null;
+      // Sprints répétés fusionnés par le collage (« Sprint 12, Sprint 13 ») : le dernier sprint reconnu l'emporte.
+      var spr=String(cell(r,'sprint')).split(/[,;]/).map(function(x){ return x.trim(); }).filter(Boolean);
+      return { k:key, t:normTeam(cell(r,'team')), p:parsePts(cell(r,'storyPoints')), s:spr, r:toDS(cell(r,'resolved'))||toDS(cell(r,'lastChange')) };
+    }).filter(Boolean);
+    if(!rows.length) return { error:'Aucune story trouvée : chaque ligne doit porter une clé.' };
+    var has=function(k){ return res.cols[k]>=0; };
+    RAW={ name:'Collage', at:Date.now(), rows:rows, cols:{ key:has('key'), team:has('team'), sprint:has('sprint'), pts:has('storyPoints'), res:has('resolved')||has('lastChange'), sum:has('summary'), type:has('type'), status:has('status') } };
+    store('vs-stories', RAW);
+    rebuild();
+    return rows.length+' stories lues.';
+  }
+}) : null;
 
 fillParams();
 rebuild();
