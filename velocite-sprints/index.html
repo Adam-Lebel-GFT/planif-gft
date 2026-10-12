@@ -22,7 +22,8 @@
    Stories terminées (export Jira) × fichier des ressources (Planning Build) :
    points livrés par sprint et par équipe, capacité réelle de chaque sprint,
    vélocité normalisée (SP par jour-personne) et prévision du prochain sprint.
-   Seules les équipes productives entrent dans le calcul.
+   Toutes les stories comptent ; seules les personnes des équipes productives
+   forment la capacité.
    ════════════════════════════════════════════════════════════════════ */
 :root{
   --page:#F4F5F7; --surface:#FFFFFF; --surface-2:#F3F5F8;
@@ -223,12 +224,12 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
       <label>Raffinage, leads (%)<input id="pRaff" type="number" min="0" max="100" step="1"></label>
       <label>Support, leads (%)<input id="pSupp" type="number" min="0" max="100" step="1"></label>
     </div>
-    <p>Les pourcentages servent seulement à la capacité « CAF nette », avec les mêmes valeurs par défaut que Sprint Planning. Les équipes absentes de la liste (Globale, Insight, Digital, Trans…) sont écartées des points comme de la capacité.</p>
+    <p>Les pourcentages servent seulement à la capacité « CAF nette », avec les mêmes valeurs par défaut que Sprint Planning. Les personnes des équipes absentes de la liste (Globale, Insight, Digital, Trans…) sont écartées de la capacité ; leurs stories, elles, comptent toujours.</p>
   </details>
 
   <div class="filters" role="toolbar" aria-label="Filtres">
-    <div class="fg"><span class="fl">Équipes productives</span><span id="fTeams" class="fg"></span></div>
-    <div class="fg" id="fExclWrap"><span class="fl">Exclues</span><span id="fExcl" class="fg"></span></div>
+    <div class="fg"><span class="fl">Équipes</span><span id="fTeams" class="fg"></span></div>
+    <div class="fg" id="fExclWrap"><span class="fl">Hors capacité</span><span id="fExcl" class="fg"></span></div>
     <div class="fg"><span class="fl">Historique</span><div class="seg" id="fWin"></div></div>
     <div class="fg"><span class="fl">Capacité</span><div class="seg" id="fCap"></div></div>
   </div>
@@ -264,7 +265,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
       <h3>Comment l'outil compte</h3>
       <ul>
         <li>Une story est rattachée au <b>dernier sprint</b> de sa colonne Sprint (une story reportée de Sprint 12 à Sprint 13 compte pour le 13). Les sprints sont reconnus par leur numéro dans le fichier des ressources. Une story sans sprint reconnu est écartée.</li>
-        <li>La capacité d'un sprint additionne, pour chaque personne d'une équipe productive présente ce sprint-là, ses jours ouvrés codés R, S ou AS multipliés par son allocation. Les arrivées et départs du fichier des ressources suivent donc chaque sprint.</li>
+        <li>La capacité d'un sprint additionne, pour chaque personne d'une équipe productive présente ce sprint-là (les autres équipes, Globale, Insight, Digital…, n'entrent pas dans la capacité), ses jours ouvrés codés R, S ou AS multipliés par son allocation. Les arrivées et départs du fichier des ressources suivent donc chaque sprint.</li>
         <li>« CAF nette » retire les cérémonies et les bogues, plus le raffinage et le support pour les leads, comme Sprint Planning. « Présence » prend les jours bruts.</li>
         <li>Le sprint en cours est affiché en italique et n'entre pas dans les moyennes. La prévision du prochain sprint multiplie sa capacité planifiée par la vélocité normalisée des 3 derniers sprints terminés.</li>
       </ul>
@@ -437,11 +438,12 @@ function buildReal(){
   var sprints=RES.sprints.map(function(s,i){ return { i:i, name:s.name, num:sprintNum(s.name), start:s.start, end:s.end, status: s.end<today?'done':(s.start<=today?'current':'next') }; });
   var byNum={}, byName={}; sprints.forEach(function(s){ if(s.num!=null) byNum[s.num]=s; byName[norm(s.name)]=s; });
   var ag=CFG.agile/100, bg=CFG.bogues/100, rf=CFG.raff/100, su=CFG.supp/100;
-  var teamsSet={}, data={}, excl={}, ign={ excl:0, noPts:0, noSprint:0, outRange:0, dup:0, noCap:0 }, kept=0, outEx=[];
+  var teamsSet={}, data={}, excl={}, ign={ noPts:0, noSprint:0, outRange:0, dup:0, noCap:0 }, kept=0, outEx=[];
   function slot(t){ if(!data[t]){ data[t]=sprints.map(function(){ return { hc:0, jp:0, net:0, sp:0, n:0 }; }); teamsSet[t]=1; } return data[t]; }
   // Capacité
   RES.persons.forEach(function(p){
-    if(!isProductive(p.team)) return;
+    // Seules les personnes des équipes productives forment la capacité.
+    if(!isProductive(p.team)){ excl[p.team]=(excl[p.team]||0)+1; return; }
     var arr=slot(p.team), lr=isLead(p.role)?Math.max(0,1-rf-su):1;
     sprints.forEach(function(s,ix){
       var jp=0, any=false;
@@ -457,12 +459,12 @@ function buildReal(){
   var seen={};
   RAW.rows.forEach(function(st){
     if(seen[st.k]){ ign.dup++; return; } seen[st.k]=1;
-    if(!isProductive(st.t)){ ign.excl++; var et=st.t||'(sans équipe)'; excl[et]=(excl[et]||0)+1; return; }
     if(st.p==null || !(st.p>0)){ ign.noPts++; return; }
     var best=null, named=false;
     st.s.forEach(function(nm){ named=true; var n=sprintNum(nm), sp=(n!=null && byNum[n]) || byName[norm(nm)]; if(sp && (!best || sp.i>best.i)) best=sp; });
     if(!best){ if(named){ ign.outRange++; if(outEx.length<4) outEx.push(st.k+(st.s.length?' ('+st.s[st.s.length-1]+')':'')); } else ign.noSprint++; return; }
-    var cell=slot(st.t)[best.i]; cell.sp+=st.p; cell.n++; kept++;
+    // Toutes les stories comptent, quelle que soit leur équipe.
+    var cell=slot(st.t||'(SANS ÉQUIPE)')[best.i]; cell.sp+=st.p; cell.n++; kept++;
   });
   var teams=Object.keys(teamsSet).sort(teamSort).map(function(t,i){ return { id:t, c:PALETTE[i%PALETTE.length] }; });
   // Sprints à capacité nulle mais avec des points (équipe absente du fichier des ressources)
@@ -498,7 +500,7 @@ function buildDemo(){
     });
   });
   return { demo:true, sprints:sprints, teams:DEF.map(function(t,i){ return { id:t.id, c:PALETTE[i] }; }), data:data,
-    ign:{ excl:276, noPts:31, noSprint:14, outRange:0, dup:3, noCap:0 }, kept:kept, excl:{ GLOBALE:102, INSIGHT:88, DIGITAL:61, TRANS:25 }, outEx:[], persons:124 };
+    ign:{ noPts:31, noSprint:14, outRange:0, dup:3, noCap:0 }, kept:kept, excl:{ GLOBALE:9, INSIGHT:6, DIGITAL:5, TRANS:3 }, outEx:[], persons:124 };
 }
 
 // ── Sources : état affiché ──
@@ -556,7 +558,7 @@ function renderFilters(){
     store('vs-ui',ui); render(); };
   var ex=Object.keys(M.excl).sort(function(a,b){ return M.excl[b]-M.excl[a]; });
   $('#fExclWrap').hidden=!ex.length;
-  $('#fExcl').innerHTML=ex.map(function(x){ return '<span class="chip off" title="'+M.excl[x]+' stories hors vélocité : équipe non productive">'+esc(x)+'</span>'; }).join('');
+  $('#fExcl').innerHTML=ex.map(function(x){ return '<span class="chip off" title="'+M.excl[x]+' personne(s) exclue(s) de la capacité : équipe non productive">'+esc(x)+'</span>'; }).join('');
   seg($('#fWin'), [[6,'6 sprints'],[12,'12 sprints'],[0,'Depuis le début']], 'win');
   seg($('#fCap'), [['jp','Présence'],['net','CAF nette']], 'cap');
   seg($('#fNorm'), [['agg','Dispositif'],['team','Par équipe']], 'norm');
@@ -729,14 +731,15 @@ function renderTeams(){
 
 function renderIgnored(){
   var g=M.ign, ex=Object.keys(M.excl).sort(function(a,b){ return M.excl[b]-M.excl[a]; });
-  var h='<div><span>Équipes non productives'+(ex.length?' ('+esc(ex.slice(0,6).join(', '))+(ex.length>6?'…':'')+')':'')+'</span><b>'+f0(g.excl)+'</b></div>'+
-    '<div><span>Sans story points</span><b>'+f0(g.noPts)+'</b></div>'+
+  var h='<div><span>Sans story points</span><b>'+f0(g.noPts)+'</b></div>'+
     '<div><span>Sans sprint</span><b>'+f0(g.noSprint)+'</b></div>'+
     '<div><span>Sprint absent du fichier des ressources</span><b>'+f0(g.outRange)+'</b></div>';
   if(M.outEx.length) h+='<div class="ex">ex. : '+esc(M.outEx.join(' · '))+'</div>';
   h+='<div><span>Doublons (même clé)</span><b>'+f0(g.dup)+'</b></div>';
-  if(g.noCap) h+='<div><span>Comptées, mais leur équipe n\'a aucune capacité ce sprint-là</span><b>'+f0(g.noCap)+'</b></div>';
+  if(g.noCap) h+='<div><span>Comptées, mais leur équipe n\'a aucune capacité productive ce sprint-là</span><b>'+f0(g.noCap)+'</b></div>';
   h+='<div><span><b>Retenues pour la vélocité</b></span><b>'+f0(M.kept)+'</b></div>';
+  var np=ex.reduce(function(a,x){ return a+M.excl[x]; },0);
+  if(np) h+='<div class="ex">Capacité : '+np+' personne(s) d\'équipes non productives écartée(s) ('+esc(ex.slice(0,6).join(', '))+(ex.length>6?'…':'')+')</div>';
   $('#ignored').innerHTML=h;
 }
 
