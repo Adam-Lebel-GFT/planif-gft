@@ -263,7 +263,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
     <div class="card">
       <h3>Comment l'outil compte</h3>
       <ul>
-        <li>Une story est rattachée au <b>dernier sprint</b> de sa colonne Sprint (une story reportée de Sprint 12 à Sprint 13 compte pour le 13). Les sprints sont reconnus par leur numéro. Sans sprint reconnu, sa date de résolution la place dans le sprint qui la contient.</li>
+        <li>Une story est rattachée au <b>dernier sprint</b> de sa colonne Sprint (une story reportée de Sprint 12 à Sprint 13 compte pour le 13). Les sprints sont reconnus par leur numéro dans le fichier des ressources. Une story sans sprint reconnu est écartée.</li>
         <li>La capacité d'un sprint additionne, pour chaque personne d'une équipe productive présente ce sprint-là, ses jours ouvrés codés R, S ou AS multipliés par son allocation. Les arrivées et départs du fichier des ressources suivent donc chaque sprint.</li>
         <li>« CAF nette » retire les cérémonies et les bogues, plus le raffinage et le support pour les leads, comme Sprint Planning. « Présence » prend les jours bruts.</li>
         <li>Le sprint en cours est affiché en italique et n'entre pas dans les moyennes. La prévision du prochain sprint multiplie sa capacité planifiée par la vélocité normalisée des 3 derniers sprints terminés.</li>
@@ -332,7 +332,6 @@ var STORY_COLS = [
   { k:'team', lbl:'Équipe',       req:true,  m:['equipe','team','team name','equipe jira'], inc:['team','equipe'] },
   { k:'sprint',lbl:'Sprint',      req:true,  m:['sprint','sprints'], inc:['sprint'], multi:true },
   { k:'pts',  lbl:'Story Points', req:true,  m:['story points','story point estimate','points','sp','points de story','estimation'], inc:['story point','points'] },
-  { k:'res',  lbl:'Résolue le',   req:true,  m:['resolue','resolu','resolved','resolue le','date de resolution','resolution date','date resolution','resolution le'], inc:['resolved','resolue','date de resolution'] },
   { k:'sum',  lbl:'Résumé',       m:['resume','summary','titre'] },
   { k:'type', lbl:'Type',         m:['type','type de ticket','issue type','type de demande'] },
   { k:'status',lbl:'Statut',      m:['statut','status','etat'] }
@@ -343,7 +342,6 @@ function mapHeader(row){
     var idx=[];
     h.forEach(function(x,i){ if(c.m.indexOf(x)>=0) idx.push(i); });
     if(!idx.length && c.inc) h.forEach(function(x,i){ if(x && x!=='resolution' && c.inc.some(function(t){ return x.indexOf(t)>=0; })) idx.push(i); });
-    if(c.k==='res') idx=idx.filter(function(i){ return h[i]!=='resolution'; });
     if(idx.length) map[c.k]= c.multi ? idx : idx[0];
   });
   return map;
@@ -358,7 +356,7 @@ function parseStories(rows){
     var row=rows[i]; if(!row) continue;
     var key=String(row[map.key]==null?'':row[map.key]).trim(); if(!key) continue;
     var spr=[]; (map.sprint||[]).forEach(function(ci){ var v=row[ci]; if(v!=null&&v!=='') String(v).split(/[,;]/).forEach(function(s){ s=s.trim(); if(s) spr.push(s); }); });
-    out.push({ k:key, t:map.team!=null?normTeam(row[map.team]):'', p:map.pts!=null?parsePts(row[map.pts]):null, s:spr, r:map.res!=null?toDS(row[map.res]):null });
+    out.push({ k:key, t:map.team!=null?normTeam(row[map.team]):'', p:map.pts!=null?parsePts(row[map.pts]):null, s:spr });
   }
   var found={}; STORY_COLS.forEach(function(c){ found[c.k]=map[c.k]!=null; });
   return { rows:out, cols:found };
@@ -438,7 +436,6 @@ function buildReal(){
   var today=todayStr();
   var sprints=RES.sprints.map(function(s,i){ return { i:i, name:s.name, num:sprintNum(s.name), start:s.start, end:s.end, status: s.end<today?'done':(s.start<=today?'current':'next') }; });
   var byNum={}, byName={}; sprints.forEach(function(s){ if(s.num!=null) byNum[s.num]=s; byName[norm(s.name)]=s; });
-  function sprintOfDate(d){ if(!d) return null; for(var i=0;i<sprints.length;i++){ if(d>=sprints[i].start && d<=sprints[i].end) return sprints[i]; } return null; }
   var ag=CFG.agile/100, bg=CFG.bogues/100, rf=CFG.raff/100, su=CFG.supp/100;
   var teamsSet={}, data={}, excl={}, ign={ excl:0, noPts:0, noSprint:0, outRange:0, dup:0, noCap:0 }, kept=0, outEx=[];
   function slot(t){ if(!data[t]){ data[t]=sprints.map(function(){ return { hc:0, jp:0, net:0, sp:0, n:0 }; }); teamsSet[t]=1; } return data[t]; }
@@ -464,8 +461,7 @@ function buildReal(){
     if(st.p==null || !(st.p>0)){ ign.noPts++; return; }
     var best=null, named=false;
     st.s.forEach(function(nm){ named=true; var n=sprintNum(nm), sp=(n!=null && byNum[n]) || byName[norm(nm)]; if(sp && (!best || sp.i>best.i)) best=sp; });
-    if(!best) best=sprintOfDate(st.r);
-    if(!best){ if(named || st.r){ ign.outRange++; if(outEx.length<4) outEx.push(st.k+(st.s.length?' ('+st.s[st.s.length-1]+')':'')); } else ign.noSprint++; return; }
+    if(!best){ if(named){ ign.outRange++; if(outEx.length<4) outEx.push(st.k+(st.s.length?' ('+st.s[st.s.length-1]+')':'')); } else ign.noSprint++; return; }
     var cell=slot(st.t)[best.i]; cell.sp+=st.p; cell.n++; kept++;
   });
   var teams=Object.keys(teamsSet).sort(teamSort).map(function(t,i){ return { id:t, c:PALETTE[i%PALETTE.length] }; });
@@ -570,7 +566,7 @@ function renderFilters(){
 // ── Compteurs ──
 function renderKpis(){
   var d=winSprints();
-  if(!d.length){ $('#kpis').innerHTML='<div class="kpi"><span class="kpi-l">Aucun sprint terminé avec des stories</span><span class="kpi-s">Vérifiez la colonne Sprint ou les dates de résolution du fichier des stories.</span></div>'; return; }
+  if(!d.length){ $('#kpis').innerHTML='<div class="kpi"><span class="kpi-l">Aucun sprint terminé avec des stories</span><span class="kpi-s">Vérifiez la colonne Sprint des stories : ses numéros doivent correspondre aux sprints du fichier des ressources.</span></div>'; return; }
   var last3=d.slice(-3), prev3=d.slice(-6,-3);
   function avgSp(l){ return l.length ? l.reduce(function(a,s){ return a+agg(s).sp; },0)/l.length : 0; }
   var v3=avgSp(last3), vp=avgSp(prev3), r=rateOver(d), r3=rateOver(last3), rp=rateOver(prev3);
@@ -735,8 +731,8 @@ function renderIgnored(){
   var g=M.ign, ex=Object.keys(M.excl).sort(function(a,b){ return M.excl[b]-M.excl[a]; });
   var h='<div><span>Équipes non productives'+(ex.length?' ('+esc(ex.slice(0,6).join(', '))+(ex.length>6?'…':'')+')':'')+'</span><b>'+f0(g.excl)+'</b></div>'+
     '<div><span>Sans story points</span><b>'+f0(g.noPts)+'</b></div>'+
-    '<div><span>Sans sprint ni date de résolution</span><b>'+f0(g.noSprint)+'</b></div>'+
-    '<div><span>Sprint ou date hors du fichier des ressources</span><b>'+f0(g.outRange)+'</b></div>';
+    '<div><span>Sans sprint</span><b>'+f0(g.noSprint)+'</b></div>'+
+    '<div><span>Sprint absent du fichier des ressources</span><b>'+f0(g.outRange)+'</b></div>';
   if(M.outEx.length) h+='<div class="ex">ex. : '+esc(M.outEx.join(' · '))+'</div>';
   h+='<div><span>Doublons (même clé)</span><b>'+f0(g.dup)+'</b></div>';
   if(g.noCap) h+='<div><span>Comptées, mais leur équipe n\'a aucune capacité ce sprint-là</span><b>'+f0(g.noCap)+'</b></div>';
@@ -773,9 +769,7 @@ var PASTE_FIELDS = [
   { key:'key',         label:'Clé',          need:'req' },
   { key:'team',        label:'Équipe',       need:'req' },
   { key:'storyPoints', label:'Story Points', need:'req' },
-  { key:'sprint',      label:'Sprint',       need:'any', group:'quand' },
-  { key:'resolved',    label:'Résolue le',   need:'any', group:'quand', candidates:['resolved','résolue','résolue le','date de résolution','resolution date','date résolution'] },
-  { key:'lastChange',  label:'Dernier changement de statut', need:'opt', candidates:['last time status changed','dernier changement de statut','status category changed'] },
+  { key:'sprint',      label:'Sprint',       need:'req' },
   { key:'summary',     label:'Résumé',       need:'opt' },
   { key:'type',        label:'Type',         need:'opt' },
   { key:'status',      label:'Statut',       need:'opt' }
@@ -791,11 +785,11 @@ var paste = window.TKPaste ? TKPaste.mount({
       var key=String(cell(r,'key')).trim(); if(!key) return null;
       // Sprints répétés fusionnés par le collage (« Sprint 12, Sprint 13 ») : le dernier sprint reconnu l'emporte.
       var spr=String(cell(r,'sprint')).split(/[,;]/).map(function(x){ return x.trim(); }).filter(Boolean);
-      return { k:key, t:normTeam(cell(r,'team')), p:parsePts(cell(r,'storyPoints')), s:spr, r:toDS(cell(r,'resolved'))||toDS(cell(r,'lastChange')) };
+      return { k:key, t:normTeam(cell(r,'team')), p:parsePts(cell(r,'storyPoints')), s:spr };
     }).filter(Boolean);
     if(!rows.length) return { error:'Aucune story trouvée : chaque ligne doit porter une clé.' };
     var has=function(k){ return res.cols[k]>=0; };
-    RAW={ name:'Collage', at:Date.now(), rows:rows, cols:{ key:has('key'), team:has('team'), sprint:has('sprint'), pts:has('storyPoints'), res:has('resolved')||has('lastChange'), sum:has('summary'), type:has('type'), status:has('status') } };
+    RAW={ name:'Collage', at:Date.now(), rows:rows, cols:{ key:has('key'), team:has('team'), sprint:has('sprint'), pts:has('storyPoints'), sum:has('summary'), type:has('type'), status:has('status') } };
     store('vs-stories', RAW);
     rebuild();
     return rows.length+' stories lues.';
