@@ -16,6 +16,7 @@
 <script src="../acces/supabase.js"></script>
 <script src="../acces/auth.js"></script>
 <script src="../assets/nav.js"></script>
+<script src="reorg-teams.js" charset="utf-8"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root{
@@ -318,6 +319,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
           <button data-u="JP" class="active">Jours-personne</button>
           <button data-u="SP">Story points</button>
         </div>
+        <button class="pptx-btn" id="btn-reorg" title="Ouvrir le tableau blanc de réorganisation des équipes (déplacer les équipiers, noter de 1 à 3)">🧩 Réorganisation des teams</button>
         <button class="pptx-btn" id="btn-pptx" title="Générer le graphique de capacité (BA/DEV/QA/Autre) en PowerPoint, selon le critère et l'unité sélectionnés ci-dessus">📊 PowerPoint</button>
       </div>
     </div>
@@ -1450,6 +1452,12 @@ document.addEventListener('DOMContentLoaded', function(){
     renderAll();
   });
   $('#btn-pptx').addEventListener('click', exportCapacityPptx);
+  $('#btn-reorg').addEventListener('click', function(){
+    if(!state.persons.length){ setFileMsg('Charge d\'abord le fichier de planning pour réorganiser les équipes.', 'err'); return; }
+    var order=teamList(), ppl=state.persons.filter(function(p){ return !filters.teams.size || filters.teams.has(p.team); });
+    ppl.sort(function(a,b){ return order.indexOf(a.team)-order.indexOf(b.team) || a.name.localeCompare(b.name); });
+    TKReorg.open(ppl.map(function(p){ return { name:p.name, team:p.team, role:p.role }; }));
+  });
   $('#d-start').addEventListener('change', function(e){ setRange(e.target.value, rangeEnd); });
   $('#d-end').addEventListener('change', function(e){ setRange(rangeStart, e.target.value); });
   document.querySelectorAll('[data-preset]').forEach(function(btn){
