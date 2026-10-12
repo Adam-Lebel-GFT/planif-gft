@@ -27,6 +27,7 @@
     { slug: 'bug-dashboard-v2',  label: 'Bug Dashboard' },
     { slug: 'bug-movie',         label: 'Bug movie' },
     { slug: 'analyse-velocite',  label: 'Analyse de vélocité' },
+    { slug: 'velocite-sprints',  label: 'Vélocité des sprints' },
     { slug: 'admin',             label: 'Administration (accès dynamique)' }
   ];
 
