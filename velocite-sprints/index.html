@@ -247,7 +247,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
         <li>Une story est rattachée au <b>dernier sprint</b> de sa colonne Sprint (une story reportée de Sprint 12 à Sprint 13 compte pour le 13). Les sprints sont reconnus par leur numéro dans le fichier des ressources. Une story sans sprint reconnu est écartée.</li>
         <li>La capacité d'un sprint additionne, pour chaque personne d'une équipe productive présente ce sprint-là (les autres équipes, Globale, Insight, Digital…, n'entrent pas dans la capacité), ses jours ouvrés codés R, S ou AS multipliés par son allocation. Les arrivées et départs du fichier des ressources suivent donc chaque sprint.</li>
         <li>« CAF nette » retire les cérémonies et les bogues, plus le raffinage et le support pour les leads, comme Sprint Planning. « Présence » prend les jours bruts.</li>
-        <li>Le sprint en cours est affiché en italique et n'entre pas dans les moyennes. La prévision du prochain sprint multiplie sa capacité planifiée par la vélocité normalisée des 3 derniers sprints terminés.</li>
+        <li>Le sprint en cours est affiché en italique et n'entre pas dans les moyennes. La vélocité normalisée est exprimée en jours-personnes par story point (JP/SP) : plus elle est basse, plus l'équipe livre vite. La prévision du prochain sprint divise sa capacité planifiée par le JP/SP des 3 derniers sprints terminés ; les SP hypothétiques divisent la capacité de chaque sprint par le JP/SP moyen.</li>
       </ul>
     </div>
     <div class="card">
@@ -642,14 +642,15 @@ function renderChartB(){
   var aggv=list.map(function(s){ return s.status==='current'?null:jps(agg(s).rate); });
   // Axe plafonné à 3× la médiane : un sprint presque sans SP donnerait un JP/SP démesuré.
   var srt=aggv.filter(function(v){ return v!=null; }).sort(function(a,b){ return a-b; }), med=srt.length?srt[Math.floor(srt.length/2)]:1;
-  var max=Math.max(.4, Math.ceil(Math.min(srt.length?srt[srt.length-1]:0, med*3)*1.1*5)/5);
+  var mrate=rateOver(winSprints()), mean=jps(mrate);
+  var max=Math.max(.4, Math.ceil(Math.max(Math.min(srt.length?srt[srt.length-1]:0, med*3), mean||0)*1.1*5)/5);
   // Pas « rond » (1, 2 ou 5 × 10^n) pour garder environ 5 graduations.
   var raw=max/5, pw=Math.pow(10,Math.floor(Math.log10(raw))), step=[1,2,5,10].map(function(m){ return m*pw; }).filter(function(x){ return x>=raw; })[0];
   var dx=iw/(Math.max(list.length-1,1)), g='';
   function X(ix){ return L+ix*dx; } function Y(v){ return T+ih-ih*Math.min(v,max)/max; }
   for(var k=0;k<=max+1e-9;k+=step){ var y=Y(k); g+='<line class="grid" x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-8)+'" y="'+(y+3.5)+'" text-anchor="end">'+f1(k)+'</text>'; }
   // Écart-type calculé sur le taux SP/JP (borné), puis converti en JP/SP : un sprint quasi vide n'élargit pas la bande.
-  var d=winSprints(), mrate=rateOver(d), mean=jps(mrate), rates=d.map(function(s){ return agg(s).rate; });
+  var d=winSprints(), rates=d.map(function(s){ return agg(s).rate; }).filter(function(v){ return v>0; });
   var sd=Math.sqrt(rates.reduce(function(a,v){ return a+(v-mrate)*(v-mrate); },0)/(rates.length||1));
   var bHi=mrate-sd>0?1/(mrate-sd):max, bLo=1/(mrate+sd||1);
   var ld=list.filter(function(s){ return s.status==='done'; }).length-1;
@@ -667,19 +668,20 @@ function renderChartB(){
   var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; var c=0,p=0; [0,1,2].forEach(function(k){ var a=agg(list[ix-k]); c+=a.cap; p+=a.sp; }); return p?c/p:null; });
   g+=line(aggv,'#0C1A2E',2.6);
   g+=line(roll,'#6B7A90',1.6,.9,'2 4');
-  var every=Math.ceil(list.length/26);
+  var every=Math.ceil(list.length/26), anyOff=false;
   list.forEach(function(s,ix){
     var a=agg(s), cur=s.status==='current';
     // SP hypothétiques : capacité du sprint × vélocité moyenne de l'historique choisi.
     var hyp=mrate*a.cap, dlt=a.sp-hyp, v=aggv[ix];
     // Sprint terminé avec capacité mais sans SP (JP/SP infini) ou hors axe : point creux rouge en haut du graphique.
     var off=!cur && a.cap && (v==null || v>max), py=off?Y(max):v!=null?Y(v):0;
-    if((v!=null||off) && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(py-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
+    if(off) anyOff=true;
+    if((v!=null||off) && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(off?py+18:py-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
     if(v!=null||off) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+py+'" r="4.5" fill="'+(off?'#FFFFFF':'#0C1A2E')+'" stroke="'+(off?'#B42318':'#0C1A2E')+'" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+(v!=null?f2(v)+' JP / SP'+(off?' (hors échelle)':''):'aucun SP livré')+'<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+(mean!=null?f2(mean):'—')+' JP/SP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Plage habituelle (± 1 écart-type)</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ moyenne JP/SP)</span>'+'<span><i style="border:2px solid #B42318;border-radius:50%"></i>Sans SP ou hors échelle</span>';
+  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Plage habituelle (± 1 écart-type)</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ moyenne JP/SP)</span>'+(anyOff?'<span><i style="border:2px solid #B42318;border-radius:50%"></i>Sans SP ou hors échelle</span>':'');
 }
 
 // ── Matrice ──
@@ -688,9 +690,9 @@ function renderMatrix(){
   if(!list.length){ $('#matrix').innerHTML=''; return; }
   var h='<thead><tr><th>Sprint</th><th>Story points</th><th>Stories</th><th>Capacité ('+capLbl()+')</th><th>Personnes</th><th>JP / SP</th><th>SP / personne</th></tr></thead><tbody>';
   list.forEach(function(s){
-    var cur=s.status==='current', a=agg(s), v=jps(a.rate), dv=mrate&&a.cap?(a.rate-mrate)/mrate:0;
-    // Seuils ±12 % appliqués au taux SP/JP : plus de SP par JP = JP/SP plus bas = vert.
-    var bg= cur||!a.cap ? '' : dv>.12?'background:var(--good-wash)' : dv<-.12?'background:var(--bad-wash)' : '';
+    var cur=s.status==='current', a=agg(s), v=jps(a.rate), m=jps(mrate), dv=m&&a.cap?(v==null?Infinity:(v-m)/m):0;
+    // Seuils ±12 % sur le JP/SP affiché : plus bas que la moyenne = vert, plus haut = rouge.
+    var bg= cur||!a.cap ? '' : dv<-.12?'background:var(--good-wash)' : dv>.12?'background:var(--bad-wash)' : '';
     h+='<tr'+(cur?' class="cur"':'')+'><td><span class="sprint-n">'+esc(s.name)+'</span><span class="sprint-d">'+fmtD(s.start)+' → '+fmtD(s.end)+(cur?' · en cours':'')+'</span></td>'+
       '<td class="n">'+f0(a.sp)+'</td><td class="n">'+a.n+'</td><td class="n">'+f1(a.cap)+'</td><td class="n">'+a.hc+'</td>'+
       '<td class="n" style="'+bg+'"><b>'+(v!=null?f2(v):a.cap&&!cur?'∞':'—')+'</b></td><td class="n">'+(a.hc?f1(a.sp/a.hc):'—')+'</td></tr>';
