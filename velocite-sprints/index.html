@@ -639,14 +639,12 @@ function renderChartB(){
   var list=shown().filter(function(s){ return s.status!=='next'; }), teams=selTeams();
   if(!list.length){ $('#chartB').innerHTML='<p class="empty">Aucun sprint à afficher.</p>'; $('#legB').innerHTML=''; return; }
   var W=1240, H=280, L=46, Rr=70, T=16, B=34, iw=W-L-Rr, ih=H-T-B;
-  var series=[];
-  if(ui.norm==='team') teams.forEach(function(t){ series.push({ t:t, v:list.map(function(s){ var d=M.data[t.id][s.i]; return d.hc&&cap(d)&&d.sp&&s.status!=='current'? cap(d)/d.sp : null; }) }); });
   var aggv=list.map(function(s){ return s.status==='current'?null:jps(agg(s).rate); });
-  var all=[].concat.apply(aggv, series.map(function(x){ return x.v; })).filter(function(v){ return v!=null; });
-  // Axe plafonné à 3× la médiane de la courbe principale : un sprint presque sans SP donnerait un JP/SP démesuré.
+  // Axe plafonné à 3× la médiane : un sprint presque sans SP donnerait un JP/SP démesuré.
   var srt=aggv.filter(function(v){ return v!=null; }).sort(function(a,b){ return a-b; }), med=srt.length?srt[Math.floor(srt.length/2)]:1;
-  var max=Math.max(.4, Math.ceil(Math.min(Math.max.apply(null,all.concat([0])), med*3)*1.1*5)/5);
-  var step=max>10?2:max>5?1:max>2?.5:.2;
+  var max=Math.max(.4, Math.ceil(Math.min(srt.length?srt[srt.length-1]:0, med*3)*1.1*5)/5);
+  // Pas « rond » (1, 2 ou 5 × 10^n) pour garder environ 5 graduations.
+  var raw=max/5, pw=Math.pow(10,Math.floor(Math.log10(raw))), step=[1,2,5,10].map(function(m){ return m*pw; }).filter(function(x){ return x>=raw; })[0];
   var dx=iw/(Math.max(list.length-1,1)), g='';
   function X(ix){ return L+ix*dx; } function Y(v){ return T+ih-ih*Math.min(v,max)/max; }
   for(var k=0;k<=max+1e-9;k+=step){ var y=Y(k); g+='<line class="grid" x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-8)+'" y="'+(y+3.5)+'" text-anchor="end">'+f1(k)+'</text>'; }
@@ -665,8 +663,6 @@ function renderChartB(){
     if(cur.length) segs.push(cur);
     return segs.map(function(sg){ return '<polyline fill="none" stroke="'+color+'" stroke-width="'+wdt+'" stroke-linejoin="round" opacity="'+(op||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+' points="'+sg.join(' ')+'"/>'; }).join('');
   }
-  series.forEach(function(sr){ g+=line(sr.v,'var('+sr.t.c+')',1.8,.9);
-    sr.v.forEach(function(val,ix){ if(val==null) return; var s=list[ix], dd=M.data[sr.t.id][s.i]; g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(val)+'" r="3" fill="var('+sr.t.c+')"'+tipAttr('<b>'+esc(s.name)+' · '+esc(sr.t.id)+'</b><br><span class="m">'+f2(val)+' JP / SP<br>'+f0(dd.sp)+' SP · '+f1(cap(dd))+' '+capLbl()+' · '+dd.hc+' pers.</span>')+'/>'; }); });
   // Moyenne glissante : ratio des totaux sur 3 sprints (Σ JP ÷ Σ SP).
   var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; var c=0,p=0; [0,1,2].forEach(function(k){ var a=agg(list[ix-k]); c+=a.cap; p+=a.sp; }); return p?c/p:null; });
   g+=line(aggv,'#0C1A2E',2.6);
@@ -683,7 +679,7 @@ function renderChartB(){
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ moyenne JP/SP)</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
+  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Plage habituelle (± 1 écart-type)</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ moyenne JP/SP)</span>'+'<span><i style="border:2px solid #B42318;border-radius:50%"></i>Sans SP ou hors échelle</span>';
 }
 
 // ── Matrice ──
