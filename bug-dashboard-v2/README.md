@@ -213,6 +213,11 @@ minimum, le changement a pu avoir lieu un peu avant. Un ticket qui **recule de s
 basse qu'à la photo précédente) sort dans « Régression » pendant 5 jours ouvrés. Sans journal (moins de
 deux photos), ces alertes ne s'affichent pas.
 
+**Historique des régressions** : sous le graphique d'évolution, une carte « ↩ Régressions » compte tous les reculs de
+statut visibles dans le journal (d'une photo à la suivante où le ticket apparaît) : total, tickets concernés, part des
+changements de statut, répartition par semaine, équipe, version (Target date) et type de recul, plus la liste des plus récents.
+Un recul est daté de la photo qui le révèle ; seules les photos conservées comptent. Rien n'est stocké en plus du journal.
+
 Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,
 avec leurs libellés réels — un jalon renommé (« Déploiement sur l'environnement IAT ») ou
 supprimé s'y voit tel quel ; un jalon configuré mais absent du plan reste listé, marqué

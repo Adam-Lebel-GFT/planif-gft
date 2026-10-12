@@ -767,6 +767,7 @@
         (mine.length ? '<div id="' + fid + 'Body"' + (isFolded(fid) ? ' class="hidden"' : '') + '><ul class="hist-list ver-sub">' + mine.map(function (k) { return row(k, false); }).join('') + '</ul></div>' : '') +
         '</div>';
     }).join('');
+    h += regressionCard(items);
     var nOff = officialIdx().length;
     h += '<div class="card"><div class="card-head"><div><h2>📌 Journal des versions <span class="tk-badge tk-badge--preview">' + nOff + ' officielle' + (nOff > 1 ? 's' : '') + '</span></h2>' +
       '<div class="sub">Une ligne par version : sa photo officielle (📌, la plus récente fait foi) et, dépliables, les analyses de travail qui y ont mené. Cochez deux analyses, où qu\'elles soient, pour les comparer.</div></div>' + foldBtn('histLog') + '</div>' +
@@ -777,6 +778,65 @@
     bindFolds(rootEl);
     $('histMetric').addEventListener('change', function () { ui.metric = this.value; renderHistory(); });
     $('histVersions').addEventListener('click', function (e) { var b = e.target.closest('[data-ver]'); if (!b) return; ui.selectedTd = b.dataset.ver || null; ui.touched = true; renderHistory(); });
+  }
+
+  // ── Historique des régressions ─────────────────────────────────────
+  // Tous les reculs de statut visibles dans le journal, d'une photo à la
+  // suivante où le ticket apparaît. Le recul est daté de la photo qui le
+  // révèle : il a eu lieu quelque part entre elle et la précédente.
+  function regressionEvents(items) {
+    var cfg = CFG.get(), last = {}, events = [], changes = 0;
+    items.forEach(function (it) {
+      var at = new Date(it.at);
+      (it.tickets || []).forEach(function (c) {
+        var prev = last[c.k], st = C.normalize(c.st);
+        if (prev && prev.st !== st) {
+          changes++;
+          if (C.pctForStatus(st, cfg) < C.pctForStatus(prev.st, cfg)) {
+            events.push({ key: c.k, at: at, from: prev.raw, to: c.st, team: (cfg.teams.alias && cfg.teams.alias[c.tm]) || c.tm || 'Non affecté', td: c.td || '', summary: c.s || '' });
+          }
+        }
+        last[c.k] = { st: st, raw: c.st };
+      });
+    });
+    return { events: events, changes: changes };
+  }
+  function mondayOf(d) { var m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; }
+  function countBy(list, fn) { var o = {}; list.forEach(function (e) { var k = fn(e); o[k] = (o[k] || 0) + 1; }); return o; }
+  function barRows(counts, label, limit) {
+    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); }).slice(0, limit || 8);
+    var max = Math.max.apply(null, keys.map(function (k) { return counts[k]; }).concat(1));
+    return keys.map(function (k) {
+      return '<div class="rg-row"><span class="rg-l" title="' + esc(label ? label(k) : k) + '">' + esc(label ? label(k) : k) + '</span><span class="rg-bar"><i style="width:' + (counts[k] / max * 100).toFixed(0) + '%"></i></span><b>' + counts[k] + '</b></div>';
+    }).join('');
+  }
+  function regressionCard(items) {
+    var r = regressionEvents(items), ev = r.events;
+    if (!ev.length) return '<div class="card"><div class="card-head"><div><h2>↩ Régressions</h2><div class="sub">Aucun recul de statut dans le journal pour l\'instant (' + items.length + ' photo' + (items.length > 1 ? 's' : '') + ').</div></div></div></div>';
+    var tickets = Object.keys(countBy(ev, function (e) { return e.key; })).length;
+    var wk = countBy(ev, function (e) { return C.toISO(mondayOf(e.at)); });
+    var weeks = [], first = mondayOf(ev[0].at), lastW = mondayOf(items.length ? new Date(items[items.length - 1].at) : new Date());
+    for (var w = new Date(first), g = 0; w <= lastW && g < 200; w.setDate(w.getDate() + 7), g++) weeks.push(C.toISO(w));
+    weeks = weeks.slice(-12);
+    var wmax = Math.max.apply(null, weeks.map(function (k) { return wk[k] || 0; }).concat(1));
+    var weekBars = '<div class="rg-weeks">' + weeks.map(function (k) {
+      var n = wk[k] || 0, d = new Date(k + 'T00:00:00');
+      return '<div class="rg-wk" title="Semaine du ' + esc(C.fmtDate(d)) + ' : ' + n + '"><span class="rg-n">' + (n || '') + '</span><i style="height:' + (n / wmax * 56).toFixed(0) + 'px"></i><span class="rg-d">' + String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '</span></div>';
+    }).join('') + '</div>';
+    var byTeam = countBy(ev, function (e) { return e.team; });
+    var byVer = countBy(ev, function (e) { return e.td || 'none'; });
+    var byMove = countBy(ev, function (e) { return e.from + ' → ' + e.to; });
+    var rate = r.changes ? Math.round(ev.length / r.changes * 100) : 0;
+    var list = ev.slice().reverse().slice(0, 60).map(function (e) {
+      return '<li class="hist-item"><span class="when">' + fmtWhen(e.at) + '</span><span class="name"><b>' + esc(e.key) + '</b> ' + esc(e.from) + ' → ' + esc(e.to) + ' · ' + esc(e.team) + '</span></li>';
+    }).join('');
+    return '<div class="card"><div class="card-head"><div><h2>↩ Régressions <span class="tk-badge tk-badge--alert">' + ev.length + '</span></h2>' +
+      '<div class="sub">Tous les reculs de statut vus dans le journal, d\'une photo à la suivante : ' + ev.length + ' recul' + (ev.length > 1 ? 's' : '') + ' sur ' + tickets + ' ticket' + (tickets > 1 ? 's' : '') + ', soit ' + rate + ' % des changements de statut. Un recul est daté de la photo qui le révèle. Seules les photos conservées comptent.</div></div></div>' +
+      '<div class="rg-grid"><div><div class="rg-lbl">Par semaine (12 dernières)</div>' + weekBars + '</div>' +
+      '<div><div class="rg-lbl">Par équipe</div>' + barRows(byTeam) + '</div>' +
+      '<div><div class="rg-lbl">Par version (Target date)</div>' + barRows(byVer, function (k) { return k === 'none' ? 'Sans Target date' : C.fmtDate(new Date(k + 'T00:00:00')); }, 6) + '</div>' +
+      '<div><div class="rg-lbl">Reculs les plus fréquents</div>' + barRows(byMove, null, 6) + '</div></div>' +
+      '<details class="rg-list"><summary>Voir les reculs (' + Math.min(60, ev.length) + ' derniers)</summary><ul class="hist-list">' + list + '</ul></details></div>';
   }
 
   // ── Repli des journaux ─────────────────────────────────────────────
