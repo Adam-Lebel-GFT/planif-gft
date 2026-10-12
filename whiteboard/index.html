@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Whiteboard — Agile Toolkit</title>
+<title>Tableau blanc — Agile Toolkit</title>
 <meta name="description" content="Tableau blanc hybride : diagrammes de processus structurés, pense-bêtes et dessin libre à main levée, pour Scrum Masters et coachs agiles.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* =============================================================
-   Whiteboard GFT — v2
+   Tableau blanc GFT — v2
    Architecture en couches (bas → haut) :
      1. Fond (grille)   div CSS         — toggle visibilité
      2. Diagramme       SVG (objets)    — éditable
@@ -427,7 +427,7 @@ svg.wb-layer text { user-select: none; }
       <span class="wm">Agile&nbsp;Toolkit</span>
     </a>
     <span class="sep" aria-hidden="true"></span>
-    <span class="tool-name">Whiteboard</span>
+    <span class="tool-name">Tableau blanc</span>
     <span class="version">v2.1</span>
     <span class="sep" aria-hidden="true"></span>
     <input class="wb-boardname" id="board-name" placeholder="Sans titre" maxlength="80"
@@ -3707,7 +3707,7 @@ function importJSON(file) {
     try { doc = JSON.parse(String(reader.result)); }
     catch (err) { toast('Fichier illisible — JSON invalide.', true); return; }
     if (!doc || doc.app !== DOC_APP || !doc.state) {
-      toast('Ce fichier n’est pas une session Whiteboard.', true);
+      toast('Ce fichier n’est pas une session Tableau blanc.', true);
       return;
     }
     /* L'import ne remplace jamais le tableau ouvert : il en crée un nouveau,

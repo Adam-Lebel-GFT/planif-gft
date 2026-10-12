@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Bug movie : les photos du journal du Bug Dashboard rejouées.
+   Film Stabilisation : les photos du journal du Dashboard Stabilisation rejouées.
    Chaque ticket est un point coloré (équipe ou version) qui se déplace de
    statut en statut, version par version. Un ticket qui sort d'une version va
    dans le nuage ; un ticket rejeté (Declined, Duplicate, Not replicable,
@@ -412,7 +412,7 @@
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% terminé</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
     var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
-    rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Bug movie</h2>' +
+    rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Film Stabilisation</h2>' +
       '<div class="sub">Les photos du journal rejouées : chaque ticket est un point qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
       '<div class="card-tools"><select class="dim-select" id="mvN" aria-label="Versions affichées">' + nOpts + '</select></div></div>' +
       '<div id="mvHost"><div class="mv-tiles">' + tiles + '</div>' +
@@ -445,7 +445,7 @@
     if (!force && ui.built === sig && rootEl.querySelector('#mvBoard')) return;
     ui.built = sig; ui.playing = false; ui.items = items; ui.rootEl = rootEl;
     M = build(items, ui.nVers);
-    if (!M) { rootEl.innerHTML = items.length ? '<div class="card"><h2>🎬 Bug movie</h2><div class="sub">Il faut au moins deux photos du journal qui contiennent une même version (Target date, 5 tickets minimum) pour rejouer son mouvement.</div></div>' : ''; return; }
+    if (!M) { rootEl.innerHTML = items.length ? '<div class="card"><h2>🎬 Film Stabilisation</h2><div class="sub">Il faut au moins deux photos du journal qui contiennent une même version (Target date, 5 tickets minimum) pour rejouer son mouvement.</div></div>' : ''; return; }
     ui.t = Math.min(ui.t, M.T[M.T.length - 1]) || M.T[M.T.length - 1] * .5;
     mount(rootEl);
   }

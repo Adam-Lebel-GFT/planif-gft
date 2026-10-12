@@ -12,7 +12,7 @@
      <script src="../assets/nav.js"></script>
 
    La barre s'insère juste après chaque bandeau de la page (.tk-topbar,
-   ou .wb-topbar pour le Whiteboard). Sans session ou sans accès à la
+   ou .wb-topbar pour le Tableau blanc). Sans session ou sans accès à la
    base, la page reste telle quelle.
 
    Bandeau et onglets restent fixes en haut de page. nav.js publie leur

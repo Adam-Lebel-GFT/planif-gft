@@ -5,15 +5,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Analyse de vélocité — Agile Toolkit</title>
+<title>Vélocité Stabilisation — Agile Toolkit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (entête commune). Les styles ci-dessous, déclarés après, restent prioritaires. -->
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* ════════════════════════════════════════════════════════════════════
-   Analyse de vélocité — maquette
-   Squelette du Bug Dashboard : une barre de filtres collante en tête, puis
+   Vélocité Stabilisation — maquette
+   Squelette du Dashboard Stabilisation : une barre de filtres collante en tête, puis
    les compteurs de WIP (tickets en cours par personne) et une grille de
    cartes configurables (mesure, axe, découpage, style, largeur).
    ════════════════════════════════════════════════════════════════════ */
@@ -96,7 +96,7 @@ button, select, input { font-family: inherit; }
 .src-ok { font-size: 11px; font-weight: 700; color: var(--v-good-ink); white-space: nowrap; flex: none; }
 .src-soon { font-size: 10.5px; font-weight: 700; color: var(--v-ink-3); background: var(--v-surface-2); border: 1px solid var(--v-line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; flex: none; }
 
-/* ── Barre de filtres (comme le Bug Dashboard) ───────────────────── */
+/* ── Barre de filtres (comme le Dashboard Stabilisation) ───────────────────── */
 .filterbar { position: sticky; top: var(--tk-stick, 56px); z-index: 30; background: var(--v-page); background: color-mix(in srgb, var(--v-page) 95%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); padding: 10px 0 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--v-line); }
 .filter-head, .filter-body { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
 .filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--v-ink-3); font-weight: 800; }
@@ -271,14 +271,14 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
   </a>
   <span class="tk-topbar__sep" aria-hidden="true"></span>
-  <span class="tk-topbar__tool">Analyse de vélocité</span>
+  <span class="tk-topbar__tool">Vélocité Stabilisation</span>
   <span class="tk-topbar__version">MAQUETTE</span>
 </header>
 
 <main class="av">
   <section class="intro">
     <div>
-      <h1>Analyse de vélocité</h1>
+      <h1>Vélocité Stabilisation</h1>
       <p>Combien de tickets chaque personne mène de front, et combien de jours il faut pour livrer un ticket, version par version.</p>
     </div>
     <span class="demo-note">Chargement des données…</span>
@@ -313,7 +313,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     <ul id="pourquoi"></ul>
   </details>
 
-  <p class="foot">Connecté, la page lit le plan publié et le journal du Bug Dashboard ; sans connexion, elle affiche des données simulées. Filtres et cartes sont conservés dans ce navigateur.</p>
+  <p class="foot">Connecté, la page lit le plan publié et le journal du Dashboard Stabilisation ; sans connexion, elle affiche des données simulées. Filtres et cartes sont conservés dans ce navigateur.</p>
 </main>
 
 <script src="../acces/config.js"></script>
@@ -328,7 +328,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   // Données de démonstration (simulées)
   // 21 versions du train hebdomadaire (3.1.0 → 3.21.0) × 4 équipes. Dans la
   // version finale, elles viendront du Plan de livraisons (versions),
-  // de l'Analyse de capacité (CAF) et du journal du Bug Dashboard (WIP,
+  // de la Capacité à faire (CAF) et du journal du Dashboard Stabilisation (WIP,
   // engagés, livrés au gel, délais).
   //   caf          CAF réelle du chargement au gel (JP) ; etp = caf ÷ 5 jours
   //   wip          tickets en cours (In Progress → QA Testing), moyenne des photos
@@ -456,7 +456,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   };
 
   // ════════════════════════════════════════════════════════════════════
-  // Vraies données : plan publié + journal du Bug Dashboard (Supabase).
+  // Vraies données : plan publié + journal du Dashboard Stabilisation (Supabase).
   // Chaque photo du journal donne, pour chaque ticket, son statut, son
   // équipe, son assigné et sa version. On en reconstitue, version par
   // version et équipe par équipe : tickets en cours, effectif actif,
@@ -911,7 +911,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     return { wip: sum(rs, 'wip') / Math.max(1, DERNIERES.length), w: e ? sum(rs, 'wip') / e : 0, etp: e / Math.max(1, DERNIERES.length) };
   }
   // Limite de la prochaine version : WIP idéal × effectif. En simulation,
-  // l'effectif prévu vient de l'Analyse de capacité ; en réel (non branchée),
+  // l'effectif prévu vient de la Capacité à faire ; en réel (non branchée),
   // de l'effectif actif moyen des dernières versions.
   function limite(ids) {
     var prev = NEXT ? ROWS.filter(function (r) { return ids.indexOf(r.eq) !== -1 && r.v === NEXT.v && r.etp > 0; }) : [];
@@ -974,17 +974,17 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     function bilan(l) { var nj = sum(l, function (o) { return o.r.nj; }); return { tenue: sum(l, function (o) { return o.r.gel; }) / sum(l, function (o) { return o.r.engages; }), delai: nj ? sum(l, function (o) { return o.r.delai * o.r.nj; }) / nj : null, n: l.length }; }
     function ligne(nom, b) { return b.n ? '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours par ticket (' + b.n + ' cas).</li>' : '<li><b>' + nom + '</b> : aucun cas observé.</li>'; }
     var src = REEL
-      ? '<li><b>Source.</b> ' + DATA.meta.photos + ' photos du journal du Bug Dashboard et les ' + VERS.length + ' versions du plan publié. Une photo donne le statut de chaque ticket à un instant : le temps passé entre deux photos est compté dans l\'étape de la première, en jours ouvrés. Les jours par étape sont donc approchés, d\'autant mieux que les analyses sont fréquentes.</li>' +
-        '<li><b>Par personne active.</b> Le journal ne contient que les tickets de stabilisation et l\'Analyse de capacité n\'est pas encore branchée : les compteurs rapportent les tickets en Dev ou en QA aux personnes qui en ont au moins un, en moyenne sur les photos de la version. 1,0 = chacun traite un ticket à la fois ; au-delà, des personnes mènent plusieurs tickets de front.</li>' +
-        '<li><b>Livré.</b> Un ticket est livré quand son statut fait partie des statuts « terminés » du Bug Dashboard (Configurer → Statuts), hors abandons (Decline…). Il est livré au gel s\'il l\'était sur la dernière photo avant le gel de code.</li>'
-      : '<li><b>Données simulées.</b> Connectez-vous depuis le lanceur pour lire le plan publié et le journal du Bug Dashboard.</li>';
+      ? '<li><b>Source.</b> ' + DATA.meta.photos + ' photos du journal du Dashboard Stabilisation et les ' + VERS.length + ' versions du plan publié. Une photo donne le statut de chaque ticket à un instant : le temps passé entre deux photos est compté dans l\'étape de la première, en jours ouvrés. Les jours par étape sont donc approchés, d\'autant mieux que les analyses sont fréquentes.</li>' +
+        '<li><b>Par personne active.</b> Le journal ne contient que les tickets de stabilisation et la Capacité à faire n\'est pas encore branchée : les compteurs rapportent les tickets en Dev ou en QA aux personnes qui en ont au moins un, en moyenne sur les photos de la version. 1,0 = chacun traite un ticket à la fois ; au-delà, des personnes mènent plusieurs tickets de front.</li>' +
+        '<li><b>Livré.</b> Un ticket est livré quand son statut fait partie des statuts « terminés » du Dashboard Stabilisation (Configurer → Statuts), hors abandons (Decline…). Il est livré au gel s\'il l\'était sur la dernière photo avant le gel de code.</li>'
+      : '<li><b>Données simulées.</b> Connectez-vous depuis le lanceur pour lire le plan publié et le journal du Dashboard Stabilisation.</li>';
     $('#pourquoi').innerHTML = src + (Z.defaut
       ? '<li><b>Zones par défaut</b> (vert de ' + nf(Z.lo, 1) + ' à ' + nf(Z.hi, 1) + ', rouge au-delà de ' + nf(ROUGE, 1) + ') : l\'historique est encore trop court (' + OBS.length + ' cas équipe × version sur ' + Object.keys(nbVersionsObs).length + ' versions ; il en faut 20 sur 8 versions) pour les calculer. Elles se calculeront seules quand il y aura assez de versions livrées.</li>'
       : ligne('Dans le vert', bilan(OBS.filter(function (o) { return o.w >= Z.lo && o.w <= Z.hi; }))) +
       ligne('Dans le jaune', bilan(OBS.filter(function (o) { return o.w > Z.hi && o.w <= ROUGE; }))) +
       ligne('Dans le rouge', bilan(OBS.filter(function (o) { return o.w > ROUGE; }))) +
       '<li>Les zones sont calculées sur les ' + DONE.length + ' versions livrées, toutes équipes, et ne changent pas avec les filtres.</li>') +
-      '<li>La limite d\'une version = ' + nf(Z.ideal, 1) + ' × ' + (REEL ? 'effectif actif estimé' : 'personnes présentes prévues dans l\'Analyse de capacité') + '.</li>' +
+      '<li>La limite d\'une version = ' + nf(Z.ideal, 1) + ' × ' + (REEL ? 'effectif actif estimé' : 'personnes présentes prévues dans la Capacité à faire') + '.</li>' +
       ETAPES.map(function (e) { return '<li><b>' + e.nom + '</b> regroupe les statuts Jira : ' + esc(e.statuts.join(', ')) + '.</li>'; }).join('');
   }
 
@@ -998,15 +998,15 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     function jj(d) { return d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '–'; }
     $('#sources').innerHTML = REEL
       ? src('🚆', 'Plan de livraisons', VERS.length + ' versions · publié le ' + jj(DATA.meta.publie), 'ok') +
-        src('📡', 'Journal du Bug Dashboard', DATA.meta.photos + ' photos · ' + nf(DATA.meta.tickets) + ' tickets · dernière le ' + jj(DATA.meta.derniere), 'ok') +
-        src('📈', 'Analyse de capacité', 'Effectif remplacé par les personnes actives', 'Non branché') +
+        src('📡', 'Journal du Dashboard Stabilisation', DATA.meta.photos + ' photos · ' + nf(DATA.meta.tickets) + ' tickets · dernière le ' + jj(DATA.meta.derniere), 'ok') +
+        src('📈', 'Capacité à faire', 'Effectif remplacé par les personnes actives', 'Non branché') +
         src('🗂', 'Backlog entier', 'Tickets hors stabilisation', 'À venir')
       : src('🚆', 'Plan de livraisons', 'Versions fictives 3.1 à 3.21', 'Simulé') +
-        src('📡', 'Journal du Bug Dashboard', 'Tickets fictifs', 'Simulé') +
-        src('📈', 'Analyse de capacité', 'Effectifs fictifs', 'Simulé') +
+        src('📡', 'Journal du Dashboard Stabilisation', 'Tickets fictifs', 'Simulé') +
+        src('📈', 'Capacité à faire', 'Effectifs fictifs', 'Simulé') +
         src('🗂', 'Backlog entier', 'Tickets hors stabilisation', 'À venir');
     var note = document.querySelector('.demo-note');
-    note.textContent = REEL ? 'Données réelles · journal du Bug Dashboard' : 'Données simulées · connectez-vous pour les vraies';
+    note.textContent = REEL ? 'Données réelles · journal du Dashboard Stabilisation' : 'Données simulées · connectez-vous pour les vraies';
     note.classList.toggle('is-real', REEL);
   }
 
@@ -1057,7 +1057,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     sauver(); rendreCartes();
   });
   // Glisser-déposer des cartes par la poignée ⠿ (événements pointeur, comme
-  // le Bug Dashboard : la souris et le doigt fonctionnent). Au clavier, les
+  // le Dashboard Stabilisation : la souris et le doigt fonctionnent). Au clavier, les
   // flèches haut / bas déplacent la carte d'un cran.
   function persisterOrdre() {
     var ids = Array.prototype.map.call(cartesHote.querySelectorAll('.card[data-id]'), function (el) { return el.getAttribute('data-id'); });

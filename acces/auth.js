@@ -21,13 +21,13 @@
   var OUTILS = [
     { slug: 'sprint-planning',   label: 'Sprint Planning' },
     { slug: 'poker-planning',    label: 'Poker Planning' },
-    { slug: 'analyse-capacite',  label: 'Analyse de capacité' },
-    { slug: 'whiteboard',        label: 'Whiteboard' },
+    { slug: 'analyse-capacite',  label: 'Capacité à faire' },
+    { slug: 'whiteboard',        label: 'Tableau blanc' },
     { slug: 'releases-planning', label: 'Plan de livraisons' },
-    { slug: 'bug-dashboard-v2',  label: 'Bug Dashboard' },
-    { slug: 'bug-movie',         label: 'Bug movie' },
-    { slug: 'analyse-velocite',  label: 'Analyse de vélocité' },
-    { slug: 'velocite-sprints',  label: 'Vélocité des sprints' },
+    { slug: 'bug-dashboard-v2',  label: 'Dashboard Stabilisation' },
+    { slug: 'bug-movie',         label: 'Film Stabilisation' },
+    { slug: 'analyse-velocite',  label: 'Vélocité Stabilisation' },
+    { slug: 'velocite-sprints',  label: 'Vélocité Sprints' },
     { slug: 'admin',             label: 'Administration (accès dynamique)' }
   ];
 

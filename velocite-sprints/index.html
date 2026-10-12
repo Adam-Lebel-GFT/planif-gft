@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vélocité des sprints — Agile Toolkit</title>
+<title>Vélocité Sprints — Agile Toolkit</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 <script src="../assets/nav.js"></script>
 <style>
 /* ════════════════════════════════════════════════════════════════════
-   Vélocité des sprints
+   Vélocité Sprints
    Stories terminées (export Jira) × fichier des ressources (Planning Build) :
    points livrés par sprint et par équipe, capacité réelle de chaque sprint,
    vélocité normalisée (jours-personnes par story point, JP/SP) et prévision du prochain sprint.
@@ -168,14 +168,14 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
     <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
   </a>
   <span class="tk-topbar__sep" aria-hidden="true"></span>
-  <span class="tk-topbar__tool">Vélocité des sprints</span>
+  <span class="tk-topbar__tool">Vélocité Sprints</span>
   <span class="tk-topbar__version">BETA</span>
 </header>
 
 <main class="vs">
   <section class="intro">
     <div>
-      <h1>Vélocité des sprints</h1>
+      <h1>Vélocité Sprints</h1>
       <p>Les stories terminées depuis le début du projet, croisées avec le fichier des ressources : combien de points chaque sprint a livrés, avec quelle capacité, et ce que cela donne en jours-personnes par story point (JP/SP).</p>
     </div>
     <span class="demo" id="demoNote">Données de démonstration : déposez vos deux fichiers</span>
@@ -194,7 +194,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
     <div class="src" id="srcResCard">
       <input type="file" id="fileRes" accept=".xlsx,.xls">
       <div class="src-h"><b>Fichier des ressources</b><span class="st" id="srcRes">Aucun fichier</span></div>
-      <div class="file" id="srcResName">Fichier planning, onglet « Planning Build » : le même que Sprint Planning et Analyse de capacité</div>
+      <div class="file" id="srcResName">Fichier planning, onglet « Planning Build » : le même que Sprint Planning et Capacité à faire</div>
       <div class="cols"><span class="col req">Full Names</span><span class="col req">Équipe</span><span class="col req">Fonction</span><span class="col req">Arrivée / Départ</span><span class="col req">Allocation</span><span class="col req">Codes jour (R, S, AS)</span></div>
       <small>Le dernier fichier planning chargé dans un outil est repris automatiquement.</small>
       <div class="src-actions"><button class="btn" type="button" id="btnRes">Choisir le fichier…</button></div>
@@ -289,7 +289,7 @@ function isWE(s){ var w=pd(s).getUTCDay(); return w===0||w===6; }
 function todayStr(){ var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); }
 function fmtD(s){ var m=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.']; var d=pd(s); return d.getUTCDate()+' '+m[d.getUTCMonth()]; }
 function norm(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
-// « TEAM1 », « Team 1 » et « TEAM 1 » désignent la même équipe (même règle que l'Analyse de capacité).
+// « TEAM1 », « Team 1 » et « TEAM 1 » désignent la même équipe (même règle que la Capacité à faire).
 function normTeam(t){ t=String(t==null?'':t).replace(/\s+/g,' ').trim(); var m=t.match(/^([A-Za-zÀ-ÿ]+)\s*(\d+)$/); return m ? m[1].toUpperCase()+' '+m[2] : t.toUpperCase(); }
 function isLead(role){ var r=(role||'').toLowerCase(); return r.indexOf('lead')>=0||r.indexOf('architect')>=0||r.indexOf('program manager')>=0||r.indexOf('pmo')>=0; }
 function sprintNum(name){ var m=String(name||'').match(/sprint\s*#?\s*(\d+)/i); return m ? +m[1] : null; }
@@ -366,7 +366,7 @@ async function handleStories(file){
   rebuild();
 }
 
-// ── Fichier des ressources (onglet « Planning Build », même lecture que l'Analyse de capacité) ──
+// ── Fichier des ressources (onglet « Planning Build », même lecture que la Capacité à faire) ──
 var RES=null, currentFile=null;
 async function handleRes(file){
   currentFile=file;
