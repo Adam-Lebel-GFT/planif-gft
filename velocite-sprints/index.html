@@ -90,6 +90,9 @@ details.params summary{cursor:pointer;font-weight:700;font-size:13px}
 .chip .dot{width:8px;height:8px;border-radius:50%}
 .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent);color:var(--ink)}
 .chip.off{opacity:.55;text-decoration:line-through;cursor:default}
+.chip.out{opacity:.6;text-decoration:line-through}
+.chip small{font-weight:500;opacity:.75}
+svg text.hyp{fill:#0C447C;font-weight:600}
 .seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden}
 .seg button{font:600 12px var(--vfont);background:var(--surface);color:var(--ink-2);border:0;padding:5px 10px;cursor:pointer;border-right:1px solid var(--line-2)}
 .seg button:last-child{border-right:0}
@@ -212,7 +215,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   </details>
 
   <div class="filters" role="toolbar" aria-label="Filtres">
-    <div class="fg" id="fExclWrap"><span class="fl">Hors capacité</span><span id="fExcl" class="fg"></span></div>
+    <div class="fg" id="fExclWrap"><span class="fl" title="Cliquez une équipe pour l'ajouter ou la retirer de la capacité">Équipes dans la capacité</span><span id="fExcl" class="fg"></span></div>
     <div class="fg"><span class="fl">Historique</span><div class="seg" id="fWin"></div></div>
     <div class="fg"><span class="fl">Capacité</span><div class="seg" id="fCap"></div></div>
   </div>
@@ -264,6 +267,8 @@ var CFG_DEF = { teams:'TEAM 1, TEAM 2, TEAM 3, TEAM 4, TEAM 5, INTEG*', agile:10
 var CFG = load('vs-cfg', CFG_DEF);
 var ui = load('vs-ui', { win:12, cap:'jp', norm:'agg', metric:'rate', hidden:[] });
 ui.norm='agg'; ui.hidden=[];
+// Ajustements manuels par équipe (clic sur les puces) : priorité sur la liste des équipes productives.
+if(!Array.isArray(CFG.on)) CFG.on=[]; if(!Array.isArray(CFG.off)) CFG.off=[];
 function load(k, def){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); if(v) return Object.assign({}, def, v); }catch(e){} return Object.assign({}, def); }
 function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
@@ -302,7 +307,7 @@ function toDS(v){
 }
 function parsePts(v){ if(v==null||v==='') return null; if(typeof v==='number') return v; var n=parseFloat(String(v).replace(',','.')); return isNaN(n)?null:n; }
 function teamRules(){ return CFG.teams.split(',').map(function(s){ return s.trim(); }).filter(Boolean).map(function(s){ return /\*$/.test(s) ? { p:norm(s.slice(0,-1)) } : { e:normTeam(s) }; }); }
-function isProductive(team){ if(!team) return false; var n=norm(team); return teamRules().some(function(r){ return r.e ? r.e===team : n.indexOf(r.p)===0; }); }
+function isProductive(team){ if(!team) return false; if(CFG.off.indexOf(team)>=0) return false; if(CFG.on.indexOf(team)>=0) return true; var n=norm(team); return teamRules().some(function(r){ return r.e ? r.e===team : n.indexOf(r.p)===0; }); }
 
 // ── Fichier des stories ──
 var STORY_COLS = [
@@ -415,12 +420,13 @@ function buildReal(){
   var sprints=RES.sprints.map(function(s,i){ return { i:i, name:s.name, num:sprintNum(s.name), start:s.start, end:s.end, status: s.end<today?'done':(s.start<=today?'current':'next') }; });
   var byNum={}, byName={}; sprints.forEach(function(s){ if(s.num!=null) byNum[s.num]=s; byName[norm(s.name)]=s; });
   var ag=CFG.agile/100, bg=CFG.bogues/100, rf=CFG.raff/100, su=CFG.supp/100;
-  var teamsSet={}, data={}, excl={}, ign={ noPts:0, noSprint:0, outRange:0, dup:0, noCap:0 }, kept=0, outEx=[];
+  var teamsSet={}, data={}, excl={}, incl={}, ign={ noPts:0, noSprint:0, outRange:0, dup:0, noCap:0 }, kept=0, outEx=[];
   function slot(t){ if(!data[t]){ data[t]=sprints.map(function(){ return { hc:0, jp:0, net:0, sp:0, n:0 }; }); teamsSet[t]=1; } return data[t]; }
   // Capacité
   RES.persons.forEach(function(p){
     // Seules les personnes des équipes productives forment la capacité.
     if(!isProductive(p.team)){ excl[p.team]=(excl[p.team]||0)+1; return; }
+    incl[p.team]=(incl[p.team]||0)+1;
     var arr=slot('Story points'), lr=isLead(p.role)?Math.max(0,1-rf-su):1;
     sprints.forEach(function(s,ix){
       var jp=0, any=false;
@@ -447,7 +453,7 @@ function buildReal(){
   var teams=[{ id:'Story points', c:'--c0' }];
   // Sprints à capacité nulle mais avec des points (équipe absente du fichier des ressources)
   teams.forEach(function(t){ data[t.id].forEach(function(c){ if(c.sp && !c.jp) ign.noCap+=c.n; }); });
-  return { demo:false, sprints:sprints, teams:teams, data:data, ign:ign, kept:kept, excl:excl, outEx:outEx, persons:RES.persons.length };
+  return { demo:false, sprints:sprints, teams:teams, data:data, ign:ign, kept:kept, excl:excl, incl:incl, outEx:outEx, persons:RES.persons.length };
 }
 
 // Données de démonstration (générateur déterministe), datées par rapport à aujourd'hui.
@@ -467,9 +473,12 @@ function buildDemo(){
   function presence(i){ return i===3?.55 : i===4?.7 : (i>=17&&i<=20)?.74 : .93; }
   var FIB=[1,2,3,5,8,13], data={}, kept=0;
   var tot=sprints.map(function(){ return { hc:0, jp:0, net:0, sp:0, n:0 }; });
+  var incl={}, excl={};
+  [['GLOBALE',9],['INSIGHT',6],['DIGITAL',5],['TRANS',3]].forEach(function(x){ if(isProductive(x[0])) incl[x[0]]=x[1]; else excl[x[0]]=x[1]; });
   DEF.forEach(function(t){
+    var on=isProductive(t.id); if(on) incl[t.id]=t.hc(25); else excl[t.id]=t.hc(25);
     sprints.forEach(function(s){
-      var hc=t.hc(s.i), jp=0;
+      var hc=on?t.hc(s.i):0, jp=0;
       for(var p=0;p<hc;p++){ jp+=Math.round(10*presence(s.i)*(0.85+R()*0.17))*(R()<.15?.5:1); }
       var rate=t.rate; if(t.ramp!=null){ var k=s.i-t.ramp; rate*= k<0?0 : Math.min(1,.55+.12*k); } if(s.i<2) rate*=.7;
       var sp=0, n=0;
@@ -480,7 +489,7 @@ function buildDemo(){
   });
   data['Story points']=tot;
   return { demo:true, sprints:sprints, teams:[{ id:'Story points', c:'--c0' }], data:data,
-    ign:{ noPts:31, noSprint:14, outRange:0, dup:3, noCap:0 }, kept:kept, excl:{ GLOBALE:9, INSIGHT:6, DIGITAL:5, TRANS:3 }, outEx:[], persons:124 };
+    ign:{ noPts:31, noSprint:14, outRange:0, dup:3, noCap:0 }, kept:kept, excl:excl, incl:incl, outEx:[], persons:124 };
 }
 
 // ── Sources : état affiché ──
@@ -532,9 +541,17 @@ function seg(el, opts, key){
   el.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var v=b.dataset.v; ui[key]= isNaN(+v)?v:+v; store('vs-ui',ui); render(); };
 }
 function renderFilters(){
-  var ex=Object.keys(M.excl).sort(function(a,b){ return M.excl[b]-M.excl[a]; });
-  $('#fExclWrap').hidden=!ex.length;
-  $('#fExcl').innerHTML=ex.map(function(x){ return '<span class="chip off" title="'+M.excl[x]+' personne(s) exclue(s) de la capacité : équipe non productive">'+esc(x)+'</span>'; }).join('');
+  var all=Object.keys(M.incl).concat(Object.keys(M.excl)).sort(function(a,b){ return a.localeCompare(b,'fr',{numeric:true}); });
+  $('#fExclWrap').hidden=!all.length;
+  $('#fExcl').innerHTML=all.map(function(x){ var on=x in M.incl, n=on?M.incl[x]:M.excl[x];
+    return '<button type="button" class="chip'+(on?'':' out')+'" data-t="'+esc(x)+'" aria-pressed="'+on+'" title="'+n+' personne(s) · '+(on?'comptée(s) dans la capacité, cliquer pour retirer':'écartée(s) de la capacité, cliquer pour ajouter')+'">'+esc(x||'(sans équipe)')+' <small>'+n+'</small></button>'; }).join('')+
+    (CFG.on.length||CFG.off.length?'<button type="button" class="chip" data-reset="1" title="Revenir à la liste des équipes productives des paramètres">↺ Réinitialiser</button>':'');
+  $('#fExcl').onclick=function(e){ var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.reset){ CFG.on=[]; CFG.off=[]; }
+    else { var t=b.dataset.t, on=b.getAttribute('aria-pressed')==='true';
+      CFG.on=CFG.on.filter(function(x){ return x!==t; }); CFG.off=CFG.off.filter(function(x){ return x!==t; });
+      if(isProductive(t)===on) (on?CFG.off:CFG.on).push(t); }
+    store('vs-cfg',CFG); rebuild(); };
   seg($('#fWin'), [[6,'6 sprints'],[12,'12 sprints'],[0,'Depuis le début']], 'win');
   seg($('#fCap'), [['jp','Présence'],['net','CAF nette']], 'cap');
 }
@@ -645,11 +662,14 @@ function renderChartB(){
   var every=Math.ceil(list.length/26);
   list.forEach(function(s,ix){
     var a=agg(s), cur=s.status==='current';
-    if(!cur) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(a.rate)+'" r="4.5" fill="#0C1A2E" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+f2(a.rate)+' SP / JP<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives</span>')+'/>';
+    // SP hypothétiques : capacité du sprint × vélocité moyenne de l'historique choisi.
+    var hyp=mean*a.cap, dlt=a.sp-hyp;
+    if(!cur && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(Y(a.rate)-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
+    if(!cur) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+Y(a.rate)+'" r="4.5" fill="#0C1A2E" stroke="#0C1A2E" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+f2(a.rate)+' SP / JP<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+f2(mean)+' SP/JP : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>SP par JP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
+  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>SP par JP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Moyenne ± écart-type</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité × moyenne)</span>'+(ui.norm==='team'?teams.map(function(t){ return '<span><i class="ln" style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join(''):'');
 }
 
 // ── Matrice ──
