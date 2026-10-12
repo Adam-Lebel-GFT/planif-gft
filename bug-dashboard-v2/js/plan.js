@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Bug Dashboard v2 — lot 2 : plan de livraisons et train.
+   Dashboard Stabilisation — lot 2 : plan de livraisons et train.
    - charge les versions publiées (Supabase plan_versions) ou, à défaut,
      le snapshot local écrit par releases-planning (même navigateur) ;
    - rattache chaque ticket à une version selon sa Target date (première
@@ -238,7 +238,7 @@
     var card = $('trainCard'); if (!card) return;
     var cfg = CFG.get(), ref = C.startOfDay(S.refDate);
     if (!S.hasPlan) {
-      card.innerHTML = '<h2>Train de livraison</h2><div class="sub">Aucun plan publié. Ouvrez le <a href="../releases-planning/">Plan de livraisons</a>, vérifiez les versions et leurs jalons, puis cliquez « Publier le plan → Bug Dashboard v2 ». Les tickets seront alors rattachés à une version selon leur Target date.</div>';
+      card.innerHTML = '<h2>Train de livraison</h2><div class="sub">Aucun plan publié. Ouvrez le <a href="../releases-planning/">Plan de livraisons</a>, vérifiez les versions et leurs jalons, puis cliquez « Publier le plan → Dashboard Stabilisation ». Les tickets seront alors rattachés à une version selon leur Target date.</div>';
       return;
     }
     var base = APP.baseTickets();

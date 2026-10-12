@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bug movie — Agile Toolkit GFT</title>
+<title>Film Stabilisation — Agile Toolkit GFT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- Même langage visuel que le Bug Dashboard dont il lit le journal. -->
+<!-- Même langage visuel que le Dashboard Stabilisation dont il lit le journal. -->
 <link rel="stylesheet" href="../bug-dashboard-v2/css/app.css">
 <link rel="stylesheet" href="movie.css">
 <link rel="stylesheet" href="../assets/theme.css">
@@ -18,7 +18,7 @@
     <span class="sq" aria-hidden="true"></span><span class="wm">Agile&nbsp;Toolkit</span>
   </a>
   <span class="tk-topbar__sep" aria-hidden="true"></span>
-  <span class="tk-topbar__tool">Bug movie</span>
+  <span class="tk-topbar__tool">Film Stabilisation</span>
   <span class="tk-topbar__version">BETA</span>
   <div class="tk-topbar__actions">
     <span class="tk-topbar__user" id="topbarUser"></span>
@@ -28,8 +28,8 @@
 <main>
   <div class="hero">
     <div>
-      <h1>Bug movie</h1>
-      <p>Les photos du journal du Bug Dashboard rejouées : chaque ticket est un point qui avance de statut en statut, version par version.</p>
+      <h1>Film Stabilisation</h1>
+      <p>Les photos du journal du Dashboard Stabilisation rejouées : chaque ticket est un point qui avance de statut en statut, version par version.</p>
       <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
     </div>
   </div>
@@ -66,7 +66,7 @@
           var res = await client.from('bdv2_analyses').select('id,cree_le,nom,hash,nb_tickets,tickets,epingle').order('cree_le', { ascending: true }).limit(120);
           if (!res.error) {
             items = (res.data || []).map(function (r) { return { id: r.id, at: r.cree_le, nom: r.nom, hash: r.hash, nb: r.nb_tickets, tickets: r.tickets || [], epingle: r.epingle }; });
-            badge.className = 'mode-badge'; badge.innerHTML = '● Journal partagé du Bug Dashboard';
+            badge.className = 'mode-badge'; badge.innerHTML = '● Journal partagé du Dashboard Stabilisation';
           }
           try { await A.surveillerInactiviteOutil(); } catch (e) { console.warn(e); }
         }

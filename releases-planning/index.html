@@ -190,7 +190,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
       <div class="row" style="margin-top:2px;margin-bottom:0">
         <button id="resetBtn" type="button" class="ghost-btn">Réinitialiser aux valeurs par défaut</button>
         <span id="savedTag" style="font-size:10.5px;color:var(--green);font-weight:600;align-self:center;opacity:0;transition:opacity .3s">Enregistré ✓</span>
-        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Bug Dashboard les utilise (tous les utilisateurs)">Publier le plan → Bug Dashboard</button>
+        <button id="publishBtn" type="button" class="add-btn" title="Envoie les versions et leurs jalons résolus dans la base partagée, pour que le Dashboard Stabilisation les utilise (tous les utilisateurs)">Publier le plan → Dashboard Stabilisation</button>
         <span id="publishTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center"></span>
         <span id="syncTag" style="font-size:10.5px;color:var(--muted);font-weight:600;align-self:center">Chargement du plan partagé…</span>
       </div>
@@ -474,7 +474,7 @@ let phaseDrag = null; // { versionId, boundary, startX, orig }
 // ════════════════════════════════════════════════════════════
 // Persistance
 // ════════════════════════════════════════════════════════════
-// ── Plan résolu (partage avec le Bug Dashboard v2) ─────────────────────
+// ── Plan résolu (partage avec le Dashboard Stabilisation) ─────────────────────
 // Reproduit la résolution des jalons de renderGantt() (semaine + jour de
 // semaine réel + demi-journée, surcharges par version) et produit, pour
 // chaque version, des dates ISO exploitables sans connaître ce fichier :
@@ -496,7 +496,7 @@ function resolvedPlan() {
       let halfIdx = day0 * 2 + half0;
       halfIdx = Math.max(0, Math.min(halfIdx, Math.max(verHalves - 1, 0)));
       // La demi-journée est conservée dans l'heure (matin T00:00, après-midi
-      // T12:00) : le Bug Dashboard v2 compte le temps restant avant un jalon
+      // T12:00) : le Dashboard Stabilisation compte le temps restant avant un jalon
       // en demi-journées. Un consommateur qui ne lit que la date retombe sur
       // le matin, comme avant.
       jalons[m.id] = toISO(addDays(vStart, Math.floor(halfIdx / 2))) + (halfIdx % 2 ? 'T12:00' : 'T00:00');
@@ -529,17 +529,17 @@ async function publishPlan() {
     if (all.error) throw all.error;
     const stale = (all.data || []).map(r => r.id).filter(id => ids.indexOf(id) === -1);
     if (stale.length) { const del = await client.from('plan_versions').delete().in('id', stale); if (del.error) throw del.error; }
-    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Bug Dashboard.';
+    tag.textContent = 'Plan publié ✓ (' + rows.length + ' version' + (rows.length > 1 ? 's' : '') + ') — visible dans le Dashboard Stabilisation.';
   } catch (e) {
     tag.textContent = 'Publication refusée : ' + (e.message || e);
   }
 }
 
 // ── État du plan partagé en base ───────────────────────────────────────
-// Même table que le Bug Dashboard v2 (bdv2_config), sous une autre clé : le
+// Même table que le Dashboard Stabilisation (bdv2_config), sous une autre clé : le
 // plan (versions, phases, jalons, surcharges, cadence) suit l'utilisateur d'un
 // poste à l'autre et se partage entre tous. Dernier qui écrit gagne, comme la
-// configuration du Bug Dashboard. localStorage reste le repli hors ligne.
+// configuration du Dashboard Stabilisation. localStorage reste le repli hors ligne.
 const REMOTE_KEY = 'releases-planning';
 let remoteClient = null, remoteUser = null, remoteReady = false, remoteTimer = null;
 let stateDirty = false; // l'utilisateur a modifié le plan depuis l'ouverture
