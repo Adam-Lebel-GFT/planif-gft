@@ -28,9 +28,10 @@
   var CSS =
     '.tk-navtabs{position:sticky;top:56px;z-index:39;flex-shrink:0;display:flex;gap:2px;overflow-x:auto;background:#1A2E4A;padding-inline:clamp(10px,3vw,40px);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;font-family:"Manrope",sans-serif}' +
     '.tk-navtabs a{flex-shrink:0;padding:11px 14px 8px;border-bottom:3px solid transparent;color:rgba(255,255,255,.62);font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;text-decoration:none;transition:color .15s,background .15s}' +
-    '.tk-navtabs a:hover{color:#fff;background:rgba(255,255,255,.07);text-decoration:none}' +
+    '.tk-navtabs a:hover{color:#fff;background:rgba(106,165,232,.28);border-bottom-color:rgba(106,165,232,.7);text-decoration:none}' +
     '.tk-navtabs a:focus-visible{outline:2px solid #6AA5E8;outline-offset:-2px}' +
-    '.tk-navtabs a[aria-current="page"]{color:#fff;border-bottom-color:#6AA5E8}' +
+    '.tk-navtabs a[aria-current="page"]{color:#fff;background:#2F6FBF;border-bottom-color:#9CC4F2}' +
+    '.tk-navtabs a[aria-current="page"]:hover{background:#3A7DD1;border-bottom-color:#B5D3F7}' +
     '.tk-navtabs a.tk-navtabs__admin{margin-left:auto;font-family:"DM Mono",monospace;font-weight:500;font-size:11px}';
 
   function esc(s) {
