@@ -113,6 +113,58 @@
   }
   APP.hooks.afterAnalyze.push(function (state) { record(state); });
 
+  // ── Alertes tirées du journal : immobilité et régression ───────────
+  // Chaque photo du journal dit où était le ticket à son instant. Un ticket
+  // immobile depuis la photo la plus ancienne qui le montre dans son statut
+  // actuel : c'est un minimum, le changement a pu avoir lieu un peu plus tôt,
+  // entre cette photo et la précédente. Absent d'une photo (extrait filtré),
+  // il n'est pas pour autant considéré comme sorti. Les durées sont en jours
+  // ouvrés, comme le burn-up : une nuit ou un week-end ne compte pas.
+  var STALL_TIERS = [[3, 'critical', 'rouge'], [2, 'serious', 'orange'], [1, 'warning', 'jaune']];
+  var REGRESSION_DAYS = 5;   // un recul reste signalé tant qu'il date de moins de 5 jours ouvrés
+  APP.hooks.alerts.push(function (vis) {
+    var items = H.items || [];
+    if (S.archived && S.archived.index != null) items = items.slice(0, S.archived.index + 1);
+    if (items.length < 2) return [];
+    var now = new Date(items[items.length - 1].at), cfg = CFG.get();
+    var series = {};
+    items.forEach(function (it) {
+      var at = new Date(it.at);
+      (it.tickets || []).forEach(function (c) { (series[c.k] = series[c.k] || []).push({ at: at, st: C.normalize(c.st), raw: c.st }); });
+    });
+    var stalled = { critical: [], serious: [], warning: [] }, back = [], backInfo = {};
+    vis.forEach(function (t) {
+      if (t.isDone) return;
+      var ser = series[t.key] ? series[t.key].slice() : [];
+      if (!ser.length || ser[ser.length - 1].st !== t.statusKey) ser.push({ at: now, st: t.statusKey, raw: t.status });
+      // immobilité : début de la série finale de photos dans le même statut
+      var i = ser.length - 1;
+      while (i > 0 && ser[i - 1].st === ser[i].st) i--;
+      var days = workDays(ser[i].at, now);
+      for (var k = 0; k < STALL_TIERS.length; k++) {
+        if (days >= STALL_TIERS[k][0]) { stalled[STALL_TIERS[k][1]].push(t); t.stalledDays = days; break; }
+      }
+      // régression : le dernier changement de statut est un recul, récent
+      if (i > 0 && C.pctForStatus(ser[i].st, cfg) < C.pctForStatus(ser[i - 1].st, cfg) && workDays(ser[i].at, now) <= REGRESSION_DAYS) {
+        back.push(t); backInfo[t.key] = ser[i - 1].raw + ' → ' + ser[i].raw;
+      }
+    });
+    var out = [], plural = function (n, w) { return n + ' ' + w + (n > 1 ? 's' : ''); };
+    STALL_TIERS.forEach(function (tr) {
+      var list = stalled[tr[1]]; if (!list.length) return;
+      out.push({
+        level: tr[1], icon: '⏸',
+        html: '<b>' + plural(list.length, 'ticket') + ' dans le même statut depuis ' + tr[0] + ' jour' + (tr[0] > 1 ? 's' : '') + ' ouvré' + (tr[0] > 1 ? 's' : '') + (tr[0] < 3 ? ' (moins de ' + (tr[0] + 1) + ')' : ' ou plus') + '</b> — ' + tr[2] + '.',
+        tickets: list, title: 'Immobiles depuis ' + (tr[0] === 3 ? '3 jours ouvrés ou plus' : tr[0] + ' jour' + (tr[0] > 1 ? 's' : '') + ' ouvré' + (tr[0] > 1 ? 's' : ''))
+      });
+    });
+    if (back.length) {
+      var ex = back.slice(0, 3).map(function (t) { return esc(t.key) + ' (' + esc(backInfo[t.key]) + ')'; }).join(', ');
+      out.push({ level: 'serious', icon: '↩', html: '<b>' + plural(back.length, 'ticket') + ' en régression</b> — statut reculé depuis moins de ' + (REGRESSION_DAYS + 1) + ' jours ouvrés : ' + ex + (back.length > 3 ? '…' : '') + '.', tickets: back, title: 'Régression' });
+    }
+    return out;
+  });
+
   function fmtWhen(iso) { var d = new Date(iso); return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
   function shortWhen(iso) { var d = new Date(iso); return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }); }
 

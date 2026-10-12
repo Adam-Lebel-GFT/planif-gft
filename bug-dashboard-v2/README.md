@@ -206,6 +206,13 @@ l'équipe, pas un pourcentage abstrait. Une configuration enregistrée avant ce 
 migrée (`schema` 3) : le seuil unique devient le premier palier, un réglage choisi à la main est
 donc conservé, et le palier serré vient s'y ajouter.
 
+**Immobilité et régression** (tirées du journal, dans `js/history.js`) : un ticket ouvert resté dans le
+même statut **1 jour ouvré** (jaune), **2** (orange) ou **3 et plus** (rouge) sort dans une alerte du niveau
+correspondant. La durée part de la photo la plus ancienne qui le montre dans son statut actuel : c'est un
+minimum, le changement a pu avoir lieu un peu avant. Un ticket qui **recule de statut** (pondération plus
+basse qu'à la photo précédente) sort dans « Régression » pendant 5 jours ouvrés. Sans journal (moins de
+deux photos), ces alertes ne s'affichent pas.
+
 Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,
 avec leurs libellés réels — un jalon renommé (« Déploiement sur l'environnement IAT ») ou
 supprimé s'y voit tel quel ; un jalon configuré mais absent du plan reste listé, marqué
