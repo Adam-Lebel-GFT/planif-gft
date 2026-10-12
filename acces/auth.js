@@ -19,15 +19,15 @@
   // l'écran "Rôles" pour les cases à cocher) — aucune autre étape
   // de code n'est nécessaire, le reste est piloté par la base.
   var OUTILS = [
-    { slug: 'sprint-planning',   label: 'Sprint Planning' },
     { slug: 'poker-planning',    label: 'Poker Planning' },
     { slug: 'analyse-capacite',  label: 'Capacité à faire' },
-    { slug: 'whiteboard',        label: 'Tableau blanc' },
     { slug: 'releases-planning', label: 'Plan de livraisons' },
-    { slug: 'bug-dashboard-v2',  label: 'Dashboard Stabilisation' },
-    { slug: 'bug-movie',         label: 'Film Stabilisation' },
-    { slug: 'analyse-velocite',  label: 'Vélocité Stabilisation' },
+    { slug: 'sprint-planning',   label: 'Sprint Planning' },
     { slug: 'velocite-sprints',  label: 'Vélocité Sprints' },
+    { slug: 'bug-dashboard-v2',  label: 'Dashboard Stabilisation' },
+    { slug: 'analyse-velocite',  label: 'Vélocité Stabilisation' },
+    { slug: 'bug-movie',         label: 'Film Stabilisation' },
+    { slug: 'whiteboard',        label: 'Tableau blanc' },
     { slug: 'admin',             label: 'Administration (accès dynamique)' }
   ];
 
