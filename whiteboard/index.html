@@ -3570,7 +3570,7 @@ function exportPNG() {
     if (!cv) { toast('Rien à exporter — le tableau est vide.', true); return; }
     cv.toBlob(function (blob) {
       if (!blob) { toast('Export PNG impossible.', true); return; }
-      download('whiteboard_' + stamp() + '.png', blob);
+      download('tableau-blanc_' + stamp() + '.png', blob);
       toast('Image PNG exportée.');
     }, 'image/png');
   });
@@ -3647,7 +3647,7 @@ function exportSVG() {
     lt.textContent = o.label;
   }
   var src = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
-  download('whiteboard-diagramme_' + stamp() + '.svg', new Blob([src], { type: 'image/svg+xml' }));
+  download('tableau-blanc-diagramme_' + stamp() + '.svg', new Blob([src], { type: 'image/svg+xml' }));
   toast('Diagramme SVG exporté.');
 }
 
@@ -3667,7 +3667,7 @@ function buildDoc() {
 function saveJSON() {
   var doc = buildDoc();
   if (currentBoard) { doc.name = currentBoard.name; }
-  download((currentBoard ? slugify(currentBoard.name) : 'whiteboard') + '_' + stamp() + '.json',
+  download((currentBoard ? slugify(currentBoard.name) : 'tableau-blanc') + '_' + stamp() + '.json',
            new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
   toast('Fichier JSON exporté.');
 }
