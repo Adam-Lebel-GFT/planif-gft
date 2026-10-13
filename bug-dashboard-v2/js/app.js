@@ -62,6 +62,29 @@
     });
   }
 
+  // ── Date de référence ──────────────────────────────────────────────
+  // Verrouillée (grisée), elle vaut « maintenant » ; le crayon la rend
+  // modifiable, un second clic la verrouille et la remet à maintenant.
+  var refUnlocked = false;
+  function showRefDate() {
+    $('refDateInput').value = C.toISO(S.refDate); $('refHalfSelect').value = String(S.refHalf || 0);
+  }
+  function applyRefDate() {
+    var v = $('refDateInput').value;
+    if (refUnlocked && v) { S.refDate = new Date(v + 'T00:00:00'); S.refHalf = Number($('refHalfSelect').value) || 0; }
+    else { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); }
+  }
+  function toggleRefEdit() {
+    refUnlocked = !refUnlocked;
+    $('refDateInput').disabled = $('refHalfSelect').disabled = !refUnlocked;
+    $('refField').classList.toggle('is-locked', !refUnlocked);
+    var b = $('refEdit'); b.setAttribute('aria-pressed', refUnlocked ? 'true' : 'false');
+    b.title = refUnlocked ? 'Verrouiller : revenir à la date du jour' : 'Modifier la date de référence';
+    // Une analyse du journal garde sa date : reverrouiller ne la remet pas à maintenant.
+    if (!refUnlocked && !S.archived) { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); if (S.tickets.length) rerender(); }
+    else if (!refUnlocked) showRefDate();
+  }
+
   // ── Analyse ────────────────────────────────────────────────────────
   function analyze(opts) {
     opts = opts || {};
@@ -72,10 +95,10 @@
     var cols = C.detectColumns(parsed.headers);
     if (cols.status === -1) { setMsg('Colonne « Status » introuvable dans les en-têtes collés.', 'err'); renderColumnChips(cols); return false; }
     S.raw = raw; S.headers = parsed.headers; S.cols = cols; S.archived = null; $('archiveBanner').classList.add('hidden');
-    // La date de référence est le moment de l'analyse, toujours — elle ne se
-    // choisit plus. Seule une analyse rouverte depuis le journal impose la
-    // sienne, et elle le fait après coup.
-    S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
+    // La date de référence est le moment de l'analyse, sauf si le crayon à
+    // côté du nom l'a déverrouillée pour analyser comme à une autre date.
+    // Une analyse rouverte depuis le journal impose la sienne, après coup.
+    applyRefDate();
     S.tickets = C.buildTickets(parsed.rows, parsed.headers, cols);
     S.analysisName = ($('analysisName').value || '').trim();
     try { localStorage.setItem(LS.raw, raw); localStorage.setItem(LS.name, S.analysisName); } catch (e) {}
@@ -99,6 +122,7 @@
     // et ne diraient plus ce qu'elle disait.
     if (meta.refDate) S.refDate = new Date(meta.refDate + 'T00:00:00');
     if (meta.refHalf != null) S.refHalf = Number(meta.refHalf) || 0;
+    showRefDate();
     var has = function (f) { return tickets.some(function (t) { return t[f]; }) ? 0 : -1; };
     S.cols = { key: has('key'), status: 0, team: has('team'), priority: has('priority'), targetDate: has('targetDate'), labels: has('labels'), fixVersion: has('fixVersion'), resolution: has('resolution'), summary: has('summary'), assignee: has('assignee'), dueDate: has('dueDate'), created: has('created') };
     S.headers = [];
@@ -511,8 +535,8 @@
       S.tickets = []; S.raw = ''; S.archived = null; $('archiveBanner').classList.add('hidden'); $('dashboard').classList.add('hidden'); $('emptyState').classList.remove('hidden'); $('colChips').innerHTML = ''; setMsg('', ''); DD.close();
       document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } }));
     });
-    // La date de référence est le moment de l'analyse : elle n'a plus de champ.
-    S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0;
+    applyRefDate();
+    $('refEdit').addEventListener('click', toggleRefEdit);
     // La vue se choisit désormais dans le tiroir (Configurer → Vues) : c'est un
     // réglage, pas un geste quotidien, et l'en-tête n'a plus de ligne d'outils.
     try { S.view = localStorage.getItem(LS.view) || 'projet'; } catch (e) {}
