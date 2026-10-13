@@ -263,7 +263,7 @@ les cartes cochées, sans tenir compte de la liste de la vue — enregistrer Scr
 être passé lui donnait les onze cartes au lieu de ses cinq. Le garde-fou « pas de plan publié »
 n'entre pas dans l'enregistrement : il masque une carte à l'écran, il ne la retire pas de la vue.
 
-**La date de référence est le moment de l'analyse**, sauf si le crayon ✎ (à droite du nom de l'analyse) l'a déverrouillée : on peut alors analyser un collage comme à une autre date, ce que le journal enregistre. Reverrouiller (second clic) remet « maintenant ». Un collage neuf s'analyse maintenant. Une
+**La date de référence est le moment de l'analyse**, sauf si le crayon ✎ (à droite du nom de l'analyse) l'a déverrouillée : on peut alors analyser un collage comme à une autre date, ce que le journal enregistre. Reverrouiller (second clic) remet « maintenant ». La photo journalisée prend alors cette date (à l'ouverture de la journée de travail, ou 15 minutes après la dernière analyse de ce jour-là) et se range dans le journal à sa place chronologique, pas à la fin. Un collage neuf s'analyse maintenant. Une
 analyse rouverte depuis le journal se rejoue à *sa* date, celle où elle a été prise — sans quoi
 ses retards et sa prévision seraient recalculés sur aujourd'hui et ne diraient plus ce qu'elle
 disait.
