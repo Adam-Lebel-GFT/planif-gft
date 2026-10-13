@@ -272,7 +272,7 @@
     if (bnoTeam.length) alerts.push({ level: 'critical', icon: '!', html: '<b>' + bnoTeam.length + ' blocker' + (bnoTeam.length > 1 ? 's' : '') + ' ouvert' + (bnoTeam.length > 1 ? 's' : '') + ' sans équipe</b> — personne ne les porte.', tickets: bnoTeam, title: 'Blockers sans équipe' });
     var k = C.computeKpis(vis);
     // Doublon, non reproductible, incomplet : pas de correctif livré, donc pas de Fix Version à renseigner.
-    var doneNoFix = vis.filter(function (t) { return t.isDone && !t.hasFix && !/duplic|not.?replic|incomplet/.test(C.normalize(t.resolution || '')); });
+    var doneNoFix = vis.filter(function (t) { return t.isDone && !t.hasFix && !/duplic|not.?replic|incomplet|abandon/.test(C.normalize(t.resolution || '')); });
     if (doneNoFix.length) alerts.push({ level: 'warning', icon: '?', html: '<b>' + doneNoFix.length + ' ticket' + (doneNoFix.length > 1 ? 's' : '') + ' terminé' + (doneNoFix.length > 1 ? 's' : '') + ' sans Fix Version</b> sur ' + k.done + ' terminés — vérifier la résolution (déclinés…) ; les doublons, non reproductibles et incomplets ne sont pas comptés.', tickets: doneNoFix, title: 'Terminés sans Fix Version' });
     var late = open.filter(function (t) { return t.isOverdue; });
     if (late.length) {
