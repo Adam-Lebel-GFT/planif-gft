@@ -195,7 +195,7 @@
 
   // Le lot IA n'est pas toujours livré (js/ai.js peut ne pas être chargé) :
   // l'onglet « IA » et la case de section correspondante sont alors masqués.
-  var SECTION_LABELS = { kpis: 'Indicateurs', alerts: 'Alertes', ai: 'Synthèse IA', train: 'Train de versions', cube: 'Cube', history: 'Journal' };
+  var SECTION_LABELS = { kpis: 'Bandeau exécutif', alerts: 'Alertes', ai: 'Synthèse IA', train: 'Train de livraison', cube: 'Cube', history: 'Journal' };
 
   function activeView() { return (root.BDV2App && root.BDV2App.view && root.BDV2App.view()) || 'projet'; }
 

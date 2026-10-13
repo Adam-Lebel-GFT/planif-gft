@@ -74,7 +74,7 @@ affichée par le radar, c'est-à-dire le regroupement défini dans Configurer �
 sont conservés dans ce navigateur.
 
 La barre est **repliée par défaut** — les filtres servent peu — et se déplie par le bouton
-« Afficher » à droite, comme la section « 1. Données ». Le choix est conservé dans ce navigateur
+« Afficher » à droite, comme la section « 1. Données ». Elle porte le titre « 2. Filtres » sur fond blanc, comme les autres sections numérotées (3. Bandeau exécutif, 4. Alertes, 5. Train de livraison, toutes repliables). Le choix est conservé dans ce navigateur
 (`bdv2:collapsed`).
 
 Ce qui restreint l'affichage ne se cache jamais pour autant : l'en-tête de la barre, visible

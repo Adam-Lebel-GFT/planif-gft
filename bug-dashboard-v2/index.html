@@ -40,7 +40,7 @@
   <div class="card-head">
     <div>
       <h2>1. Données</h2>
-      <div class="sub">Sélectionnez les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis collez ici. Colonnes reconnues : Key, Summary, Status, Resolution, Priority, Team code, Target date, Fix Version, Labels, Assignee, Created, Due date.</div>
+      <div class="sub">Sélectionnez les colonnes dans Excel (avec la ligne d'en-têtes), Ctrl+C, puis collez ici.<span class="sub-more"> Colonnes reconnues : Key, Summary, Status, Resolution, Priority, Team code, Target date, Fix Version, Labels, Assignee, Created, Due date.</span></div>
     </div>
     <button type="button" class="collapse-btn" data-target="pasteBody"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
   </div>
@@ -67,9 +67,9 @@
        restreint l'affichage ne se cache jamais pour autant — le compte des
        tickets, la sélection issue d'un clic et « Réinitialiser » tiennent dans
        l'en-tête, visibles pliée comme dépliée. -->
-  <div class="filterbar" id="filterbar">
+  <div class="filterbar card" id="filterbar">
     <div class="filter-head">
-      <span class="filter-label">Filtres</span>
+      <h2>2. Filtres</h2>
       <span id="fPick"></span>
       <span class="filter-summary" id="filterSummary"></span>
       <button type="button" class="ghost small filter-reset" id="filterReset">Réinitialiser</button>
@@ -86,14 +86,19 @@
   </div>
 
   <section id="sec-kpis">
-    <div class="section-title"><h3>Bandeau exécutif</h3><span class="line"></span></div>
-    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="card">
+      <div class="card-head">
+        <div><h2>3. Bandeau exécutif</h2></div>
+        <button type="button" class="collapse-btn" data-target="kpiBody"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
+      </div>
+      <div id="kpiBody"><div class="kpi-grid" id="kpiGrid"></div></div>
+    </div>
   </section>
 
   <section id="sec-alerts">
     <div class="card">
       <div class="card-head">
-        <div><h2>Alertes <span class="tk-badge tk-badge--alert" id="alertsCount"></span></h2><div class="sub">Détectées automatiquement selon les seuils configurés — cliquez pour voir les tickets.</div></div>
+        <div><h2>4. Alertes <span class="tk-badge tk-badge--alert" id="alertsCount"></span></h2><div class="sub">Détectées automatiquement selon les seuils configurés — cliquez pour voir les tickets.</div></div>
         <button type="button" class="collapse-btn" data-target="alertsList"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
       </div>
       <div class="alerts" id="alertsList" style="margin-top:12px"></div>
@@ -106,8 +111,13 @@
   </section>
 
   <section id="sec-train" class="hidden">
-    <div class="section-title"><h3>Train de livraison</h3><span class="line"></span></div>
-    <div class="card" id="trainCard"></div>
+    <div class="card">
+      <div class="card-head">
+        <div><h2>5. Train de livraison</h2></div>
+        <button type="button" class="collapse-btn" data-target="trainCard"><span class="chev">▾</span><span class="lbl">Réduire</span></button>
+      </div>
+      <div id="trainCard"></div>
+    </div>
   </section>
 
   <section id="sec-cube">

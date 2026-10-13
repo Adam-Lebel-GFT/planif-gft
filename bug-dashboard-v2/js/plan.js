@@ -238,7 +238,7 @@
     var card = $('trainCard'); if (!card) return;
     var cfg = CFG.get(), ref = C.startOfDay(S.refDate);
     if (!S.hasPlan) {
-      card.innerHTML = '<h2>Train de livraison</h2><div class="sub">Aucun plan publié. Ouvrez le <a href="../releases-planning/">Plan de livraisons</a>, vérifiez les versions et leurs jalons, puis cliquez « Publier le plan → Dashboard Stabilisation ». Les tickets seront alors rattachés à une version selon leur Target date.</div>';
+      card.innerHTML = '<div class="sub" style="margin-top:6px">Aucun plan publié. Ouvrez le <a href="../releases-planning/">Plan de livraisons</a>, vérifiez les versions et leurs jalons, puis cliquez « Publier le plan → Dashboard Stabilisation ». Les tickets seront alors rattachés à une version selon leur Target date.</div>';
       return;
     }
     var base = APP.baseTickets();
@@ -254,7 +254,7 @@
     cols.push(col('__none', null, none, 'none'));
     var srcTxt = plan.source === 'supabase' ? 'Plan partagé (publié le ' + (plan.meta ? new Date(plan.meta).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '?') + ')' : 'Plan local de ce navigateur (non publié)';
     var rule = boundaryLabel(cfg.version.boundary);
-    card.innerHTML = '<div class="card-head"><div><h2>Train de livraison — ' + ov.length + ' versions</h2><div class="sub">Chaque ticket est rattaché à la première version dont le jalon « ' + esc(rule) + ' » tombe à sa Target date ou après' + (cfg.version.toleranceDays ? ' (tolérance ' + cfg.version.toleranceDays + ' j)' : '') + '. Grand chiffre = <b>stock à livrer</b> (tickets ouverts) ; jauge = avancement pondéré. Cliquez un nom de version pour filtrer tout le dashboard.</div></div>' +
+    card.innerHTML = '<div class="card-head"><div><div class="sub" style="margin-top:6px"><b>' + ov.length + ' versions.</b> Chaque ticket est rattaché à la première version dont le jalon « ' + esc(rule) + ' » tombe à sa Target date ou après' + (cfg.version.toleranceDays ? ' (tolérance ' + cfg.version.toleranceDays + ' j)' : '') + '. Grand chiffre = <b>stock à livrer</b> (tickets ouverts) ; jauge = avancement pondéré. Cliquez un nom de version pour filtrer tout le dashboard.</div></div>' +
       '<div class="card-tools"><span class="plan-note">' + esc(srcTxt) + '</span><button type="button" class="ghost small" id="planReload">Recharger le plan</button><a class="ghost small btn-like" href="../releases-planning/">Ouvrir le plan</a></div></div>' +
       '<div class="train" style="margin-top:12px">' + cols.join('') + '</div>';
     $('planReload').addEventListener('click', async function () { await load(); APP.rerender(); });
