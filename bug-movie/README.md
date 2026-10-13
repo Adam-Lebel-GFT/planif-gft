@@ -4,7 +4,7 @@ Outil du toolkit (slug `bug-movie`) qui rejoue les photos du journal : chaque ti
 (couleur d'équipe, ou de version au choix) qui avance de statut en statut, une ligne par version
 (toutes les Target dates du journal par défaut). Un curseur avance et recule dans le temps ; sous le tableau,
 les aires ouvert / terminé de chaque version se chevauchent sur l'axe des dates, sous la barre
-« aujourd'hui », et les chiffres suivent le curseur. Un ticket qui n'est plus dans aucune des versions
+« aujourd'hui », et les chiffres suivent le curseur. Le pourcentage de chaque carte de version est **pondéré par statut** (Σ poids du statut / nb tickets, mêmes poids que le Dashboard Stabilisation), pas le seul ratio de tickets terminés. Un ticket qui n'est plus dans aucune des versions
 affichées part dans le **nuage** ; un ticket dont la résolution est *Declined*, *Duplicate*,
 *Not replicable*, *Incomplete* ou *Abandoned* va à la **poubelle** (liste dans `movie.js`).
 Un ticket ne change de place qu'à la photo où on le voit ailleurs : le mouvement est connu à la photo près.
