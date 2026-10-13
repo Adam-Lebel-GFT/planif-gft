@@ -355,17 +355,6 @@
       $('mvPc' + r).textContent = pc; $('mvBr' + r).style.width = pc + '%';
       $('mvSub' + r).textContent = tot[r].o + ' ouverts · ' + tot[r].d + ' terminés · ' + n + ' au total';
     });
-    var ent = 0, rem = 0, tr = 0, mv = 0, cl = 0, push = 0, pull = 0, back = 0;
-    if (i > 0) for (var j = 0; j < M.tk.length; j++) {
-      var a = M.st[i - 1][j], b = M.st[i][j]; if (!b) continue;
-      if (!a) { if (b.kind === 'board') ent++; continue; }
-      if (a.kind === b.kind && a.kind === 'board') { if (a.row !== b.row) { if (b.row > a.row) push++; else pull++; } else if (a.col !== b.col) { mv++; if (b.col < a.col) back++; if (M.doneCols[b.col] && !M.doneCols[a.col]) cl++; } }
-      else if (b.kind === 'cloud' && a.kind !== 'cloud') rem++;
-      else if (b.kind === 'trash' && a.kind !== 'trash') tr++;
-      else if (a.kind === 'cloud' && b.kind === 'board') ent++;
-    }
-    $('mvFlow').innerHTML = i === 0 ? '<span>Première photo : état de départ</span>' :
-      '<span class="mv-pos">+' + ent + ' entrés</span><span class="mv-neg">−' + rem + ' sortis (nuage)</span><span class="mv-neg">' + tr + ' à la poubelle</span><span>' + mv + ' changements de statut</span><span class="mv-neg">' + back + ' reculs</span><span class="mv-neg">' + push + ' repoussés</span><span class="mv-pos">' + pull + ' ramenés</span><span class="mv-pos">' + cl + ' clôturés</span>';
     $('mvFlowLbl').textContent = i === 0 ? 'Photo 1 / ' + M.T.length : 'Photo ' + (i + 1) + ' / ' + M.T.length + ' · depuis la précédente (' + Math.round((M.T[i] - M.T[i - 1]) * M.win.h) + ' h ouvrées)';
   }
 
@@ -400,6 +389,27 @@
     CH.w = Math.max(560, w); fit($('mvChart'), CH.w, CH.h);
     render();
   }
+  // Calendrier à l'échelle du curseur : chaque jour ouvré est posé à l'instant où il commence
+  // (même temps ouvré que le curseur), les lundis ouvrent une semaine.
+  function calHtml() {
+    var wn = M.win, t0d = new Date(M.t0), end = M.T[M.T.length - 1], tot = end || 1;
+    var d = new Date(t0d.getFullYear(), t0d.getMonth(), t0d.getDate()), out = '', n = 0, days = [];
+    for (; n < 400; n++, d.setDate(d.getDate() + 1)) {
+      var st = new Date(d.getFullYear(), d.getMonth(), d.getDate(), wn.a, 0, 0);
+      if (st.getTime() > t0d.getTime() + 1) { var x = C.openHours(t0d, st, wn.a, wn.z) / wn.h; if (x > end + 1e-6) break; }
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      var t = st.getTime() <= t0d.getTime() ? 0 : C.openHours(t0d, st, wn.a, wn.z) / wn.h;
+      days.push({ t: t, d: new Date(d.getTime()) });
+    }
+    var step = days.length > 1 ? (days[days.length - 1].t - days[0].t) / (days.length - 1) / tot : 1;   // part de la largeur par jour
+    var showNum = step * 800 >= 20;
+    days.forEach(function (x) {
+      var mon = x.d.getDay() === 1 || x === days[0], left = (x.t / tot * 100).toFixed(3);
+      out += '<span class="mv-cd' + (mon ? ' wk' : '') + '" style="left:' + left + '%"><i></i>' +
+        (mon ? '<b>' + DOW[x.d.getDay()] + ' ' + x.d.getDate() + ' ' + MON[x.d.getMonth()] + '</b>' : showNum ? '<em>' + x.d.getDate() + '</em>' : '') + '</span>';
+    });
+    return out;
+  }
   function legendHtml() {
     return ui.color === 'team'
       ? M.teamLabels.map(function (l) { return '<span><i class="mv-sw" style="background:' + M.teamColors[l] + '"></i>' + esc(l) + '</span>'; }).join('')
@@ -416,8 +426,8 @@
       '<div class="sub">Les photos du journal rejouées : chaque ticket est un point qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
       '<div class="card-tools"><select class="dim-select" id="mvN" aria-label="Versions affichées">' + nOpts + '</select></div></div>' +
       '<div id="mvHost"><div class="mv-tiles">' + tiles + '</div>' +
-      '<div class="mv-flow"><div class="mv-lbl" id="mvFlowLbl"></div><div class="mv-row" id="mvFlow"></div></div>' +
-      '<div class="mv-ctl"><button type="button" class="ghost small" id="mvPlay">▶ Lire</button><input type="range" id="mvSlider" min="0" max="6000" value="0" aria-label="Date de l\'animation"><span class="mv-date" id="mvDate"></span>' +
+      '<div class="mv-flow"><div class="mv-lbl" id="mvFlowLbl"></div></div>' +
+      '<div class="mv-ctl"><button type="button" class="ghost small" id="mvPlay">▶ Lire</button><div class="mv-track"><div class="mv-cal" id="mvCal" aria-hidden="true">' + calHtml() + '</div><input type="range" id="mvSlider" min="0" max="6000" value="0" aria-label="Date de l\'animation"></div><span class="mv-date" id="mvDate"></span>' +
       '<span class="seg" role="group" aria-label="Vitesse">' + [[.5, '×0,5'], [1, '×1'], [2, '×2'], [4, '×4']].map(function (s) { return '<button type="button" data-mv-speed="' + s[0] + '"' + (ui.speed === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span></div>' +
       '<div class="mv-scroll"><canvas id="mvBoard"></canvas></div>' +
       '<div class="mv-legend" id="mvLegend">' + legendHtml() + '<span>Anneau : vient de bouger</span>' + LEG2 + '</div>' +
