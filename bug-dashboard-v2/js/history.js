@@ -87,7 +87,8 @@
   function backdatedAt() {
     var y = S.refDate.getFullYear(), m = S.refDate.getMonth(), d = S.refDate.getDate();
     var day = H.items.map(function (x) { return new Date(x.at); }).filter(function (t) { return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d; });
-    if (day.length) return new Date(Math.max.apply(null, day) + 15 * 60000);
+    // Plafonné à 23 h 59 : une photo ne déborde jamais sur le lendemain.
+    if (day.length) return new Date(Math.min(Math.max.apply(null, day) + 15 * 60000, new Date(y, m, d, 23, 59).getTime()));
     var open = CFG.get().burnup ? CFG.get().burnup.openFrom : 8;
     return new Date(y, m, d, open == null ? 8 : open, 0);
   }
