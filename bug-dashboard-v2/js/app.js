@@ -92,9 +92,11 @@
   function bindRefDate() {
     $('refEdit').addEventListener('click', function () { setRefMode('edit'); });
     $('refOk').addEventListener('click', function () {
+      // Une analyse du journal garde sa date : on n'y applique pas la saisie.
+      if (S.archived) { showRefDate(); setRefMode('auto'); return; }
       if (!readRefFields()) return;
       setRefMode('fixed');
-      if (!S.archived && S.tickets.length) rerender();
+      if (S.tickets.length) rerender();
     });
     $('refReset').addEventListener('click', function () {
       setRefMode('auto');
