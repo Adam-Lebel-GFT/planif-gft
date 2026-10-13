@@ -12,6 +12,7 @@
   var COLS = [
     { id: 'key', label: 'Clé', get: function (t) { return t.key; }, render: function (t) { return t.key ? '<a href="' + JIRA_BASE_URL + encodeURIComponent(t.key) + '" target="_blank" rel="noopener">' + esc(t.key) + '</a>' : '—'; } },
     { id: 'summary', label: 'Résumé', get: function (t) { return t.summary; }, render: function (t) { return '<span class="dd-sum" title="' + esc(t.summary) + '">' + esc(t.summary || '—') + '</span>'; } },
+    { id: 'assignee', label: 'Assigné à', get: function (t) { return t.assignee || ''; }, render: function (t) { return t.assignee ? esc(t.assignee) : '<span class="dd-empty">—</span>'; } },
     { id: 'status', label: 'Statut', get: function (t) { return t.status; } },
     { id: 'resolution', label: 'Résolution', get: function (t) { return t.resolution || ''; }, render: function (t) { return t.resolution ? esc(t.resolution) : '<span class="dd-empty">—</span>'; } },
     { id: 'team', label: 'Équipe', get: function (t) { return t.teamLabel; } },
