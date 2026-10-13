@@ -80,7 +80,7 @@
     var N = keys.length;
     // st[i][j] = { kind: 'board'|'cloud'|'trash', row, col } ou null (pas encore vu)
     var st = photos.map(function () { return new Array(N).fill(null); });
-    var counts = tds.map(function () { return photos.map(function () { return { open: 0, done: 0 }; }); });
+    var counts = tds.map(function () { return photos.map(function () { return { open: 0, done: 0, pct: 0 }; }); });
     // Une photo ne parle d'une version que si elle la couvre : les analyses du journal sont des
     // extraits séparés (une autre version, un extrait filtré). Dans une photo qui ne contient
     // qu'une poignée des tickets d'une version, leur absence ne veut pas dire « sortis » ni « zéro ».
@@ -114,7 +114,7 @@
         var why = rejectReason(t.r) || statusReject(t.st), fst = foldStatus(t.st), done = t.d ? 1 : (doneSet[C.normalize(fst)] ? 1 : 0);
         if (tk[j].first < 0) tk[j].first = i;
         if (why) { st[i][j] = { kind: 'trash', row: r, col: colOf[fst], why: why }; tk[j].res = why; }
-        else { st[i][j] = { kind: 'board', row: r, col: colOf[fst] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; }
+        else { st[i][j] = { kind: 'board', row: r, col: colOf[fst] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; counts[r][i].pct += C.pctForStatus(C.normalize(fst), cfg); }
       });
       for (var j = 0; j < N; j++) {
         if (seen[j] || tk[j].first < 0) continue;
@@ -349,9 +349,9 @@
   // ── Chiffres en direct ─────────────────────────────────────────────
   function stats(t) {
     var i = M.cur, tot = M.tds.map(function () { return { o: 0, d: 0 }; });
-    M.tds.forEach(function (td, r) { var p = M.counts[r][i]; tot[r].o = p.open; tot[r].d = p.done; });
+    M.tds.forEach(function (td, r) { var p = M.counts[r][i]; tot[r].o = p.open; tot[r].d = p.done; tot[r].p = p.pct; });
     M.tds.forEach(function (td, r) {
-      var n = tot[r].o + tot[r].d, pc = n ? Math.round(100 * tot[r].d / n) : 0;
+      var n = tot[r].o + tot[r].d, pc = n ? Math.round(tot[r].p / n) : 0;
       $('mvPc' + r).textContent = pc; $('mvBr' + r).style.width = pc + '%';
       $('mvSub' + r).textContent = tot[r].o + ' ouverts · ' + tot[r].d + ' terminés · ' + n + ' au total';
     });
@@ -409,7 +409,7 @@
     var tiles = M.tds.map(function (td, r) {
       var col = VERSION_COLORS[r % VERSION_COLORS.length];
       return '<div class="mv-tile"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>Version du ' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</div>' +
-        '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% terminé</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
+        '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% pondéré</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
     var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
     rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Film Stabilisation</h2>' +
