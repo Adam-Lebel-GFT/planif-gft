@@ -63,26 +63,45 @@
   }
 
   // ── Date de référence ──────────────────────────────────────────────
-  // Verrouillée (grisée), elle vaut « maintenant » ; le crayon la rend
-  // modifiable, un second clic la verrouille et la remet à maintenant.
-  var refUnlocked = false;
+  // Trois états : « auto » (grisée, = maintenant), « edit » (le crayon l'a
+  // déverrouillée), « fixed » (le ✓ l'a validée : grisée, elle garde la date
+  // choisie). ✕ revient à maintenant.
+  var refMode = 'auto';
+  function nowRef() { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; }
   function showRefDate() {
     $('refDateInput').value = C.toISO(S.refDate); $('refHalfSelect').value = String(S.refHalf || 0);
   }
-  function applyRefDate() {
-    var v = $('refDateInput').value;
-    if (refUnlocked && v) { S.refDate = new Date(v + 'T00:00:00'); S.refHalf = Number($('refHalfSelect').value) || 0; }
-    else { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); }
+  function readRefFields() {
+    var v = $('refDateInput').value; if (!v) return false;
+    S.refDate = new Date(v + 'T00:00:00'); S.refHalf = Number($('refHalfSelect').value) || 0; return true;
   }
-  function toggleRefEdit() {
-    refUnlocked = !refUnlocked;
-    $('refDateInput').disabled = $('refHalfSelect').disabled = !refUnlocked;
-    $('refField').classList.toggle('is-locked', !refUnlocked);
-    var b = $('refEdit'); b.setAttribute('aria-pressed', refUnlocked ? 'true' : 'false');
-    b.title = refUnlocked ? 'Verrouiller : revenir à la date du jour' : 'Modifier la date de référence';
-    // Une analyse du journal garde sa date : reverrouiller ne la remet pas à maintenant.
-    if (!refUnlocked && !S.archived) { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); if (S.tickets.length) rerender(); }
-    else if (!refUnlocked) showRefDate();
+  function applyRefDate() {
+    if (refMode !== 'auto' && readRefFields()) return;
+    nowRef(); showRefDate();
+  }
+  function setRefMode(m) {
+    refMode = m;
+    $('refDateInput').disabled = $('refHalfSelect').disabled = m !== 'edit';
+    $('refField').classList.toggle('is-locked', m !== 'edit');
+    $('refField').classList.toggle('is-fixed', m === 'fixed');
+    $('refEdit').classList.toggle('hidden', m === 'edit');
+    $('refOk').classList.toggle('hidden', m !== 'edit');
+    $('refReset').classList.toggle('hidden', m === 'auto');
+    $('refReset').title = m === 'edit' ? 'Annuler : revenir à la date du jour' : 'Revenir à la date du jour';
+  }
+  function bindRefDate() {
+    $('refEdit').addEventListener('click', function () { setRefMode('edit'); });
+    $('refOk').addEventListener('click', function () {
+      if (!readRefFields()) return;
+      setRefMode('fixed');
+      if (!S.archived && S.tickets.length) rerender();
+    });
+    $('refReset').addEventListener('click', function () {
+      setRefMode('auto');
+      // Une analyse du journal garde sa date : on ne la remet pas à maintenant.
+      if (S.archived) { showRefDate(); return; }
+      nowRef(); showRefDate(); if (S.tickets.length) rerender();
+    });
   }
 
   // ── Analyse ────────────────────────────────────────────────────────
@@ -536,7 +555,7 @@
       document.dispatchEvent(new CustomEvent('bdv2:archived', { detail: { meta: null } }));
     });
     applyRefDate();
-    $('refEdit').addEventListener('click', toggleRefEdit);
+    bindRefDate();
     // La vue se choisit désormais dans le tiroir (Configurer → Vues) : c'est un
     // réglage, pas un geste quotidien, et l'en-tête n'a plus de ligne d'outils.
     try { S.view = localStorage.getItem(LS.view) || 'projet'; } catch (e) {}
