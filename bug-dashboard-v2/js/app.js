@@ -549,7 +549,7 @@
     var collapsed = {}; try { collapsed = JSON.parse(localStorage.getItem(LS.collapsed) || '{}'); } catch (e) {}
     document.querySelectorAll('.collapse-btn[data-target]').forEach(function (b) {
       var target = $(b.dataset.target);
-      var apply = function (isC) { target.classList.toggle('hidden', isC); b.classList.toggle('is-collapsed', isC); b.querySelector('.lbl').textContent = isC ? 'Afficher' : 'Réduire'; };
+      var apply = function (isC) { target.classList.toggle('hidden', isC); var host = b.closest('.card'); if (host) host.classList.toggle('is-folded', isC); b.classList.toggle('is-collapsed', isC); b.querySelector('.lbl').textContent = isC ? 'Afficher' : 'Réduire'; };
       // data-collapsed-default : pour une section qui sert peu, replié est le
       // bon état de départ. Un choix déjà fait l'emporte. On fixe l'état dans
       // `collapsed` plutôt que de le laisser indéfini, sans quoi le premier
