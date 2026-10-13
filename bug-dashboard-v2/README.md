@@ -16,7 +16,7 @@ pondéré (poids par statut, configurables) est un indicateur secondaire.
 | `js/palette.js` | palettes validées (catégoriel, rampe priorités, heatmap) |
 | `js/config.js` | configuration (locale + partagée Supabase) et tiroir de configuration |
 | `js/charts.js` | rendu des graphiques (empilé h/v, heatmap, barres, donut, tableau, courbes) |
-| `js/drill.js` | fenêtre de détail des tickets (onglets réalisé/reste, CSV, JQL, Jira) |
+| `js/drill.js` | fenêtre de détail des tickets (onglets réalisé/reste, colonne « Assigné à » issue de la colonne Assignee/Responsable du collage, CSV, JQL, Jira) |
 | `js/app.js` | orchestration, filtres, bandeau, alertes, cube, vues, session |
 | `js/plan.js` | lot 2 — plan de livraisons, rattachement Target date → version, train |
 | `js/history.js` | lot 3 — journal des analyses, deltas, évolution, comparateur |
