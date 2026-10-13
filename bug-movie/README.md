@@ -2,7 +2,7 @@
 
 Outil du toolkit (slug `bug-movie`) qui rejoue les photos du journal : chaque ticket est un point
 (couleur d'équipe, ou de version au choix) qui avance de statut en statut, une ligne par version
-(toutes les Target dates du journal par défaut). Un curseur avance et recule dans le temps, avec au-dessus un calendrier à la même échelle (un repère par jour ouvré, les lundis marquent les semaines) ; sous le tableau,
+(toutes les Target dates du journal par défaut). Un curseur avance et recule dans le temps, avec au-dessus un calendrier à la même échelle (une bande par semaine ISO, « S38 » et ses dates, puis le numéro de chaque jour ouvré) ; sous le tableau,
 les aires ouvert / terminé de chaque version se chevauchent sur l'axe des dates, sous la barre
 « aujourd'hui », et les chiffres suivent le curseur. Le pourcentage de chaque carte de version est **pondéré par statut** (Σ poids du statut / nb tickets, mêmes poids que le Dashboard Stabilisation), pas le seul ratio de tickets terminés. Un ticket qui n'est plus dans aucune des versions
 affichées part dans le **nuage** ; un ticket dont la résolution est *Declined*, *Duplicate*,
