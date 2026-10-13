@@ -112,7 +112,7 @@
     if (backdated) H.items.sort(function (a, b) { return new Date(a.at) - new Date(b.at); });
     if (H.source !== 'supabase') saveLocal(H.items);
     S.analysisId = item.id || null;
-    APP.setMsg(base.length + ' tickets analysés — analyse n°' + H.items.length + ' journalisée' + (H.source === 'supabase' ? ' (partagée)' : ' (localement)') + '.', 'ok');
+    APP.setMsg(base.length + ' tickets analysés — analyse n°' + (H.items.indexOf(item) + 1) + ' journalisée' + (H.source === 'supabase' ? ' (partagée)' : ' (localement)') + '.', 'ok');
     APP.rerender();
     document.dispatchEvent(new CustomEvent('bdv2:recorded', { detail: { item: item, isNew: true } }));
     return item;
