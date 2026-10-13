@@ -390,7 +390,7 @@
     render();
   }
   // Calendrier à l'échelle du curseur : chaque jour ouvré est posé à l'instant où il commence
-  // (même temps ouvré que le curseur), les lundis ouvrent une semaine.
+  // (même temps ouvré que le curseur), les semaines ISO sont en bandes alternées (S38, dates).
   function calHtml() {
     var wn = M.win, t0d = new Date(M.t0), end = M.T[M.T.length - 1], tot = end || 1;
     var d = new Date(t0d.getFullYear(), t0d.getMonth(), t0d.getDate()), out = '', n = 0, days = [];
@@ -401,14 +401,29 @@
       var t = st.getTime() <= t0d.getTime() ? 0 : C.openHours(t0d, st, wn.a, wn.z) / wn.h;
       days.push({ t: t, d: new Date(d.getTime()) });
     }
-    var step = days.length > 1 ? (days[days.length - 1].t - days[0].t) / (days.length - 1) / tot : 1;   // part de la largeur par jour
-    var showNum = step * 800 >= 20;
+    days.forEach(function (x, i) { x.e = i + 1 < days.length ? days[i + 1].t : end; });
+    var weeks = [];
     days.forEach(function (x) {
-      var mon = x.d.getDay() === 1 || x === days[0], left = (x.t / tot * 100).toFixed(3);
-      out += '<span class="mv-cd' + (mon ? ' wk' : '') + '" style="left:' + left + '%"><i></i>' +
-        (mon ? '<b>' + DOW[x.d.getDay()] + ' ' + x.d.getDate() + ' ' + MON[x.d.getMonth()] + '</b>' : showNum ? '<em>' + x.d.getDate() + '</em>' : '') + '</span>';
+      var w = isoWeek(x.d), l = weeks[weeks.length - 1];
+      if (!l || l.w !== w) weeks.push(l = { w: w, t: x.t, first: x.d, last: x.d });
+      l.last = x.d; l.e = x.e;
+    });
+    var pc = function (v) { return (v / tot * 100).toFixed(3) + '%'; }, px = 800;   // largeur indicative pour choisir le niveau de détail
+    var rng = function (w) { return w.first.getDate() + (w.first.getMonth() !== w.last.getMonth() ? ' ' + MON[w.first.getMonth()] : '') + '–' + w.last.getDate() + ' ' + MON[w.last.getMonth()]; };
+    weeks.forEach(function (w, k) {
+      var wide = (w.e - w.t) / tot * px;
+      out += '<span class="mv-wk' + (k % 2 ? ' alt' : '') + '" style="left:' + pc(w.t) + ';width:' + pc(w.e - w.t) + '"><b>' + (wide >= 28 ? 'S' + w.w : '') + (wide >= 120 ? ' <u>' + rng(w) + '</u>' : '') + '</b></span>';
+    });
+    days.forEach(function (x) {
+      var wide = (x.e - x.t) / tot * px;
+      out += '<span class="mv-cd" style="left:' + pc(x.t) + ';width:' + pc(x.e - x.t) + '">' + (wide >= 16 ? x.d.getDate() : '') + '</span>';
     });
     return out;
+  }
+  function isoWeek(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), n = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - n);
+    return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
   }
   function legendHtml() {
     return ui.color === 'team'

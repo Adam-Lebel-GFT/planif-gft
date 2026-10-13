@@ -13,12 +13,12 @@
 /* calendrier : même échelle que le curseur (8 px = demi-pastille du curseur) */
 .mv-track{flex:1 1 220px; min-width:160px; display:flex; flex-direction:column;}
 .mv-track input[type=range]{flex:none; width:100%; margin:0;}
-.mv-cal{position:relative; height:38px; margin:0 8px; border-bottom:1px solid var(--border); font:600 10.5px var(--font-mono); color:var(--muted); user-select:none;}
-.mv-cd{position:absolute; bottom:0; top:0; width:0;}
-.mv-cd i{position:absolute; left:0; bottom:0; height:5px; border-left:1px solid var(--border);}
-.mv-cd.wk i{height:100%; border-left-color:var(--muted);}
-.mv-cd b{position:absolute; left:4px; top:0; font-weight:700; color:var(--navy); white-space:nowrap;}
-.mv-cd em{position:absolute; left:0; bottom:8px; transform:translateX(-50%); font-style:normal; font-weight:500;}
+.mv-cal{position:relative; height:46px; margin:0 8px; font:600 10.5px var(--font-mono); color:var(--muted); user-select:none;}
+.mv-wk{position:absolute; top:0; bottom:0; overflow:hidden; background:color-mix(in srgb,var(--navy) 9%,transparent); border-left:1px solid var(--border);}
+.mv-wk.alt{background:color-mix(in srgb,var(--navy) 3%,transparent);}
+.mv-wk b{display:block; padding:3px 6px; font-weight:700; color:var(--navy); white-space:nowrap;}
+.mv-wk u{text-decoration:none; font-weight:500; color:var(--muted);}
+.mv-cd{position:absolute; bottom:2px; height:16px; line-height:16px; text-align:center; font-weight:500; color:var(--navy);}
 .mv-ctl{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:10px 0;}
 .mv-ctl input[type=range]{accent-color:var(--navy);}
 .mv-date{font:600 13px var(--font-mono); min-width:190px;}
