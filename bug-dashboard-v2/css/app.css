@@ -513,4 +513,6 @@ footer{margin-top:10px; font-size:11.5px; color:var(--muted); line-height:1.6;}
 .ref-field input, .ref-field select{border:1px solid var(--border); border-radius:8px; padding:7px 8px; font-family:var(--font); font-size:12.5px; background:#fff; color:var(--text);}
 .ref-field input:disabled, .ref-field select:disabled{background:#EDEEF0; color:#8A94A3; cursor:not-allowed;}
 .ref-edit{background:#fff; color:var(--muted); border:1px solid var(--border); border-radius:8px; padding:6px 9px; font-size:13px; cursor:pointer; line-height:1;}
-.ref-edit:hover, .ref-edit[aria-pressed="true"]{border-color:var(--navy); color:var(--navy);}
+.ref-edit:hover{border-color:var(--navy); color:var(--navy);}
+.ref-ok{color:var(--green); border-color:var(--green);}
+.ref-field.is-fixed input:disabled, .ref-field.is-fixed select:disabled{background:#EAF1F8; color:var(--accent); border-color:var(--accent); cursor:default;}
