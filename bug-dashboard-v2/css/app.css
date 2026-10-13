@@ -504,5 +504,5 @@ footer{margin-top:10px; font-size:11.5px; color:var(--muted); line-height:1.6;}
 #alertsCount:empty{display:none;}
 
 /* Sections numérotées 1 à 5 : fond gris léger, le contenu (champs, tuiles, alertes, versions) reste blanc. */
-#sec-cube .card:not(.card-add), #sec-history .card, .card.sec{background:#E9ECF1; border-color:#D6DBE3; box-shadow:none;}
+#sec-cube .card:not(.card-add), #sec-history .card, .card.sec{background:#F5F5F5; border-color:#D9D9D9; box-shadow:none;}
 #sec-cube .card:not(.card-add) .sub, #sec-history .card .sub, .card.sec .sub{color:#5B6A80;}
