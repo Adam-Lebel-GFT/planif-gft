@@ -82,6 +82,16 @@
     APP.available.history = true;
   }
 
+  // Heure de la photo d'une analyse datée : 15 minutes après la dernière
+  // analyse de ce jour-là, sinon à l'ouverture de la journée de travail.
+  function backdatedAt() {
+    var y = S.refDate.getFullYear(), m = S.refDate.getMonth(), d = S.refDate.getDate();
+    var day = H.items.map(function (x) { return new Date(x.at); }).filter(function (t) { return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d; });
+    if (day.length) return new Date(Math.max.apply(null, day) + 15 * 60000);
+    var open = CFG.get().burnup ? CFG.get().burnup.openFrom : 8;
+    return new Date(y, m, d, open == null ? 8 : open, 0);
+  }
+
   async function record(state) {
     var raw = state.raw, hash = await sha256(raw + '|' + C.toISO(S.refDate));
     H.currentHash = hash;
@@ -98,7 +108,7 @@
       return last;
     }
     var base = APP.baseTickets();
-    var item = { at: backdated ? new Date(S.refDate.getFullYear(), S.refDate.getMonth(), S.refDate.getDate(), S.refHalf ? 14 : 9).toISOString() : new Date().toISOString(), by: S.session ? S.session.user.id : null, byName: S.profil ? S.profil.nom_utilisateur : '', nom: S.analysisName || '', hash: hash, nb: base.length, resume: snapshot(base), tickets: CFG.get().history.keepTickets ? compactTickets(base) : [], synthese: null, epingle: false };
+    var item = { at: backdated ? backdatedAt().toISOString() : new Date().toISOString(), by: S.session ? S.session.user.id : null, byName: S.profil ? S.profil.nom_utilisateur : '', nom: S.analysisName || '', hash: hash, nb: base.length, resume: snapshot(base), tickets: CFG.get().history.keepTickets ? compactTickets(base) : [], synthese: null, epingle: false };
     if (H.source === 'supabase') {
       try {
         var row = { cree_par: item.by, nom: item.nom || null, hash: hash, nb_tickets: item.nb, resume: item.resume, tickets: item.tickets };
