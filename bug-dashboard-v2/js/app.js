@@ -80,7 +80,9 @@
     $('refField').classList.toggle('is-locked', !refUnlocked);
     var b = $('refEdit'); b.setAttribute('aria-pressed', refUnlocked ? 'true' : 'false');
     b.title = refUnlocked ? 'Verrouiller : revenir à la date du jour' : 'Modifier la date de référence';
-    if (!refUnlocked) { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); }
+    // Une analyse du journal garde sa date : reverrouiller ne la remet pas à maintenant.
+    if (!refUnlocked && !S.archived) { S.refDate = new Date(); S.refHalf = new Date().getHours() >= 12 ? 1 : 0; showRefDate(); if (S.tickets.length) rerender(); }
+    else if (!refUnlocked) showRefDate();
   }
 
   // ── Analyse ────────────────────────────────────────────────────────
