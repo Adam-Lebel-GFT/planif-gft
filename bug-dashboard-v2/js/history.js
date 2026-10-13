@@ -85,7 +85,10 @@
   async function record(state) {
     var raw = state.raw, hash = await sha256(raw + '|' + C.toISO(S.refDate));
     H.currentHash = hash;
-    var last = H.items[H.items.length - 1];
+    // Analyse « comme à une autre date » (crayon de « 1. Données ») : la photo
+    // prend cette date au journal, pas celle d'aujourd'hui, et s'y range.
+    var backdated = C.toISO(S.refDate) !== C.toISO(new Date());
+    var last = backdated ? H.items.filter(function (x) { return x.hash === hash; })[0] : H.items[H.items.length - 1];
     if (last && last.hash === hash) {
       S.analysisId = last.id || null;
       if (S.analysisName && S.analysisName !== last.nom) { last.nom = S.analysisName; if (H.source === 'supabase' && last.id) await S.client.from('bdv2_analyses').update({ nom: last.nom }).eq('id', last.id); else saveLocal(H.items); }
@@ -95,15 +98,18 @@
       return last;
     }
     var base = APP.baseTickets();
-    var item = { at: new Date().toISOString(), by: S.session ? S.session.user.id : null, byName: S.profil ? S.profil.nom_utilisateur : '', nom: S.analysisName || '', hash: hash, nb: base.length, resume: snapshot(base), tickets: CFG.get().history.keepTickets ? compactTickets(base) : [], synthese: null, epingle: false };
+    var item = { at: backdated ? new Date(S.refDate.getFullYear(), S.refDate.getMonth(), S.refDate.getDate(), S.refHalf ? 14 : 9).toISOString() : new Date().toISOString(), by: S.session ? S.session.user.id : null, byName: S.profil ? S.profil.nom_utilisateur : '', nom: S.analysisName || '', hash: hash, nb: base.length, resume: snapshot(base), tickets: CFG.get().history.keepTickets ? compactTickets(base) : [], synthese: null, epingle: false };
     if (H.source === 'supabase') {
       try {
-        var ins = await S.client.from('bdv2_analyses').insert({ cree_par: item.by, nom: item.nom || null, hash: hash, nb_tickets: item.nb, resume: item.resume, tickets: item.tickets }).select('id,cree_le').single();
+        var row = { cree_par: item.by, nom: item.nom || null, hash: hash, nb_tickets: item.nb, resume: item.resume, tickets: item.tickets };
+        if (backdated) row.cree_le = item.at;
+        var ins = await S.client.from('bdv2_analyses').insert(row).select('id,cree_le').single();
         if (ins.error) throw ins.error;
         item.id = ins.data.id; item.at = ins.data.cree_le;
       } catch (e) { console.warn('journal : insertion refusée', e); APP.setMsg('Analyse affichée mais non journalisée : ' + (e.message || e), 'err'); }
     }
     H.items.push(item);
+    if (backdated) H.items.sort(function (a, b) { return new Date(a.at) - new Date(b.at); });
     if (H.source !== 'supabase') saveLocal(H.items);
     S.analysisId = item.id || null;
     APP.setMsg(base.length + ' tickets analysés — analyse n°' + H.items.length + ' journalisée' + (H.source === 'supabase' ? ' (partagée)' : ' (localement)') + '.', 'ok');
