@@ -49,6 +49,12 @@
     <div class="paste-actions">
       <button class="primary" id="analyzeBtn">Analyser</button>
       <input type="text" id="analysisName" placeholder="Nom de l'analyse (optionnel) — ex. Point hebdo 12/09">
+      <span class="ref-field is-locked" id="refField">
+        <label for="refDateInput">Date de référence</label>
+        <input type="date" id="refDateInput" disabled>
+        <select id="refHalfSelect" disabled title="Demi-journée en cours — elle ne compte pas dans le temps restant avant un jalon"><option value="0">Matin</option><option value="1">Après-midi</option></select>
+        <button type="button" class="ref-edit" id="refEdit" title="Modifier la date de référence" aria-label="Modifier la date de référence" aria-pressed="false">✎</button>
+      </span>
       <button class="ghost" id="clearBtn">Effacer</button>
       <span class="status-msg" id="statusMsg"></span>
     </div>
