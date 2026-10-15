@@ -44,6 +44,7 @@
 <script src="../bug-dashboard-v2/js/core.js"></script>
 <script src="../bug-dashboard-v2/js/palette.js"></script>
 <script src="../bug-dashboard-v2/js/config.js"></script>
+<script src="water.js"></script>
 <script src="movie.js"></script>
 <script>
 (function () {
@@ -55,7 +56,7 @@
   function loadLocal() { try { return JSON.parse(localStorage.getItem('bdv2:history') || '[]'); } catch (e) { return []; } }
 
   async function charger() {
-    var A = window.PlanifAuth, items = null;
+    var A = window.PlanifAuth, items = null, plan = null;
     if (A) {
       try {
         var session = await A.getSession();
@@ -77,6 +78,8 @@
             items = (res.data || []).map(function (r) { return { id: r.id, at: r.cree_le, nom: r.nom, hash: r.hash, nb: r.nb_tickets, tickets: r.tickets || [], epingle: r.epingle }; });
             badge.className = 'mode-badge'; badge.innerHTML = '● Journal partagé du Dashboard Stabilisation';
           }
+          // Plan de livraisons publié : les courbes du bas s'arrêtent au Code freeze de chaque version.
+          try { var pv = await client.from('plan_versions').select('label,debut,fin,jalons,ordre').order('ordre'); if (!pv.error && pv.data && pv.data.length) plan = pv.data.map(function (r) { return { label: r.label, start: r.debut, end: r.fin, jalons: r.jalons || {} }; }); } catch (e) { console.warn('plan_versions indisponible', e); }
           try { await A.surveillerInactiviteOutil(); } catch (e) { console.warn(e); }
         }
       } catch (e) { console.warn(e); }
@@ -86,7 +89,8 @@
       badge.className = 'mode-badge local';
       badge.innerHTML = 'Journal local de ce navigateur — <a href="../">connectez-vous depuis le lanceur</a> pour lire le journal partagé';
     }
-    window.BDV2Movie.render(items, rootEl);
+    if (!plan) { try { var raw = JSON.parse(localStorage.getItem('planif:plan-publie') || 'null'); if (raw && raw.versions && raw.versions.length) plan = raw.versions; } catch (e) {} }
+    window.BDV2Movie.render(items, rootEl, plan || []);
   }
   charger();
 })();
