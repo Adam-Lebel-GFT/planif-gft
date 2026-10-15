@@ -563,14 +563,6 @@
           bars += '<path class="bar" d="' + barPath(x, y1, inner, Math.max(hh - gap, 0), top ? 4 : 0) + '" fill="' + o.s.color + '" data-tip="' + esc(tip) + '"/>';
           acc += val;
         });
-        // Trait fin : part des tickets avec code (dessous) / sans code (dessus).
-        var mk = opts.marks && opts.marks[i];
-        if (pct && mk != null && tot) {
-          (Array.isArray(mk) ? mk : [mk]).forEach(function (fr) {
-            var my = yOf(fr * 100);
-            bars += '<line class="bar-mark" x1="' + (x + 1).toFixed(1) + '" x2="' + (x + inner - 1).toFixed(1) + '" y1="' + my.toFixed(1) + '" y2="' + my.toFixed(1) + '"/>';
-          });
-        }
       } else {
         var bw = Math.max((inner - 2 * (k - 1)) / k, 1.5);
         series.forEach(function (s, j) {
@@ -592,7 +584,7 @@
     if (scroll) svg = '<div class="chart-scroll">' + svg + '</div>';
     return svg + (k >= 2 ? '<div class="legend">' + series.map(function (s) {
       return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + esc(s.label) + '</span>';
-    }).join('') + (opts.marks ? '<span class="legend-item legend-mark"><span class="mark-dot"></span>' + esc(opts.markLabel || '') + '</span>' : '') + '</div>' : '');
+    }).join('') + '</div>' : '');
   }
 
   // ── Burn-up d'une version ──────────────────────────────────────────
