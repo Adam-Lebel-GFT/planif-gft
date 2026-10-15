@@ -513,3 +513,6 @@ footer{margin-top:10px; font-size:11.5px; color:var(--muted); line-height:1.6;}
 .ref-edit:hover{border-color:var(--navy); color:var(--navy);}
 .ref-ok{color:var(--green); border-color:var(--green);}
 .ref-field.is-fixed input:disabled, .ref-field.is-fixed select:disabled{background:#EAF1F8; color:var(--accent); border-color:var(--accent); cursor:default;}
+
+.code-line{display:flex; align-items:center; gap:10px; margin-top:8px; font-size:11.5px; color:var(--muted);} .code-line b{color:var(--ink-2); font-weight:600;}
+.code-bar{flex:0 0 90px; height:3px; border-radius:2px; background:var(--border); overflow:hidden;} .code-bar i{display:block; height:100%; background:var(--muted);}

@@ -302,7 +302,7 @@
   // déjà rangée par version), ni la sélection issue d'une alerte (figée sur
   // l'extrait courant).
   var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
-    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
   function scopeKey() { var f = S.filters; return [f.state, f.origin, f.fix, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
   function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
   function scopeLabel() {
@@ -339,18 +339,23 @@
     if (raw) { if (item._byTdRaw) return item._byTdRaw; }
     else if (item._byTd && item._byTdKey === key) return item._byTd;
     var cfg = CFG.get(), bk = cfg.priorities.blockerKeys || ['blocker', 'highest'];
+    var noCodeRes = ((cfg.bilan || {}).resolutions || []).map(C.normalize), noCodeLab = C.normalize((cfg.bilan || {}).labelSansLivraison || '');
     var out = {};
     (item.tickets || []).forEach(function (c) {
       if (!raw && !inScope(c)) return;
       var td = c.td || 'none';
-      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
       var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
       st.total++; st.pctSum += c.pc || 0; if (c.d) st.done++; else st.open++;
       if (isB && !c.d) st.blockersOpen++;
       if (c.o === 'PRJ301') { st.prj301++; if (!c.d) st.prj301Open++; st.byOrigin.PRJ301++; } else st.byOrigin.Interne++;
       if (c.fx) st.hasFix++; if (c.d && !c.fx) st.doneNoFix++;
       st.byStatus[c.st] = (st.byStatus[c.st] || 0) + 1;
-      if (c.d) { var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1; }
+      if (c.d) {
+        var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1;
+        // « sans code » : même définition que le message de fin de version (résolution qui n'est pas un bug, ou étiquette « sans livraison »).
+        if (noCodeRes.indexOf(C.normalize(c.r || '')) !== -1 || (noCodeLab && C.normalize(String(c.lb || '')).indexOf(noCodeLab) !== -1)) st.doneNoCode++; else st.doneCode++;
+      }
       var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
     });
@@ -549,6 +554,15 @@
     });
     if (rest.length) out.push({ key: '\u00a7autres', label: 'Autres résolutions (' + rest.length + ')', color: '#C3CAD5', keys: rest });
     return out;
+  }
+  // Ligne discrète : parmi les tickets terminés, ceux livrés avec du code et ceux sans.
+  function codeLine(pts) {
+    var c = 0, n = 0;
+    pts.forEach(function (p) { if (p && p.st) { c += p.st.doneCode || 0; n += p.st.doneNoCode || 0; } });
+    var t = c + n; if (!t) return '';
+    var pc = Math.round(c / t * 100);
+    return '<div class="code-line" title="Sans code : résolution qui n\'est pas un bug (Configurer, section « Message de fin de version ») ou étiquette « sans livraison »."><span class="code-bar"><i style="width:' + pc + '%"></i></span>' +
+      '<span>' + t + ' terminés · <b>' + c + '</b> avec code (' + pc + ' %) · <b>' + n + '</b> sans code (' + (100 - pc) + ' %)</span></div>';
   }
   function resolutionValue(p, sr) {
     var by = p.st.byRes || {};
@@ -794,7 +808,7 @@
       }
     }
     h += '<div class="card"><div class="card-head"><div><h2>' + esc(title) + '</h2><div class="sub">' + sub + '</div></div><div class="card-tools">' + metricSel + '</div></div>' +
-      '<div class="filter-group" style="margin-top:10px" id="histVersions">' + chips + '</div><div class="chart-body" id="histChart">' + chart + '</div>' + extra + '</div>';
+      '<div class="filter-group" style="margin-top:10px" id="histVersions">' + chips + '</div><div class="chart-body" id="histChart">' + chart + '</div>' + (ui.metric === 'resolution' ? codeLine(sel ? [pts2[pts2.length - 1]] : pts) : '') + extra + '</div>';
 
     // journal : officielles + travail regroupées par version
     var row = function (real, official) {
