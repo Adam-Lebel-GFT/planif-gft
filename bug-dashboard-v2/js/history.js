@@ -547,7 +547,7 @@
     var keys = Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a] || a.localeCompare(b); });
     var shown = keys.length > 8 ? keys.slice(0, 7) : keys, rest = keys.length > 8 ? keys.slice(7) : [];
     // Couleur fixée par résolution (ordre de la config) : la même d'une vue à l'autre.
-    var known = ['Fixed'].concat(CFG.get().bilan.resolutions || []);
+    var known = ['Fixed'].concat((CFG.get().bilan || {}).resolutions || []);
     var out = shown.map(function (k) {
       var i = known.indexOf(k); if (i < 0) i = known.length + keys.indexOf(k);
       return { key: k, label: k, color: k === RES_NONE ? P.NEUTRAL : P.CATEGORICAL[i % P.CATEGORICAL.length] };
