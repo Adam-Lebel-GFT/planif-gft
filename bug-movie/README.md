@@ -12,6 +12,7 @@ Toutes les versions du journal sont affichées par défaut (sélecteur pour ne g
 Une version **terminée et officielle** (Target date atteinte, photo épinglée) reste figée sur sa photo officielle : les photos suivantes ne la modifient plus. Une photo qui ne couvre pas une version (moins de 5 tickets ou moins de la moitié du maximum vu, dans la limite de la taille de la version) ne la vide pas : ses chiffres et ses tickets restent ceux de la photo d'avant.
 
 
+**Lecture** : le film s'arrête sur chaque photo (1,5 s par défaut, réglable : aucun, 0,8 s, 1,5 s, 3 s ; plus court quand la vitesse augmente) pour laisser le temps de lire l'état de la photo.
 **Rendu** (sélecteur sous le graphique, mémorisé dans le navigateur) : *Points* (par défaut) ou *Gouttes d'eau*. En mode Points, chaque ticket qui change de case laisse une traînée d'étoile filante (le flash reste réservé aux reculs de statut). En mode Gouttes d'eau (`water.js`, WebGL2), chaque ticket est une particule d'un petit fluide : les gouttes d'une case forment une flaque, une goutte qui change de case vole et éclabousse, une sortie de version s'évapore vers le nuage, un rejet tombe dans la poubelle. Sans WebGL2, le bouton est grisé.
 **Graphique du bas** : chaque version s'arrête à son Code freeze, lu dans le plan de livraisons publié (`plan_versions`, sinon le plan local du navigateur), avec la même règle de rattachement que le Dashboard (Target date → première version dont le jalon de référence tombe ce jour-là ou après). Sans plan, la courbe va jusqu'au curseur.
 

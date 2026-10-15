@@ -34,7 +34,7 @@
   var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle vole et éclabousse : le ticket change de case</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle : rejetée</span>';
   var RENDER_KEY = 'bdv2:movieRender';
   function savedRender() { try { return localStorage.getItem(RENDER_KEY) === 'water' ? 'water' : 'dots'; } catch (e) { return 'dots'; } }
-  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [] };
+  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [], dwell: 1.5, hold: 0 };
   var WT = null;         // moteur des gouttes d'eau (water.js), créé à la demande
   function waterOn() { return ui.render === 'water' && !!WT; }
   var M = null;          // données construites (photos, tickets, positions)
@@ -418,14 +418,21 @@
     raf = 0; if (!M || !$('mvBoard')) return;
     if (ui.playing) {
       var dt = Math.min(.1, (ts - last) / 1000), end = M.T[M.T.length - 1];
-      ui.t += dt * ui.speed * 1.2; if (ui.t >= end) { ui.t = end; setPlay(false); }
+      // arrêt sur chaque photo : le film s'immobilise le temps de lire l'état, puis repart
+      if (ui.hold > 0) ui.hold -= dt;
+      else {
+        var nt = ui.t + dt * ui.speed * 1.2, nx = 0; while (nx < M.T.length && M.T[nx] <= ui.t + 1e-9) nx++;
+        if (nx < M.T.length && nt >= M.T[nx] && ui.dwell > 0) { nt = M.T[nx]; ui.hold = ui.dwell / Math.sqrt(ui.speed); }
+        ui.t = nt;
+        if (ui.t >= end) { ui.t = end; setPlay(false); }
+      }
       render();
     }
     last = ts; if (ui.playing) raf = requestAnimationFrame(frame);
   }
   function setPlay(on) {
     ui.playing = on; var b = $('mvPlay'); if (b) b.textContent = on ? '❚❚ Pause' : '▶ Lire';
-    if (on) { if (ui.t >= M.T[M.T.length - 1] - .01) ui.t = 0; last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); }
+    if (on) { ui.hold = 0; if (ui.t >= M.T[M.T.length - 1] - .01) ui.t = 0; last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); }
   }
 
   // ── Gouttes d'eau : la physique tourne en continu, même en pause ────
@@ -546,15 +553,17 @@
       '<div class="mv-legend" id="mvLegend"></div>' +
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
+      '<span class="mv-hint">Arrêt sur chaque photo</span><span class="seg" role="group" aria-label="Arrêt sur chaque photo">' + [[0, 'Aucun'], [.8, '0,8 s'], [1.5, '1,5 s'], [3, '3 s']].map(function (s) { return '<button type="button" data-mv-dwell="' + s[0] + '"' + (ui.dwell === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span>' +
       '<span class="mv-hint">Rendu</span><span class="seg" role="group" aria-label="Rendu"><button type="button" data-mv-render="dots"' + (ui.render !== 'water' ? ' class="is-on"' : '') + '>Points</button><button type="button" data-mv-render="water"' + (ui.render === 'water' ? ' class="is-on"' : '') + (waterOk ? '' : ' disabled title="Ce navigateur ne gère pas WebGL2"') + '>Gouttes d\'eau</button></span>' +
       '<span class="mv-dotonly"><span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></span></div></div></div>';
     $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(ui.items, ui.rootEl, true); });
     $('mvPlay').addEventListener('click', function () { setPlay(!ui.playing); });
     $('mvSlider').addEventListener('input', function () { ui.t = this.value / 6000 * M.T[M.T.length - 1]; render(); });
     rootEl.addEventListener('click', function (e) {
-      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), rd = e.target.closest('[data-mv-render]');
+      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), rd = e.target.closest('[data-mv-render]'), dw = e.target.closest('[data-mv-dwell]');
       var pick = function (btn, attr, fn) { fn(btn.getAttribute(attr)); [].forEach.call(btn.parentNode.children, function (x) { x.classList.toggle('is-on', x === btn); }); };
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
+      if (dw) pick(dw, 'data-mv-dwell', function (v) { ui.dwell = +v; ui.hold = Math.min(ui.hold, ui.dwell); });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
       if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml(); render(); }
       if (rd && !rd.disabled) setRender(rd.getAttribute('data-mv-render'));
