@@ -1,7 +1,7 @@
 # Bug movie
 
-Outil du toolkit (slug `bug-movie`) qui rejoue les photos du journal : chaque ticket est un point
-(couleur d'équipe, ou de version au choix) qui avance de statut en statut, une ligne par version
+Outil du toolkit (slug `bug-movie`) qui rejoue les photos du journal : chaque ticket est une goutte
+d'eau qui avance de statut en statut, une ligne par version
 (toutes les Target dates du journal par défaut). Un curseur avance et recule dans le temps, avec au-dessus un calendrier à la même échelle (une bande par semaine ISO, « S38 » et ses dates, puis le numéro de chaque jour ouvré) ; sous le tableau,
 les aires ouvert / terminé de chaque version se chevauchent sur l'axe des dates, sous la barre
 « aujourd'hui », et les chiffres suivent le curseur. Le pourcentage de chaque carte de version est **pondéré par statut** (Σ poids du statut / nb tickets, mêmes poids que le Dashboard Stabilisation), pas le seul ratio de tickets terminés. Un ticket qui n'est plus dans aucune des versions
@@ -12,8 +12,8 @@ Toutes les versions du journal sont affichées par défaut (sélecteur pour ne g
 Une version **terminée et officielle** (Target date atteinte, photo épinglée) reste figée sur sa photo officielle : les photos suivantes ne la modifient plus. Une photo qui ne couvre pas une version (moins de 5 tickets ou moins de la moitié du maximum vu, dans la limite de la taille de la version) ne la vide pas : ses chiffres et ses tickets restent ceux de la photo d'avant.
 
 
-**Lecture** : le film s'arrête sur chaque photo (1,5 s par défaut, réglable : aucun, 0,3 s, 0,5 s, 0,8 s, 1,5 s, 3 s ; plus court quand la vitesse augmente) pour laisser le temps de lire l'état de la photo.
-**Rendu** (sélecteur sous le graphique, mémorisé dans le navigateur) : *Points* (par défaut) ou *Gouttes d'eau*. En mode Points, chaque ticket qui change de case laisse une traînée d'étoile filante (le flash reste réservé aux reculs de statut). En mode Gouttes d'eau (`water.js`, WebGL2), chaque ticket est une particule d'un petit fluide : les gouttes d'une case forment une flaque, une goutte qui change de case dans le tableau glisse le long du fond jusqu'à sa nouvelle flaque (elle ne vole et n'éclabousse qu'en arrivant du nuage ou en revenant de la poubelle), une sortie de version s'évapore vers le nuage, un rejet tombe dans la poubelle, où l'eau s'accumule. Sans WebGL2, le bouton est grisé.
+**Lecture** : le film s'arrête sur chaque photo (0,5 s par défaut, réglable : aucun, 0,3 s, 0,5 s, 0,8 s, 1,5 s, 3 s ; plus court quand la vitesse augmente) pour laisser le temps de lire l'état de la photo.
+**Rendu** : gouttes d'eau seulement (`water.js`, WebGL2 ; le mode Points a été retiré). Chaque ticket est une particule d'un petit fluide : les gouttes d'une case forment une flaque, une goutte qui change de case dans le tableau glisse le long du fond jusqu'à sa nouvelle flaque (elle ne vole et n'éclabousse qu'en arrivant du nuage ou en revenant de la poubelle), une sortie de version s'évapore vers le nuage, un rejet tombe dans la poubelle, où l'eau s'accumule. Sans WebGL2, les tickets s'affichent en points colorés par équipe (repli).
 **Graphique du bas** : chaque version s'arrête à son Code freeze, lu dans le plan de livraisons publié (`plan_versions`, sinon le plan local du navigateur), avec la même règle de rattachement que le Dashboard (Target date → première version dont le jalon de référence tombe ce jour-là ou après). Sans plan, la courbe va jusqu'au curseur.
 
 **Colonnes** : Dev done et Closed ne forment qu'une colonne, « Dev done + Closed ». Seuls les tickets de résolution Done y restent : toute autre résolution part à la poubelle (rangée sous son motif, ou « Autre » si elle n'est pas connue).

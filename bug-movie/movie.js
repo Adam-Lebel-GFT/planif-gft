@@ -1,8 +1,8 @@
 /* ════════════════════════════════════════════════════════════════════
    Film Stabilisation : les photos du journal du Dashboard Stabilisation rejouées.
-   Chaque ticket est un point coloré (équipe ou version) qui se déplace de
-   statut en statut, version par version ; au choix, chaque ticket est une
-   goutte d'eau et chaque case une flaque (water.js). Un ticket qui sort d'une version va
+   Chaque ticket est une goutte d'eau qui se déplace de statut en statut,
+   version par version, et chaque case une flaque (water.js) ; sans WebGL2,
+   repli sur des points colorés par équipe. Un ticket qui sort d'une version va
    dans le nuage ; un ticket rejeté (Declined, Duplicate, Not replicable,
    Incomplete, Abandoned) va à la poubelle. Dessous, les aires ouvert/terminé
    de chaque version se chevauchent sur l'axe des dates, sous la barre
@@ -37,9 +37,8 @@
   var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span>';
   var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
   var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle glisse vers sa nouvelle case : le ticket change de statut ou de version</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle, qui se remplit : rejetée</span>';
-  var RENDER_KEY = 'bdv2:movieRender';
-  function savedRender() { try { return localStorage.getItem(RENDER_KEY) === 'water' ? 'water' : 'dots'; } catch (e) { return 'dots'; } }
-  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [], dwell: 1.5, hold: 0 };
+  // Rendu unique : les gouttes d'eau. Les points ne servent plus que de repli sans WebGL2.
+  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: 'water', plan: [], dwell: .5, hold: 0 };
   var WT = null;         // moteur des gouttes d'eau (water.js), créé à la demande
   function waterOn() { return ui.render === 'water' && !!WT; }
   var M = null;          // données construites (photos, tickets, positions)
@@ -500,7 +499,7 @@
   }
   function setRender(mode) {
     if (mode === 'water' && !WT) { WT = root.BDV2Water && root.BDV2Water.create($('mvWater')); if (!WT) mode = 'dots'; }
-    ui.render = mode; try { localStorage.setItem(RENDER_KEY, mode); } catch (e) {}
+    ui.render = mode;
     [].forEach.call(document.querySelectorAll('[data-mv-render]'), function (b) { b.classList.toggle('is-on', b.getAttribute('data-mv-render') === mode); });
     var on = waterOn();
     $('mvCard').classList.toggle('mv-is-water', on);
@@ -574,10 +573,10 @@
     }).join('');
     var waterOk = !!(root.BDV2Water && root.BDV2Water.supported());
     WT = null;                                         // nouveau canevas : le moteur d'eau sera recréé dessus
-    if (!waterOk) ui.render = 'dots';
+    ui.render = waterOk ? 'water' : 'dots';
     var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
     rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Film Stabilisation</h2>' +
-      '<div class="sub">Les photos du journal rejouées : chaque ticket est un point (ou une goutte d\'eau) qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
+      '<div class="sub">Les photos du journal rejouées : chaque ticket est une goutte d\'eau qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
       '<div class="card-tools"><select class="dim-select" id="mvN" aria-label="Versions affichées">' + nOpts + '</select></div></div>' +
       '<div id="mvHost"><div class="mv-tiles">' + tiles + '</div>' +
       '<div class="mv-flow"><div class="mv-lbl" id="mvFlowLbl"></div></div>' +
@@ -588,19 +587,17 @@
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
       '<span class="mv-hint">Arrêt sur chaque photo</span><span class="seg" role="group" aria-label="Arrêt sur chaque photo">' + [[0, 'Aucun'], [.3, '0,3 s'], [.5, '0,5 s'], [.8, '0,8 s'], [1.5, '1,5 s'], [3, '3 s']].map(function (s) { return '<button type="button" data-mv-dwell="' + s[0] + '"' + (ui.dwell === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span>' +
-      '<span class="mv-hint">Rendu</span><span class="seg" role="group" aria-label="Rendu"><button type="button" data-mv-render="dots"' + (ui.render !== 'water' ? ' class="is-on"' : '') + '>Points</button><button type="button" data-mv-render="water"' + (ui.render === 'water' ? ' class="is-on"' : '') + (waterOk ? '' : ' disabled title="Ce navigateur ne gère pas WebGL2"') + '>Gouttes d\'eau</button></span>' +
-      '<span class="mv-dotonly"><span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></span></div></div></div>';
+      (waterOk ? '' : '<span class="mv-hint">Ce navigateur ne gère pas WebGL2 : les tickets sont affichés en points.</span>') + '</div></div></div>';
     $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(ui.items, ui.rootEl, true); });
     $('mvPlay').addEventListener('click', function () { setPlay(!ui.playing); });
     $('mvSlider').addEventListener('input', function () { ui.t = this.value / 6000 * M.T[M.T.length - 1]; render(); });
     rootEl.addEventListener('click', function (e) {
-      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), rd = e.target.closest('[data-mv-render]'), dw = e.target.closest('[data-mv-dwell]');
+      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), dw = e.target.closest('[data-mv-dwell]');
       var pick = function (btn, attr, fn) { fn(btn.getAttribute(attr)); [].forEach.call(btn.parentNode.children, function (x) { x.classList.toggle('is-on', x === btn); }); };
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
       if (dw) pick(dw, 'data-mv-dwell', function (v) { ui.dwell = +v; ui.hold = Math.min(ui.hold, ui.dwell); });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
       if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml(); render(); }
-      if (rd && !rd.disabled) setRender(rd.getAttribute('data-mv-render'));
     });
     sizeCanvases();
     setRender(ui.render);
