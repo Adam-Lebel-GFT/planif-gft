@@ -461,6 +461,7 @@
   function setRender(mode) {
     if (mode === 'water' && !WT) { WT = root.BDV2Water && root.BDV2Water.create($('mvWater')); if (!WT) mode = 'dots'; }
     ui.render = mode; try { localStorage.setItem(RENDER_KEY, mode); } catch (e) {}
+    [].forEach.call(document.querySelectorAll('[data-mv-render]'), function (b) { b.classList.toggle('is-on', b.getAttribute('data-mv-render') === mode); });
     var on = waterOn();
     $('mvCard').classList.toggle('mv-is-water', on);
     $('mvLegend').innerHTML = legendHtml();
@@ -556,7 +557,7 @@
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
       if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml(); render(); }
-      if (rd && !rd.disabled) pick(rd, 'data-mv-render', setRender);
+      if (rd && !rd.disabled) setRender(rd.getAttribute('data-mv-render'));
     });
     sizeCanvases();
     setRender(ui.render);
