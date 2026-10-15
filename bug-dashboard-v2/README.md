@@ -361,11 +361,10 @@ par version en **bandes empilées à 100 %** ; dans **une version**, des **aires
 calendrier (barres à 100 % par photo quand le plan ne donne pas ses dates). La résolution la plus
 fréquente est en bas ; au-delà de huit bandes, les plus rares sont regroupées en « Autres
 résolutions ». Chaque résolution garde sa couleur d'une vue à l'autre.
-Des **traits fins** dans chaque barre à 100 % découpent les tickets terminés en trois lots, de bas en haut :
-**avec code** (Fix Version renseignée au nom de la version — y compris pour un ticket étiqueté
-`fixed_no-release` dont le numéro de version correspond), **Fixed no release** (étiquette `fixed_no-release`
-sans Fix Version de cette version, entre les deux traits) et **sans code** (pas de Fix Version au nom de la
-version). Une ligne discrète sous le graphique donne les chiffres de chaque lot.
+Une ligne discrète sous le graphique découpe les tickets terminés en trois lots : **avec code** (Fix Version
+renseignée au nom de la version — y compris pour un ticket `fixed_no-release` dont le numéro correspond),
+**Fixed no release** (étiquette `fixed_no-release` sans Fix Version de cette version) et **sans code** (pas de
+Fix Version au nom de la version). Les barres n'ont pas de trait séparateur.
 
 Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
 pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →

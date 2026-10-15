@@ -638,9 +638,7 @@
     if (metric === 'resolution') {
       var rs = resolutionSeries(points);
       if (!rs.length) return '<div class="empty">Aucun ticket terminé dans cette sélection.</div>';
-      var marks = points.map(function (p) { var o = p.st ? codeSplit(p) : null, t = o ? o.c + o.f + o.n : 0; return t ? [o.c / t, (o.c + o.f) / t] : null; });
-      return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }),
-        { marks: marks, markLabel: 'traits : avec code (dessous) | Fixed no release | sans code (dessus)' });
+      return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }));
     }
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
