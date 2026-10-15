@@ -320,7 +320,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
         <div class="seg" id="seg-unit">
           <button data-u="JP" class="active">Jours-personne</button>
           <button data-u="SP">Story points</button>
-          <button data-u="BUG" title="Capacité dédiée aux bugs : part « Bogues » du temps, convertie avec la vélocité Bugs">Bugs</button>
+          <button data-u="BUG" title="Capacité dédiée aux bugs : part du temps dédiée aux bugs, convertie avec la vélocité Bugs">Bugs</button>
           <button data-u="TOT" title="Output total = capacité en story points + capacité Bugs">Output total</button>
         </div>
         <button class="pptx-btn" id="btn-reorg" title="Ouvrir le tableau blanc de réorganisation des équipes (déplacer les équipiers, noter de 1 à 3)">🧩 Réorganisation des teams</button>
@@ -377,8 +377,8 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     <div>
       <div class="sb-group-title">Tâches hors récits</div>
       <div class="sb-row"><span class="sb-lbl">Cérémonies agiles</span><input class="sb-input" id="sb-agile" type="number" step="1" min="0" max="100" value="10"></div>
-      <div class="sb-row"><span class="sb-lbl">Bogues</span><input class="sb-input" id="sb-bogues" type="number" step="1" min="0" max="100" value="10"></div>
-      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5">Cette part du temps est retirée des story points et forme la capacité « Bugs ».</div>
+      <div class="sb-row"><span class="sb-lbl">Part du temps dédiée aux bugs</span><input class="sb-input" id="sb-bugs-share" type="number" step="1" min="0" max="100" value="100"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5">100 % = équipes entièrement dédiées aux bugs (stabilisation) : la capacité Bugs prend tout le temps net et les story points tombent à 0. Le reste va en story points.</div>
     </div>
     <div class="sb-divider"></div>
     <div>
@@ -440,7 +440,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 'use strict';
 
 // ── Paramètres de calcul (modifiables via la sidebar) ──
-var P = { vc:2.0, vi:2.0, vt:2.0, vb:0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10,
+var P = { vc:2.0, vi:2.0, vt:2.0, vb:0, agile:0.10, bogues:1.0, raff:0.20, supp:0.10,
   sp_on:false, sp_pct:0.30, sp_dow:2, sp_every:3, sp_anchor:'' };   // sprint planning : récurrence + diminution de la journée
 var ITSET = new Set(['INTEG 4','INTEG 5']);
 var TTSET = new Set(['TRANS']);
@@ -549,7 +549,7 @@ function leadRateOf(p){ return isLead(p.role) ? Math.max(0, 1 - P.raff - P.supp)
 function spPerJP(p){ var v=velFor(p.team); return leadRateOf(p) * (1-P.agile) * (1-P.bogues) / (v>0?v:1); }
 // Vélocité des bugs (JP par SP) : réglage « BUGS » ; vide = même vélocité que l'équipe en story points.
 function velBugs(team){ return P.vb>0 ? P.vb : velFor(team); }
-// Points de bugs par 1 JP de disponibilité brute : la part « Bogues » du temps, convertie avec la vélocité Bugs.
+// Points de bugs par 1 JP de disponibilité brute : la part du temps dédiée aux bugs, convertie avec la vélocité Bugs.
 function bugPerJP(p){ var v=velBugs(p.team); return leadRateOf(p) * (1-P.agile) * P.bogues / (v>0?v:1); }
 // Unité courante par 1 JP de disponibilité brute, et valeur « théorique » par jour de présence à 100 %.
 function unitPerJP(p){ return unit==='JP' ? 1 : unit==='SP' ? spPerJP(p) : unit==='BUG' ? bugPerJP(p) : spPerJP(p)+bugPerJP(p); }
@@ -902,7 +902,7 @@ function renderKPIs(){
   $('#k1v').textContent = ppl.length;
   $('#k1s').textContent = 'sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
   $('#k2v').textContent = f1(tot); $('#k2u').textContent = UNIT_LBL[unit];
-  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile/bogues appliqués':unit==='BUG'?' · part bogues, lead/agile appliqués':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
+  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile appliqués, hors part bugs':unit==='BUG'?' · part dédiée aux bugs, lead/agile appliqués':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
   $('#k3l').textContent = 'Moyenne / '+granLbl;
   $('#k3v').textContent = f1(per); $('#k3u').textContent = UNIT_LBL[unit];
   $('#k3s').textContent = pers.length+' période(s)';
@@ -998,7 +998,7 @@ function renderGantt(){
         wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); pDays++; pU+=p.alloc*unitPerJP(p)*f; } });
         // En-tête de la personne : CAF théorique (jours de présence à 100 %, avant toute diminution) › CAF réelle (toutes diminutions appliquées).
         var pTheo=pDays*theoPerDay(p), pReal=pU;
-        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot"><span class="gp-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(pTheo)+'</span> \u203a <span title="CAF réelle : affectation, tâches de lead, cérémonies, bogues et sprint planning appliqués">'+f1(pReal)+'</span> '+UNIT_LBL[unit]+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
+        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot"><span class="gp-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(pTheo)+'</span> \u203a <span title="CAF réelle : affectation, tâches de lead, cérémonies, part bugs et sprint planning appliqués">'+f1(pReal)+'</span> '+UNIT_LBL[unit]+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
         dates.forEach(function(d){
           if(isWE(d)){ h+='<td class="gc we" data-col="'+d+'"></td>'; return; }
           if(!activeOn(p,d)){ h+='<td class="gc na" data-col="'+d+'" title="'+d+' · hors période"></td>'; return; }
@@ -1492,7 +1492,7 @@ function updateLeadCalc(){
 function openSidebar(){ $('#sidebar').classList.add('open'); $('#sidebar-overlay').classList.add('visible'); }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('visible'); }
 // Paramètres du tiroir : mémorisés dans ce navigateur et rétablis à chaque ouverture de la page.
-var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-vel-bugs','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags','sb-sp-on','sb-sp-pct','sb-sp-dow','sb-sp-every','sb-sp-anchor'];
+var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-vel-bugs','sb-agile','sb-bugs-share','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags','sb-sp-on','sb-sp-pct','sb-sp-dow','sb-sp-every','sb-sp-anchor'];
 var PARAM_KEY='planif:analyse-capacite:params';
 function saveParams(){
   try { var o={}; PARAM_IDS.forEach(function(id){ var el=$('#'+id); o[id]=(el.type==='checkbox')?el.checked:el.value; }); localStorage.setItem(PARAM_KEY, JSON.stringify(o)); } catch(e){}
@@ -1507,7 +1507,7 @@ function restoreParams(){
 function applyParams(){
   P.vc=posf($('#sb-vel-conf').value); P.vi=posf($('#sb-vel-integ').value); P.vt=posf($('#sb-vel-trans').value);
   P.vb=parseFloat($('#sb-vel-bugs').value)>0 ? parseFloat($('#sb-vel-bugs').value) : 0; // vide = vélocité SP de l'équipe
-  P.agile=pct($('#sb-agile').value); P.bogues=pct($('#sb-bogues').value);
+  P.agile=pct($('#sb-agile').value); P.bogues=pct($('#sb-bugs-share').value);
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
   TTSET=new Set(parseTeams($('#sb-teams-trans').value));
