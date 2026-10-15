@@ -500,7 +500,6 @@
   function setRender(mode) {
     if (mode === 'water' && !WT) { WT = root.BDV2Water && root.BDV2Water.create($('mvWater')); if (!WT) mode = 'dots'; }
     ui.render = mode;
-    [].forEach.call(document.querySelectorAll('[data-mv-render]'), function (b) { b.classList.toggle('is-on', b.getAttribute('data-mv-render') === mode); });
     var on = waterOn();
     $('mvCard').classList.toggle('mv-is-water', on);
     $('mvLegend').innerHTML = legendHtml();
@@ -592,12 +591,11 @@
     $('mvPlay').addEventListener('click', function () { setPlay(!ui.playing); });
     $('mvSlider').addEventListener('input', function () { ui.t = this.value / 6000 * M.T[M.T.length - 1]; render(); });
     rootEl.addEventListener('click', function (e) {
-      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), dw = e.target.closest('[data-mv-dwell]');
+      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), dw = e.target.closest('[data-mv-dwell]');
       var pick = function (btn, attr, fn) { fn(btn.getAttribute(attr)); [].forEach.call(btn.parentNode.children, function (x) { x.classList.toggle('is-on', x === btn); }); };
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
       if (dw) pick(dw, 'data-mv-dwell', function (v) { ui.dwell = +v; ui.hold = Math.min(ui.hold, ui.dwell); });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
-      if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml(); render(); }
     });
     sizeCanvases();
     setRender(ui.render);
