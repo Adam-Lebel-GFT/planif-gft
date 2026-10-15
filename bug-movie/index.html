@@ -64,7 +64,15 @@
           try { profil = await A.monProfil(); } catch (e) {}
           document.getElementById('topbarUser').innerHTML = 'Connecté : <b>' + esc(profil ? profil.nom_utilisateur : 'connecté') + '</b>';
           await CFG.loadRemote(client, session.user.id);
-          var res = await client.from('bdv2_analyses').select('id,cree_le,nom,hash,nb_tickets,tickets,epingle').order('cree_le', { ascending: true }).limit(120);
+          // Lecture par pages : une seule requête plafonnée coupait les analyses les plus récentes.
+          var res = { data: [], error: null }, from = 0, PAGE = 40;
+          for (;;) {
+            var pg = await client.from('bdv2_analyses').select('id,cree_le,nom,hash,nb_tickets,tickets,epingle').order('cree_le', { ascending: true }).order('id', { ascending: true }).range(from, from + PAGE - 1);
+            if (pg.error) { res.error = pg.error; break; }
+            res.data = res.data.concat(pg.data || []);
+            if ((pg.data || []).length < PAGE) break;
+            from += PAGE;
+          }
           if (!res.error) {
             items = (res.data || []).map(function (r) { return { id: r.id, at: r.cree_le, nom: r.nom, hash: r.hash, nb: r.nb_tickets, tickets: r.tickets || [], epingle: r.epingle }; });
             badge.className = 'mode-badge'; badge.innerHTML = '● Journal partagé du Dashboard Stabilisation';
