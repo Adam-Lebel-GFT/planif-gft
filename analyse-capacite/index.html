@@ -1009,7 +1009,8 @@ function ganttToBlob(){
   var st=document.createElement('style');
   st.textContent='#shot-box .gt th,#shot-box .gt td{position:static !important}#shot-box .gt{width:max-content}';
   box.id='shot-box'; box.appendChild(st);
-  box.appendChild(src.cloneNode(true));
+  var clone=src.cloneNode(true); clone.removeAttribute('id'); // évite deux #gantt dans la page
+  box.appendChild(clone);
   document.body.appendChild(box);
   var p=(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){
     return html2canvas(box,{backgroundColor:'#ffffff',scale:2,logging:false});
