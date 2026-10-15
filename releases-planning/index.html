@@ -18,12 +18,8 @@
 body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; }
 .hidden { display: none !important; }
 
-.hero { max-width: 1300px; margin: 0 auto; padding: 32px 32px 20px; }
-.eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
-h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy); }
-.sub { margin-top: 8px; color: var(--muted); font-size: 13px; max-width: 720px; }
 
+.tk-hero + .panel { margin-top: 20px; }
 .panel { max-width: 1300px; margin: 0 auto 20px; padding: 0 32px; }
 .card { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-2); padding: 18px 22px; }
 .card h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .3px; color: var(--navy); margin-bottom: 4px; text-transform: uppercase; }
@@ -154,7 +150,7 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
 .legend-note { font-size: 10.5px; color: var(--muted); padding: 0 20px 14px; background: var(--bg); }
 </style>
 </head>
-<body>
+<body class="tk-page">
 
 <header class="tk-topbar">
   <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
@@ -165,10 +161,11 @@ h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; color: var(--navy
   <span class="tk-topbar__version">v1</span>
 </header>
 
-<div class="hero">
-  <div class="eyebrow">Stabilisation · Cadence en train (chevauchement)</div>
-  <h1>Plan de livraisons de stabilisation</h1>
-  <p class="sub">Une ligne par version, avec ses phases et ses jalons. Les versions se chevauchent façon "train" : la version suivante démarre avant la fin de la précédente. Éditez le nom, les phases et les dates d'une version directement sur sa ligne du board (icônes ✎ / 🗑).</p>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+  <h1 class="tk-hero__title">Plan de livraisons de stabilisation</h1>
+  <p class="tk-hero__sub">Une ligne par version, avec ses phases et ses jalons. Les versions se chevauchent façon "train" : la version suivante démarre avant la fin de la précédente. Éditez le nom, les phases et les dates d'une version directement sur sa ligne du board (icônes ✎ / 🗑).</p>
+</div>
 </div>
 
 <div class="panel">

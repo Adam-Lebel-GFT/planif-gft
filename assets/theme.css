@@ -236,3 +236,54 @@
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
 .tk-topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── Page « style Capacité à faire » : fond quadrillé + titre ──
+   Convention : tout outil de la plateforme pose `class="tk-page"` sur
+   <body> et ouvre sa page par un bandeau .tk-hero juste sous le
+   .tk-topbar (voir CONTRIBUTING.md, « Charte visuelle »).
+
+     <body class="tk-page">
+       <header class="tk-topbar">…</header>
+       <div class="tk-hero">
+         <div class="tk-hero__text">
+           <h1 class="tk-hero__title">Nom de l'outil</h1>
+           <p class="tk-hero__sub">Une phrase qui dit à quoi sert l'outil.</p>
+         </div>
+         <div class="tk-hero__aside">…(optionnel : badge, note)…</div>
+       </div>
+       <main>…</main>
+
+   Pas de ligne « Agile Toolkit » dans le titre (déjà dans la topbar).
+   Thème sombre / variantes : surcharger --tk-hero-bg, --tk-hero-line,
+   --tk-hero-ink, --tk-hero-muted et --tk-grid-line sur :root.
+   Le quadrillage passe derrière le contenu (z-index négatif) : le fond de
+   page est donc porté par <html>, <body> reste transparent. */
+html:has(body.tk-page) { background: var(--tk-page-bg, var(--bg, #F4F5F7)); }
+body.tk-page { background: transparent; }
+body.tk-page::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(var(--tk-grid-line, rgba(12,26,46,.03)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tk-grid-line, rgba(12,26,46,.03)) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.tk-hero {
+  position: relative; z-index: 1;
+  background: var(--tk-hero-bg, #FFFFFF);
+  border-bottom: 1px solid var(--tk-hero-line, #E8EAED);
+  padding: 24px 40px 16px;
+  display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px 32px;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.tk-hero__text { flex: 1; min-width: 0; }
+.tk-hero__title {
+  margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -1px;
+  line-height: 1.1; color: var(--tk-hero-ink, #0C1A2E);
+}
+.tk-hero__sub {
+  margin: 6px 0 0; font-size: 13px; line-height: 1.6;
+  color: var(--tk-hero-muted, #6B7A90);
+}
+.tk-hero__aside { flex-shrink: 0; }
+@media (max-width: 760px) { .tk-hero { padding: 20px 16px 14px; } .tk-hero__title { font-size: 24px; } }

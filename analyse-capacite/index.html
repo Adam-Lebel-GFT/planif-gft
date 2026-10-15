@@ -31,7 +31,6 @@
   --radius:6px; --radius2:12px;
 }
 html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-serif;color:var(--text)}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(12,26,46,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(12,26,46,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 
 /* ── Topbar ── */
 .topbar{position:relative;z-index:80;background:var(--navy);height:56px;display:flex;align-items:center;padding:0 40px;gap:12px}
@@ -46,9 +45,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .params-btn svg{width:13px;height:13px;flex-shrink:0}
 
 /* ── Hero ── */
-.hero{position:relative;z-index:1;background:var(--white);border-bottom:1px solid var(--grey2);padding:24px 40px 16px;display:flex;align-items:flex-end;gap:32px}
-.hero-title{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:var(--navy)}
-.hero-sub{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
 
 .main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:6px 24px 80px}
 .label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin:26px 0 12px;display:flex;align-items:center;gap:10px}
@@ -210,10 +206,10 @@ table.gt{border-collapse:separate;border-spacing:0;font-family:'DM Mono',monospa
 footer{position:relative;z-index:1;border-top:1px solid var(--grey2);padding:18px 40px;display:flex;align-items:center;gap:12px;background:var(--white);margin-top:40px}
 .footer-dot{width:6px;height:6px;background:var(--accent)}
 footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);letter-spacing:1px;text-transform:uppercase}
-@media (max-width:760px){ .hero{padding:24px}.topbar{padding:0 20px}.main{padding:20px 12px 60px} }
+@media (max-width:760px){ .topbar{padding:0 20px}.main{padding:20px 12px 60px} }
 </style>
 </head>
-<body>
+<body class="tk-page">
 
 <header class="tk-topbar">
   <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
@@ -229,10 +225,10 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
   </button>
 </header>
 
-<div class="hero">
-  <div style="flex:1">
-    <div class="hero-title">Capacité à faire</div>
-    <div class="hero-sub">Déposez le fichier planning, filtrez les personnes, lisez la capacité par jour, semaine, mois, sprint ou version.</div>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+    <h1 class="tk-hero__title">Capacité à faire</h1>
+    <p class="tk-hero__sub">Déposez le fichier planning, filtrez les personnes, lisez la capacité par jour, semaine, mois, sprint ou version.</p>
   </div>
 </div>
 

@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="movie.css">
 <link rel="stylesheet" href="../assets/theme.css">
 </head>
-<body>
+<body class="tk-page">
 
 <header class="tk-topbar">
   <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
@@ -25,14 +25,15 @@
   </div>
 </header>
 
-<main>
-  <div class="hero">
-    <div>
-      <h1>Film Stabilisation</h1>
-      <p>Les photos du journal du Dashboard Stabilisation rejouées : chaque ticket est un point qui avance de statut en statut, version par version.</p>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+    <h1 class="tk-hero__title">Film Stabilisation</h1>
+    <p class="tk-hero__sub">Les photos du journal du Dashboard Stabilisation rejouées : chaque ticket est un point qui avance de statut en statut, version par version.</p>
       <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
-    </div>
   </div>
+</div>
+
+<main>
   <div id="movieRoot"></div>
 </main>
 
