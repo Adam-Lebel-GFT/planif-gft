@@ -309,7 +309,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="kgrid">
       <div class="kpi"><div class="kpi-lbl">Personnes</div><div class="kpi-val" id="k1v">–</div><div class="kpi-sub" id="k1s"></div></div>
       <div class="kpi"><div class="kpi-lbl">Présences</div><div class="kpi-val"><span id="k4v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>%</span></div><div class="kpi-sub" id="k4s"></div></div>
-      <div class="kpi"><div class="kpi-lbl">CAF brute</div><div class="kpi-val"><span id="k6v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">jours présents × allocation</div></div>
+      <div class="kpi"><div class="kpi-lbl">CAF brute</div><div class="kpi-val"><span id="k6v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">jours présents</div></div>
       <div class="kpi"><div class="kpi-lbl">CAF nette</div><div class="kpi-val"><span id="k5v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">cérémonies, lead et sprint planning déduits</div></div>
       <div class="kpi"><div class="kpi-lbl">Capacité totale</div><div class="kpi-val"><span id="k2v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k2u">JP</span></div><div class="kpi-sub" id="k2s"></div></div>
       <div class="kpi"><div class="kpi-lbl" id="k3l">Moyenne / sprint</div><div class="kpi-val"><span id="k3v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k3u">JP</span></div><div class="kpi-sub" id="k3s"></div></div>
@@ -476,7 +476,7 @@ var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
 var unit = 'JP';           // JP | SP | BUG (capacité bugs) | TOT (output total = SP + bugs)
 var UNIT_KEY = { JP:'jp', SP:'sp', BUG:'bg', TOT:'tot' };
-var UNIT_LBL = { JP:'JP', SP:'SP', BUG:'SP bugs', TOT:'SP total' };
+var UNIT_LBL = { JP:'JP', SP:'SP', BUG:'bugs', TOT:'pts' };
 var UNIT_LONG = { JP:'jours-personne', SP:'story points', BUG:'story points de bugs', TOT:'output total (story points + bugs)' };
 var rangeStart = null, rangeEnd = null;
 var hi = new Set();        // jours mis en évidence (Gantt)
@@ -773,9 +773,8 @@ function spPreview(){
   el.textContent = out.length ? 'Prochains : '+out.join(' · ') : 'Aucune occurrence.';
 }
 
-// Valeur de l'unité courante dans une agrégation, et part retirée par le sprint planning.
+// Valeur de l'unité courante dans une agrégation.
 function uv(a){ return a[UNIT_KEY[unit]]; }
-function upl(a){ return a['pl_'+UNIT_KEY[unit]]; }
 // Capacité d'une journée : jp / sp tiennent compte du sprint planning ; pres (présence) n'en tient pas compte ;
 // pl_jp / pl_sp = capacité retirée par le sprint planning.
 function dayAgg(ds, ppl){
@@ -899,15 +898,16 @@ function toggleFilter(set, val, totalCount){
 // ── Rendu : KPI ──
 function renderKPIs(){
   var ppl=activeSel(), pers=periods();
-  var tot=0, net=0, brut=0, abs=0, pres0=0, pl=0;
-  pers.forEach(function(g){ var a=aggPeriod(g, ppl); tot+=uv(a); net+=a.net; brut+=a.jp; abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
-  var ouvres = viewWeekdays().length;
+  var tot=0, net=0, brut=0, spT=0, bgT=0, abs=0, pres0=0;
+  pers.forEach(function(g){ var a=aggPeriod(g, ppl); tot+=uv(a); spT+=a.sp; bgT+=a.bg; net+=a.net; brut+=a.jp; abs+=a.abs; pres0+=a.pres; });
+  if(unit==='JP') tot=net; // en jours-personne, la capacité totale est la CAF nette
   var per = pers.length ? tot/pers.length : 0;
   var granLbl = GRAN_NOUN[gran];
   $('#k1v').textContent = ppl.length;
   $('#k1s').textContent = f1(ppl.reduce(function(t,p){ return t+p.alloc; },0))+' ETP · sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
   $('#k2v').textContent = f1(tot); $('#k2u').textContent = UNIT_LBL[unit];
-  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile appliqués, hors part bugs':unit==='BUG'?' · CAF nette × part dédiée aux bugs':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
+  // Texte sous la capacité totale, propre à chaque unité : rien en JP et en bugs ; le calcul en SP ; le détail en output total.
+  $('#k2s').textContent = unit==='SP' ? 'CAF nette '+f1(net)+' JP ÷ vélocité' : unit==='TOT' ? 'SP '+f1(spT)+' · bugs '+f1(bgT) : '';
   $('#k3l').textContent = 'Moyenne / '+granLbl;
   $('#k3v').textContent = f1(per); $('#k3u').textContent = UNIT_LBL[unit];
   $('#k3s').textContent = pers.length+' période(s)';
