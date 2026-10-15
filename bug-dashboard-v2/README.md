@@ -215,7 +215,7 @@ deux photos), ces alertes ne s'affichent pas.
 
 **Historique des régressions** : sous le graphique d'évolution, une carte « ↩ Régressions » compte tous les reculs de
 statut visibles dans le journal (d'une photo à la suivante où le ticket apparaît) : total, tickets concernés, part des
-changements de statut, répartition par semaine, équipe, version (Target date) et type de recul, plus la liste des plus récents.
+changements de statut, répartition par semaine, équipe et version (Target date, triée par date de version, la plus proche d'abord, « Sans Target date » en dernier), plus la liste des plus récents.
 Un recul est daté de la photo qui le révèle ; seules les photos conservées comptent. Rien n'est stocké en plus du journal.
 
 Les deux listes de jalons (rattachement et alerte) sont celles du **plan de livraisons**,

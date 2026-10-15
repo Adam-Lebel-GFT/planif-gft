@@ -828,8 +828,8 @@
   }
   function mondayOf(d) { var m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; }
   function countBy(list, fn) { var o = {}; list.forEach(function (e) { var k = fn(e); o[k] = (o[k] || 0) + 1; }); return o; }
-  function barRows(counts, label, limit) {
-    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); }).slice(0, limit || 8);
+  function barRows(counts, label, limit, order) {
+    var keys = Object.keys(counts).sort(order || function (a, b) { return counts[b] - counts[a] || a.localeCompare(b); }).slice(0, limit || 8);
     var max = Math.max.apply(null, keys.map(function (k) { return counts[k]; }).concat(1));
     return keys.map(function (k) {
       return '<div class="rg-row"><span class="rg-l" title="' + esc(label ? label(k) : k) + '">' + esc(label ? label(k) : k) + '</span><span class="rg-bar"><i style="width:' + (counts[k] / max * 100).toFixed(0) + '%"></i></span><b>' + counts[k] + '</b></div>';
@@ -850,7 +850,6 @@
     }).join('') + '</div>';
     var byTeam = countBy(ev, function (e) { return e.team; });
     var byVer = countBy(ev, function (e) { return e.td || 'none'; });
-    var byMove = countBy(ev, function (e) { return e.from + ' → ' + e.to; });
     var rate = r.changes ? Math.round(ev.length / r.changes * 100) : 0;
     var list = ev.slice().reverse().slice(0, 60).map(function (e) {
       return '<li class="hist-item"><span class="when">' + fmtWhen(e.at) + '</span><span class="name"><b>' + esc(e.key) + '</b> ' + esc(e.from) + ' → ' + esc(e.to) + ' · ' + esc(e.team) + '</span></li>';
@@ -859,8 +858,7 @@
       '<div class="sub">Tous les reculs de statut vus dans le journal, d\'une photo à la suivante : ' + ev.length + ' recul' + (ev.length > 1 ? 's' : '') + ' sur ' + tickets + ' ticket' + (tickets > 1 ? 's' : '') + ', soit ' + rate + ' % des changements de statut. Un recul est daté de la photo qui le révèle. Seules les photos conservées comptent.</div></div></div>' +
       '<div class="rg-grid"><div><div class="rg-lbl">Par semaine (12 dernières)</div>' + weekBars + '</div>' +
       '<div><div class="rg-lbl">Par équipe</div>' + barRows(byTeam) + '</div>' +
-      '<div><div class="rg-lbl">Par version (Target date)</div>' + barRows(byVer, function (k) { return k === 'none' ? 'Sans Target date' : C.fmtDate(new Date(k + 'T00:00:00')); }, 6) + '</div>' +
-      '<div><div class="rg-lbl">Reculs les plus fréquents</div>' + barRows(byMove, null, 6) + '</div></div>' +
+      '<div><div class="rg-lbl">Par version (Target date)</div>' + barRows(byVer, function (k) { return k === 'none' ? 'Sans Target date' : C.fmtDate(new Date(k + 'T00:00:00')); }, 12, function (a, b) { return a === 'none' ? (b === 'none' ? 0 : 1) : b === 'none' ? -1 : a.localeCompare(b); }) + '</div></div>' +
       '<details class="rg-list"><summary>Voir les reculs (' + Math.min(60, ev.length) + ' derniers)</summary><ul class="hist-list">' + list + '</ul></details></div>';
   }
 
