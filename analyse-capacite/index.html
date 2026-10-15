@@ -308,6 +308,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="kpi"><div class="kpi-lbl">Personnes</div><div class="kpi-val" id="k1v">–</div><div class="kpi-sub" id="k1s"></div></div>
       <div class="kpi"><div class="kpi-lbl">Capacité totale</div><div class="kpi-val"><span id="k2v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k2u">JP</span></div><div class="kpi-sub" id="k2s"></div></div>
       <div class="kpi"><div class="kpi-lbl" id="k3l">Moyenne / sprint</div><div class="kpi-val"><span id="k3v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k3u">JP</span></div><div class="kpi-sub" id="k3s"></div></div>
+      <div class="kpi"><div class="kpi-lbl">CAF nette</div><div class="kpi-val"><span id="k5v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">cérémonies, lead et sprint planning déduits</div></div>
       <div class="kpi"><div class="kpi-lbl">Présence</div><div class="kpi-val"><span id="k4v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>%</span></div><div class="kpi-sub" id="k4s"></div></div>
       <div class="kctrl">
         <div class="seg" id="seg-gran">
@@ -774,16 +775,16 @@ function upl(a){ return a['pl_'+UNIT_KEY[unit]]; }
 // Capacité d'une journée : jp / sp tiennent compte du sprint planning ; pres (présence) n'en tient pas compte ;
 // pl_jp / pl_sp = capacité retirée par le sprint planning.
 function dayAgg(ds, ppl){
-  var jp=0, sp=0, bg=0, abs=0, pres=0, plJ=0, plS=0, plB=0, pf=planFactor(ds);
+  var jp=0, sp=0, bg=0, net=0, abs=0, pres=0, plJ=0, plS=0, plB=0, pf=planFactor(ds);
   for(var i=0;i<ppl.length;i++){
     var p=ppl[i]; if(!activeOn(p,ds)) continue;
     var code=p.dailyCodes[ds];
     if(WORKING.has(code)){
       var s1=p.alloc*spPerJP(p), b1=p.alloc*bugPerJP(p);
-      jp+=p.alloc*pf; sp+=s1*pf; bg+=b1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf); plB+=b1*(1-pf);
+      jp+=p.alloc*pf; net+=p.alloc*leadRateOf(p)*(1-P.agile)*pf; sp+=s1*pf; bg+=b1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf); plB+=b1*(1-pf);
     } else { abs+=p.alloc; }
   }
-  return { jp:jp, sp:sp, bg:bg, tot:sp+bg, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, pl_bg:plB, pl_tot:plS+plB };
+  return { jp:jp, net:net, sp:sp, bg:bg, tot:sp+bg, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, pl_bg:plB, pl_tot:plS+plB };
 }
 function fmtRange(a,b){
   var A=pd(a), B=pd(b);
@@ -821,7 +822,7 @@ function periods(){
   return out;
 }
 function aggPeriod(g, ppl){
-  var t={ jp:0, sp:0, bg:0, tot:0, abs:0, pres:0, pl_jp:0, pl_sp:0, pl_bg:0, pl_tot:0, ouvres:g.days.length };
+  var t={ jp:0, net:0, sp:0, bg:0, tot:0, abs:0, pres:0, pl_jp:0, pl_sp:0, pl_bg:0, pl_tot:0, ouvres:g.days.length };
   g.days.forEach(function(d){ var a=dayAgg(d, ppl); for(var k in a) t[k]+=a[k]; });
   return t;
 }
@@ -894,8 +895,8 @@ function toggleFilter(set, val, totalCount){
 // ── Rendu : KPI ──
 function renderKPIs(){
   var ppl=activeSel(), pers=periods();
-  var tot=0, abs=0, pres0=0, pl=0;
-  pers.forEach(function(g){ var a=aggPeriod(g, ppl); tot+=uv(a); abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
+  var tot=0, net=0, abs=0, pres0=0, pl=0;
+  pers.forEach(function(g){ var a=aggPeriod(g, ppl); tot+=uv(a); net+=a.net; abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
   var ouvres = viewWeekdays().length;
   var per = pers.length ? tot/pers.length : 0;
   var granLbl = GRAN_NOUN[gran];
@@ -907,6 +908,7 @@ function renderKPIs(){
   $('#k3v').textContent = f1(per); $('#k3u').textContent = UNIT_LBL[unit];
   $('#k3s').textContent = pers.length+' période(s)';
   var pres = (pres0+abs)>0 ? pres0/(pres0+abs) : NaN;
+  $('#k5v').textContent = f1(net);
   $('#k4v').textContent = isFinite(pres) ? Math.round(pres*100) : '—';
   $('#k4s').textContent = f1(abs)+" JP d'absence";
 }
