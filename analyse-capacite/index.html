@@ -551,7 +551,7 @@ function spPerJP(p){ var v=velFor(p.team); return leadRateOf(p) * (1-P.agile) * 
 // Vélocité des bugs (JP par SP) : réglage « BUGS » ; vide = même vélocité que l'équipe en story points.
 function velBugs(team){ return P.vb>0 ? P.vb : velFor(team); }
 // Points de bugs par 1 JP de disponibilité brute : la part du temps dédiée aux bugs, convertie avec la vélocité Bugs.
-function bugPerJP(p){ var v=velBugs(p.team); return P.bogues / (v>0?v:1); } // sans déduction lead/cérémonies : la vélocité Bugs se calibre sur les JP bruts affichés
+function bugPerJP(p){ var v=velBugs(p.team); return leadRateOf(p) * (1-P.agile) * P.bogues / (v>0?v:1); } // part dédiée aux bugs de la CAF nette (lead et cérémonies déduits), ÷ vélocité Bugs
 // Unité courante par 1 JP de disponibilité brute, et valeur « théorique » par jour de présence à 100 %.
 function unitPerJP(p){ return unit==='JP' ? 1 : unit==='SP' ? spPerJP(p) : unit==='BUG' ? bugPerJP(p) : spPerJP(p)+bugPerJP(p); }
 function theoPerDay(p){
@@ -903,7 +903,7 @@ function renderKPIs(){
   $('#k1v').textContent = ppl.length;
   $('#k1s').textContent = 'sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
   $('#k2v').textContent = f1(tot); $('#k2u').textContent = UNIT_LBL[unit];
-  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile appliqués, hors part bugs':unit==='BUG'?' · part dédiée aux bugs, sans déduction lead/agile':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
+  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile appliqués, hors part bugs':unit==='BUG'?' · CAF nette × part dédiée aux bugs':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
   $('#k3l').textContent = 'Moyenne / '+granLbl;
   $('#k3v').textContent = f1(per); $('#k3u').textContent = UNIT_LBL[unit];
   $('#k3s').textContent = pers.length+' période(s)';
