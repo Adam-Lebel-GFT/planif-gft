@@ -232,7 +232,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
   <div style="flex:1">
     <div class="hero-eyebrow">Agile Toolkit — Capacity</div>
     <div class="hero-title">Capacité à faire</div>
-    <div class="hero-sub">Déposez le fichier planning, filtrez les personnes, lisez la capacité par jour, semaine, mois ou sprint.</div>
+    <div class="hero-sub">Déposez le fichier planning, filtrez les personnes, lisez la capacité par jour, semaine, mois, sprint ou version.</div>
   </div>
 </div>
 
@@ -315,10 +315,13 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
           <button data-g="semaine">Semaine</button>
           <button data-g="mois">Mois</button>
           <button data-g="sprint" class="active">Sprint</button>
+          <button data-g="version" title="Une période par version configurée dans « Plan de livraisons » (hors gel et tests IAT)">Version</button>
         </div>
         <div class="seg" id="seg-unit">
           <button data-u="JP" class="active">Jours-personne</button>
           <button data-u="SP">Story points</button>
+          <button data-u="BUG" title="Capacité dédiée aux bugs : part « Bogues » du temps, convertie avec la vélocité Bugs">Bugs</button>
+          <button data-u="TOT" title="Output total = capacité en story points + capacité Bugs">Output total</button>
         </div>
         <button class="pptx-btn" id="btn-reorg" title="Ouvrir le tableau blanc de réorganisation des équipes (déplacer les équipiers, noter de 1 à 3)">🧩 Réorganisation des teams</button>
         <button class="pptx-btn" id="btn-pptx" title="Générer le graphique de capacité (BA/DEV/QA/Autre) en PowerPoint, selon le critère et l'unité sélectionnés ci-dessus">📊 PowerPoint</button>
@@ -367,12 +370,15 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="sb-row"><span class="sb-lbl">CONF</span><input class="sb-input" id="sb-vel-conf" type="number" step="0.1" min="0.1" value="2.0"></div>
       <div class="sb-row"><span class="sb-lbl">INTEG</span><input class="sb-input" id="sb-vel-integ" type="number" step="0.1" min="0.1" value="2.0"></div>
       <div class="sb-row"><span class="sb-lbl">TRANS</span><input class="sb-input" id="sb-vel-trans" type="number" step="0.1" min="0.1" value="2.0"></div>
+      <div class="sb-row"><span class="sb-lbl">BUGS</span><input class="sb-input" id="sb-vel-bugs" type="number" step="0.1" min="0.1" placeholder="= SP"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5">Vélocité des personnes affectées aux bugs (JP par SP). Vide = la même que celle de leur équipe en story points.</div>
     </div>
     <div class="sb-divider"></div>
     <div>
       <div class="sb-group-title">Tâches hors récits</div>
       <div class="sb-row"><span class="sb-lbl">Cérémonies agiles</span><input class="sb-input" id="sb-agile" type="number" step="1" min="0" max="100" value="10"></div>
       <div class="sb-row"><span class="sb-lbl">Bogues</span><input class="sb-input" id="sb-bogues" type="number" step="1" min="0" max="100" value="10"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5">Cette part du temps est retirée des story points et forme la capacité « Bugs ».</div>
     </div>
     <div class="sb-divider"></div>
     <div>
@@ -434,7 +440,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 'use strict';
 
 // ── Paramètres de calcul (modifiables via la sidebar) ──
-var P = { vc:2.0, vi:2.0, vt:2.0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10,
+var P = { vc:2.0, vi:2.0, vt:2.0, vb:0, agile:0.10, bogues:0.10, raff:0.20, supp:0.10,
   sp_on:false, sp_pct:0.30, sp_dow:2, sp_every:3, sp_anchor:'' };   // sprint planning : récurrence + diminution de la journée
 var ITSET = new Set(['INTEG 4','INTEG 5']);
 var TTSET = new Set(['TRANS']);
@@ -445,7 +451,7 @@ var DN  = ['D','L','M','M','J','V','S'];
 var DNF = ['dim','lun','mar','mer','jeu','ven','sam'];
 var GANTT_CAP = 140; // jours ouvrés max affichés sans forçage
 // Nombre max de périodes affichables sur le graphique PowerPoint, par critère — au-delà, l'axe X devient illisible
-var CHART_PERIOD_CAP = { jour:40, semaine:26, mois:18, sprint:30 };
+var CHART_PERIOD_CAP = { jour:40, semaine:26, mois:18, sprint:30, version:12 };
 
 var state = { dates: [], sprints: [], persons: [], sourceLabel: '' };
 var filters = { q: '', teams: new Set(), roles: new Set(), countries: new Set(), noVA: false };
@@ -457,12 +463,16 @@ function normTeam(t){ t=String(t==null?'':t).replace(/\s+/g,' ').trim(); var m=t
 // Windows n'affiche pas les émojis de drapeaux (on y voit « ES », « FR »…) : on utilise des images (code ISO).
 var FLAGS = {'canada':'ca','québec':'qc','quebec':'qc','france':'fr','suisse':'ch','switzerland':'ch','espagne':'es','spain':'es','maroc':'ma','morocco':'ma','tunisie':'tn','portugal':'pt','pologne':'pl','poland':'pl','inde':'in','india':'in','brésil':'br','bresil':'br','brazil':'br','allemagne':'de','germany':'de','italie':'it','royaume-uni':'gb','royaume uni':'gb','belgique':'be','roumanie':'ro','luxembourg':'lu','états-unis':'us','etats-unis':'us','usa':'us','colombie':'co','mexique':'mx','argentine':'ar','chili':'cl','pérou':'pe','perou':'pe'};
 var selected = new Set();
-var planVersions = [];     // versions du calendrier des versions (releases-planning) : { num, start, end }
+var planVersions = [];     // versions en cours et futures du calendrier des versions (releases-planning) : { num, start, end }
+var allVersions = [];      // toutes les versions configurées, passées comprises (critère « Version »)
 var HIDE_USER_FLAGS = false; // option « Cacher le drapeau des usagers » : drapeaux retirés devant les personnes, conservés sur les pays
 var ANGLO = [];  // fragments (minuscules) de noms de Canadiens anglophones (hors Québec)
 var selVersions = new Set(); // numéros de versions sélectionnées
 var gran = 'sprint';
-var unit = 'JP';
+var unit = 'JP';           // JP | SP | BUG (capacité bugs) | TOT (output total = SP + bugs)
+var UNIT_KEY = { JP:'jp', SP:'sp', BUG:'bg', TOT:'tot' };
+var UNIT_LBL = { JP:'JP', SP:'SP', BUG:'SP bugs', TOT:'SP total' };
+var UNIT_LONG = { JP:'jours-personne', SP:'story points', BUG:'story points de bugs', TOT:'output total (story points + bugs)' };
 var rangeStart = null, rangeEnd = null;
 var hi = new Set();        // jours mis en évidence (Gantt)
 var forceGantt = false;
@@ -537,6 +547,13 @@ function roleRank(role){
 function velFor(team){ return ITSET.has(team)?P.vi : TTSET.has(team)?P.vt : P.vc; }
 function leadRateOf(p){ return isLead(p.role) ? Math.max(0, 1 - P.raff - P.supp) : 1.0; }
 function spPerJP(p){ var v=velFor(p.team); return leadRateOf(p) * (1-P.agile) * (1-P.bogues) / (v>0?v:1); }
+// Vélocité des bugs (JP par SP) : réglage « BUGS » ; vide = même vélocité que l'équipe en story points.
+function velBugs(team){ return P.vb>0 ? P.vb : velFor(team); }
+// Points de bugs par 1 JP de disponibilité brute : la part « Bogues » du temps, convertie avec la vélocité Bugs.
+function bugPerJP(p){ var v=velBugs(p.team); return leadRateOf(p) * (1-P.agile) * P.bogues / (v>0?v:1); }
+// Unité courante par 1 JP de disponibilité brute, et valeur « théorique » par jour de présence à 100 %.
+function unitPerJP(p){ return unit==='JP' ? 1 : unit==='SP' ? spPerJP(p) : unit==='BUG' ? bugPerJP(p) : spPerJP(p)+bugPerJP(p); }
+function theoPerDay(p){ var v=velFor(p.team); return unit==='JP' ? 1 : unit==='BUG' ? P.bogues/(velBugs(p.team)>0?velBugs(p.team):1) : 1/(v>0?v:1); }
 
 // ── Écran de chargement (voile gris + indicateur + barre de progression) ──
 function loaderShow(){ TKLoader.show('Chargement du planning…', 'Lecture du fichier…'); }
@@ -748,19 +765,22 @@ function spPreview(){
   el.textContent = out.length ? 'Prochains : '+out.join(' · ') : 'Aucune occurrence.';
 }
 
+// Valeur de l'unité courante dans une agrégation, et part retirée par le sprint planning.
+function uv(a){ return a[UNIT_KEY[unit]]; }
+function upl(a){ return a['pl_'+UNIT_KEY[unit]]; }
 // Capacité d'une journée : jp / sp tiennent compte du sprint planning ; pres (présence) n'en tient pas compte ;
 // pl_jp / pl_sp = capacité retirée par le sprint planning.
 function dayAgg(ds, ppl){
-  var jp=0, sp=0, abs=0, pres=0, plJ=0, plS=0, pf=planFactor(ds);
+  var jp=0, sp=0, bg=0, abs=0, pres=0, plJ=0, plS=0, plB=0, pf=planFactor(ds);
   for(var i=0;i<ppl.length;i++){
     var p=ppl[i]; if(!activeOn(p,ds)) continue;
     var code=p.dailyCodes[ds];
     if(WORKING.has(code)){
-      var s1=p.alloc*spPerJP(p);
-      jp+=p.alloc*pf; sp+=s1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf);
+      var s1=p.alloc*spPerJP(p), b1=p.alloc*bugPerJP(p);
+      jp+=p.alloc*pf; sp+=s1*pf; bg+=b1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf); plB+=b1*(1-pf);
     } else { abs+=p.alloc; }
   }
-  return { jp:jp, sp:sp, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS };
+  return { jp:jp, sp:sp, bg:bg, tot:sp+bg, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, pl_bg:plB, pl_tot:plS+plB };
 }
 function fmtRange(a,b){
   var A=pd(a), B=pd(b);
@@ -778,6 +798,13 @@ function periods(){
     out.forEach(function(g){ g.sub=fmtRange(g.days[0], g.days[g.days.length-1]); });
   } else if(gran==='mois'){
     wds.forEach(function(d){ var dt=pd(d); var k=dt.getUTCFullYear()+'-'+dt.getUTCMonth(); push(k, MNc[dt.getUTCMonth()]+' '+dt.getUTCFullYear(), '').days.push(d); });
+  } else if(gran==='version'){
+    // Une période par version configurée dans « Plan de livraisons » ; si des versions sont cochées, seulement celles-là.
+    allVersions.forEach(function(v){
+      if(selVersions.size && !selVersions.has(v.num)) return;
+      var days=wds.filter(function(d){ return d>=v.start && d<=v.end; });
+      if(days.length) push('v:'+v.num, 'Version '+v.num, fmtRange(v.start, v.end)).days=days;
+    });
   } else {
     var hs=[];
     wds.forEach(function(d){
@@ -791,9 +818,9 @@ function periods(){
   return out;
 }
 function aggPeriod(g, ppl){
-  var jp=0, sp=0, abs=0, pres=0, plJ=0, plS=0;
-  g.days.forEach(function(d){ var a=dayAgg(d, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres+=a.pres; plJ+=a.pl_jp; plS+=a.pl_sp; });
-  return { jp:jp, sp:sp, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, ouvres:g.days.length };
+  var t={ jp:0, sp:0, bg:0, tot:0, abs:0, pres:0, pl_jp:0, pl_sp:0, pl_bg:0, pl_tot:0, ouvres:g.days.length };
+  g.days.forEach(function(d){ var a=dayAgg(d, ppl); for(var k in a) t[k]+=a[k]; });
+  return t;
 }
 
 // ── Rendu : chips ──
@@ -865,17 +892,17 @@ function toggleFilter(set, val, totalCount){
 function renderKPIs(){
   var ppl=activeSel(), pers=periods();
   var jp=0, sp=0, abs=0, pres0=0, pl=0;
-  pers.forEach(function(g){ var a=aggPeriod(g, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres0+=a.pres; pl+=(unit==='JP')?a.pl_jp:a.pl_sp; });
+  pers.forEach(function(g){ var a=aggPeriod(g, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
   var ouvres = viewWeekdays().length;
-  var tot = (unit==='JP') ? jp : sp;
+  var tot = 0; pers.forEach(function(g){ tot+=uv(aggPeriod(g, ppl)); });
   var per = pers.length ? tot/pers.length : 0;
-  var granLbl = { jour:'jour', semaine:'semaine', mois:'mois', sprint:'sprint' }[gran];
+  var granLbl = GRAN_NOUN[gran];
   $('#k1v').textContent = ppl.length;
   $('#k1s').textContent = 'sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
-  $('#k2v').textContent = f1(tot); $('#k2u').textContent = unit;
-  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile/bogues appliqués':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+unit:'');
+  $('#k2v').textContent = f1(tot); $('#k2u').textContent = UNIT_LBL[unit];
+  $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile/bogues appliqués':unit==='BUG'?' · part bogues, lead/agile appliqués':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
   $('#k3l').textContent = 'Moyenne / '+granLbl;
-  $('#k3v').textContent = f1(per); $('#k3u').textContent = unit;
+  $('#k3v').textContent = f1(per); $('#k3u').textContent = UNIT_LBL[unit];
   $('#k3s').textContent = pers.length+' période(s)';
   var pres = (pres0+abs)>0 ? pres0/(pres0+abs) : NaN;
   $('#k4v').textContent = isFinite(pres) ? Math.round(pres*100) : '—';
@@ -887,13 +914,13 @@ function presClass(v){ if(!isFinite(v)) return ''; return v>=0.9?'pr-ok':v>=0.75
 function renderTable(){
   var ppl=activeSel(), pers=periods();
   var rows=pers.map(function(g){ var a=aggPeriod(g, ppl); a.g=g; return a; });
-  var maxV=0; rows.forEach(function(r){ var v=(unit==='JP')?r.jp:r.sp; if(v>maxV) maxV=v; });
-  var h='<thead><tr><th>Période</th><th style="text-align:right">J. ouvrés</th><th style="text-align:right">Capacité ('+unit+')</th><th style="text-align:right">Absences (JP)</th><th style="text-align:right">Présence</th><th style="width:30%"></th></tr></thead><tbody>';
+  var maxV=0; rows.forEach(function(r){ var v=uv(r); if(v>maxV) maxV=v; });
+  var h='<thead><tr><th>Période</th><th style="text-align:right">J. ouvrés</th><th style="text-align:right">Capacité ('+UNIT_LBL[unit]+')</th><th style="text-align:right">Absences (JP)</th><th style="text-align:right">Présence</th><th style="width:30%"></th></tr></thead><tbody>';
   if(!ppl.length || !rows.length){
-    h+='<tr><td colspan="6"><div class="empty-msg">'+(state.persons.length?'Aucune donnée pour cette sélection — ajustez les filtres ou l\'intervalle de dates.':'Chargez un fichier planning ci-dessus pour afficher l\'analyse.')+'</div></td></tr>';
+    h+='<tr><td colspan="6"><div class="empty-msg">'+(gran==='version' && state.persons.length && !allVersions.length ? 'Aucune version configurée : renseignez le calendrier dans « Plan de livraisons » (connexion requise).' : state.persons.length?'Aucune donnée pour cette sélection — ajustez les filtres ou l\'intervalle de dates.':'Chargez un fichier planning ci-dessus pour afficher l\'analyse.')+'</div></td></tr>';
   } else {
     rows.forEach(function(r){
-      var v=(unit==='JP')?r.jp:r.sp;
+      var v=uv(r);
       var pres=(r.pres+r.abs)>0 ? r.pres/(r.pres+r.abs) : NaN;
       var w=maxV>0 ? Math.round(v/maxV*100) : 0;
       h+='<tr><td><div class="p-label">'+esc(r.g.label)+'</div>'+(r.g.sub?'<div class="p-sub">'+esc(r.g.sub)+'</div>':'')+'</td>'
@@ -961,15 +988,15 @@ function renderGantt(){
     var tl=teamList().filter(function(t){ return ppl.some(function(p){ return p.team===t; }); });
     tl.forEach(function(team){
       var tp=ppl.filter(function(p){ return p.team===team; }).sort(function(a,b){ return roleRank(a.role)-roleRank(b.role) || a.name.localeCompare(b.name); });
-      var tJP=0, tSP=0;
-      tp.forEach(function(p){ wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); tJP+=p.alloc*f; tSP+=p.alloc*spPerJP(p)*f; } }); });
-      h+='<tr class="trow"><td class="gteam">'+esc(team)+'<span class="tsub">'+tp.length+' pers · '+(unit==='JP'?f1(tJP)+' JP':f1(tSP)+' SP')+'</span></td><td colspan="'+dates.length+'"></td></tr>';
+      var tU=0;
+      tp.forEach(function(p){ wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])) tU+=p.alloc*unitPerJP(p)*planFactor(d); }); });
+      h+='<tr class="trow"><td class="gteam">'+esc(team)+'<span class="tsub">'+tp.length+' pers · '+f1(tU)+' '+UNIT_LBL[unit]+'</span></td><td colspan="'+dates.length+'"></td></tr>';
       tp.forEach(function(p){
-        var pJP=0, pSP=0, pDays=0;
-        wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); pDays++; pJP+=p.alloc*f; pSP+=p.alloc*spPerJP(p)*f; } });
+        var pU=0, pDays=0;
+        wd.forEach(function(d){ if(!activeOn(p,d)) return; if(WORKING.has(p.dailyCodes[d])){ var f=planFactor(d); pDays++; pU+=p.alloc*unitPerJP(p)*f; } });
         // En-tête de la personne : CAF théorique (jours de présence à 100 %, avant toute diminution) › CAF réelle (toutes diminutions appliquées).
-        var vel=velFor(p.team), pTheo=(unit==='JP') ? pDays : pDays/(vel>0?vel:1), pReal=(unit==='JP') ? pJP : pSP;
-        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot"><span class="gp-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(pTheo)+'</span> \u203a <span title="CAF réelle : affectation, tâches de lead, cérémonies, bogues et sprint planning appliqués">'+f1(pReal)+'</span> '+unit+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
+        var pTheo=pDays*theoPerDay(p), pReal=pU;
+        h+='<tr><td class="gp"><div class="gp-top"><span class="gp-name">'+userFlag(p.country)+esc(p.name)+'</span><span class="gp-tot"><span class="gp-th" title="CAF théorique : jours de présence à 100 %, avant toute diminution">'+f1(pTheo)+'</span> \u203a <span title="CAF réelle : affectation, tâches de lead, cérémonies, bogues et sprint planning appliqués">'+f1(pReal)+'</span> '+UNIT_LBL[unit]+'</span></div><div class="gp-meta">'+esc(p.role||'—')+' · '+esc(p.team)+(p.alloc<1?' · '+Math.round(p.alloc*100)+' %':'')+'</div></td>';
         dates.forEach(function(d){
           if(isWE(d)){ h+='<td class="gc we" data-col="'+d+'"></td>'; return; }
           if(!activeOn(p,d)){ h+='<td class="gc na" data-col="'+d+'" title="'+d+' · hors période"></td>'; return; }
@@ -1071,9 +1098,9 @@ function applyDim(){
   $('#hi-clear').style.display = on ? 'inline-flex' : 'none';
   var info=$('#hi-info');
   if(on){
-    var ppl=activeSel(), jp=0, sp=0;
-    hi.forEach(function(d){ var a=dayAgg(d, ppl); jp+=a.jp; sp+=a.sp; });
-    info.textContent='Évidence : '+hi.size+' j · '+(unit==='JP'?f1(jp)+' JP':f1(sp)+' SP');
+    var ppl=activeSel(), tv=0;
+    hi.forEach(function(d){ tv+=uv(dayAgg(d, ppl)); });
+    info.textContent='Évidence : '+hi.size+' j · '+f1(tv)+' '+UNIT_LBL[unit];
     info.style.display='inline';
   } else { info.style.display='none'; }
 }
@@ -1093,9 +1120,9 @@ function ganttHeaderClick(e){
 
 // ── Calendrier des versions (releases-planning) : versions en cours et futures ──
 function versionNum(label){ var m=String(label||'').match(/\d+(?:\.\d+)+|\d+/); return m ? m[0] : String(label||'').trim(); }
-function normVersions(list){
+function normVersions(list, keepPast){
   var t=todayStr();
-  return (list||[]).filter(function(v){ return v && v.start && v.end && String(v.end).slice(0,10)>=t; }) // en cours = pas encore terminée, IAT compris
+  return (list||[]).filter(function(v){ return v && v.start && v.end && (keepPast || String(v.end).slice(0,10)>=t); }) // en cours = pas encore terminée, IAT compris
     .map(function(v){
       var start=String(v.start).slice(0,10), end=String(v.end).slice(0,10);
       // Les dates d'une version n'incluent ni le gel ni les tests IAT : on ne garde que l'étendue des autres phases.
@@ -1126,7 +1153,8 @@ async function loadPlanVersions(){
     try { var snap=JSON.parse(localStorage.getItem('planif:plan-publie')||'null'); if(snap && Array.isArray(snap.versions) && snap.versions.length) found=snap.versions; } catch(e){}
   }
   planVersions=normVersions(found);
-  renderVersionChips();
+  allVersions=normVersions(found, true);
+  renderAll();
 }
 function applyVersionSelection(){
   if(!state.dates.length) return;
@@ -1175,7 +1203,7 @@ function categorySeriesByPeriod(periodsList, ppl){
       ppl.forEach(function(p){
         if(!activeOn(p,d)) return;
         if(!WORKING.has(p.dailyCodes[d])) return;
-        var val = ((unit==='SP') ? p.alloc*spPerJP(p) : p.alloc) * planFactor(d);
+        var val = p.alloc * unitPerJP(p) * planFactor(d);
         var cat=roleCategory(p.role);
         if(cat==='BA') b+=val;
         else if(cat==='DEV') d2+=val;
@@ -1191,6 +1219,7 @@ function categorySeriesByPeriod(periodsList, ppl){
 function chartPeriodLabel(g){
   if(gran==='jour'){ var dt=pd(g.days[0]); return String(dt.getUTCDate()).padStart(2,'0')+'/'+String(dt.getUTCMonth()+1).padStart(2,'0'); }
   if(gran==='sprint') return g.label.replace('Sprint ','');
+  if(gran==='version') return 'V'+g.label.replace('Version ','');
   return g.label; // semaine → « S25 », mois → « Juin 2026 »
 }
 var CHART_COLORS = {'BA':'#4472C4','DEV':'#ED7D31','QA':'#70AD47','Autre':'#A5A5A5'};
@@ -1345,9 +1374,9 @@ async function renderStackedBarChartCanvas(labels, ba, dev, qa, autre){
   drawChartXLabelsAndLegend(ctx, W, H, pad, ch, labels, xCenters, series);
   return 'image/png;base64,'+canvas.toDataURL('image/png').split(',')[1];
 }
-var GRAN_NOUN      = { jour:'jour',   semaine:'semaine',   mois:'mois', sprint:'sprint' };
-var GRAN_NOUN_PLUR  = { jour:'jours',  semaine:'semaines',  mois:'mois', sprint:'sprints' };
-var GRAN_WIDER      = { jour:'Semaine, Mois ou Sprint', semaine:'Mois ou Sprint', mois:'Sprint' };
+var GRAN_NOUN      = { jour:'jour',   semaine:'semaine',   mois:'mois', sprint:'sprint',  version:'version' };
+var GRAN_NOUN_PLUR  = { jour:'jours',  semaine:'semaines',  mois:'mois', sprint:'sprints', version:'versions' };
+var GRAN_WIDER      = { jour:'Semaine, Mois ou Sprint', semaine:'Mois ou Sprint', mois:'Sprint', version:'Sprint' };
 
 async function exportCapacityPptx(){
   if(typeof PptxGenJS==='undefined'){ alert('Librairie PowerPoint non chargée (connexion requise au 1er chargement).'); return; }
@@ -1357,6 +1386,7 @@ async function exportCapacityPptx(){
   // Périodes du critère courant (jour/semaine/mois/sprint), dans l'intervalle sélectionné.
   // « Hors sprint » est exclu : il ne correspond à aucune période nommée.
   var pers = periods().filter(function(g){ return g.key!=='__hs'; });
+  if(!pers.length && gran==='version'){ alert("Aucune version dans l'intervalle sélectionné. Les versions viennent du calendrier « Plan de livraisons » : vérifiez qu'il est renseigné (connexion requise) et élargissez l'intervalle de dates."); return; }
   if(!pers.length){ alert("Aucune période dans l'intervalle sélectionné — élargissez la période (bouton « Tout ») ou ajustez les dates."); return; }
 
   var cap = CHART_PERIOD_CAP[gran] || 30;
@@ -1376,7 +1406,7 @@ async function exportCapacityPptx(){
   var pres = new PptxGenJS();
   pres.layout = 'LAYOUT_WIDE';
   var today = new Date().toLocaleDateString('fr-CA', {day:'numeric', month:'long', year:'numeric'});
-  var unitLbl = unit==='SP' ? 'story points' : 'jours-personne';
+  var unitLbl = UNIT_LONG[unit];
   var titleTxt = 'Ressources – Capacité GFT par ' + GRAN_NOUN[gran];
   var subtitle = 'Visualisation de la capacité des ressources par rôle, en ' + unitLbl +
     ' (' + pers[0].label + ' → ' + pers[pers.length-1].label + ')';
@@ -1411,7 +1441,7 @@ async function exportCapacityPptx(){
 
   var granCap = GRAN_NOUN[gran].charAt(0).toUpperCase() + GRAN_NOUN[gran].slice(1);
   var tableRows = [];
-  var hdrCells = [{ text:granCap+' — '+unit, options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
+  var hdrCells = [{ text:granCap+' — '+UNIT_LBL[unit], options:{fill:'D9D9D9', bold:true, border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }];
   chartLabels.forEach(function(s){ hdrCells.push({ text:s, options:{fill:'D9D9D9', bold:true, align:'center', border:[{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'},{pt:1,color:'888888'}]} }); });
   tableRows.push(hdrCells);
   [['BA',series.ba,'DCE6F1'],['DEV',series.dev,'FCE4D6'],['QA',series.qa,'E2EFDA'],['Autre',series.autre,'EDEDED']].forEach(function(row){
@@ -1460,7 +1490,7 @@ function updateLeadCalc(){
 function openSidebar(){ $('#sidebar').classList.add('open'); $('#sidebar-overlay').classList.add('visible'); }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('visible'); }
 // Paramètres du tiroir : mémorisés dans ce navigateur et rétablis à chaque ouverture de la page.
-var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags','sb-sp-on','sb-sp-pct','sb-sp-dow','sb-sp-every','sb-sp-anchor'];
+var PARAM_IDS=['sb-vel-conf','sb-vel-integ','sb-vel-trans','sb-vel-bugs','sb-agile','sb-bogues','sb-raffinage','sb-support','sb-teams-integ','sb-teams-trans','sb-anglo','sb-default-teams','sb-hide-flags','sb-sp-on','sb-sp-pct','sb-sp-dow','sb-sp-every','sb-sp-anchor'];
 var PARAM_KEY='planif:analyse-capacite:params';
 function saveParams(){
   try { var o={}; PARAM_IDS.forEach(function(id){ var el=$('#'+id); o[id]=(el.type==='checkbox')?el.checked:el.value; }); localStorage.setItem(PARAM_KEY, JSON.stringify(o)); } catch(e){}
@@ -1474,6 +1504,7 @@ function restoreParams(){
 }
 function applyParams(){
   P.vc=posf($('#sb-vel-conf').value); P.vi=posf($('#sb-vel-integ').value); P.vt=posf($('#sb-vel-trans').value);
+  P.vb=parseFloat($('#sb-vel-bugs').value)>0 ? parseFloat($('#sb-vel-bugs').value) : 0; // vide = vélocité SP de l'équipe
   P.agile=pct($('#sb-agile').value); P.bogues=pct($('#sb-bogues').value);
   P.raff=pct($('#sb-raffinage').value); P.supp=pct($('#sb-support').value);
   ITSET=new Set(parseTeams($('#sb-teams-integ').value));
