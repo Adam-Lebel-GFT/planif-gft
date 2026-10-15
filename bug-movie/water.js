@@ -4,7 +4,7 @@
    relaxation double densité) : les gouttes d'une même case se rejoignent en
    une flaque qui s'étale et ondule. Quand un ticket change de case, sa goutte
    vole jusqu'à la nouvelle et éclabousse ; sortie de version : elle s'évapore
-   vers le nuage ; rejetée : elle tombe dans la poubelle.
+   vers le nuage ; rejetée : elle tombe dans la poubelle, qui se remplit.
    Rendu WebGL2 : un champ de densité (taches additives, découpées aux murs de
    chaque case) puis un éclairage (reflets, profondeur, ligne de surface).
    ════════════════════════════════════════════════════════════════════ */
@@ -23,13 +23,15 @@
     var P = [], spray = [], ripples = [], geo = null, dpr = 1, R3 = null, snapNext = true;
 
     // ── Fluide ────────────────────────────────────────────────────────
+    // la poubelle a ses propres gouttes, plus petites : le niveau monte avec le nombre de rejets sans déborder
+    function RC(cell) { return cell === 'trash' ? S.Rt : S.R; }
     function live(p) { return p.mode === 'pool' || p.mode === 'fly'; }
     function step() {
-      var h = S.R * 2, by = {}, i;
+      var by = {}, i;
       P.forEach(function (p) { if (p.mode === 'pool') (by[p.cell] = by[p.cell] || []).push(p); });
       P.forEach(function (p) { if (live(p)) p.vy += S.g; });
       Object.keys(by).forEach(function (key) {
-        var L = by[key], n = L.length, m = 0, j, a, b, dx, dy, d, q, u, I;
+        var L = by[key], n = L.length, m = 0, h = RC(key) * 2, j, a, b, dx, dy, d, q, u, I;
         // les gouttes d'une case glissent vers la flaque : une seule flaque par case
         L.forEach(function (p) { m += p.x; }); m /= n;
         L.forEach(function (p) { p.vx += Math.max(-.03, Math.min(.03, (m - p.x) * .0004)); });
@@ -43,7 +45,7 @@
       });
       P.forEach(function (p) { p.px = p.x; p.py = p.y; if (live(p)) { p.x += p.vx; p.y += p.vy; } });
       Object.keys(by).forEach(function (key) {      // pression + pression proche (tension de surface)
-        var L = by[key], n = L.length, j, a, b, dx, dy, d, q, rho, rhon, Pr, Pn, D, sx, sy;
+        var L = by[key], n = L.length, h = RC(key) * 2, j, a, b, dx, dy, d, q, rho, rhon, Pr, Pn, D, sx, sy;
         for (i = 0; i < n; i++) {
           a = L[i]; rho = 0; rhon = 0;
           for (j = 0; j < n; j++) { if (j === i) continue; b = L[j]; dx = b.x - a.x; dy = b.y - a.y; d = Math.sqrt(dx * dx + dy * dy); if (d >= h) continue; q = 1 - d / h; rho += q * q; rhon += q * q * q; }
@@ -59,7 +61,7 @@
       });
       P.forEach(function (p) {
         if (p.mode === 'pool') {
-          var B = geo.cells[p.cell], r = S.R * .5;
+          var B = geo.cells[p.cell], r = RC(p.cell) * .5;
           if (p.x < B.x0 + r) p.x = B.x0 + r; if (p.x > B.x1 - r) p.x = B.x1 - r;
           if (p.y > B.y1 - r) { p.y = B.y1 - r; p.x = p.px + (p.x - p.px) * .7; }   // frottement sur le fond
           if (p.y < B.y0 + r) p.y = B.y0 + r;
@@ -76,7 +78,7 @@
     }
     function land(p) {
       p.ft++;
-      if (p.dest === 'board') {
+      if (p.dest === 'board' || p.dest === 'trash') {   // la poubelle est une case comme les autres : l'eau s'y accumule
         var B = geo.cells[p.cell];
         if (p.vy > 0 && p.x > B.x0 && p.x < B.x1 && p.y > B.y0 + 3) {
           p.mode = 'pool';
@@ -87,7 +89,7 @@
             ripples.push({ x: p.x, y: p.y, t: 0 });
           }
         } else if (p.ft > 600) { p.x = (B.x0 + B.x1) / 2; p.y = B.y0 + 8; }
-      } else if (p.dest === 'trash' && p.vy > 0 && p.y >= geo.trash.y - 6) { p.mode = 'drain'; p.t = 0; p.sx = p.x; p.sy = p.y; }
+      }
     }
 
     // ── Tickets : chaque appel donne la place de chaque ticket ───────
@@ -102,16 +104,16 @@
         if (!p) p = P[id] = { mode: 'hidden', key: 'none', x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, size: 1 };
         if (!snap && p.key === key) continue;
         var from = p.key; p.key = key; p.dest = w ? w.kind : 'cloud';
-        if (w && w.kind === 'board') p.cell = w.cell;
-        if (snap) { if (w && w.kind === 'board') placeIn(p, w.cell); else p.mode = 'hidden'; continue; }
+        var pool = !!w && (w.kind === 'board' || w.kind === 'trash');
+        if (pool) p.cell = w.kind === 'trash' ? 'trash' : w.cell;
+        if (snap) { if (pool) placeIn(p, p.cell); else p.mode = 'hidden'; continue; }
         var visible = p.mode !== 'hidden';
-        if (p.dest === 'board') {
+        if (pool) {
           if (!visible) { var o = from === 'trash' ? geo.trash : geo.cloud; p.x = o.x + (Math.random() - .5) * 20; p.y = o.y + 6; }   // pluie du nuage (ou retour de la poubelle)
           var B = geo.cells[p.cell];
           launch(p, B.x0 + 8 + Math.random() * Math.max(1, B.x1 - B.x0 - 16), B.y0 + 10);
         } else if (!visible) p.mode = 'hidden';
-        else if (p.dest === 'cloud') { p.mode = 'vapor'; p.t = 0; p.sx = p.x; p.sy = p.y; }
-        else launch(p, geo.trash.x + (Math.random() - .5) * 10, geo.trash.y - 4);
+        else { p.mode = 'vapor'; p.t = 0; p.sx = p.x; p.sy = p.y; }
       }
       for (id = list.length; id < P.length; id++) P[id].mode = 'hidden';
       if (snap) for (var k = 0; k < 300; k++) step();
@@ -125,9 +127,6 @@
         if (p.mode === 'vapor') {                    // évaporation : monte en rétrécissant vers le nuage
           p.t += dt / 1.4; var e = p.t * p.t * (3 - 2 * p.t);
           p.x = p.sx + (geo.cloud.x - p.sx) * e + Math.sin(p.t * 9) * 5 * (1 - p.t); p.y = p.sy + (geo.cloud.y - p.sy) * e; p.size = 1 - p.t * .95;
-          if (p.t >= 1) { p.mode = 'hidden'; p.size = 1; }
-        } else if (p.mode === 'drain') {             // avalée par la poubelle
-          p.t += dt / .5; p.x = p.sx + (geo.trash.x - p.sx) * p.t; p.y = p.sy + (geo.trash.y + 6 - p.sy) * p.t; p.size = 1 - p.t;
           if (p.t >= 1) { p.mode = 'hidden'; p.size = 1; }
         }
       });
@@ -200,7 +199,7 @@
       var rr = S.R * 1.6, grp = { free: [] };
       P.forEach(function (p) {
         if (p.mode === 'hidden') return;
-        if (p.mode === 'pool') { (grp[p.cell] = grp[p.cell] || []).push(p.x, p.y, rr); return; }
+        if (p.mode === 'pool') { (grp[p.cell] = grp[p.cell] || []).push(p.x, p.y, RC(p.cell) * 1.6); return; }
         if (p.mode === 'fly') grp.free.push(p.x, p.y, rr * .92, p.x - p.vx * 1.3, p.y - p.vy * 1.3, rr * .7, p.x - p.vx * 2.6, p.y - p.vy * 2.6, rr * .45);   // goutte en poire
         else grp.free.push(p.x, p.y, rr * Math.max(.05, p.size));
       });
@@ -235,8 +234,9 @@
       layout: function (g) {
         geo = g; dpr = Math.min(2, window.devicePixelRatio || 1);
         glCanvas.width = Math.round(g.W * dpr); glCanvas.height = Math.round(g.H * dpr); glCanvas.style.width = g.W + 'px'; glCanvas.style.height = g.H + 'px';
-        var k = Object.keys(g.cells)[0], B = g.cells[k], A = (B.x1 - B.x0) * (B.y1 - B.y0);
+        var k = Object.keys(g.cells).filter(function (c) { return c !== 'trash'; })[0], B = g.cells[k], A = (B.x1 - B.x0) * (B.y1 - B.y0);
         S.R = Math.max(3.5, Math.min(15, Math.sqrt(.42 * A / (.61 * Math.max(1, g.maxCell)))));   // la case la plus remplie occupe au plus la moitié de sa hauteur
+        var T = g.cells.trash; S.Rt = T ? Math.max(1.6, Math.min(S.R, Math.sqrt(.55 * (T.x1 - T.x0) * (T.y1 - T.y0) / (.61 * Math.max(1, g.maxTrash || 1))))) : S.R;   // poubelle au plus plein : environ les trois quarts
         snapNext = true;
       },
       reset: function () { P = []; spray = []; ripples = []; snapNext = true; },
