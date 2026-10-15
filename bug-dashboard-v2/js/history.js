@@ -350,7 +350,7 @@
       if (c.o === 'PRJ301') { st.prj301++; if (!c.d) st.prj301Open++; st.byOrigin.PRJ301++; } else st.byOrigin.Interne++;
       if (c.fx) st.hasFix++; if (c.d && !c.fx) st.doneNoFix++;
       st.byStatus[c.st] = (st.byStatus[c.st] || 0) + 1;
-      if (C.normalize(c.st) === 'closed') { var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1; }
+      if (c.d) { var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1; }
       var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
     });
@@ -533,7 +533,7 @@
     return out;
   }
 
-  // Résolutions des tickets Closed vues dans ces photos : la plus fréquente en
+  // Résolutions des tickets terminés (Closed, Decline, Dev done avec résolution…) vues dans ces photos : la plus fréquente en
   // bas. Au-delà de sept bandes, les plus rares sont regroupées (le total reste
   // juste) ; « Sans résolution » reste grise.
   function resolutionSeries(pts) {
@@ -605,7 +605,7 @@
       { threshold: cfg.history.threshold, thresholdLabel: 'tickets' });
     if (metric === 'resolution') {
       var rs = resolutionSeries(points);
-      if (!rs.length) return '<div class="empty">Aucun ticket Closed dans cette sélection.</div>';
+      if (!rs.length) return '<div class="empty">Aucun ticket terminé dans cette sélection.</div>';
       return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }));
     }
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
@@ -724,7 +724,7 @@
     if (!sel) {
       var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] || EMPTY_ST }; });
       title = 'Évolution entre versions — ' + pts.length + ' version' + (pts.length > 1 ? 's' : '');
-      sub = (ui.metric === 'resolution' ? 'Raisons des tickets Closed par version, en bandes empilées à 100 % : chaque barre répartit les Closed de la version entre leurs résolutions. ' : '') + 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
+      sub = (ui.metric === 'resolution' ? 'Raisons des tickets terminés (« Closed ») par version, en bandes empilées à 100 % : chaque barre répartit les tickets terminés de la version entre leurs résolutions. ' : '') + 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
       chart = pts.length ? chartFrom(ui.metric, pts) : '<div class="empty">Aucune Target date dans le journal.</div>';
     } else {
       var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
@@ -735,7 +735,7 @@
         : ui.metric === 'state'
         ? 'Ouverts et terminés sur le calendrier de la version : aires empilées, un point par photo posé à sa date — le périmètre qui bouge se voit autant que la progression.'
         : ui.metric === 'resolution'
-        ? 'Les raisons des tickets Closed (leur résolution) sur le calendrier de la version, en aires empilées : la plus fréquente en bas, le sommet est le nombre de Closed.'
+        ? 'Les raisons des tickets terminés (« Closed » : leur résolution) sur le calendrier de la version, en aires empilées : la plus fréquente en bas, le sommet est le nombre de tickets terminés.'
         : ui.metric === 'status'
         ? 'Les statuts sur le calendrier de la version, empilés du plus avancé en bas au moins avancé en haut : un diagramme de flux cumulé, dont le sommet est le périmètre.'
         : 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).') + scopeNote();
