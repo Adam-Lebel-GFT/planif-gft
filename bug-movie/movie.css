@@ -36,3 +36,6 @@
 .mv-is-water .mv-dotonly{display:none;}
 .mv-dotonly{display:contents;}
 .mv-sw--water{background:radial-gradient(circle at 35% 30%,#e9f6ff 0 18%,#5db3f4 45%,#0f4aa8 100%);}
+.mv-tile.is-frozen{opacity:.5;}
+.mv-tt small{font-weight:600; color:var(--muted);}
+.mv-fr{margin-left:auto; font-size:11px; font-weight:700; color:var(--muted); white-space:nowrap;}

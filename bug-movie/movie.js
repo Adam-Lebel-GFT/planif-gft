@@ -241,10 +241,7 @@
       lines.forEach(function (ln, k) { ctx.fillText(ln, g.bx + (c + .5) * g.cw, g.HEAD / 2 + (k - (lines.length - 1) / 2) * 12); });
     });
     ctx.textAlign = 'left';
-    M.tds.forEach(function (td, r) {
-      ctx.fillStyle = VERSION_COLORS[r % VERSION_COLORS.length]; ctx.font = '800 12px ' + cs.mono;
-      ctx.save(); ctx.translate(g.bx + 5, g.HEAD + r * g.ROWH + 14); ctx.fillText(C.fmtDate(new Date(td + 'T00:00:00')).slice(0, 5), 0, 0); ctx.restore();
-    });
+    rowLabels(ctx, g, t, false);
     // panneaux nuage / poubelle, hors du tableau
     [['cloud', 0, 'Nuage', 'sortis de la version'], ['trash', g.tx, 'Poubelle', 'rejetés']].forEach(function (pn) {
       var px = pn[1], pbot = pn[0] === 'cloud' ? g.cloudBottom : g.trashBottom;
@@ -281,7 +278,7 @@
       if (cur.kind === 'board') { var ck = cur.row + ':' + cur.col; cells[ck] = (cells[ck] || 0) + 1; } else if (cur.kind === 'cloud') cnt.cloud++; else { cnt.trash++; why[cur.why]++; }
     }
     M.dots = dots;
-    if (wt) { WT.sync(wt); counters(ctx, g, cells, cnt, why, true); return; }
+    if (wt) { WT.sync(wt); counters(ctx, g, cells, cnt, why, true); return; }   // en mode eau, la sous-brillance passe par-dessus l'eau (drawFx)
     dots.forEach(function (d) { if (d.moving) { ctx.strokeStyle = rgba(dotColor(d.j), .45 * (1 - d.tp)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(d.x, d.y, 3.4 + d.tp * 8, 0, 7); ctx.stroke(); } });
     var rad = Math.max(2.2, Math.min(3.6, G.cellPitch * .38));
     // étoile filante : traînée effilée du point de départ vers la nouvelle place (halo puis cœur), qui s'estompe après l'arrivée
@@ -307,6 +304,24 @@
       ctx.stroke();
     });
     counters(ctx, g, cells, cnt, why, false);
+    frozenWash(ctx, g, t);
+  }
+  // nom de chaque ligne : la version du plan (3.9.x) et sa Target date
+  function rowLabels(ctx, g, t, over) {
+    M.tds.forEach(function (td, r) {
+      var y = g.HEAD + r * g.ROWH, fr = frozenAt(r, t);
+      if (over && !fr) return;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = VERSION_COLORS[r % VERSION_COLORS.length]; ctx.font = '800 12px ' + cs.mono; ctx.fillText(vName(r), g.bx + 5, y + 12);
+      ctx.fillStyle = cs.muted; ctx.font = '600 9.5px ' + cs.mono;
+      ctx.fillText(fr ? '❄ gelée' : M.vLab[r] ? C.fmtDate(new Date(td + 'T00:00:00')).slice(0, 5) : '', g.bx + 5, y + 25);
+    });
+  }
+  // sous-brillance des versions gelées : voile sur la ligne, le nom reste lisible par-dessus
+  function frozenWash(ctx, g, t) {
+    var any = false;
+    M.tds.forEach(function (td, r) { if (!frozenAt(r, t)) return; any = true; ctx.fillStyle = rgba(cs.surf, .62); ctx.fillRect(g.bx, g.HEAD + r * g.ROWH + 1, g.tx - g.GAP - g.bx, g.ROWH - 1); });
+    if (any) rowLabels(ctx, g, t, true);
   }
   // compteurs ; en mode eau, celui de chaque case passe en haut (la flaque occupe le bas)
   function counters(ctx, g, cells, cnt, why, top) {
@@ -328,9 +343,10 @@
     var ref = function (v) { var j = v.jalons || {}; return parse(b === 'start' ? v.start : b === 'end' ? v.end : j[b] || j.deploy || v.end); };
     var ov = (ui.plan || []).map(function (v) { return { v: v, at: ref(v) }; }).filter(function (x) { return x.at; }).sort(function (a, z) { return a.at - z.at; });
     var t0d = new Date(M.t0), wn = M.win;
-    M.fzD = [];
+    M.fzD = []; M.vLab = [];
     M.fz = M.tds.map(function (td, r) {
       var tg = new Date(td + 'T00:00:00').getTime() + tol, hit = ov.filter(function (x) { return x.at.getTime() >= tg; })[0];
+      M.vLab[r] = hit && hit.v.label ? String(hit.v.label) : null;
       var f = hit && parse((hit.v.jalons || {}).freeze); if (!f) return null;
       M.fzD[r] = f;
       return f.getTime() <= M.t0 ? 0 : C.openHours(t0d, f, wn.a, wn.z) / wn.h;
@@ -338,6 +354,10 @@
     M.fzPlan = ui.plan;
     return M.fz;
   }
+  // nom de la version (3.9.x, lu dans le plan de livraisons), à défaut la Target date
+  function vName(r) { freezes(); return M.vLab[r] || C.fmtDate(new Date(M.tds[r] + 'T00:00:00')); }
+  // version gelée à l'instant t : son Code freeze est passé
+  function frozenAt(r, t) { var fz = freezes(); return fz[r] != null && t >= fz[r]; }
   var CH = { w: 900, h: 250, pl: 40, pr: 14, pt: 16, pb: 28 };
   function niceMax(v) { var s = [8, 12, 20, 40, 60, 80, 100, 120, 160, 200, 240, 320, 400, 480, 600]; for (var i = 0; i < s.length; i++) if (v <= s[i]) return s[i]; return Math.ceil(v / 200) * 200; }
   function drawChart(t) {
@@ -365,14 +385,16 @@
       if (fz[r] != null && fz[r] > 0) {                // repère du gel, en pointillé
         var xf = Math.round(xOf(fz[r])) + .5; ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba(col, .7); ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.moveTo(xf, c.pt + 12); ctx.lineTo(xf, c.pt + ph); ctx.stroke(); ctx.restore();
-        ctx.fillStyle = col; ctx.font = '700 9.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillText('gel ' + C.fmtDate(M.fzD[r]).slice(0, 5), xf - 3, c.pt + 9 + r * 11); ctx.textAlign = 'left';
+        ctx.fillStyle = col; ctx.font = '700 9.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillText((M.vLab[r] ? M.vLab[r] + ' ' : '') + 'gel ' + C.fmtDate(M.fzD[r]).slice(0, 5), xf - 3, c.pt + 9 + r * 11); ctx.textAlign = 'left';
       }
       var tot = pts(function (p) { return p.open + p.done; }), dn = pts(function (p) { return p.done; });
       if (tot.length < 2) return;
+      ctx.globalAlpha = frozenAt(r, t) ? .35 : 1;      // version gelée : en sous-brillance
       var poly = function (a) { ctx.beginPath(); ctx.moveTo(a[0][0], yOf(0)); a.forEach(function (p) { ctx.lineTo(p[0], p[1]); }); ctx.lineTo(a[a.length - 1][0], yOf(0)); ctx.closePath(); };
       poly(tot); ctx.fillStyle = rgba(col, .16); ctx.fill(); poly(dn); ctx.fillStyle = rgba(col, .46); ctx.fill();
       ctx.beginPath(); tot.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke();
       var l = tot[tot.length - 1]; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(l[0], l[1], 3, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
     });
     var xt = xOf(t); ctx.strokeStyle = cs.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xt, c.pt - 4); ctx.lineTo(xt, c.pt + ph); ctx.stroke();
     ctx.restore();
@@ -401,6 +423,7 @@
       var n = tot[r].o + tot[r].d, pc = n ? Math.round(tot[r].p / n) : 0;
       $('mvPc' + r).textContent = pc; $('mvBr' + r).style.width = pc + '%';
       $('mvSub' + r).textContent = tot[r].o + ' ouverts · ' + tot[r].d + ' terminés · ' + n + ' au total';
+      var fr = frozenAt(r, t); $('mvTl' + r).classList.toggle('is-frozen', fr); $('mvFr' + r).textContent = fr ? '❄ gelée le ' + C.fmtDate(M.fzD[r]) : '';
     });
     $('mvFlowLbl').textContent = i === 0 ? 'Photo 1 / ' + M.T.length : 'Photo ' + (i + 1) + ' / ' + M.T.length + ' · depuis la précédente (' + Math.round((M.T[i] - M.T[i - 1]) * M.win.h) + ' h ouvrées)';
   }
@@ -450,6 +473,7 @@
     var cv = $('mvFx'); if (!cv) return; var ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, G.W, G.H);
     if (!waterOn()) return;
+    frozenWash(ctx, G, ui.t);
     WT.ripples().forEach(function (rp) { var a = 1 - rp.t; ctx.strokeStyle = 'rgba(255,255,255,' + (.75 * a).toFixed(2) + ')'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(rp.x, rp.y, 3 + rp.t * 18, 1.2 + rp.t * 3.5, 0, 0, 7); ctx.stroke(); });
     var r1 = WT.radius() + 2.5; ctx.lineWidth = 1.2;
     (M.dots || []).forEach(function (d) {
@@ -530,12 +554,13 @@
   function dotLegend() {
     return ui.color === 'team'
       ? M.teamLabels.map(function (l) { return '<span><i class="mv-sw" style="background:' + M.teamColors[l] + '"></i>' + esc(l) + '</span>'; }).join('')
-      : M.tds.map(function (td, r) { return '<span><i class="mv-sw" style="background:' + VERSION_COLORS[r % VERSION_COLORS.length] + '"></i>' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</span>'; }).join('');
+      : M.tds.map(function (td, r) { return '<span><i class="mv-sw" style="background:' + VERSION_COLORS[r % VERSION_COLORS.length] + '"></i>' + esc(vName(r)) + '</span>'; }).join('');
   }
   function mount(rootEl) {
     var tiles = M.tds.map(function (td, r) {
       var col = VERSION_COLORS[r % VERSION_COLORS.length];
-      return '<div class="mv-tile"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>Version du ' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</div>' +
+      var nm = vName(r), dt = C.fmtDate(new Date(td + 'T00:00:00'));
+      return '<div class="mv-tile" id="mvTl' + r + '"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>' + (M.vLab[r] ? 'Version ' + esc(nm) + ' <small>· Target ' + esc(dt) + '</small>' : 'Version du ' + esc(dt)) + '<span class="mv-fr" id="mvFr' + r + '"></span></div>' +
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% pondéré</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
     var waterOk = !!(root.BDV2Water && root.BDV2Water.supported());
@@ -553,7 +578,7 @@
       '<div class="mv-legend" id="mvLegend"></div>' +
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
-      '<span class="mv-hint">Arrêt sur chaque photo</span><span class="seg" role="group" aria-label="Arrêt sur chaque photo">' + [[0, 'Aucun'], [.8, '0,8 s'], [1.5, '1,5 s'], [3, '3 s']].map(function (s) { return '<button type="button" data-mv-dwell="' + s[0] + '"' + (ui.dwell === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span>' +
+      '<span class="mv-hint">Arrêt sur chaque photo</span><span class="seg" role="group" aria-label="Arrêt sur chaque photo">' + [[0, 'Aucun'], [.3, '0,3 s'], [.5, '0,5 s'], [.8, '0,8 s'], [1.5, '1,5 s'], [3, '3 s']].map(function (s) { return '<button type="button" data-mv-dwell="' + s[0] + '"' + (ui.dwell === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span>' +
       '<span class="mv-hint">Rendu</span><span class="seg" role="group" aria-label="Rendu"><button type="button" data-mv-render="dots"' + (ui.render !== 'water' ? ' class="is-on"' : '') + '>Points</button><button type="button" data-mv-render="water"' + (ui.render === 'water' ? ' class="is-on"' : '') + (waterOk ? '' : ' disabled title="Ce navigateur ne gère pas WebGL2"') + '>Gouttes d\'eau</button></span>' +
       '<span class="mv-dotonly"><span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></span></div></div></div>';
     $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(ui.items, ui.rootEl, true); });
