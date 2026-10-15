@@ -328,9 +328,11 @@
     var ref = function (v) { var j = v.jalons || {}; return parse(b === 'start' ? v.start : b === 'end' ? v.end : j[b] || j.deploy || v.end); };
     var ov = (ui.plan || []).map(function (v) { return { v: v, at: ref(v) }; }).filter(function (x) { return x.at; }).sort(function (a, z) { return a.at - z.at; });
     var t0d = new Date(M.t0), wn = M.win;
-    M.fz = M.tds.map(function (td) {
+    M.fzD = [];
+    M.fz = M.tds.map(function (td, r) {
       var tg = new Date(td + 'T00:00:00').getTime() + tol, hit = ov.filter(function (x) { return x.at.getTime() >= tg; })[0];
       var f = hit && parse((hit.v.jalons || {}).freeze); if (!f) return null;
+      M.fzD[r] = f;
       return f.getTime() <= M.t0 ? 0 : C.openHours(t0d, f, wn.a, wn.z) / wn.h;
     });
     M.fzPlan = ui.plan;
@@ -363,7 +365,7 @@
       if (fz[r] != null && fz[r] > 0) {                // repère du gel, en pointillé
         var xf = Math.round(xOf(fz[r])) + .5; ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba(col, .7); ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.moveTo(xf, c.pt + 12); ctx.lineTo(xf, c.pt + ph); ctx.stroke(); ctx.restore();
-        ctx.fillStyle = col; ctx.font = '700 9.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillText('gel ' + C.fmtDate(new Date(td + 'T00:00:00')).slice(0, 5), xf - 3, c.pt + 9 + r * 11); ctx.textAlign = 'left';
+        ctx.fillStyle = col; ctx.font = '700 9.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillText('gel ' + C.fmtDate(M.fzD[r]).slice(0, 5), xf - 3, c.pt + 9 + r * 11); ctx.textAlign = 'left';
       }
       var tot = pts(function (p) { return p.open + p.done; }), dn = pts(function (p) { return p.done; });
       if (tot.length < 2) return;
@@ -529,6 +531,7 @@
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% pondéré</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
     var waterOk = !!(root.BDV2Water && root.BDV2Water.supported());
+    WT = null;                                         // nouveau canevas : le moteur d'eau sera recréé dessus
     if (!waterOk) ui.render = 'dots';
     var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
     rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Film Stabilisation</h2>' +
