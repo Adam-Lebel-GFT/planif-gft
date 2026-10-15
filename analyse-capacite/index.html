@@ -775,16 +775,16 @@ function upl(a){ return a['pl_'+UNIT_KEY[unit]]; }
 // Capacité d'une journée : jp / sp tiennent compte du sprint planning ; pres (présence) n'en tient pas compte ;
 // pl_jp / pl_sp = capacité retirée par le sprint planning.
 function dayAgg(ds, ppl){
-  var jp=0, sp=0, bg=0, net=0, abs=0, pres=0, plJ=0, plS=0, plB=0, pf=planFactor(ds);
+  var jp=0, sp=0, bg=0, net=0, lead=0, cer=0, abs=0, pres=0, plJ=0, plS=0, plB=0, pf=planFactor(ds);
   for(var i=0;i<ppl.length;i++){
     var p=ppl[i]; if(!activeOn(p,ds)) continue;
     var code=p.dailyCodes[ds];
     if(WORKING.has(code)){
       var s1=p.alloc*spPerJP(p), b1=p.alloc*bugPerJP(p);
-      jp+=p.alloc*pf; net+=p.alloc*leadRateOf(p)*(1-P.agile)*pf; sp+=s1*pf; bg+=b1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf); plB+=b1*(1-pf);
+      jp+=p.alloc*pf; lead+=p.alloc*pf*(1-leadRateOf(p)); cer+=p.alloc*pf*leadRateOf(p)*P.agile; net+=p.alloc*leadRateOf(p)*(1-P.agile)*pf; sp+=s1*pf; bg+=b1*pf; pres+=p.alloc; plJ+=p.alloc*(1-pf); plS+=s1*(1-pf); plB+=b1*(1-pf);
     } else { abs+=p.alloc; }
   }
-  return { jp:jp, net:net, sp:sp, bg:bg, tot:sp+bg, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, pl_bg:plB, pl_tot:plS+plB };
+  return { jp:jp, lead:lead, cer:cer, net:net, sp:sp, bg:bg, tot:sp+bg, abs:abs, pres:pres, pl_jp:plJ, pl_sp:plS, pl_bg:plB, pl_tot:plS+plB };
 }
 function fmtRange(a,b){
   var A=pd(a), B=pd(b);
@@ -822,7 +822,7 @@ function periods(){
   return out;
 }
 function aggPeriod(g, ppl){
-  var t={ jp:0, net:0, sp:0, bg:0, tot:0, abs:0, pres:0, pl_jp:0, pl_sp:0, pl_bg:0, pl_tot:0, ouvres:g.days.length };
+  var t={ jp:0, lead:0, cer:0, net:0, sp:0, bg:0, tot:0, abs:0, pres:0, pl_jp:0, pl_sp:0, pl_bg:0, pl_tot:0, ouvres:g.days.length };
   g.days.forEach(function(d){ var a=dayAgg(d, ppl); for(var k in a) t[k]+=a[k]; });
   return t;
 }
@@ -1010,13 +1010,28 @@ function renderGantt(){
         h+='</tr>';
       });
     });
-    h+='<tr class="gsum"><td class="gp">Σ PRÉSENTS / JOUR</td>';
+    var presTot=0; dates.forEach(function(d){ if(!isWE(d)) presTot+=dayAgg(d, ppl).jp; });
+    h+='<tr class="gsum"><td class="gp">Σ PRÉSENTS / JOUR · '+f1(presTot)+' JP</td>';
     dates.forEach(function(d){
       if(isWE(d)){ h+='<td class="we" data-col="'+d+'" style="background:#22344E"></td>'; return; }
       var a=dayAgg(d, ppl);
       h+='<td data-col="'+d+'"'+(isPlanDay(d)?' class="spd"':'')+' title="'+d+' · '+f1(a.jp)+' JP'+(a.pl_jp>0?' (sprint planning −'+f1(a.pl_jp)+')':'')+'">'+(a.jp>0?f1(a.jp):'·')+'</td>';
     });
     h+='</tr>';
+    // Du total présent à la CAF nette, jour par jour : tâches de lead, puis cérémonies agiles (sprint planning déjà déduit des présents).
+    var days=dates.map(function(d){ return isWE(d) ? null : dayAgg(d, ppl); });
+    [['− TÂCHES DE LEAD','lead','Capacité retirée par les tâches de lead (raffinage et support)'],
+     ['− CÉRÉMONIES AGILES','cer','Capacité retirée par les cérémonies agiles'],
+     ['= CAF NETTE','net','CAF nette : présents moins tâches de lead et cérémonies agiles']].forEach(function(r){
+      var tot=0; days.forEach(function(a){ if(a) tot+=a[r[1]]; });
+      h+='<tr class="gsum"><td class="gp" title="'+r[2]+'">'+r[0]+' · '+f1(tot)+' JP</td>';
+      dates.forEach(function(d,i){
+        var a=days[i];
+        if(!a){ h+='<td class="we" data-col="'+d+'" style="background:#22344E"></td>'; return; }
+        h+='<td data-col="'+d+'"'+(isPlanDay(d)?' class="spd"':'')+(r[1]==='net'?' style="font-weight:700"':'')+' title="'+d+' · '+f1(a[r[1]])+' JP">'+(a[r[1]]>0?f1(a[r[1]]):'·')+'</td>';
+      });
+      h+='</tr>';
+    });
   }
   h+='</tbody>';
   $('#gantt').innerHTML=h;
