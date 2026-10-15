@@ -38,7 +38,7 @@
   var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
   var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle glisse vers sa nouvelle case : le ticket change de statut ou de version</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle, qui se remplit : rejetée</span>';
   // Rendu unique : les gouttes d'eau. Les points ne servent plus que de repli sans WebGL2.
-  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: 'water', plan: [], dwell: .5, hold: 0 };
+  var ui = { nVers: 0, axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: 'water', plan: [], dwell: .5, hold: 0 };
   var WT = null;         // moteur des gouttes d'eau (water.js), créé à la demande
   function waterOn() { return ui.render === 'water' && !!WT; }
   var M = null;          // données construites (photos, tickets, positions)
@@ -200,7 +200,7 @@
   }
   function rgba(hex, a) { var h = hex.replace('#', ''); if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join(''); var n = parseInt(h, 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function ease(p) { return p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
-  function dotColor(j) { return ui.color === 'team' ? (M.teamColors[M.tk[j].team] || P.NEUTRAL) : VERSION_COLORS[M.st[M.cur][j] ? M.st[M.cur][j].row % VERSION_COLORS.length : 0]; }
+  function dotColor(j) { return M.teamColors[M.tk[j].team] || P.NEUTRAL; }
   function lastMove(j, i) { var mv = M.tk[j].moves, d = 0; for (var k = 0; k < mv.length && mv[k].i <= i; k++) d = mv[k].dir; return d; }
   function frameAt(t) { var i = 0; for (var k = 0; k < M.T.length; k++) if (M.T[k] <= t) i = k; return i; }
   function label(t) {
@@ -559,9 +559,7 @@
     return dotLegend() + LEG_DOTS + LEG2;
   }
   function dotLegend() {
-    return ui.color === 'team'
-      ? M.teamLabels.map(function (l) { return '<span><i class="mv-sw" style="background:' + M.teamColors[l] + '"></i>' + esc(l) + '</span>'; }).join('')
-      : M.tds.map(function (td, r) { return '<span><i class="mv-sw" style="background:' + VERSION_COLORS[r % VERSION_COLORS.length] + '"></i>' + esc(vName(r)) + '</span>'; }).join('');
+    return M.teamLabels.map(function (l) { return '<span><i class="mv-sw" style="background:' + M.teamColors[l] + '"></i>' + esc(l) + '</span>'; }).join('');
   }
   function mount(rootEl) {
     var tiles = M.tds.map(function (td, r) {
