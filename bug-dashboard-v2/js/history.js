@@ -302,7 +302,7 @@
   // déjà rangée par version), ni la sélection issue d'une alerte (figée sur
   // l'extrait courant).
   var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
-    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
+    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, fixedNoRelease: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
   function scopeKey() { var f = S.filters; return [f.state, f.origin, f.fix, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
   function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
   function scopeLabel() {
@@ -344,7 +344,7 @@
     (item.tickets || []).forEach(function (c) {
       if (!raw && !inScope(c)) return;
       var td = c.td || 'none';
-      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
+      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, fixedNoRelease: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
       var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
       st.total++; st.pctSum += c.pc || 0; if (c.d) st.done++; else st.open++;
       if (isB && !c.d) st.blockersOpen++;
@@ -354,7 +354,7 @@
       if (c.d) {
         var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1;
         // « sans code » : même définition que le message de fin de version (résolution qui n'est pas un bug, ou étiquette « sans livraison »).
-        if (noCodeRes.indexOf(C.normalize(c.r || '')) !== -1 || (noCodeLab && C.normalize(String(c.lb || '')).indexOf(noCodeLab) !== -1)) st.doneNoCode++; else st.doneCode++;
+        if (noCodeRes.indexOf(C.normalize(c.r || '')) !== -1 || (noCodeLab && C.normalize(String(c.lb || '')).indexOf(noCodeLab) !== -1)) st.doneNoCode++; else { st.doneCode++; if (!c.fx) st.fixedNoRelease++; }
       }
       var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
@@ -544,7 +544,10 @@
   function resolutionSeries(pts) {
     var tot = {};
     pts.forEach(function (p) { if (p.st) Object.keys(p.st.byRes || {}).forEach(function (k) { tot[k] = (tot[k] || 0) + p.st.byRes[k]; }); });
-    var keys = Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a] || a.localeCompare(b); });
+    // Les résolutions qui livrent du code en bas, les autres au-dessus : le trait avec / sans code tombe alors entre les deux.
+    var noCodeRes = ((CFG.get().bilan || {}).resolutions || []).map(C.normalize);
+    var noCode = function (k) { return noCodeRes.indexOf(C.normalize(k === RES_NONE ? '' : k)) !== -1 ? 1 : 0; };
+    var keys = Object.keys(tot).sort(function (a, b) { return noCode(a) - noCode(b) || tot[b] - tot[a] || a.localeCompare(b); });
     var shown = keys.length > 8 ? keys.slice(0, 7) : keys, rest = keys.length > 8 ? keys.slice(7) : [];
     // Couleur fixée par résolution (ordre de la config) : la même d'une vue à l'autre.
     var known = ['Fixed'].concat((CFG.get().bilan || {}).resolutions || []);
@@ -557,12 +560,12 @@
   }
   // Ligne discrète : parmi les tickets terminés, ceux livrés avec du code et ceux sans.
   function codeLine(pts) {
-    var c = 0, n = 0;
-    pts.forEach(function (p) { if (p && p.st) { c += p.st.doneCode || 0; n += p.st.doneNoCode || 0; } });
+    var c = 0, n = 0, f = 0;
+    pts.forEach(function (p) { if (p && p.st) { c += p.st.doneCode || 0; n += p.st.doneNoCode || 0; f += p.st.fixedNoRelease || 0; } });
     var t = c + n; if (!t) return '';
     var pc = Math.round(c / t * 100);
     return '<div class="code-line" title="Sans code : résolution qui n\'est pas un bug (Configurer, section « Message de fin de version ») ou étiquette « sans livraison »."><span class="code-bar"><i style="width:' + pc + '%"></i></span>' +
-      '<span>' + t + ' terminés · <b>' + c + '</b> avec code (' + pc + ' %) · <b>' + n + '</b> sans code (' + (100 - pc) + ' %)</span></div>';
+      '<span>' + t + ' terminés · <b>' + c + '</b> avec code (' + pc + ' %) · <b>' + n + '</b> sans code (' + (100 - pc) + ' %)' + (f ? ' · <b>' + f + '</b> « Fixed no release » (avec code, sans Fix Version)' : '') + '</span></div>';
   }
   function resolutionValue(p, sr) {
     var by = p.st.byRes || {};
@@ -620,7 +623,9 @@
     if (metric === 'resolution') {
       var rs = resolutionSeries(points);
       if (!rs.length) return '<div class="empty">Aucun ticket terminé dans cette sélection.</div>';
-      return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }));
+      var marks = points.map(function (p) { var t = p.st ? (p.st.doneCode || 0) + (p.st.doneNoCode || 0) : 0; return t ? p.st.doneCode / t : null; });
+      return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }),
+        { marks: marks, markLabel: 'trait : avec code (dessous) / sans code (dessus)' });
     }
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);

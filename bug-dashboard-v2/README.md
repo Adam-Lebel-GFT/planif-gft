@@ -361,6 +361,10 @@ par version en **bandes empilées à 100 %** ; dans **une version**, des **aires
 calendrier (barres à 100 % par photo quand le plan ne donne pas ses dates). La résolution la plus
 fréquente est en bas ; au-delà de huit bandes, les plus rares sont regroupées en « Autres
 résolutions ». Chaque résolution garde sa couleur d'une vue à l'autre.
+Un **trait fin** dans chaque barre à 100 % sépare les tickets terminés **avec code** (dessous : les
+résolutions qui livrent, en bas de la pile) de ceux **sans code** (dessus : résolutions listées dans
+« Résolutions qui ne sont pas des bugs », ou étiquette « sans livraison »). Une ligne discrète sous le
+graphique donne les chiffres, avec le nombre de « Fixed no release » (terminés avec code mais sans Fix Version).
 
 Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
 pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →
