@@ -3,7 +3,7 @@
    Chaque ticket est une particule d'un petit fluide (Clavet et al. 2005,
    relaxation double densité) : les gouttes d'une même case se rejoignent en
    une flaque qui s'étale et ondule. Quand un ticket change de case, sa goutte
-   vole jusqu'à la nouvelle et éclabousse ; sortie de version : elle s'évapore
+   glisse le long du fond jusqu'à la nouvelle (elle vole et éclabousse en arrivant du nuage) ; sortie de version : elle s'évapore
    vers le nuage ; rejetée : elle tombe dans la poubelle, qui se remplit.
    Rendu WebGL2 : un champ de densité (taches additives, découpées aux murs de
    chaque case) puis un éclairage (reflets, profondeur, ligne de surface).
@@ -108,6 +108,7 @@
         if (pool) p.cell = w.kind === 'trash' ? 'trash' : w.cell;
         if (snap) { if (pool) placeIn(p, p.cell); else p.mode = 'hidden'; continue; }
         var visible = p.mode !== 'hidden';
+        if (pool && visible && from.charAt(0) === 'b' && p.dest === 'board' && (p.mode === 'pool' || p.mode === 'slide')) { slide(p); continue; }   // dans le tableau : elle glisse
         if (pool) {
           if (!visible) { var o = from === 'trash' ? geo.trash : geo.cloud; p.x = o.x + (Math.random() - .5) * 20; p.y = o.y + 6; }   // pluie du nuage (ou retour de la poubelle)
           var B = geo.cells[p.cell];
@@ -118,13 +119,26 @@
       for (id = list.length; id < P.length; id++) P[id].mode = 'hidden';
       if (snap) for (var k = 0; k < 300; k++) step();
     }
+    // d'une case à l'autre du tableau, la goutte coule le long du fond (et descend ou monte d'une ligne en douceur)
+    function slide(p) {
+      var B = geo.cells[p.cell], tx = B.x0 + 6 + Math.random() * Math.max(1, B.x1 - B.x0 - 12), ty = B.y1 - S.R * .6;
+      p.mode = 'slide'; p.t = 0; p.sx = p.x; p.sy = p.y; p.tx = tx; p.ty = ty;
+      p.dur = .55 + Math.min(1.1, Math.hypot(tx - p.x, ty - p.y) / 520);
+    }
     var acc = 0;
     function tick(dt) {
       if (!geo) return;
       dt = Math.min(.05, dt); acc += dt;
       var n = 0; while (acc >= 1 / 120 && n < 5) { step(); acc -= 1 / 120; n++; } if (n >= 5) acc = 0;
       P.forEach(function (p) {
-        if (p.mode === 'vapor') {                    // évaporation : monte en rétrécissant vers le nuage
+        if (p.mode === 'slide') {
+          p.t = Math.min(1, p.t + dt / p.dur); var u = p.t, e = u * u * (3 - 2 * u), x0 = p.x, y0 = p.y;
+          // reste collée au fond de la ligne de départ, puis rejoint celle d'arrivée ; une petite onde la fait rouler
+          var ey = Math.max(0, Math.min(1, (e - .15) / .7)); ey = ey * ey * (3 - 2 * ey);
+          p.x = p.sx + (p.tx - p.sx) * e; p.y = p.sy + (p.ty - p.sy) * ey - Math.sin(u * Math.PI * 6) * 1.2 * Math.sin(u * Math.PI);
+          var k = Math.max(1e-3, dt * 120); p.vx = (p.x - x0) / k; p.vy = (p.y - y0) / k;
+          if (p.t >= 1) { p.mode = 'pool'; p.vx *= .4; p.vy = 0; ripples.push({ x: p.x, y: p.y, t: .35 }); }
+        } else if (p.mode === 'vapor') {                    // évaporation : monte en rétrécissant vers le nuage
           p.t += dt / 1.4; var e = p.t * p.t * (3 - 2 * p.t);
           p.x = p.sx + (geo.cloud.x - p.sx) * e + Math.sin(p.t * 9) * 5 * (1 - p.t); p.y = p.sy + (geo.cloud.y - p.sy) * e; p.size = 1 - p.t * .95;
           if (p.t >= 1) { p.mode = 'hidden'; p.size = 1; }
@@ -200,6 +214,7 @@
       P.forEach(function (p) {
         if (p.mode === 'hidden') return;
         if (p.mode === 'pool') { (grp[p.cell] = grp[p.cell] || []).push(p.x, p.y, RC(p.cell) * 1.6); return; }
+        if (p.mode === 'slide') { var sp = Math.min(6, Math.hypot(p.vx, p.vy)), ux = sp > .05 ? p.vx / sp : 0, uy = sp > .05 ? p.vy / sp : 0; grp.free.push(p.x, p.y, rr * .9, p.x - ux * (3 + sp * 2), p.y - uy * (3 + sp * 2), rr * .72, p.x - ux * (6 + sp * 4.5), p.y - uy * (6 + sp * 4.5), rr * .5, p.x - ux * (9 + sp * 7), p.y - uy * (9 + sp * 7), rr * .32); return; }   // filet d'eau qui s'étire derrière elle
         if (p.mode === 'fly') grp.free.push(p.x, p.y, rr * .92, p.x - p.vx * 1.3, p.y - p.vy * 1.3, rr * .7, p.x - p.vx * 2.6, p.y - p.vy * 2.6, rr * .45);   // goutte en poire
         else grp.free.push(p.x, p.y, rr * Math.max(.05, p.size));
       });

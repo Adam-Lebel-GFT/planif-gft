@@ -36,7 +36,7 @@
   var DUR = 0.45;
   var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span>';
   var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
-  var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle vole et éclabousse : le ticket change de case</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle, qui se remplit : rejetée</span>';
+  var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle glisse vers sa nouvelle case : le ticket change de statut ou de version</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle, qui se remplit : rejetée</span>';
   var RENDER_KEY = 'bdv2:movieRender';
   function savedRender() { try { return localStorage.getItem(RENDER_KEY) === 'water' ? 'water' : 'dots'; } catch (e) { return 'dots'; } }
   var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [], dwell: 1.5, hold: 0 };
