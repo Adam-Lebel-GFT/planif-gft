@@ -68,7 +68,15 @@
     H.items = []; H.source = null;
     if (S.client) {
       try {
-        var res = await S.client.from('bdv2_analyses').select('id,cree_le,cree_par,nom,hash,nb_tickets,resume,tickets,synthese,epingle').order('cree_le', { ascending: true }).limit(120);
+        // Lecture par pages : une seule requête plafonnée coupait les analyses les plus récentes.
+        var res = { data: [], error: null }, from = 0, PAGE = 40;
+        for (;;) {
+          var pg = await S.client.from('bdv2_analyses').select('id,cree_le,cree_par,nom,hash,nb_tickets,resume,tickets,synthese,epingle').order('cree_le', { ascending: true }).order('id', { ascending: true }).range(from, from + PAGE - 1);
+          if (pg.error) { res.error = pg.error; break; }
+          res.data = res.data.concat(pg.data || []);
+          if ((pg.data || []).length < PAGE) break;
+          from += PAGE;
+        }
         if (!res.error) {
           H.items = (res.data || []).map(function (r) { return { id: r.id, at: r.cree_le, by: r.cree_par, nom: r.nom, hash: r.hash, nb: r.nb_tickets, resume: r.resume || {}, tickets: r.tickets || [], synthese: r.synthese, epingle: r.epingle }; });
           H.source = 'supabase';
