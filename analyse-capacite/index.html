@@ -307,7 +307,7 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
   <div class="kpibar" style="margin-top:0">
     <div class="kpibar-inner">
       <div class="kgrid">
-      <div class="kpi"><div class="kpi-lbl">Personnes (ETP)</div><div class="kpi-val" id="k1v">–</div><div class="kpi-sub" id="k1s"></div></div>
+      <div class="kpi"><div class="kpi-lbl">Personnes</div><div class="kpi-val" id="k1v">–</div><div class="kpi-sub" id="k1s"></div></div>
       <div class="kpi"><div class="kpi-lbl">Présences</div><div class="kpi-val"><span id="k4v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>%</span></div><div class="kpi-sub" id="k4s"></div></div>
       <div class="kpi"><div class="kpi-lbl">CAF brute</div><div class="kpi-val"><span id="k6v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">jours présents × allocation</div></div>
       <div class="kpi"><div class="kpi-lbl">CAF nette</div><div class="kpi-val"><span id="k5v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">cérémonies, lead et sprint planning déduits</div></div>
@@ -904,8 +904,8 @@ function renderKPIs(){
   var ouvres = viewWeekdays().length;
   var per = pers.length ? tot/pers.length : 0;
   var granLbl = GRAN_NOUN[gran];
-  $('#k1v').textContent = f1(ppl.reduce(function(t,p){ return t+p.alloc; },0));
-  $('#k1s').textContent = ppl.length+' personne(s) sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
+  $('#k1v').textContent = ppl.length;
+  $('#k1s').textContent = f1(ppl.reduce(function(t,p){ return t+p.alloc; },0))+' ETP · sur '+state.persons.length+' · '+(new Set(ppl.map(function(p){ return p.team; }))).size+' équipe(s)';
   $('#k2v').textContent = f1(tot); $('#k2u').textContent = UNIT_LBL[unit];
   $('#k2s').textContent = ouvres+' j. ouvrés'+(unit==='SP'?' · lead/agile appliqués, hors part bugs':unit==='BUG'?' · CAF nette × part dédiée aux bugs':unit==='TOT'?' · story points + bugs':'')+(pl>0?' · sprint planning −'+f1(pl)+' '+UNIT_LBL[unit]:'');
   $('#k3l').textContent = 'Moyenne / '+granLbl;
