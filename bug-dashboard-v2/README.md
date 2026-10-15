@@ -354,7 +354,8 @@ leur place groupée est bien en haut de la pile. Les couleurs sont celles que Co
 donne à chaque statut partout ailleurs. Une bande trop mince ne porte pas son chiffre : le survol
 d'une photo les donne tous.
 
-**« Raisons des Closed, par résolution (%) »** répartit les tickets au statut *Closed* selon leur
+**« Raisons des Closed, par résolution (%) »** répartit les tickets **terminés** (statuts de fin de la config : Closed, Decline, Dev done…, soit
+ceux que le dashboard compte comme terminés) selon leur
 résolution (« Sans résolution » quand elle est vide). Sur la vue **Versions officielles**, une barre
 par version en **bandes empilées à 100 %** ; dans **une version**, des **aires empilées** sur son
 calendrier (barres à 100 % par photo quand le plan ne donne pas ses dates). La résolution la plus
