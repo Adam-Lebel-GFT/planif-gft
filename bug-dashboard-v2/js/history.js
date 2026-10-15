@@ -302,7 +302,7 @@
   // déjà rangée par version), ni la sélection issue d'une alerte (figée sur
   // l'extrait courant).
   var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
-    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, fixedNoRelease: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
+    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneBy: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
   function scopeKey() { var f = S.filters; return [f.state, f.origin, f.fix, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
   function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
   function scopeLabel() {
@@ -334,17 +334,17 @@
   // `raw` : les statistiques hors filtre, pour que la liste des versions et
   // leurs photos ne bougent pas quand on restreint le périmètre.
   var RES_NONE = 'Sans résolution';
+  var FNR_RE = /fixed[_ -]?no[_ -]?release/;
   function tdStats(item, raw) {
     var key = raw ? null : scopeKey();
     if (raw) { if (item._byTdRaw) return item._byTdRaw; }
     else if (item._byTd && item._byTdKey === key) return item._byTd;
     var cfg = CFG.get(), bk = cfg.priorities.blockerKeys || ['blocker', 'highest'];
-    var noCodeRes = ((cfg.bilan || {}).resolutions || []).map(C.normalize), noCodeLab = C.normalize((cfg.bilan || {}).labelSansLivraison || '');
     var out = {};
     (item.tickets || []).forEach(function (c) {
       if (!raw && !inScope(c)) return;
       var td = c.td || 'none';
-      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneCode: 0, doneNoCode: 0, fixedNoRelease: 0, byOrigin: { PRJ301: 0, Interne: 0 } };
+      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, doneBy: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
       var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
       st.total++; st.pctSum += c.pc || 0; if (c.d) st.done++; else st.open++;
       if (isB && !c.d) st.blockersOpen++;
@@ -353,8 +353,9 @@
       st.byStatus[c.st] = (st.byStatus[c.st] || 0) + 1;
       if (c.d) {
         var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1;
-        // « sans code » : même définition que le message de fin de version (résolution qui n'est pas un bug, ou étiquette « sans livraison »).
-        if (noCodeRes.indexOf(C.normalize(c.r || '')) !== -1 || (noCodeLab && C.normalize(String(c.lb || '')).indexOf(noCodeLab) !== -1)) st.doneNoCode++; else { st.doneCode++; if (!c.fx) st.fixedNoRelease++; }
+        // Pour le découpage avec / sans code : Fix Version et étiquette fixed_no-release, tranchés à l'affichage selon le numéro de la version.
+        var dk = (c.fx || '') + '\u0001' + (FNR_RE.test(C.normalize(String(c.lb || ''))) ? 1 : 0);
+        st.doneBy[dk] = (st.doneBy[dk] || 0) + 1;
       }
       var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
@@ -558,14 +559,28 @@
     if (rest.length) out.push({ key: '\u00a7autres', label: 'Autres résolutions (' + rest.length + ')', color: '#C3CAD5', keys: rest });
     return out;
   }
-  // Ligne discrète : parmi les tickets terminés, ceux livrés avec du code et ceux sans.
+  // Terminés d'une version, en trois lots :
+  //  - avec code : Fix Version renseignée au nom de la version (même avec l'étiquette fixed_no-release) ;
+  //  - Fixed no release : étiquette fixed_no-release sans Fix Version de cette version ;
+  //  - sans code : le reste (pas de Fix Version au nom de la version).
+  function codeSplit(p) {
+    var by = (p && p.st && p.st.doneBy) || {}, v = p && p.vnum || '';
+    var re = v ? new RegExp('(^|[^0-9.])' + v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^0-9.])') : null;
+    var o = { c: 0, f: 0, n: 0 };
+    Object.keys(by).forEach(function (k) {
+      var q = k.split('\u0001'), fx = q[0], hit = fx && (re ? re.test(fx) : true);
+      if (hit) o.c += by[k]; else if (q[1] === '1') o.f += by[k]; else o.n += by[k];
+    });
+    return o;
+  }
+  // Ligne discrète sous le graphique : les trois lots, en nombre et en part des terminés.
   function codeLine(pts) {
     var c = 0, n = 0, f = 0;
-    pts.forEach(function (p) { if (p && p.st) { c += p.st.doneCode || 0; n += p.st.doneNoCode || 0; f += p.st.fixedNoRelease || 0; } });
-    var t = c + n; if (!t) return '';
-    var pc = Math.round(c / t * 100);
-    return '<div class="code-line" title="Sans code : résolution qui n\'est pas un bug (Configurer, section « Message de fin de version ») ou étiquette « sans livraison »."><span class="code-bar"><i style="width:' + pc + '%"></i></span>' +
-      '<span>' + t + ' terminés · <b>' + c + '</b> avec code (' + pc + ' %) · <b>' + n + '</b> sans code (' + (100 - pc) + ' %)' + (f ? ' · <b>' + f + '</b> « Fixed no release » (avec code, sans Fix Version)' : '') + '</span></div>';
+    pts.forEach(function (p) { if (p && p.st) { var o = codeSplit(p); c += o.c; f += o.f; n += o.n; } });
+    var t = c + f + n; if (!t) return '';
+    var pc = function (x) { return Math.round(x / t * 100); };
+    return '<div class="code-line" title="Avec code : Fix Version renseignée au nom de la version (y compris pour fixed_no-release). Fixed no release : étiquette fixed_no-release sans Fix Version de la version. Sans code : pas de Fix Version au nom de la version."><span class="code-bar"><i style="width:' + pc(c) + '%"></i></span>' +
+      '<span>' + t + ' terminés · <b>' + c + '</b> avec code (' + pc(c) + ' %) · <b>' + f + '</b> « Fixed no release » (' + pc(f) + ' %) · <b>' + n + '</b> sans code (' + pc(n) + ' %)</span></div>';
   }
   function resolutionValue(p, sr) {
     var by = p.st.byRes || {};
@@ -623,9 +638,9 @@
     if (metric === 'resolution') {
       var rs = resolutionSeries(points);
       if (!rs.length) return '<div class="empty">Aucun ticket terminé dans cette sélection.</div>';
-      var marks = points.map(function (p) { var t = p.st ? (p.st.doneCode || 0) + (p.st.doneNoCode || 0) : 0; return t ? p.st.doneCode / t : null; });
+      var marks = points.map(function (p) { var o = p.st ? codeSplit(p) : null, t = o ? o.c + o.f + o.n : 0; return t ? [o.c / t, (o.c + o.f) / t] : null; });
       return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }),
-        { marks: marks, markLabel: 'trait : avec code (dessous) / sans code (dessus)' });
+        { marks: marks, markLabel: 'traits : avec code (dessous) | Fixed no release | sans code (dessus)' });
     }
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
@@ -741,13 +756,14 @@
     var metricSel = '<select class="dim-select" id="histMetric">' + METRICS.map(function (o) { return '<option value="' + o[0] + '"' + (ui.metric === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
     var title, sub, chart, extra = '';
     if (!sel) {
-      var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] || EMPTY_ST }; });
+      var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { vnum: versionNumFor(v), label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] || EMPTY_ST }; });
       title = 'Évolution entre versions — ' + pts.length + ' version' + (pts.length > 1 ? 's' : '');
       sub = (ui.metric === 'resolution' ? 'Raisons des tickets terminés (« Closed ») par version, en bandes empilées à 100 % : chaque barre répartit les tickets terminés de la version entre leurs résolutions. ' : '') + 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
       chart = pts.length ? chartFrom(ui.metric, pts) : '<div class="empty">Aucune Target date dans le journal.</div>';
     } else {
       var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
-      var pts2 = photos.map(function (k) { return { label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td] || EMPTY_ST, k: k }; });
+      var selNum = versionNumFor(sel);
+      var pts2 = photos.map(function (k) { return { vnum: selNum, label: fmtWhen(items[k].at), st: tdStats(items[k])[sel.td] || EMPTY_ST, k: k }; });
       title = 'Version ' + versionLabel(sel, true) + ' — ' + photos.length + ' photo' + (photos.length > 1 ? 's' : '');
       sub = (ui.metric === 'progress'
         ? 'Avancement de la version sur son calendrier : chaque photo se place à sa date, la rampe grise dit où l\'on devrait être, le nombre coloré donne l\'écart à la dernière photo.'

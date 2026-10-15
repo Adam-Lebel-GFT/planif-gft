@@ -566,8 +566,10 @@
         // Trait fin : part des tickets avec code (dessous) / sans code (dessus).
         var mk = opts.marks && opts.marks[i];
         if (pct && mk != null && tot) {
-          var my = yOf(mk * 100);
-          bars += '<line class="bar-mark" x1="' + (x + 1).toFixed(1) + '" x2="' + (x + inner - 1).toFixed(1) + '" y1="' + my.toFixed(1) + '" y2="' + my.toFixed(1) + '"/>';
+          (Array.isArray(mk) ? mk : [mk]).forEach(function (fr) {
+            var my = yOf(fr * 100);
+            bars += '<line class="bar-mark" x1="' + (x + 1).toFixed(1) + '" x2="' + (x + inner - 1).toFixed(1) + '" y1="' + my.toFixed(1) + '" y2="' + my.toFixed(1) + '"/>';
+          });
         }
       } else {
         var bw = Math.max((inner - 2 * (k - 1)) / k, 1.5);
