@@ -553,7 +553,10 @@ function velBugs(team){ return P.vb>0 ? P.vb : velFor(team); }
 function bugPerJP(p){ var v=velBugs(p.team); return leadRateOf(p) * (1-P.agile) * P.bogues / (v>0?v:1); }
 // Unité courante par 1 JP de disponibilité brute, et valeur « théorique » par jour de présence à 100 %.
 function unitPerJP(p){ return unit==='JP' ? 1 : unit==='SP' ? spPerJP(p) : unit==='BUG' ? bugPerJP(p) : spPerJP(p)+bugPerJP(p); }
-function theoPerDay(p){ var v=velFor(p.team); return unit==='JP' ? 1 : unit==='BUG' ? P.bogues/(velBugs(p.team)>0?velBugs(p.team):1) : 1/(v>0?v:1); }
+function theoPerDay(p){
+  var v=velFor(p.team), vb=velBugs(p.team); v=v>0?v:1; vb=vb>0?vb:1;
+  return unit==='JP' ? 1 : unit==='BUG' ? P.bogues/vb : unit==='TOT' ? (1-P.bogues)/v+P.bogues/vb : 1/v;
+}
 
 // ── Écran de chargement (voile gris + indicateur + barre de progression) ──
 function loaderShow(){ TKLoader.show('Chargement du planning…', 'Lecture du fichier…'); }
