@@ -1,7 +1,8 @@
 /* ════════════════════════════════════════════════════════════════════
    Film Stabilisation : les photos du journal du Dashboard Stabilisation rejouées.
    Chaque ticket est un point coloré (équipe ou version) qui se déplace de
-   statut en statut, version par version. Un ticket qui sort d'une version va
+   statut en statut, version par version ; au choix, chaque ticket est une
+   goutte d'eau et chaque case une flaque (water.js). Un ticket qui sort d'une version va
    dans le nuage ; un ticket rejeté (Declined, Duplicate, Not replicable,
    Incomplete, Abandoned) va à la poubelle. Dessous, les aires ouvert/terminé
    de chaque version se chevauchent sur l'axe des dates, sous la barre
@@ -28,8 +29,14 @@
   }
   var VERSION_COLORS = ['#0d366b', '#c026d3', '#14b8a6', '#6366f1', '#5b8def', '#a16207', '#be123c', '#0e7490'];
   var DUR = 0.45;
-  var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span><span>✦ flash et traînée : recule d\'un statut</span>';
-  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null };
+  var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span>';
+  var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
+  var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle vole et éclabousse : le ticket change de case</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle : rejetée</span>';
+  var RENDER_KEY = 'bdv2:movieRender';
+  function savedRender() { try { return localStorage.getItem(RENDER_KEY) === 'water' ? 'water' : 'dots'; } catch (e) { return 'dots'; } }
+  var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [] };
+  var WT = null;         // moteur des gouttes d'eau (water.js), créé à la demande
+  function waterOn() { return ui.render === 'water' && !!WT; }
   var M = null;          // données construites (photos, tickets, positions)
   var DOW = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
@@ -251,7 +258,7 @@
     // points : chaque ticket glisse de sa place de la photo précédente à celle de la suivante,
     // avec un petit décalage qui lui est propre ; il n'y arrive qu'à l'instant de la photo suivante
     var ja = i, jb = Math.min(i + 1, M.T.length - 1), span = M.T[jb] - M.T[ja], seg = span > 0 ? Math.max(0, Math.min(1, (t - M.T[ja]) / span)) : 1;
-    var cnt = { cloud: 0, trash: 0 }, why = {}, cells = {}, dots = [], W = .6;
+    var cnt = { cloud: 0, trash: 0 }, why = {}, cells = {}, dots = [], W = .6, wt = waterOn() ? new Array(M.tk.length) : null;
     REJECT.forEach(function (r) { why[r[0]] = 0; });
     for (var j = 0; j < M.tk.length; j++) {
       var sa = M.st[ja][j], sb = M.st[jb][j]; if (!sa && !sb) continue;
@@ -260,21 +267,30 @@
       if (!sa) { if (tp <= 0) continue; pa = [g.PW / 2 + (hash(M.tk[j].k) % 40 - 20), g.H / 2]; alpha = Math.min(1, tp + .05); }   // nouveau : vient du nuage
       if (!sb) { sb = sa; pb = pa; }
       var cur = (tp >= .5 || !sa) ? sb : sa;
-      var x = pa[0] + (pb[0] - pa[0]) * e, y = pa[1] + (pb[1] - pa[1]) * e + Math.sin(e * Math.PI) * ((hash(M.tk[j].k) % 5) - 2) * 3;
+      var back = !!(sa && sb && sa.kind === 'board' && sb.kind === 'board' && sb.row === sa.row && sb.col < sa.col);
+      // un ticket qui change de case trace un arc ; la traînée suit exactement le même arc
+      var hop = !sa || sa.kind !== sb.kind || sa.row !== sb.row || sa.col !== sb.col;
+      var bow = back ? -6 : hop ? -(4 + hash(M.tk[j].k) % 9) : ((hash(M.tk[j].k) % 5) - 2) * 3;
+      var x = pa[0] + (pb[0] - pa[0]) * e, y = pa[1] + (pb[1] - pa[1]) * e + Math.sin(e * Math.PI) * bow;
       var moving = tp > 0 && tp < 1 && (pa[0] !== pb[0] || pa[1] !== pb[1]);
       var age = t - (M.T[ja] + (delay + W) * span);
-      var back = !!(sa && sb && sa.kind === 'board' && sb.kind === 'board' && sb.row === sa.row && sb.col < sa.col);
       var path = null;
-      if (back && tp > 0 && age < 1.1) { path = []; for (var u = 0; u <= 10; u++) { var eu = ease(tp * u / 10); path.push([pa[0] + (pb[0] - pa[0]) * eu, pa[1] + (pb[1] - pa[1]) * eu - Math.sin(eu * Math.PI) * 6]); } }
+      if (hop && tp > 0 && age < 1.1 && (pa[0] !== pb[0] || pa[1] !== pb[1])) { path = []; for (var u = 0; u <= 14; u++) { var eu = ease(tp * u / 14); path.push([pa[0] + (pb[0] - pa[0]) * eu, pa[1] + (pb[1] - pa[1]) * eu + Math.sin(eu * Math.PI) * bow]); } }
+      if (wt) wt[j] = { kind: cur.kind, cell: cur.kind === 'board' ? cur.row + ':' + cur.col : null };
       dots.push({ x: x, y: y, j: j, alpha: alpha, moving: moving, tp: tp, done: cur.kind === 'board' && M.doneCols[cur.col], back: back, age: age, path: path, mark: cur.kind === 'trash' ? 0 : lastMove(j, tp >= .5 ? jb : ja) });
       if (cur.kind === 'board') { var ck = cur.row + ':' + cur.col; cells[ck] = (cells[ck] || 0) + 1; } else if (cur.kind === 'cloud') cnt.cloud++; else { cnt.trash++; why[cur.why]++; }
     }
+    M.dots = dots;
+    if (wt) { WT.sync(wt); counters(ctx, g, cells, cnt, why, true); return; }
     dots.forEach(function (d) { if (d.moving) { ctx.strokeStyle = rgba(dotColor(d.j), .45 * (1 - d.tp)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(d.x, d.y, 3.4 + d.tp * 8, 0, 7); ctx.stroke(); } });
     var rad = Math.max(2.2, Math.min(3.6, G.cellPitch * .38));
-    // étoile filante : traînée effilée du point de départ vers la nouvelle place, qui s'estompe
+    // étoile filante : traînée effilée du point de départ vers la nouvelle place (halo puis cœur), qui s'estompe après l'arrivée
+    ctx.lineCap = 'round';
     dots.forEach(function (d) {
-      if (!d.path || d.path.length < 2) return; var fade = Math.max(0, 1 - Math.max(0, d.age - .45) / .65);
-      for (var k = 1; k < d.path.length; k++) { var f = k / (d.path.length - 1); ctx.strokeStyle = rgba(dotColor(d.j), (.15 + .75 * f) * fade); ctx.lineWidth = .8 + f * 2.8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(d.path[k - 1][0], d.path[k - 1][1]); ctx.lineTo(d.path[k][0], d.path[k][1]); ctx.stroke(); }
+      if (!d.path || d.path.length < 2) return; var fade = Math.max(0, 1 - Math.max(0, d.age - .35) / .75), col = dotColor(d.j), k, f;
+      for (k = 1; k < d.path.length; k++) { f = k / (d.path.length - 1); ctx.strokeStyle = rgba(col, .16 * f * fade); ctx.lineWidth = 2 + f * 6; ctx.beginPath(); ctx.moveTo(d.path[k - 1][0], d.path[k - 1][1]); ctx.lineTo(d.path[k][0], d.path[k][1]); ctx.stroke(); }
+      for (k = 1; k < d.path.length; k++) { f = k / (d.path.length - 1); ctx.strokeStyle = rgba(col, (.1 + .8 * f) * fade); ctx.lineWidth = .6 + f * 2.6; ctx.beginPath(); ctx.moveTo(d.path[k - 1][0], d.path[k - 1][1]); ctx.lineTo(d.path[k][0], d.path[k][1]); ctx.stroke(); }
+      if (d.moving) { var gl = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, rad * 3.4); gl.addColorStop(0, rgba(col, .5)); gl.addColorStop(1, rgba(col, 0)); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(d.x, d.y, rad * 3.4, 0, 7); ctx.fill(); }
     });
     dots.forEach(function (d) {
       ctx.globalAlpha = d.alpha * (d.done && !d.moving ? .9 : 1);
@@ -290,15 +306,36 @@
       [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (v) { ctx.moveTo(d.x + v[0] * (r1 - 1.2), d.y + v[1] * (r1 - 1.2)); ctx.lineTo(d.x + v[0] * (r1 + 2.6), d.y + v[1] * (r1 + 2.6)); });
       ctx.stroke();
     });
-    // compteurs
+    counters(ctx, g, cells, cnt, why, false);
+  }
+  // compteurs ; en mode eau, celui de chaque case passe en haut (la flaque occupe le bas)
+  function counters(ctx, g, cells, cnt, why, top) {
     ctx.font = '600 10.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillStyle = cs.muted;
-    Object.keys(cells).forEach(function (k) { var rc = k.split(':'); ctx.fillText(cells[k], g.bx + (+rc[1] + 1) * g.cw - 5, g.HEAD + (+rc[0] + 1) * g.ROWH - 7); });
+    Object.keys(cells).forEach(function (k) { var rc = k.split(':'); ctx.fillText(cells[k], g.bx + (+rc[1] + 1) * g.cw - 5, g.HEAD + (top ? +rc[0] * g.ROWH + 12 : (+rc[0] + 1) * g.ROWH - 7)); });
     ctx.textAlign = 'center'; ctx.fillStyle = cs.ink; ctx.font = '800 20px ' + cs.mono; ctx.fillText(cnt.cloud, g.PW / 2, g.H - 14);
     ctx.fillText(cnt.trash, g.tx + g.PW / 2, g.trashBottom + 20);
     ctx.font = '600 10.5px ' + cs.font; ctx.textAlign = 'left'; ctx.fillStyle = cs.muted;
     REJECT.forEach(function (r, k) { ctx.fillText(r[0], g.tx + 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'right'; ctx.font = '600 10.5px ' + cs.mono; ctx.fillText(why[r[0]], g.tx + g.PW - 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'left'; ctx.font = '600 10.5px ' + cs.font; });
   }
 
+  // Code freeze de chaque version, en temps du film : version du plan de livraisons à laquelle la
+  // Target date se rattache (même règle que le Dashboard : premier jalon de référence le jour même
+  // ou après, tolérance comprise). null quand le plan n'est pas lu ou ne couvre pas la version.
+  function freezes() {
+    if (M.fz && M.fzPlan === ui.plan) return M.fz;
+    var cfg = CFG.get(), b = (cfg.version && cfg.version.boundary) || 'deploy', tol = ((cfg.version && cfg.version.toleranceDays) || 0) * 864e5;
+    var parse = function (iso) { return iso ? new Date(/T/.test(iso) ? iso : iso + 'T00:00:00') : null; };
+    var ref = function (v) { var j = v.jalons || {}; return parse(b === 'start' ? v.start : b === 'end' ? v.end : j[b] || j.deploy || v.end); };
+    var ov = (ui.plan || []).map(function (v) { return { v: v, at: ref(v) }; }).filter(function (x) { return x.at; }).sort(function (a, z) { return a.at - z.at; });
+    var t0d = new Date(M.t0), wn = M.win;
+    M.fz = M.tds.map(function (td) {
+      var tg = new Date(td + 'T00:00:00').getTime() + tol, hit = ov.filter(function (x) { return x.at.getTime() >= tg; })[0];
+      var f = hit && parse((hit.v.jalons || {}).freeze); if (!f) return null;
+      return f.getTime() <= M.t0 ? 0 : C.openHours(t0d, f, wn.a, wn.z) / wn.h;
+    });
+    M.fzPlan = ui.plan;
+    return M.fz;
+  }
   var CH = { w: 900, h: 250, pl: 40, pr: 14, pt: 16, pb: 28 };
   function niceMax(v) { var s = [8, 12, 20, 40, 60, 80, 100, 120, 160, 200, 240, 320, 400, 480, 600]; for (var i = 0; i < s.length; i++) if (v <= s[i]) return s[i]; return Math.ceil(v / 200) * 200; }
   function drawChart(t) {
@@ -313,13 +350,21 @@
     for (var k = 0; k <= 4; k++) { var yy = Math.round(yOf(ymax * k / 4)) + .5; ctx.beginPath(); ctx.moveTo(c.pl, yy); ctx.lineTo(c.pl + pw, yy); ctx.stroke(); }
     // photos : repères
     ctx.strokeStyle = rgba(cs.muted, .25); M.T.forEach(function (d) { var x = Math.round(xOf(d)) + .5; ctx.beginPath(); ctx.moveTo(x, c.pt + ph - 5); ctx.lineTo(x, c.pt + ph); ctx.stroke(); });
+    var fz = freezes();
     M.tds.forEach(function (td, r) {
+      // une version s'arrête à son Code freeze (plan de livraisons) : après le gel, plus de courbe
+      var lim = fz[r] == null ? t : Math.min(t, fz[r]);
       var col = VERSION_COLORS[r % VERSION_COLORS.length], pts = function (f) {
         var a = [];
-        for (var i = 0; i < M.T.length && M.T[i] <= t; i++) a.push([xOf(M.T[i]), yOf(f(M.counts[r][i]))]);
-        var n = a.length; if (n && n < M.T.length) { var q = Math.min(1, (t - M.T[n - 1]) / (M.T[n] - M.T[n - 1])), v0 = f(M.counts[r][n - 1]), v1 = f(M.counts[r][n]); a.push([xOf(t), yOf(v0 + (v1 - v0) * q)]); }
+        for (var i = 0; i < M.T.length && M.T[i] <= lim; i++) a.push([xOf(M.T[i]), yOf(f(M.counts[r][i]))]);
+        var n = a.length; if (n && n < M.T.length) { var q = Math.min(1, (lim - M.T[n - 1]) / (M.T[n] - M.T[n - 1])), v0 = f(M.counts[r][n - 1]), v1 = f(M.counts[r][n]); a.push([xOf(lim), yOf(v0 + (v1 - v0) * q)]); }
         return a;
       };
+      if (fz[r] != null && fz[r] > 0) {                // repère du gel, en pointillé
+        var xf = Math.round(xOf(fz[r])) + .5; ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba(col, .7); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(xf, c.pt + 12); ctx.lineTo(xf, c.pt + ph); ctx.stroke(); ctx.restore();
+        ctx.fillStyle = col; ctx.font = '700 9.5px ' + cs.mono; ctx.textAlign = 'right'; ctx.fillText('gel ' + C.fmtDate(new Date(td + 'T00:00:00')).slice(0, 5), xf - 3, c.pt + 9 + r * 11); ctx.textAlign = 'left';
+      }
       var tot = pts(function (p) { return p.open + p.done; }), dn = pts(function (p) { return p.done; });
       if (tot.length < 2) return;
       var poly = function (a) { ctx.beginPath(); ctx.moveTo(a[0][0], yOf(0)); a.forEach(function (p) { ctx.lineTo(p[0], p[1]); }); ctx.lineTo(a[a.length - 1][0], yOf(0)); ctx.closePath(); };
@@ -362,6 +407,7 @@
     if (!M || !$('mvBoard')) return;
     readTheme();
     drawBoard(ui.t); drawChart(ui.t); stats(ui.t);
+    if (waterOn()) startWater();
     $('mvDate').textContent = label(ui.t);
     $('mvSlider').value = Math.round(ui.t / M.T[M.T.length - 1] * 6000);
   }
@@ -380,12 +426,54 @@
     if (on) { if (ui.t >= M.T[M.T.length - 1] - .01) ui.t = 0; last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); }
   }
 
+  // ── Gouttes d'eau : la physique tourne en continu, même en pause ────
+  var wraf = 0, wlast = 0;
+  function startWater() { if (!wraf) { wlast = performance.now(); wraf = requestAnimationFrame(waterFrame); } }
+  function waterFrame(ts) {
+    wraf = 0;
+    if (!M || !waterOn() || !$('mvWater')) return;
+    WT.tick((ts - wlast) / 1000); wlast = ts;
+    drawFx();
+    wraf = requestAnimationFrame(waterFrame);
+  }
+  // par-dessus l'eau : ronds à l'arrivée et cibles repoussé / ramené qui suivent leur goutte
+  function drawFx() {
+    var cv = $('mvFx'); if (!cv) return; var ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, G.W, G.H);
+    if (!waterOn()) return;
+    WT.ripples().forEach(function (rp) { var a = 1 - rp.t; ctx.strokeStyle = 'rgba(255,255,255,' + (.75 * a).toFixed(2) + ')'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(rp.x, rp.y, 3 + rp.t * 18, 1.2 + rp.t * 3.5, 0, 0, 7); ctx.stroke(); });
+    var r1 = WT.radius() + 2.5; ctx.lineWidth = 1.2;
+    (M.dots || []).forEach(function (d) {
+      if (!d.mark) return; var p = WT.pos(d.j); if (!p) return;
+      ctx.strokeStyle = d.mark > 0 ? cs.red : cs.green; ctx.beginPath(); ctx.arc(p.x, p.y, r1, 0, 7);
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (v) { ctx.moveTo(p.x + v[0] * (r1 - 1.2), p.y + v[1] * (r1 - 1.2)); ctx.lineTo(p.x + v[0] * (r1 + 2.6), p.y + v[1] * (r1 + 2.6)); });
+      ctx.stroke();
+    });
+  }
+  function waterGeo() {
+    var g = G, cells = {}, maxCell = 1;
+    for (var r = 0; r < g.nR; r++) for (var c = 0; c < g.K; c++) cells[r + ':' + c] = { x0: g.bx + c * g.cw + 1, x1: g.bx + (c + 1) * g.cw - 1, y0: g.HEAD + r * g.ROWH + 2, y1: g.HEAD + (r + 1) * g.ROWH - 3 };
+    M.st.forEach(function (row) { var n = {}; row.forEach(function (s) { if (s && s.kind === 'board') { var k = s.row + ':' + s.col; n[k] = (n[k] || 0) + 1; maxCell = Math.max(maxCell, n[k]); } }); });
+    return { W: g.W, H: g.H, cells: cells, maxCell: maxCell, cloud: { x: g.PW / 2, y: (g.panelTop + g.cloudBottom) / 2 }, trash: { x: g.tx + g.PW / 2, y: (g.panelTop + g.trashBottom) / 2 } };
+  }
+  function setRender(mode) {
+    if (mode === 'water' && !WT) { WT = root.BDV2Water && root.BDV2Water.create($('mvWater')); if (!WT) mode = 'dots'; }
+    ui.render = mode; try { localStorage.setItem(RENDER_KEY, mode); } catch (e) {}
+    var on = waterOn();
+    $('mvCard').classList.toggle('mv-is-water', on);
+    $('mvLegend').innerHTML = legendHtml();
+    if (on) { WT.reset(); WT.layout(waterGeo()); }
+    else { var w = $('mvWater'); if (w) { var gl = w.getContext('webgl2'); if (gl) gl.clear(gl.COLOR_BUFFER_BIT); } }
+    render(); drawFx();
+  }
+
   // ── Mise en page de la carte ───────────────────────────────────────
   function sizeCanvases() {
     var host = $('mvHost'); if (!host || !M) return;
     var w = host.clientWidth || 900;
     layout(w);
-    fit($('mvBoard'), G.W, G.H);
+    fit($('mvBoard'), G.W, G.H); fit($('mvFx'), G.W, G.H);
+    if (waterOn()) WT.layout(waterGeo());
     CH.w = Math.max(560, w); fit($('mvChart'), CH.w, CH.h);
     render();
   }
@@ -426,6 +514,10 @@
     return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
   }
   function legendHtml() {
+    if (waterOn()) return LEG_WATER + LEG2;
+    return dotLegend() + LEG_DOTS + LEG2;
+  }
+  function dotLegend() {
     return ui.color === 'team'
       ? M.teamLabels.map(function (l) { return '<span><i class="mv-sw" style="background:' + M.teamColors[l] + '"></i>' + esc(l) + '</span>'; }).join('')
       : M.tds.map(function (td, r) { return '<span><i class="mv-sw" style="background:' + VERSION_COLORS[r % VERSION_COLORS.length] + '"></i>' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</span>'; }).join('');
@@ -436,44 +528,51 @@
       return '<div class="mv-tile"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>Version du ' + esc(C.fmtDate(new Date(td + 'T00:00:00'))) + '</div>' +
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% pondéré</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
     }).join('');
+    var waterOk = !!(root.BDV2Water && root.BDV2Water.supported());
+    if (!waterOk) ui.render = 'dots';
     var nOpts = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (ui.nVers === n ? ' selected' : '') + '>' + (n === 0 ? 'Toutes les versions' : n === 1 ? 'La dernière version' : 'Les ' + n + ' dernières') + '</option>'; }).join('');
     rootEl.innerHTML = '<div class="card" id="mvCard"><div class="card-head"><div><h2>🎬 Film Stabilisation</h2>' +
-      '<div class="sub">Les photos du journal rejouées : chaque ticket est un point qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
+      '<div class="sub">Les photos du journal rejouées : chaque ticket est un point (ou une goutte d\'eau) qui avance de statut en statut. Un ticket sorti de la version part dans le nuage, un ticket rejeté va à la poubelle. Un ticket change de place à la photo où on le voit ailleurs, pas avant. Les photos ne sont pas filtrées.</div></div>' +
       '<div class="card-tools"><select class="dim-select" id="mvN" aria-label="Versions affichées">' + nOpts + '</select></div></div>' +
       '<div id="mvHost"><div class="mv-tiles">' + tiles + '</div>' +
       '<div class="mv-flow"><div class="mv-lbl" id="mvFlowLbl"></div></div>' +
       '<div class="mv-ctl"><button type="button" class="ghost small" id="mvPlay">▶ Lire</button><div class="mv-track"><div class="mv-cal" id="mvCal" aria-hidden="true">' + calHtml() + '</div><input type="range" id="mvSlider" min="0" max="6000" value="0" aria-label="Date de l\'animation"></div><span class="mv-date" id="mvDate"></span>' +
       '<span class="seg" role="group" aria-label="Vitesse">' + [[.5, '×0,5'], [1, '×1'], [2, '×2'], [4, '×4']].map(function (s) { return '<button type="button" data-mv-speed="' + s[0] + '"' + (ui.speed === s[0] ? ' class="is-on"' : '') + '>' + s[1] + '</button>'; }).join('') + '</span></div>' +
-      '<div class="mv-scroll"><canvas id="mvBoard"></canvas></div>' +
-      '<div class="mv-legend" id="mvLegend">' + legendHtml() + '<span>Anneau : vient de bouger</span>' + LEG2 + '</div>' +
+      '<div class="mv-scroll"><div class="mv-stack"><canvas id="mvBoard"></canvas><canvas id="mvWater" aria-hidden="true"></canvas><canvas id="mvFx" aria-hidden="true"></canvas></div></div>' +
+      '<div class="mv-legend" id="mvLegend"></div>' +
       '<div class="mv-scroll"><canvas id="mvChart"></canvas></div>' +
       '<div class="mv-ctl"><span class="mv-hint">Axe du temps</span><span class="seg" role="group" aria-label="Mode de l\'axe"><button type="button" data-mv-axis="fixed"' + (ui.axis === 'fixed' ? ' class="is-on"' : '') + '>Axe fixe, la barre avance</button><button type="button" data-mv-axis="scroll"' + (ui.axis === 'scroll' ? ' class="is-on"' : '') + '>Barre fixe, l\'axe défile</button></span>' +
-      '<span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></div></div></div>';
+      '<span class="mv-hint">Rendu</span><span class="seg" role="group" aria-label="Rendu"><button type="button" data-mv-render="dots"' + (ui.render !== 'water' ? ' class="is-on"' : '') + '>Points</button><button type="button" data-mv-render="water"' + (ui.render === 'water' ? ' class="is-on"' : '') + (waterOk ? '' : ' disabled title="Ce navigateur ne gère pas WebGL2"') + '>Gouttes d\'eau</button></span>' +
+      '<span class="mv-dotonly"><span class="mv-hint">Couleur des points</span><span class="seg" role="group" aria-label="Couleur des points"><button type="button" data-mv-color="team"' + (ui.color === 'team' ? ' class="is-on"' : '') + '>Équipe</button><button type="button" data-mv-color="version"' + (ui.color === 'version' ? ' class="is-on"' : '') + '>Version</button></span></span></div></div></div>';
     $('mvN').addEventListener('change', function () { ui.nVers = +this.value; ui.built = null; renderMovie(ui.items, ui.rootEl, true); });
     $('mvPlay').addEventListener('click', function () { setPlay(!ui.playing); });
     $('mvSlider').addEventListener('input', function () { ui.t = this.value / 6000 * M.T[M.T.length - 1]; render(); });
     rootEl.addEventListener('click', function (e) {
-      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]');
+      var s = e.target.closest('[data-mv-speed]'), a = e.target.closest('[data-mv-axis]'), c = e.target.closest('[data-mv-color]'), rd = e.target.closest('[data-mv-render]');
       var pick = function (btn, attr, fn) { fn(btn.getAttribute(attr)); [].forEach.call(btn.parentNode.children, function (x) { x.classList.toggle('is-on', x === btn); }); };
       if (s) pick(s, 'data-mv-speed', function (v) { ui.speed = +v; });
       if (a) { pick(a, 'data-mv-axis', function (v) { ui.axis = v; }); render(); }
-      if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml() + '<span>Anneau : vient de bouger</span>' + LEG2; render(); }
+      if (c) { pick(c, 'data-mv-color', function (v) { ui.color = v; }); $('mvLegend').innerHTML = legendHtml(); render(); }
+      if (rd && !rd.disabled) pick(rd, 'data-mv-render', setRender);
     });
     sizeCanvases();
+    setRender(ui.render);
   }
 
   // ── Rendu ──────────────────────────────────────────────────────────
   // `items` : les analyses du journal, de la plus ancienne à la plus récente.
-  function renderMovie(items, rootEl, force) {
+  function renderMovie(items, rootEl, force, plan) {
     if (!rootEl) return;
     var sig = items.length + '|' + (items.length ? items[items.length - 1].at : '') + '|' + ui.nVers;
     if (!force && ui.built === sig && rootEl.querySelector('#mvBoard')) return;
+    if (plan) ui.plan = plan;
     ui.built = sig; ui.playing = false; ui.items = items; ui.rootEl = rootEl;
     M = build(items, ui.nVers);
+    if (WT) WT.reset();
     if (!M) { rootEl.innerHTML = items.length ? '<div class="card"><h2>🎬 Film Stabilisation</h2><div class="sub">Il faut au moins deux photos du journal qui contiennent une même version (Target date, 5 tickets minimum) pour rejouer son mouvement.</div></div>' : ''; return; }
     ui.t = Math.min(ui.t, M.T[M.T.length - 1]) || M.T[M.T.length - 1] * .5;
     mount(rootEl);
   }
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (M && $('mvBoard')) sizeCanvases(); }, 120); });
-  root.BDV2Movie = { render: function (items, rootEl) { renderMovie(items, rootEl, false); }, build: build, rejectReason: rejectReason };
+  root.BDV2Movie = { render: function (items, rootEl, plan) { renderMovie(items, rootEl, false, plan); }, build: build, rejectReason: rejectReason };
 })(window);

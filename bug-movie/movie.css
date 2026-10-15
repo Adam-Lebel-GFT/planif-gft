@@ -29,3 +29,10 @@
 .mv-legend span{display:inline-flex; align-items:center; gap:6px;}
 .mv-tg{display:inline-block; width:10px; height:10px; border-radius:50%; border:1.5px solid var(--critical); flex:none;}
 .mv-tg--ok{border-color:var(--green);}
+/* plateau : le canevas du tableau, l'eau (WebGL) par-dessus, puis les cibles */
+.mv-stack{position:relative; width:max-content;}
+.mv-stack canvas{display:block;}
+.mv-stack #mvWater,.mv-stack #mvFx{position:absolute; left:0; top:0; pointer-events:none;}
+.mv-is-water .mv-dotonly{display:none;}
+.mv-dotonly{display:contents;}
+.mv-sw--water{background:radial-gradient(circle at 35% 30%,#e9f6ff 0 18%,#5db3f4 45%,#0f4aa8 100%);}
