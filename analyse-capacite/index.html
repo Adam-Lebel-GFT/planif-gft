@@ -894,10 +894,9 @@ function toggleFilter(set, val, totalCount){
 // ── Rendu : KPI ──
 function renderKPIs(){
   var ppl=activeSel(), pers=periods();
-  var jp=0, sp=0, abs=0, pres0=0, pl=0;
-  pers.forEach(function(g){ var a=aggPeriod(g, ppl); jp+=a.jp; sp+=a.sp; abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
+  var tot=0, abs=0, pres0=0, pl=0;
+  pers.forEach(function(g){ var a=aggPeriod(g, ppl); tot+=uv(a); abs+=a.abs; pres0+=a.pres; pl+=upl(a); });
   var ouvres = viewWeekdays().length;
-  var tot = 0; pers.forEach(function(g){ tot+=uv(aggPeriod(g, ppl)); });
   var per = pers.length ? tot/pers.length : 0;
   var granLbl = GRAN_NOUN[gran];
   $('#k1v').textContent = ppl.length;
