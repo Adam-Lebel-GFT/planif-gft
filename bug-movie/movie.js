@@ -17,10 +17,15 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // Résolutions qui envoient un ticket à la poubelle (comparées sans accents ni casse).
-  var REJECT = [['Declined', /declin|reject/], ['Duplicate', /duplic/], ['Not replicable', /not.?replic|cannot.?repro|not.?reprod|non.?repro/], ['Incomplete', /incomplet/], ['Abandoned', /abandon|won.?t.?do|wont.?do/]];
+  var REJECT = [['Declined', /declin|reject/], ['Duplicate', /duplic/], ['Not replicable', /not.?replic|cannot.?repro|not.?reprod|non.?repro/], ['Incomplete', /incomplet/], ['Abandoned', /abandon|won.?t.?do|wont.?do/], ['Autre', /$^/]];
   // Statuts de fin : « ready for testing » compte comme Closed ; un statut declined/decline
   // n'a pas de colonne (le ticket part à la poubelle).
   function foldStatus(st) { return /^ready for testing$/i.test(C.normalize(st || '')) ? 'Closed' : st; }
+  // colonne du tableau : Dev done et Closed n'en font qu'une (« Dev done + Closed »)
+  function colStatus(st) { var f = foldStatus(st); return /^(dev done|closed)$/i.test(C.normalize(f || '')) ? 'Closed' : f; }
+  function colLabel(s) { return /^closed$/i.test(C.normalize(s || '')) ? 'Dev done + Closed' : s; }
+  // dans la dernière colonne, seule la résolution Done reste ; toute autre résolution part à la poubelle
+  function closedReject(st, res) { var r = C.normalize(res || ''); return colStatus(st) === 'Closed' && r && !/^(done|fixed)$/.test(r) ? 'Autre' : null; }
   function statusReject(st) { return /^(decline|declined)$/i.test(C.normalize(st || '')) ? 'Declined' : null; }
   function rejectReason(res) {
     var r = C.normalize(res || ''); if (!r) return null;
@@ -31,7 +36,7 @@
   var DUR = 0.45;
   var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span>';
   var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
-  var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle vole et éclabousse : le ticket change de case</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle : rejetée</span>';
+  var LEG_WATER = '<span><i class="mv-sw mv-sw--water"></i>Une goutte par ticket, une flaque par case</span><span>Elle vole et éclabousse : le ticket change de case</span><span>Elle s\'évapore vers le nuage : sortie de la version</span><span>Elle tombe dans la poubelle, qui se remplit : rejetée</span>';
   var RENDER_KEY = 'bdv2:movieRender';
   function savedRender() { try { return localStorage.getItem(RENDER_KEY) === 'water' ? 'water' : 'dots'; } catch (e) { return 'dots'; } }
   var ui = { nVers: 0, color: 'team', axis: 'fixed', speed: 1, playing: false, t: 0, built: null, render: savedRender(), plan: [], dwell: 1.5, hold: 0 };
@@ -68,7 +73,7 @@
     var statSet = {}, teamSet = {}, fakeTeams = [];
     photos.forEach(function (p) { p.tickets.forEach(function (t) {
       if (rowOf[t.td] == null) return;
-      if (!statusReject(t.st)) statSet[foldStatus(t.st)] = 1;
+      if (!statusReject(t.st)) statSet[colStatus(t.st)] = 1;
       var lab = (cfg.teams.alias && cfg.teams.alias[t.tm]) || t.tm || 'Non affecté';
       if (!teamSet[lab]) { teamSet[lab] = 1; fakeTeams.push({ team: t.tm || 'Non affecté', teamLabel: lab }); }
     }); });
@@ -118,10 +123,10 @@
       p.tickets.forEach(function (t) {
         var r = rowOf[t.td]; if (r == null) return;
         var j = idx[t.k]; seen[j] = 1;
-        var why = rejectReason(t.r) || statusReject(t.st), fst = foldStatus(t.st), done = t.d ? 1 : (doneSet[C.normalize(fst)] ? 1 : 0);
+        var why = rejectReason(t.r) || statusReject(t.st) || closedReject(t.st, t.r), fst = foldStatus(t.st), cst = colStatus(t.st), done = t.d ? 1 : (doneSet[C.normalize(fst)] ? 1 : 0);
         if (tk[j].first < 0) tk[j].first = i;
-        if (why) { st[i][j] = { kind: 'trash', row: r, col: colOf[fst], why: why }; tk[j].res = why; }
-        else { st[i][j] = { kind: 'board', row: r, col: colOf[fst] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; counts[r][i].pct += C.pctForStatus(C.normalize(fst), cfg); }
+        if (why) { st[i][j] = { kind: 'trash', row: r, col: colOf[cst], why: why }; tk[j].res = why; }
+        else { st[i][j] = { kind: 'board', row: r, col: colOf[cst] }; tk[j].res = null; counts[r][i][done ? 'done' : 'open']++; counts[r][i].pct += C.pctForStatus(C.normalize(fst), cfg); }
       });
       for (var j = 0; j < N; j++) {
         if (seen[j] || tk[j].first < 0) continue;
@@ -235,7 +240,7 @@
     ctx.beginPath(); ctx.moveTo(g.bx, g.HEAD + .5); ctx.lineTo(g.tx - g.GAP, g.HEAD + .5); ctx.stroke();
     ctx.font = '700 10.5px ' + cs.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = cs.ink;
     M.statuses.forEach(function (s, c) {
-      var words = s.split(' '), lines = [''], wmax = g.cw - 8;
+      var words = colLabel(s).split(' '), lines = [''], wmax = g.cw - 8;
       words.forEach(function (w) { var cand = (lines[lines.length - 1] + ' ' + w).trim(); if (ctx.measureText(cand).width > wmax && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = cand; });
       lines = lines.slice(0, 3);
       lines.forEach(function (ln, k) { ctx.fillText(ln, g.bx + (c + .5) * g.cw, g.HEAD / 2 + (k - (lines.length - 1) / 2) * 12); });
@@ -330,7 +335,7 @@
     ctx.textAlign = 'center'; ctx.fillStyle = cs.ink; ctx.font = '800 20px ' + cs.mono; ctx.fillText(cnt.cloud, g.PW / 2, g.H - 14);
     ctx.fillText(cnt.trash, g.tx + g.PW / 2, g.trashBottom + 20);
     ctx.font = '600 10.5px ' + cs.font; ctx.textAlign = 'left'; ctx.fillStyle = cs.muted;
-    REJECT.forEach(function (r, k) { ctx.fillText(r[0], g.tx + 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'right'; ctx.font = '600 10.5px ' + cs.mono; ctx.fillText(why[r[0]], g.tx + g.PW - 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'left'; ctx.font = '600 10.5px ' + cs.font; });
+    REJECT.filter(function (r) { return r[0] !== 'Autre' || why.Autre; }).forEach(function (r, k) { ctx.fillText(r[0], g.tx + 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'right'; ctx.font = '600 10.5px ' + cs.mono; ctx.fillText(why[r[0]], g.tx + g.PW - 12, g.trashBottom + 38 + k * 12.5); ctx.textAlign = 'left'; ctx.font = '600 10.5px ' + cs.font; });
   }
 
   // Code freeze de chaque version, en temps du film : version du plan de livraisons à laquelle la
@@ -486,8 +491,12 @@
   function waterGeo() {
     var g = G, cells = {}, maxCell = 1;
     for (var r = 0; r < g.nR; r++) for (var c = 0; c < g.K; c++) cells[r + ':' + c] = { x0: g.bx + c * g.cw + 1, x1: g.bx + (c + 1) * g.cw - 1, y0: g.HEAD + r * g.ROWH + 2, y1: g.HEAD + (r + 1) * g.ROWH - 3 };
-    M.st.forEach(function (row) { var n = {}; row.forEach(function (s) { if (s && s.kind === 'board') { var k = s.row + ':' + s.col; n[k] = (n[k] || 0) + 1; maxCell = Math.max(maxCell, n[k]); } }); });
-    return { W: g.W, H: g.H, cells: cells, maxCell: maxCell, cloud: { x: g.PW / 2, y: (g.panelTop + g.cloudBottom) / 2 }, trash: { x: g.tx + g.PW / 2, y: (g.panelTop + g.trashBottom) / 2 } };
+    var maxTrash = 1;
+    M.st.forEach(function (row) { var n = {}, nt = 0; row.forEach(function (s) { if (s && s.kind === 'trash') nt++; if (s && s.kind === 'board') { var k = s.row + ':' + s.col; n[k] = (n[k] || 0) + 1; maxCell = Math.max(maxCell, n[k]); } }); maxTrash = Math.max(maxTrash, nt); });
+    // l'intérieur de la poubelle (même dessin que trashPath) : les gouttes rejetées s'y accumulent
+    var tcx = g.tx + g.PW / 2, tcy = (g.panelTop + g.trashBottom) / 2, tw = g.PW * .72;
+    cells.trash = { x0: tcx - tw * .3, x1: tcx + tw * .3, y0: tcy - tw * .12, y1: tcy + tw * .55 };
+    return { W: g.W, H: g.H, cells: cells, maxCell: maxCell, maxTrash: maxTrash, cloud: { x: g.PW / 2, y: (g.panelTop + g.cloudBottom) / 2 }, trash: { x: g.tx + g.PW / 2, y: (g.panelTop + g.trashBottom) / 2 } };
   }
   function setRender(mode) {
     if (mode === 'water' && !WT) { WT = root.BDV2Water && root.BDV2Water.create($('mvWater')); if (!WT) mode = 'dots'; }
