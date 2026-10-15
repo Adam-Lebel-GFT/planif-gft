@@ -46,19 +46,21 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .params-btn svg{width:13px;height:13px;flex-shrink:0}
 
 /* ── Hero ── */
-.hero{position:relative;z-index:1;background:var(--white);border-bottom:1px solid var(--grey2);padding:32px 40px 28px;display:flex;align-items:flex-end;gap:32px}
+.hero{position:relative;z-index:1;background:var(--white);border-bottom:1px solid var(--grey2);padding:24px 40px 16px;display:flex;align-items:flex-end;gap:32px}
 .hero-eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .hero-eyebrow::before{content:'';width:18px;height:2px;background:var(--accent)}
 .hero-title{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:var(--navy)}
 .hero-sub{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
 
-.main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:28px 24px 80px}
+.main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:6px 24px 80px}
 .label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin:26px 0 12px;display:flex;align-items:center;gap:10px}
 .label::after{content:'';flex:1;height:1px;background:var(--grey2)}
 .label.collapsible{cursor:pointer;user-select:none}
 .chev{font-size:11px;color:var(--muted);transition:transform .2s}
 .chev.up{transform:rotate(-90deg)}
 .card.collapsed{display:none}
+#chips-persons.collapsed{display:none}
+.persons-head:has(+ .collapsed){margin-bottom:0}
 
 /* ── Source ── */
 .file-card{background:var(--white);border:1.5px solid var(--grey2);border-radius:var(--radius2);padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;position:relative;overflow:hidden;transition:all .18s}
@@ -110,7 +112,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .kpi-val{font-size:25px;font-weight:800;color:var(--navy);line-height:1}
 .kpi-val span{font-size:12px;font-weight:500;color:var(--muted);margin-left:3px}
 .kpi-sub{font-size:10px;color:var(--muted);margin-top:5px}
-.kctrl{display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:200px}
+.kgrid{display:flex;gap:12px;flex:1 1 560px;flex-wrap:wrap;align-items:stretch}
+.kgrid .kpi{min-width:118px;padding:13px 14px}
+.kctrl{display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:200px;margin-left:auto;flex:0 0 auto}
 .seg{display:inline-flex;background:var(--white);border:1.5px solid var(--grey2);border-radius:var(--radius);padding:3px;gap:2px}
 .seg button{flex:1;padding:6px 10px;border:none;border-radius:4px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;color:var(--muted);background:transparent;cursor:pointer;transition:all .15s;letter-spacing:.2px}
 .seg button.active{background:var(--navy);color:var(--white)}
@@ -230,7 +234,6 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 
 <div class="hero">
   <div style="flex:1">
-    <div class="hero-eyebrow">Agile Toolkit — Capacity</div>
     <div class="hero-title">Capacité à faire</div>
     <div class="hero-sub">Déposez le fichier planning, filtrez les personnes, lisez la capacité par jour, semaine, mois, sprint ou version.</div>
   </div>
@@ -238,8 +241,8 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
 
 <div class="main">
 
-  <div class="label">Source</div>
-  <div class="file-card" id="file-card">
+  <div class="label" style="margin-top:12px">Source</div>
+  <div class="file-card" id="file-card" title="Traitement 100 % local dans votre navigateur. Rien n'est transmis, sauf si vous cliquez sur « Enregistrer ce fichier » (envoi à la base partagée). Le dernier fichier chargé et vos paramètres sont conservés dans ce navigateur.">
     <input type="file" id="file-input" accept=".xlsx,.xls">
     <div class="file-icon">📁</div>
     <div class="file-info">
@@ -248,7 +251,6 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
       <div class="file-status" id="file-status">Cliquez ou glissez votre fichier .xlsx ici</div>
     </div>
   </div>
-  <div class="privacy-note">Traitement 100&nbsp;% local dans votre navigateur. Rien n'est transmis, sauf si vous cliquez sur « Enregistrer ce fichier » (envoi à la base partagée). Le dernier fichier chargé et vos paramètres sont conservés dans ce navigateur.</div>
   <div id="planning-store"></div>
 
   <div class="label">Filtres</div>
@@ -295,7 +297,8 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
         <div class="chip-row" id="chips-va"></div>
       </div>
     </div>
-    <div class="persons-head">
+    <div class="persons-head" id="persons-toggle" style="cursor:pointer;user-select:none" title="Afficher / masquer la liste des personnes">
+      <span class="chev" id="persons-chev">▾</span>
       <div class="flabel" id="persons-count">Personnes</div>
       <button class="mini-btn" id="btn-all">Tous</button>
       <button class="mini-btn" id="btn-none">Aucun</button>
@@ -303,13 +306,16 @@ footer span{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey3);le
     <div class="chip-row" id="chips-persons"></div>
   </div>
 
-  <div class="kpibar">
+  <div class="label" style="margin-bottom:0">Sommaire exécutif</div>
+  <div class="kpibar" style="margin-top:0">
     <div class="kpibar-inner">
+      <div class="kgrid">
       <div class="kpi"><div class="kpi-lbl">Personnes</div><div class="kpi-val" id="k1v">–</div><div class="kpi-sub" id="k1s"></div></div>
       <div class="kpi"><div class="kpi-lbl">Capacité totale</div><div class="kpi-val"><span id="k2v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k2u">JP</span></div><div class="kpi-sub" id="k2s"></div></div>
       <div class="kpi"><div class="kpi-lbl" id="k3l">Moyenne / sprint</div><div class="kpi-val"><span id="k3v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span id="k3u">JP</span></div><div class="kpi-sub" id="k3s"></div></div>
       <div class="kpi"><div class="kpi-lbl">CAF nette</div><div class="kpi-val"><span id="k5v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>JP</span></div><div class="kpi-sub">cérémonies, lead et sprint planning déduits</div></div>
       <div class="kpi"><div class="kpi-lbl">Présence</div><div class="kpi-val"><span id="k4v" style="font-size:25px;font-weight:800;color:var(--navy)">–</span><span>%</span></div><div class="kpi-sub" id="k4s"></div></div>
+      </div>
       <div class="kctrl">
         <div class="seg" id="seg-gran">
           <button data-g="jour">Jour</button>
@@ -1578,6 +1584,9 @@ document.addEventListener('DOMContentLoaded', function(){
   card.addEventListener('dragover', function(e){ e.preventDefault(); card.classList.add('dragover'); });
   card.addEventListener('dragleave', function(){ card.classList.remove('dragover'); });
   card.addEventListener('drop', function(e){ e.preventDefault(); card.classList.remove('dragover'); if(e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  function setPersonsCollapsed(c){ $('#chips-persons').classList.toggle('collapsed', c); $('#persons-chev').classList.toggle('up', c); try{ localStorage.setItem('planif:analyse-capacite:persons-collapsed', c?'1':'0'); }catch(e){} }
+  try{ if(localStorage.getItem('planif:analyse-capacite:persons-collapsed')==='1') setPersonsCollapsed(true); }catch(e){}
+  $('#persons-toggle').addEventListener('click', function(e){ if(e.target.closest('button')) return; setPersonsCollapsed(!$('#chips-persons').classList.contains('collapsed')); });
   $('#tbl-toggle').addEventListener('click', function(){ $('#tbl-card').classList.toggle('collapsed'); $('#tbl-chev').classList.toggle('up'); });
   $('#gantt').addEventListener('click', ganttHeaderClick);
   $('#hi-clear').addEventListener('click', function(){ hi=new Set(); applyDim(); });
