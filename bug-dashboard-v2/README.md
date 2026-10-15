@@ -354,6 +354,13 @@ leur place groupée est bien en haut de la pile. Les couleurs sont celles que Co
 donne à chaque statut partout ailleurs. Une bande trop mince ne porte pas son chiffre : le survol
 d'une photo les donne tous.
 
+**« Raisons des Closed, par résolution (%) »** répartit les tickets au statut *Closed* selon leur
+résolution (« Sans résolution » quand elle est vide). Sur la vue **Versions officielles**, une barre
+par version en **bandes empilées à 100 %** ; dans **une version**, des **aires empilées** sur son
+calendrier (barres à 100 % par photo quand le plan ne donne pas ses dates). La résolution la plus
+fréquente est en bas ; au-delà de huit bandes, les plus rares sont regroupées en « Autres
+résolutions ». Chaque résolution garde sa couleur d'une vue à l'autre.
+
 Sans plan publié pour cette Target date, la mesure retombe sur la forme photo par photo. Un **trait
 pointillé** marque le plafond de tickets qu'on se donne (40 par défaut, réglable dans Configurer →
 Règles → Évolution ; **0** retire la ligne) ; il apparaît sous les deux formes, et l'échelle

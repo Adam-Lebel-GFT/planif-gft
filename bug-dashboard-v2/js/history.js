@@ -302,7 +302,7 @@
   // déjà rangée par version), ni la sélection issue d'une alerte (figée sur
   // l'extrait courant).
   var EMPTY_ST = { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0,
-    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+    pctSum: 0, progress: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
   function scopeKey() { var f = S.filters; return [f.state, f.origin, f.fix, (f.teams || []).slice().sort().join(','), (f.priorities || []).slice().sort().join(',')].join('|'); }
   function scopeOn() { var f = S.filters; return f.state !== 'all' || f.origin !== 'all' || f.fix !== 'all' || (f.teams || []).length > 0 || (f.priorities || []).length > 0; }
   function scopeLabel() {
@@ -333,6 +333,7 @@
   }
   // `raw` : les statistiques hors filtre, pour que la liste des versions et
   // leurs photos ne bougent pas quand on restreint le périmètre.
+  var RES_NONE = 'Sans résolution';
   function tdStats(item, raw) {
     var key = raw ? null : scopeKey();
     if (raw) { if (item._byTdRaw) return item._byTdRaw; }
@@ -342,13 +343,14 @@
     (item.tickets || []).forEach(function (c) {
       if (!raw && !inScope(c)) return;
       var td = c.td || 'none';
-      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
+      var st = out[td] = out[td] || { total: 0, open: 0, done: 0, blockersOpen: 0, prj301: 0, prj301Open: 0, hasFix: 0, doneNoFix: 0, pctSum: 0, byStatus: {}, byPriority: {}, byTeam: {}, byRes: {}, byOrigin: { PRJ301: 0, Interne: 0 } };
       var pk = C.normalize(c.p || ''), isB = bk.indexOf(pk) !== -1 || pk.indexOf('block') !== -1;
       st.total++; st.pctSum += c.pc || 0; if (c.d) st.done++; else st.open++;
       if (isB && !c.d) st.blockersOpen++;
       if (c.o === 'PRJ301') { st.prj301++; if (!c.d) st.prj301Open++; st.byOrigin.PRJ301++; } else st.byOrigin.Interne++;
       if (c.fx) st.hasFix++; if (c.d && !c.fx) st.doneNoFix++;
       st.byStatus[c.st] = (st.byStatus[c.st] || 0) + 1;
+      if (C.normalize(c.st) === 'closed') { var rs = c.r || RES_NONE; st.byRes[rs] = (st.byRes[rs] || 0) + 1; }
       var pl = c.p || 'Non défini'; st.byPriority[pl] = (st.byPriority[pl] || 0) + 1;
       var tm = c.tm || 'Non affecté'; st.byTeam[tm] = st.byTeam[tm] || { open: 0, done: 0 }; if (c.d) st.byTeam[tm].done++; else st.byTeam[tm].open++;
     });
@@ -402,7 +404,7 @@
   function officialIdx() { return versionsIndex().filter(function (v) { return v.official != null; }).map(function (v) { return v.official; }); }
 
   // ── Séries d'un graphique à partir de points {label, st} ─────────────────
-  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['state', 'Ouverts / terminés (nombre)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['progress', 'Avancement pondéré (%)']];
+  var METRICS = [['global', 'Global (total, ouverts, terminés, blockers, PRJ301 ouverts)'], ['state', 'Ouverts / terminés (nombre)'], ['status', 'Par statut (nombre)'], ['priority', 'Par priorité (nombre)'], ['teams', 'Ouverts par équipe'], ['fix', 'Fix Version renseignée / terminés sans'], ['origin', 'Origine PRJ301 / Interne'], ['resolution', 'Raisons des Closed, par résolution (%)'], ['progress', 'Avancement pondéré (%)']];
   // Burn-up : rend null si le plan ne connaît pas cette Target date (pas de
   // début ni de gel à opposer aux photos) — on retombe alors sur la courbe.
   // Fenêtre ouvrée du burn-up (Configurer → Règles). Tout ce qui parle de
@@ -531,7 +533,30 @@
     return out;
   }
 
-  function stackTimeFor(sel, pts2, photos, series, valueOf) {
+  // Résolutions des tickets Closed vues dans ces photos : la plus fréquente en
+  // bas. Au-delà de sept bandes, les plus rares sont regroupées (le total reste
+  // juste) ; « Sans résolution » reste grise.
+  function resolutionSeries(pts) {
+    var tot = {};
+    pts.forEach(function (p) { if (p.st) Object.keys(p.st.byRes || {}).forEach(function (k) { tot[k] = (tot[k] || 0) + p.st.byRes[k]; }); });
+    var keys = Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a] || a.localeCompare(b); });
+    var shown = keys.length > 8 ? keys.slice(0, 7) : keys, rest = keys.length > 8 ? keys.slice(7) : [];
+    // Couleur fixée par résolution (ordre de la config) : la même d'une vue à l'autre.
+    var known = ['Fixed'].concat(CFG.get().bilan.resolutions || []);
+    var out = shown.map(function (k) {
+      var i = known.indexOf(k); if (i < 0) i = known.length + keys.indexOf(k);
+      return { key: k, label: k, color: k === RES_NONE ? P.NEUTRAL : P.CATEGORICAL[i % P.CATEGORICAL.length] };
+    });
+    if (rest.length) out.push({ key: '\u00a7autres', label: 'Autres résolutions (' + rest.length + ')', color: '#C3CAD5', keys: rest });
+    return out;
+  }
+  function resolutionValue(p, sr) {
+    var by = p.st.byRes || {};
+    if (!sr.keys) return by[sr.key] || 0;
+    var n = 0; sr.keys.forEach(function (k) { n += by[k] || 0; }); return n;
+  }
+
+  function stackTimeFor(sel, pts2, photos, series, valueOf, noThreshold) {
     if (!root.BDV2Plan || !root.BDV2Plan.versionForDate || !series.length) return null;
     var cfg = CFG.get(), pv = root.BDV2Plan.versionForDate(sel.td, cfg);
     var gate = pv && (pv.deadline || pv.freeze);
@@ -547,7 +572,7 @@
       start: pv.start, end: versionEnd(pv, gate), today: C.startOfDay(S.refDate),
       deadline: gate, kickoff: pv.start, deadlineLabel: gateLabel(pv),
       openFrom: openWin().a, openTo: openWin().z, points: points, series: series,
-      threshold: cfg.history.threshold, thresholdLabel: 'tickets'
+      threshold: noThreshold ? 0 : cfg.history.threshold, thresholdLabel: 'tickets'
     });
   }
 
@@ -561,7 +586,7 @@
   // (groupées pour comparer des séries, empilées pour une composition, en
   // bandes à 100 % pour une part) ; la courbe reste à l'avancement, seule
   // mesure vraiment continue.
-  var CHART_KIND = { global: 'line', progress: 'line', state: 'stack', status: 'stack', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent' };
+  var CHART_KIND = { global: 'line', progress: 'line', state: 'stack', status: 'stack', priority: 'stack', teams: 'group', fix: 'stack', origin: 'percent', resolution: 'percent' };
   function chartFrom(metric, points) {
     var cfg = CFG.get(), labels = points.map(function (p) { return p.label; });
     var g = function (f) { return points.map(function (p) { return p.st ? p.st[f] : null; }); };
@@ -578,6 +603,11 @@
     // repère rappelle le plafond qu'on se donne.
     if (metric === 'state') return lines([{ label: 'Terminés', color: '#008300', values: g('done') }, { label: 'Ouverts', color: '#2a78d6', values: g('open') }],
       { threshold: cfg.history.threshold, thresholdLabel: 'tickets' });
+    if (metric === 'resolution') {
+      var rs = resolutionSeries(points);
+      if (!rs.length) return '<div class="empty">Aucun ticket Closed dans cette sélection.</div>';
+      return lines(rs.map(function (sr) { return { label: sr.label, color: sr.color, values: points.map(function (p) { return p.st ? resolutionValue(p, sr) : null; }) }; }));
+    }
     if (metric === 'fix') return lines([{ label: 'Fix Version renseignée', color: '#008300', values: g('hasFix') }, { label: 'Terminés sans Fix Version', color: P.CATEGORICAL[1], values: g('doneNoFix') }]);
     if (metric === 'origin') return lines([{ label: 'PRJ301', color: '#4a3aa7', values: points.map(function (p) { return p.st ? p.st.byOrigin.PRJ301 : null; }) }, { label: 'Interne', color: P.CATEGORICAL[0], values: points.map(function (p) { return p.st ? p.st.byOrigin.Interne : null; }) }]);
     var field = metric === 'status' ? 'byStatus' : metric === 'priority' ? 'byPriority' : 'byTeam';
@@ -694,7 +724,7 @@
     if (!sel) {
       var pts = versions.filter(function (v) { return v.td !== 'none'; }).map(function (v) { var k = v.official != null ? v.official : v.photos[v.photos.length - 1]; return { label: versionLabel(v, false) + (v.official == null ? ' ?' : ''), st: tdStats(items[k])[v.td] || EMPTY_ST }; });
       title = 'Évolution entre versions — ' + pts.length + ' version' + (pts.length > 1 ? 's' : '');
-      sub = 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
+      sub = (ui.metric === 'resolution' ? 'Raisons des tickets Closed par version, en bandes empilées à 100 % : chaque barre répartit les Closed de la version entre leurs résolutions. ' : '') + 'Un point par version (Target date), dans l\'ordre des dates : la photo épinglée fait foi (« ? » = aucune photo épinglée, la dernière est utilisée). Cliquez une version pour voir l\'évolution de son backlog photo par photo.' + scopeNote();
       chart = pts.length ? chartFrom(ui.metric, pts) : '<div class="empty">Aucune Target date dans le journal.</div>';
     } else {
       var photos = sel.photos.slice().sort(function (a, b) { return new Date(items[a].at) - new Date(items[b].at); });
@@ -704,6 +734,8 @@
         ? 'Avancement de la version sur son calendrier : chaque photo se place à sa date, la rampe grise dit où l\'on devrait être, le nombre coloré donne l\'écart à la dernière photo.'
         : ui.metric === 'state'
         ? 'Ouverts et terminés sur le calendrier de la version : aires empilées, un point par photo posé à sa date — le périmètre qui bouge se voit autant que la progression.'
+        : ui.metric === 'resolution'
+        ? 'Les raisons des tickets Closed (leur résolution) sur le calendrier de la version, en aires empilées : la plus fréquente en bas, le sommet est le nombre de Closed.'
         : ui.metric === 'status'
         ? 'Les statuts sur le calendrier de la version, empilés du plus avancé en bas au moins avancé en haut : un diagramme de flux cumulé, dont le sommet est le périmètre.'
         : 'Évolution du backlog de cette version, photo par photo (toutes les analyses contenant des tickets de cette Target date, épinglée ou non).') + scopeNote();
@@ -715,6 +747,7 @@
         : ui.metric === 'progress' ? burnupFor(sel, pts2, photos)
         : ui.metric === 'state' ? stackTimeFor(sel, pts2, photos, STATE_SERIES, stateValue)
         : ui.metric === 'status' ? stackTimeFor(sel, pts2, photos, statusSeries(pts2), statusValue)
+        : ui.metric === 'resolution' ? stackTimeFor(sel, pts2, photos, resolutionSeries(pts2), resolutionValue, true)
         : null;
       chart = timed || chartFrom(ui.metric, pts2);
       // rythme
