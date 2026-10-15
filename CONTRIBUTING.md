@@ -267,6 +267,34 @@ message au lieu de planter.
 
 ---
 
+## Charte visuelle — titre et fond quadrillé (`assets/theme.css`)
+
+**Tout nouvel outil doit reprendre le style de « Capacité à faire »** : un fond quadrillé et un bandeau de titre blanc sous la barre noire. Ce style vit dans `assets/theme.css` (classes `tk-page` et `tk-hero`) : on l'utilise, on ne le recopie pas.
+
+```html
+<link rel="stylesheet" href="../assets/theme.css">
+…
+<body class="tk-page">
+  <header class="tk-topbar">…</header>
+  <div class="tk-hero">
+    <div class="tk-hero__text">
+      <h1 class="tk-hero__title">Nom de l'outil</h1>
+      <p class="tk-hero__sub">Une phrase qui dit à quoi sert l'outil.</p>
+    </div>
+    <div class="tk-hero__aside">…</div>   <!-- facultatif : badge, note -->
+  </div>
+  <main>…</main>
+</body>
+```
+
+Règles :
+- pas de ligne « Agile Toolkit » ni de sur-titre dans le bandeau (la barre noire le porte déjà) ;
+- le bandeau est **hors** de `<main>` (il occupe toute la largeur) ;
+- ne pas redéfinir `body::before`, `.hero` ni la taille du titre dans l'outil ; pour un thème local (ex. mode sombre), surcharger `--tk-hero-bg`, `--tk-hero-line`, `--tk-hero-ink`, `--tk-hero-muted`, `--tk-grid-line`, `--tk-page-bg` sur `:root` ;
+- exception : une application plein écran sans page de contenu (ex. Tableau blanc) n'a pas de bandeau.
+
+---
+
 ## Versionnage
 
 Format : `v[majeure].[ticket principal].[ticket board]`

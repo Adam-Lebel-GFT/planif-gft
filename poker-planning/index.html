@@ -7,6 +7,8 @@
 <meta name="description" content="Poker planning — mode local (animateur) et mode live (chacun vote de son appareil).">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Thème partagé : bandeau titre .tk-hero + fond quadrillé .tk-page. Les styles inline ci-dessous, déclarés après, restent prioritaires. -->
+<link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* ════════════════════════════════════════════════════════════
    TOKENS — alignés sur assets/theme.css officiel (planif-gft)
@@ -38,7 +40,6 @@
 html { scroll-behavior: smooth; }
 body.tk {
   min-height: 100vh;
-  background: var(--bg);
   font-family: 'Manrope', sans-serif;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -379,15 +380,13 @@ button.person:hover { background: var(--bg); }
 .sto-add-actions .tk-btn { flex: 1; }
 
 /* ── Lobby & Join ───────────────────────────────────────────── */
-.lobby { max-width: 680px; margin-inline: auto; padding-block: clamp(28px, 6vw, 56px) clamp(36px, 7vw, 64px); }
+.lobby { max-width: 680px; margin-inline: auto; padding-block: clamp(24px, 4vw, 32px) clamp(36px, 7vw, 64px); }
 .lobby-eyebrow {
   font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
   color: var(--accent); display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
 }
 .lobby-eyebrow::before { content: ''; width: 18px; height: 2px; background: var(--accent); }
-.lobby h1 { font-size: clamp(24px, 4.5vw, 32px); font-weight: 800; letter-spacing: -.8px; color: var(--navy); }
-.lobby .sub { margin-top: 8px; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
-.lobby .sub b { color: var(--text); }
+.tk-hero__sub b { color: var(--text); }
 .lobby-card { margin-top: 24px; padding: clamp(20px, 4vw, 28px); }
 .fgroup { margin-bottom: 24px; }
 .fgroup:last-of-type { margin-bottom: 0; }
@@ -550,7 +549,7 @@ button.person:hover { background: var(--bg); }
 }
 </style>
 </head>
-<body class="tk">
+<body class="tk tk-page">
 
   <!-- ════════ VUE 1 — LOBBY (animateur) ════════ -->
   <div id="view-lobby">
@@ -561,11 +560,15 @@ button.person:hover { background: var(--bg); }
       <span class="tk-topbar__sep" aria-hidden="true"></span>
       <span class="tk-topbar__tool">Poker Planning</span>
     </header>
+    <div class="tk-hero">
+      <div class="tk-hero__text">
+        <h1 class="tk-hero__title">Nouvelle session d'estimation</h1>
+        <p class="tk-hero__sub">Choisis ton mode, nomme la session, charge les stories. <b>Chiffrage par l'animateur</b> : tu saisis
+          les votes annoncés à voix haute. <b>Chiffrage par l'équipe</b> : chacun vote depuis son appareil (lien ou QR code).</p>
+      </div>
+    </div>
     <main class="tk-container">
       <div class="lobby">
-        <h1>Nouvelle session d'estimation</h1>
-        <p class="sub">Choisis ton mode, nomme la session, charge les stories. <b>Chiffrage par l'animateur</b> : tu saisis
-          les votes annoncés à voix haute. <b>Chiffrage par l'équipe</b> : chacun vote depuis son appareil (lien ou QR code).</p>
 
         <div id="resume-zone"></div>
 
@@ -667,11 +670,15 @@ button.person:hover { background: var(--bg); }
       <span class="tk-topbar__sep" aria-hidden="true"></span>
       <span class="tk-topbar__tool">Poker Planning</span>
     </header>
+    <div class="tk-hero">
+      <div class="tk-hero__text">
+        <h1 class="tk-hero__title">Rejoindre la session</h1>
+        <p class="tk-hero__sub">Salle <b id="join-code" style="font-family:var(--font-mono);color:var(--accent)">—</b> ·
+          ton pseudo s'affiche aux autres pendant la session, puis disparaît. Rien n'est enregistré.</p>
+      </div>
+    </div>
     <main class="tk-container">
       <div class="lobby">
-        <h1>Rejoindre la session</h1>
-        <p class="sub">Salle <b id="join-code" style="font-family:var(--font-mono);color:var(--accent)">—</b> ·
-          ton pseudo s'affiche aux autres pendant la session, puis disparaît. Rien n'est enregistré.</p>
 
         <div class="lobby-card tk-card">
           <div class="fgroup">

@@ -10,7 +10,7 @@
 <!-- Placé après app.css : les variables :root de theme.css surchargent le secours local. -->
 <link rel="stylesheet" href="../assets/theme.css">
 </head>
-<body>
+<body class="tk-page">
 
 <header class="tk-topbar">
   <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
@@ -25,16 +25,15 @@
   </div>
 </header>
 
-<main>
-
-<div class="hero">
-  <div>
-    <h1>Dashboard Stabilisation — Radar</h1>
-    <p>Collez un extrait Jira : le radar projette chaque ticket sur le train de livraison (Target date → version), croise équipes, statuts, priorités et origine, journalise chaque analyse pour suivre l'évolution et lève les alertes de stabilisation.</p>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+    <h1 class="tk-hero__title">Dashboard Stabilisation — Radar</h1>
+    <p class="tk-hero__sub">Collez un extrait Jira : le radar projette chaque ticket sur le train de livraison (Target date → version), croise équipes, statuts, priorités et origine, journalise chaque analyse pour suivre l'évolution et lève les alertes de stabilisation.</p>
     <div style="margin-top:8px"><span class="mode-badge local" id="modeBadge">…</span></div>
   </div>
-  </div>
 </div>
+
+<main>
 
 <div class="card sec paste-card">
   <div class="card-head">

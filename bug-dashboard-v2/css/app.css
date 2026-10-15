@@ -31,10 +31,7 @@ button.small{padding:6px 10px; font-size:11.5px;}
 .tk-topbar__user{color:rgba(255,255,255,.75); font-size:12px;}
 .tk-topbar__user b{color:#fff;}
 
-/* ── En-tête ────────────────────────────────────────────────────────── */
-.hero{display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; padding-bottom:16px; margin-bottom:18px; border-bottom:2px solid var(--navy);}
-.hero h1{font-size:22px; margin:0 0 4px; color:var(--navy); font-weight:800; letter-spacing:-.3px;}
-.hero p{margin:0; color:var(--muted); font-size:13px; max-width:760px;}
+.tk-hero .mode-badge{margin-top:8px}
 .mode-badge{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; background:#EAF1F8; color:var(--accent);}
 .mode-badge.local{background:#FBF1E6; color:#b0611f;}
 .mode-badge a{color:inherit;}

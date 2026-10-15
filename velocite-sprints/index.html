@@ -41,9 +41,6 @@ body{background:var(--page);color:var(--ink);font-family:var(--vfont);font-size:
 .num,td.n,.kpi-v{font-variant-numeric:tabular-nums}
 
 main.vs{max-width:1320px;margin:0 auto;padding:22px 24px 60px;display:flex;flex-direction:column;gap:22px}
-.intro{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.intro h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.3px;text-wrap:balance}
-.intro p{margin:4px 0 0;color:var(--ink-2);max-width:68ch}
 .demo{font-family:var(--vmono);font-size:11.5px;background:var(--warn-wash);color:var(--warn);border-radius:999px;padding:5px 12px}
 .demo[hidden]{display:none}
 
@@ -161,7 +158,7 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
 }
 </style>
 </head>
-<body>
+<body class="tk-page">
 
 <header class="tk-topbar">
   <a class="tk-topbar__logo" href="../" title="Retour au lanceur Agile Toolkit">
@@ -172,14 +169,17 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
   <span class="tk-topbar__version">BETA</span>
 </header>
 
-<main class="vs">
-  <section class="intro">
-    <div>
-      <h1>Vélocité Sprints</h1>
-      <p>Les stories terminées depuis le début du projet, croisées avec le fichier des ressources : combien de points chaque sprint a livrés, avec quelle capacité, et ce que cela donne en jours-personnes par story point (JP/SP).</p>
-    </div>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+    <h1 class="tk-hero__title">Vélocité Sprints</h1>
+    <p class="tk-hero__sub">Les stories terminées depuis le début du projet, croisées avec le fichier des ressources : combien de points chaque sprint a livrés, avec quelle capacité, et ce que cela donne en jours-personnes par story point (JP/SP).</p>
+  </div>
+  <div class="tk-hero__aside">
     <span class="demo" id="demoNote">Données de démonstration : déposez vos deux fichiers</span>
-  </section>
+  </div>
+</div>
+
+<main class="vs">
 
   <section class="sources" aria-label="Fichiers">
     <div class="src" id="srcStoriesCard">

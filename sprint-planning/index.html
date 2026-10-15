@@ -47,17 +47,6 @@ html, body {
   overflow-x: clip;
 }
 
-/* ── Subtle grid texture ── */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image:
-    linear-gradient(rgba(12,26,46,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(12,26,46,.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
 
 /* ── Top bar ── */
 .topbar {
@@ -103,61 +92,7 @@ body::before {
   letter-spacing: 1px;
 }
 
-/* ── Hero strip ── */
-.hero {
-  position: relative; z-index: 1;
-  background: var(--white);
-  border-bottom: 1px solid var(--grey2);
-  padding: 40px 40px 36px;
-  display: flex; align-items: flex-end; gap: 32px;
-  overflow: hidden;
-}
 
-.hero::after {
-  content: '';
-  position: absolute;
-  right: -60px; top: -60px;
-  width: 360px; height: 360px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(232,64,12,.05) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.hero-text { flex: 1; }
-.hero-eyebrow {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px; letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--orange);
-  margin-bottom: 10px;
-  display: flex; align-items: center; gap: 8px;
-}
-.hero-eyebrow::before {
-  content: '';
-  width: 18px; height: 2px;
-  background: var(--orange);
-}
-.hero-title {
-  font-size: 32px; font-weight: 800;
-  letter-spacing: -1px;
-  line-height: 1.1;
-  color: var(--navy);
-}
-.hero-title em { font-style: normal; color: var(--orange); }
-.hero-sub {
-  font-size: 13px; font-weight: 400;
-  color: var(--muted); margin-top: 8px;
-  line-height: 1.6;
-}
-
-/* Orange accent bar bottom-left */
-.hero-bar {
-  width: 4px;
-  align-self: stretch;
-  background: linear-gradient(to bottom, var(--orange), var(--orange));
-  border-radius: 2px;
-  flex-shrink: 0;
-}
 
 /* ── Main layout ── */
 .main {
@@ -670,13 +605,6 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 .btn-pm{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.25)}.btn-pm:hover{background:rgba(255,255,255,.22)}
 .btn-xl:disabled,.btn-pm:disabled{opacity:.35;cursor:not-allowed}
 .main{max-width:1000px;margin:0 auto;padding:32px 24px 80px}
-.hero{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:28px 32px;margin-bottom:28px;display:flex;align-items:center;gap:24px}
-.hero-icon{width:52px;height:52px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.hero-title{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-0.5px}
-.hero-sub{font-size:12px;color:var(--muted);margin-top:4px}
-.hero-meta{margin-left:auto;text-align:right}
-.hero-sprint{font-size:18px;font-weight:700;color:var(--navy)}
-.hero-period{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
 .kpi{background:var(--white);border:1px solid var(--grey2);border-radius:var(--radius2);padding:16px 20px}
 .kpi-lbl{font-size:9px;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -749,8 +677,6 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 @media (max-width: 640px) {
   .topbar { padding: 0 16px; }
   .topbar-version { display: none; }
-  .hero { padding: 20px 16px; }
-  .hero-title { font-size: clamp(20px, 5.5vw, 26px); }
   footer { padding: 16px; flex-wrap: wrap; gap: 8px; }
   /* Cartes de fichiers empilées en une colonne */
   .files-grid { grid-template-columns: 1fr; }
@@ -761,7 +687,7 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 }
 </style>
 </head>
-<body>
+<body class="tk-page">
 
 <!-- Top navigation bar -->
 <header class="tk-topbar">
@@ -779,12 +705,10 @@ html,body{min-height:100vh;background:var(--grey);font-family:'Manrope',sans-ser
 </header>
 
 <!-- Hero -->
-<div class="hero">
-  <div class="hero-bar"></div>
-  <div class="hero-text">
-    <div class="hero-eyebrow">Outil interne · Sprint Planning</div>
-    <h1 class="hero-title">Disponibilité <em>Sprint</em></h1>
-    <p class="hero-sub">Calcul automatique de la capacité agile par équipe, selon vos types d'équipe</p>
+<div class="tk-hero">
+  <div class="tk-hero__text">
+    <h1 class="tk-hero__title">Disponibilité Sprint</h1>
+    <p class="tk-hero__sub">Calcul automatique de la capacité agile par équipe, selon vos types d'équipe</p>
   </div>
 </div>
 
