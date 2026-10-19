@@ -619,7 +619,7 @@
   // Mode clair / sombre : les couleurs du canevas sont relues (readTheme) et les tuiles repeintes.
   window.addEventListener('tk-themechange', function () {
     if (!M || !$('mvBoard')) return;
-    M.tds.forEach(function (td, r) { var t = $('mvTl' + r); if (!t) return; var sw = t.querySelector('.mv-tt .mv-sw'); if (sw) sw.style.background = vColor(r); $('mvBr' + r).style.background = vColor(r); });
+    M.tds.forEach(function (td, r) { var t = $('mvTl' + r); if (!t) return; var sw = t.querySelector('.mv-tt .mv-sw'); if (sw) sw.style.background = vColor(r); var br = $('mvBr' + r); if (br) br.style.background = vColor(r); });
     render(); drawFx();
   });
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (M && $('mvBoard')) sizeCanvases(); }, 120); });
