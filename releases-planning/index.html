@@ -6,6 +6,7 @@
 <title>Plan de livraisons — Stabilisation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 :root {
@@ -148,6 +149,51 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 .legend-item .dot.round { border-radius: 50%; }
 .legend-item .dot.square { border-radius: 3px; }
 .legend-note { font-size: 10.5px; color: var(--muted); padding: 0 20px 14px; background: var(--bg); }
+
+/* ── Mode sombre : variables de l'outil raccordées aux jetons --tk-* ── */
+:root[data-theme="dark"] {
+  --bg: var(--tk-page-bg);
+  --white: var(--tk-surface);
+  --text: var(--tk-ink);
+  --navy: var(--tk-ink);
+  --border: var(--tk-line);
+  --muted: var(--tk-muted);
+  --accent: var(--tk-accent);
+  --red: var(--tk-bad);
+  --green: var(--tk-ok);
+  --gold: #D9A441;
+}
+/* --white sert aussi de texte sur fond coloré : il reste blanc */
+[data-theme="dark"] .bar { color: #FFFFFF; }
+[data-theme="dark"] .hdr-month { background: var(--tk-tabs-bg); color: var(--tk-ink); }
+[data-theme="dark"] .hdr-sprint { background: var(--tk-surface-2); color: var(--tk-ink-2); }
+[data-theme="dark"] .gantt-toolbar,
+[data-theme="dark"] .legend,
+[data-theme="dark"] .legend-note { background: var(--tk-surface-2); }
+[data-theme="dark"] .hdr-week { background: var(--tk-surface-2); }
+[data-theme="dark"] .hdr-day.weekend { background: #0E1623; }
+[data-theme="dark"] .ver-track.shade { background-color: var(--tk-surface-2); }
+[data-theme="dark"] .weekend-band { background: rgba(255,255,255,.025); }
+[data-theme="dark"] .halfday-line { background: rgba(255,255,255,.05); }
+[data-theme="dark"] .jalons-line { border-top-color: var(--tk-line-2); }
+[data-theme="dark"] .vl-icon:hover { background: var(--tk-surface-2); }
+[data-theme="dark"] .vl-icon.active,
+[data-theme="dark"] .add-btn:hover { background: var(--tk-info-bg); }
+[data-theme="dark"] .move-hint { background: var(--tk-warn-bg); border-bottom-color: rgba(245,192,72,.3); color: var(--tk-warn); }
+[data-theme="dark"] .phase-edit-panel { background: var(--tk-info-bg); border-bottom-color: rgba(106,165,232,.25); }
+[data-theme="dark"] .phase-handle { background: rgba(106,165,232,.45); }
+[data-theme="dark"] .marker,
+[data-theme="dark"] .ev-dot { box-shadow: 0 0 0 1px rgba(255,255,255,.22); }
+[data-theme="dark"] .marker.overridden { box-shadow: 0 0 0 2px var(--tk-surface), 0 0 0 4px var(--tk-accent); }
+[data-theme="dark"] .marker:hover { box-shadow: 0 0 0 1px rgba(255,255,255,.22), 0 0 0 4px rgba(106,165,232,.25); }
+[data-theme="dark"] .color-input::-webkit-color-swatch { box-shadow: 0 0 0 1px rgba(255,255,255,.45); }
+[data-theme="dark"] .color-input::-moz-color-swatch { box-shadow: 0 0 0 1px rgba(255,255,255,.45); }
+/* champs sans fond explicite (fond navigateur) : fond de champ sombre */
+[data-theme="dark"] .field input, [data-theme="dark"] .field select,
+[data-theme="dark"] .ms-label, [data-theme="dark"] .pd-days,
+[data-theme="dark"] .dp-group select,
+[data-theme="dark"] .pep-field input, [data-theme="dark"] .pep-field select { background: var(--tk-field); color: var(--tk-ink); border-color: var(--tk-line-2); }
+[data-theme="dark"] .pep-field input:disabled, [data-theme="dark"] .pep-field select:disabled { background: var(--tk-surface-2); color: var(--tk-muted); border-color: var(--tk-line); }
 </style>
 </head>
 <body class="tk-page">
@@ -322,6 +368,19 @@ const CSS_VAR_HEX = { 'var(--accent)': '#0C447C', 'var(--navy)': '#0C1A2E', 'var
 function toHexColor(c) {
   if (CSS_VAR_HEX[c]) return CSS_VAR_HEX[c];
   return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : PALETTE[0];
+}
+// Couleur affichée : en mode sombre, une couleur de donnée trop foncée (le
+// navy de « Dev », par ex.) disparaîtrait sur le fond — on l'éclaircit vers un
+// bleu acier, sans toucher à la valeur enregistrée. Mode clair : inchangée.
+function dispColor(c) {
+  if (!(window.TkTheme && TkTheme.isDark())) return c;
+  const hex = toHexColor(c);
+  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const lum = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  const L = 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2];
+  if (L >= 0.04) return hex;
+  const mix = [0x8F, 0xB3, 0xE0];
+  return '#' + rgb.map((v, i) => Math.round(v + 0.4 * (mix[i] - v)).toString(16).padStart(2, '0')).join('');
 }
 
 function toISO(d) { const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
@@ -881,7 +940,7 @@ function renderPhaseEditPanel() {
       `<option value="0" ${half === 0 ? 'selected' : ''}>${HALF_LABELS[0]}</option>` +
       `<option value="1" ${half === 1 ? 'selected' : ''}>${HALF_LABELS[1]}</option></select>`;
     return `<div class="pep-phase">
-      <span class="swatch" style="background:${phaseColor(p, i)}"></span>
+      <span class="swatch" style="background:${dispColor(phaseColor(p, i))}"></span>
       <span class="pep-label">${escapeHtml(phaseLabel(p, i))}</span>
       <label class="pep-field">Début
         <input type="date" class="pep-date" data-boundary="${startBoundary}" value="${p.start}" ${dis}>
@@ -898,8 +957,8 @@ function renderPhaseEditPanel() {
 function renderLegend() {
   const legend = document.getElementById('legend');
   legend.innerHTML =
-    state.phaseDefs.map(def => `<div class="legend-item"><div class="dot square" style="background:${def.color}"></div>${escapeHtml(def.label)}</div>`).join('') +
-    state.milestones.filter(m => m.visible).map(m => `<div class="legend-item"><div class="dot round" style="background:${m.color}"></div>${escapeHtml(m.label)}</div>`).join('');
+    state.phaseDefs.map(def => `<div class="legend-item"><div class="dot square" style="background:${dispColor(def.color)}"></div>${escapeHtml(def.label)}</div>`).join('') +
+    state.milestones.filter(m => m.visible).map(m => `<div class="legend-item"><div class="dot round" style="background:${dispColor(m.color)}"></div>${escapeHtml(m.label)}</div>`).join('');
 }
 
 function renderGantt() {
@@ -1077,7 +1136,7 @@ function renderGantt() {
       bar.style.left = left + 'px';
       bar.style.top = '3px';
       bar.style.width = width + 'px';
-      bar.style.background = phaseColor(p, i);
+      bar.style.background = dispColor(phaseColor(p, i));
       const lbl = phaseLabel(p, i);
       if (width >= lbl.length * 6 + 16) bar.textContent = lbl;
       else { bar.title = lbl; bar.style.overflow = 'visible'; }
@@ -1130,7 +1189,7 @@ function renderGantt() {
 
       const marker = document.createElement('div');
       marker.className = 'marker' + (hasOverride ? ' overridden' : '');
-      marker.style.background = m.color;
+      marker.style.background = dispColor(m.color);
       marker.style.left = left + 'px';
       marker.style.top = (jalonsTop + 8) + 'px';
       marker.title = m.label + ' — ' + WEEKDAY_FULL[(dayDate.getDay()+6)%7] + ' ' + fmtDate(dayDate) + ' (' + HALF_LABELS[half] + ')' +
@@ -1510,6 +1569,8 @@ writePlanSnapshot();
 loadRemoteState().catch(e => console.warn(e));
 attachDnD('phaseDefsList', () => state.phaseDefs);
 attachDnD('milestonesList', () => state.milestones);
+// Bascule clair/sombre : redessine le board (couleurs de données adaptées)
+window.addEventListener('tk-themechange', () => { renderGantt(); renderPhaseEditPanel(); });
 
 // Compte le temps passé ici comme de l'activité, et coupe la session
 // après 1 h d'inactivité (voir acces/auth.js).

@@ -7,6 +7,7 @@
 <meta name="description" content="Suite d'outils web pour les cérémonies agiles : sprint planning, planning poker, et plus à venir.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="assets/theme-mode.js"></script>
 <link rel="stylesheet" href="assets/theme.css">
 <style>
 /* ── Topbar ─────────────────────────────────────────────── */
@@ -138,6 +139,45 @@
 .acc-msg { font-size: 12.5px; padding: 8px 11px; border-radius: var(--radius); margin-bottom: 14px; display: none; }
 .acc-msg.is-error { display: block; background: var(--red-bg); color: var(--red); }
 .acc-msg.is-ok { display: block; background: var(--green-bg); color: var(--green); }
+
+/* ── Molette mode clair / sombre (assets/theme-mode.js) ──── */
+.lnk-theme-slot { display: flex; align-items: center; }
+
+/* ── Mode sombre : variables de theme.css raccordées aux jetons --tk-* ── */
+:root[data-theme="dark"] {
+  --bg:      var(--tk-page-bg);
+  --white:   var(--tk-surface);
+  --text:    var(--tk-ink);
+  --navy:    var(--tk-ink);
+  --border:  var(--tk-line);
+  --muted:   var(--tk-muted);
+  --accent:  var(--tk-accent);
+  --green:   var(--tk-ok);   --green-bg: var(--tk-ok-bg);
+  --red:     var(--tk-bad);  --red-bg:   var(--tk-bad-bg);
+  --shadow:       0 1px 3px var(--tk-shadow-c);
+  --shadow-hover: 0 8px 28px rgba(0, 0, 0, .45);
+  background: var(--tk-page-bg); /* marge du body */
+}
+/* --navy et --white servent aussi de fond de barre / texte clair : on fige */
+[data-theme="dark"] .lnk-topbar { background: var(--tk-topbar-bg); }
+[data-theme="dark"] .lnk-logo .sq { background: #0C447C; } /* comme .tk-topbar__logo des outils */
+[data-theme="dark"] .lnk-logo .wm,
+[data-theme="dark"] .tk-btn--accent,
+[data-theme="dark"] .tk-btn--on-dark,
+[data-theme="dark"] .tk a.tk-btn--on-dark { color: #FFFFFF; }
+/* --accent clair en sombre : fond plein du bouton sur --tk-strong */
+[data-theme="dark"] .tk-btn--accent { background: var(--tk-strong); }
+[data-theme="dark"] .tk-btn--accent:hover { background: #3A7DD0; }
+[data-theme="dark"] .tk::before {
+  background-image:
+    linear-gradient(var(--tk-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--tk-grid-line) 1px, transparent 1px);
+}
+[data-theme="dark"] .tk-card--hover:hover { border-color: var(--tk-line-2); }
+[data-theme="dark"] .tool.is-available .tool-icon { border-color: rgba(76, 194, 122, .25); }
+[data-theme="dark"] .tool.is-preview .tool-icon { background: var(--tk-info-bg); border-color: rgba(106, 165, 232, .25); }
+[data-theme="dark"] .acc-input { background: var(--tk-field); border-color: var(--tk-line-2); }
+[data-theme="dark"] .acc-input:focus { border-color: var(--tk-accent); }
 </style>
 </head>
 <body class="tk">
@@ -154,6 +194,8 @@
         <span class="name" id="topbar-username"></span>
         <button class="tk-btn tk-btn--on-dark" id="btn-logout" type="button">Déconnexion</button>
       </div>
+      <!-- Molette mode sombre : hors de #topbar-user pour rester visible à l'écran de connexion -->
+      <span class="lnk-theme-slot" data-tk-theme-switch></span>
     </div>
   </header>
 

@@ -453,13 +453,13 @@
     if (o.atGate == null || !o.gate) {
       return { n: o.proj ? C.fmtDate(o.proj) : o.progress >= 100 ? '100 %' : 'indéterminé',
         l: (o.proj ? '100 % d\'avancement à ce rythme' : o.progress >= 100 ? 'objectif atteint' : 'avancement à l\'arrêt entre la 1<sup>re</sup> et la dernière photo') +
-          (o.td ? ' — Target date ' + C.fmtDate(o.td) + (o.proj ? (o.proj > o.td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(o.td, o.proj) + ' j)</b>' : ' <b style="color:#006300">(dans les temps)</b>') : '') : '') };
+          (o.td ? ' — Target date ' + C.fmtDate(o.td) + (o.proj ? (o.proj > o.td ? ' <b style="color:var(--critical)">(dépassement ' + C.dayDiff(o.td, o.proj) + ' j)</b>' : ' <b style="color:var(--bd-good-ink)">(dans les temps)</b>') : '') : '') };
     }
     var name = '<b>' + esc(o.gateName || 'jalon') + '</b>';
     if (o.atGate >= 99.95) {
       return { n: '100 %',
         l: 'd\'avancement au ' + name + (o.proj ? ' — 100 % atteints le ' + C.fmtDate(o.proj) : '') +
-          ' <b style="color:#006300">(dans les temps)</b>' + tail };
+          ' <b style="color:var(--bd-good-ink)">(dans les temps)</b>' + tail };
     }
     var miss = 100 - o.atGate, last = lastOpenBefore(o.gate), w = openWin();
     return { n: d(o.atGate) + ' %',
@@ -977,7 +977,7 @@
     var d = function (f) { var v = (kb[f] || 0) - (ka[f] || 0); return (v > 0 ? '+' : '') + v; };
     var vh = '';
     var vkeys = []; [a, b].forEach(function (i) { Object.keys(i.resume.byVersion || {}).forEach(function (v) { if (vkeys.indexOf(v) === -1) vkeys.push(v); }); });
-    if (vkeys.length) vh = '<table style="margin-top:12px"><thead><tr><th>Version</th><th class="num">Stock ' + shortWhen(a.at) + '</th><th class="num">Stock ' + shortWhen(b.at) + '</th><th class="num">Δ</th><th class="num">Terminés ' + shortWhen(b.at) + '</th></tr></thead><tbody>' + vkeys.map(function (v) { var x = (a.resume.byVersion || {})[v] || { open: 0, done: 0 }, y = (b.resume.byVersion || {})[v] || { open: 0, done: 0 }; var dv = y.open - x.open; return '<tr><td>' + esc(v) + '</td><td class="num">' + x.open + '</td><td class="num">' + y.open + '</td><td class="num" style="color:' + (dv > 0 ? 'var(--critical)' : dv < 0 ? '#006300' : 'inherit') + '">' + (dv > 0 ? '+' : '') + dv + '</td><td class="num">' + y.done + '</td></tr>'; }).join('') + '</tbody></table>';
+    if (vkeys.length) vh = '<table style="margin-top:12px"><thead><tr><th>Version</th><th class="num">Stock ' + shortWhen(a.at) + '</th><th class="num">Stock ' + shortWhen(b.at) + '</th><th class="num">Δ</th><th class="num">Terminés ' + shortWhen(b.at) + '</th></tr></thead><tbody>' + vkeys.map(function (v) { var x = (a.resume.byVersion || {})[v] || { open: 0, done: 0 }, y = (b.resume.byVersion || {})[v] || { open: 0, done: 0 }; var dv = y.open - x.open; return '<tr><td>' + esc(v) + '</td><td class="num">' + x.open + '</td><td class="num">' + y.open + '</td><td class="num" style="color:' + (dv > 0 ? 'var(--critical)' : dv < 0 ? 'var(--bd-good-ink)' : 'inherit') + '">' + (dv > 0 ? '+' : '') + dv + '</td><td class="num">' + y.done + '</td></tr>'; }).join('') + '</tbody></table>';
     return '<h4 style="margin:14px 0 4px;font-size:13px;color:var(--navy)">Comparaison : ' + esc(a.nom || fmtWhen(a.at)) + ' → ' + esc(b.nom || fmtWhen(b.at)) + '</h4>' +
       '<p class="sub">Tickets ' + d('total') + ' · ouverts ' + d('open') + ' · terminés ' + d('done') + ' · blockers ouverts ' + d('blockersOpen') + ' · retards ' + d('overdue') + ' · avancement ' + d('progress') + ' pt</p>' +
       '<div class="diff-grid">' + box('appeared', appeared.length, 'nouveaux tickets') + box('gone', gone.length, 'tickets disparus de l\'extrait') + box('closed', closed.length, 'terminés depuis') + box('reopened', reopened.length, 'rouverts') + box('statusChanged', statusChanged.length, 'changements de statut') + box('teamChanged', teamChanged.length, 'changements d\'équipe') + box('versionChanged', versionChanged.length, 'changements de version') + '</div>' + vh;

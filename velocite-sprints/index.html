@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (entête commune). Les styles ci-dessous, déclarés après, restent prioritaires. -->
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <script src="../assets/loader.js"></script>
 <script src="../assets/planning-store.js"></script>
@@ -34,6 +35,17 @@
   --c0:#0C447C; --c1:#2E8B9A; --c2:#7A5AB8; --c3:#C8742A; --c4:#3F8F4E; --c5:#B0457A; --c6:#6B7A90; --c7:#A39020; --c8:#4F6FD0; --c9:#8C4A2F;
   --vfont:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --vmono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ref:#B54708; --off:#B42318; --tip-bg:#0C1A2E;
+}
+/* Mode sombre : variables de l'outil raccordées aux jetons --tk-* */
+:root[data-theme="dark"]{
+  --page:var(--tk-page-bg); --surface:var(--tk-surface); --surface-2:var(--tk-surface-2);
+  --ink:var(--tk-ink); --ink-2:var(--tk-ink-2); --ink-3:var(--tk-muted);
+  --line:var(--tk-line); --line-2:var(--tk-line-2);
+  --accent:var(--tk-accent); --accent-wash:var(--tk-info-bg);
+  --good:var(--tk-ok); --good-wash:var(--tk-ok-bg); --warn:var(--tk-warn); --warn-wash:var(--tk-warn-bg); --bad:var(--tk-bad); --bad-wash:var(--tk-bad-bg);
+  --c0:#3F7FCC;
+  --ref:#F0A04B; --off:#F08A8A; --tip-bg:#1C2A40;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -89,7 +101,7 @@ details.params summary{cursor:pointer;font-weight:700;font-size:13px}
 .chip.off{opacity:.55;text-decoration:line-through;cursor:default}
 .chip.out{opacity:.6;text-decoration:line-through}
 .chip small{font-weight:500;opacity:.75}
-svg text.hyp{fill:#0C447C;font-weight:600}
+svg text.hyp{fill:var(--accent);font-weight:600}
 .seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden}
 .seg button{font:600 12px var(--vfont);background:var(--surface);color:var(--ink-2);border:0;padding:5px 10px;cursor:pointer;border-right:1px solid var(--line-2)}
 .seg button:last-child{border-right:0}
@@ -148,8 +160,13 @@ tr.cur td{font-style:italic;color:var(--ink-3)}
 .ign b{font-family:var(--vmono);font-weight:500}
 .ign .ex{font-size:11px;color:var(--ink-3);font-family:var(--vmono);border:0;padding:0 0 4px}
 
-#tip{position:fixed;pointer-events:none;background:#0C1A2E;color:#fff;font-size:12px;padding:8px 10px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:280px;z-index:60;line-height:1.5}
+#tip{position:fixed;pointer-events:none;background:var(--tip-bg);color:#fff;font-size:12px;padding:8px 10px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:280px;z-index:60;line-height:1.5}
 #tip .m{font-family:var(--vmono);color:#9DB8CC}
+
+/* Mode sombre : bouton choisi en fond plein, info-bulle détachée du fond */
+[data-theme="dark"] .seg button[aria-pressed="true"]{background:var(--tk-strong);color:var(--tk-on-strong)}
+[data-theme="dark"] #tip{border:1px solid var(--tk-line-2);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+[data-theme="dark"] .filters{box-shadow:0 2px 10px var(--tk-shadow-c)}
 
 @media (max-width:640px){
   main.vs{padding:16px 16px 40px}
@@ -605,37 +622,37 @@ function renderChartA(){
   var maxSp=niceMax(Math.max.apply(null,list.map(function(s){ var a=agg(s); return s.status==='next'? a.cap*r3 : a.sp; }))*1.08);
   var maxCap=niceMax(Math.max.apply(null,list.map(function(s){ return agg(s).cap; }))*1.05);
   var bw=iw/list.length, g='';
-  g+='<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#FFFFFF"/><line x1="0" y1="0" x2="0" y2="6" stroke="#CDD3DC" stroke-width="3"/></pattern></defs>';
+  g+='<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line-2)" stroke-width="3"/></pattern></defs>';
   for(var k=0;k<=4;k++){ var y=T+ih-ih*k/4; g+='<line class="grid" x1="'+L+'" x2="'+(W-Rr)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-8)+'" y="'+(y+3.5)+'" text-anchor="end">'+f0(maxSp*k/4)+'</text><text x="'+(W-Rr+8)+'" y="'+(y+3.5)+'">'+f0(maxCap*k/4)+'</text>'; }
   var pts=[], every=Math.ceil(list.length/14);
   list.forEach(function(s,ix){
     var x=L+ix*bw+bw*.18, w=bw*.64, y0=T+ih, a=agg(s);
     if(s.status==='next'){
       var pv=a.cap*r3, hh=ih*pv/maxSp;
-      g+='<rect class="hov" x="'+x+'" y="'+(y0-hh)+'" width="'+w+'" height="'+hh+'" fill="url(#hatch)" stroke="#0C447C" stroke-dasharray="3 3"'+tipAttr('<b>'+esc(s.name)+' · prévision</b><br><span class="m">'+f0(a.cap)+' '+capLbl()+' ÷ '+refLbl(r3c)+'</span><br>≈ '+f0(pv)+' SP')+'/>';
-      if(pv) g+='<text x="'+(x+w/2)+'" y="'+(y0-hh-5)+'" text-anchor="middle" style="fill:#0C447C">≈'+f0(pv)+'</text>';
+      g+='<rect class="hov" x="'+x+'" y="'+(y0-hh)+'" width="'+w+'" height="'+hh+'" fill="url(#hatch)" stroke="var(--accent)" stroke-dasharray="3 3"'+tipAttr('<b>'+esc(s.name)+' · prévision</b><br><span class="m">'+f0(a.cap)+' '+capLbl()+' ÷ '+refLbl(r3c)+'</span><br>≈ '+f0(pv)+' SP')+'/>';
+      if(pv) g+='<text x="'+(x+w/2)+'" y="'+(y0-hh-5)+'" text-anchor="middle" style="fill:var(--accent)">≈'+f0(pv)+'</text>';
     } else {
       teams.forEach(function(t){
         var d=M.data[t.id][s.i]; if(!d.sp) return; var hh=ih*d.sp/maxSp; y0-=hh;
         g+='<rect class="hov" x="'+x+'" y="'+y0+'" width="'+w+'" height="'+Math.max(hh-1,0)+'" fill="var('+t.c+')"'+(s.status==='current'?' opacity=".45"':'')+tipAttr('<b>'+esc(s.name)+' · '+esc(t.id)+'</b>'+(s.status==='current'?' (en cours)':'')+'<br><span class="m">'+f0(d.sp)+' SP · '+d.n+' stories<br>'+f1(cap(d))+' '+capLbl()+' · '+d.hc+' pers.<br>'+(cap(d)&&d.sp?f2(cap(d)/d.sp)+' JP / SP':'capacité inconnue')+'</span>')+'/>';
       });
-      if(a.sp) g+='<text x="'+(x+w/2)+'" y="'+(y0-5)+'" text-anchor="middle" style="fill:#3D4B60">'+f0(a.sp)+'</text>';
+      if(a.sp) g+='<text x="'+(x+w/2)+'" y="'+(y0-5)+'" text-anchor="middle" style="fill:var(--ink-2)">'+f0(a.sp)+'</text>';
     }
     pts.push([L+ix*bw+bw/2, T+ih-ih*a.cap/maxCap, s, a]);
     var it=s.status!=='done'?' style="font-style:italic"':'';
     g+='<text x="'+(L+ix*bw+bw/2)+'" y="'+(H-B+16)+'" text-anchor="middle"'+it+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
     if(ix%every===0) g+='<text x="'+(L+ix*bw+bw/2)+'" y="'+(H-B+29)+'" text-anchor="middle" style="font-size:9px">'+fmtD(s.start)+'</text>';
   });
-  g+='<polyline fill="none" stroke="#0C1A2E" stroke-width="2" points="'+pts.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ')+'"/>';
+  g+='<polyline fill="none" stroke="var(--ink)" stroke-width="2" points="'+pts.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ')+'"/>';
   // Infobulle de la capacité exprimée en SP hypothétiques : capacité × vélocité moyenne de l'historique choisi.
   var mcalc=rateOver(winSprints()), mean=refRate(mcalc);
   pts.forEach(function(p){ var s=p[2], a=p[3], hyp=mean*a.cap, dlt=a.sp-hyp;
     var tip='<b>'+esc(s.name)+'</b><br>≈ <b>'+f0(hyp)+' SP</b> hypothétiques<br><span class="m">'+f1(a.cap)+' '+capLbl()+' ÷ '+refLbl(mcalc)+' · '+a.hc+' pers.</span>'+
       (s.status==='done'?'<br><span class="m">Livrés : '+f0(a.sp)+' SP ('+(dlt>=0?'+':'')+f0(dlt)+')</span>':'');
-    g+='<circle class="hov" cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="#FFFFFF" stroke="#0C1A2E" stroke-width="2"'+tipAttr(tip)+'/>'; });
+    g+='<circle class="hov" cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"'+tipAttr(tip)+'/>'; });
   g+='<text x="'+(L-8)+'" y="'+(T-6)+'" text-anchor="end">SP</text><text x="'+(W-Rr+8)+'" y="'+(T-6)+'">JP</text>';
   $('#chartA').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Story points livrés par sprint et capacité">'+g+'</svg>';
-  $('#legA').innerHTML=teams.map(function(t){ return '<span><i style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join('')+'<span><i class="ln" style="background:#0C1A2E"></i>Capacité ('+capLbl()+')</span>'+(next()?'<span><i style="border:1px dashed #0C447C"></i>Prévision prochain sprint</span>':'');
+  $('#legA').innerHTML=teams.map(function(t){ return '<span><i style="background:var('+t.c+')"></i>'+esc(t.id)+'</span>'; }).join('')+'<span><i class="ln" style="background:var(--ink)"></i>Capacité ('+capLbl()+')</span>'+(next()?'<span><i style="border:1px dashed var(--accent)"></i>Prévision prochain sprint</span>':'');
 }
 
 // ── Graphique B : vélocité normalisée ──
@@ -660,10 +677,10 @@ function renderChartB(){
   var bHi=mrate-sd>0?1/(mrate-sd):max, bLo=1/(mrate+sd||1);
   var ld=list.filter(function(s){ return s.status==='done'; }).length-1;
   if(ld>=0 && mean!=null){
-    g+='<rect x="'+L+'" y="'+Y(bHi)+'" width="'+Math.max(X(ld)-L,2)+'" height="'+(Y(bLo)-Y(bHi))+'" fill="#EAF1F8"/>';
-    g+='<line x1="'+L+'" x2="'+X(ld)+'" y1="'+Y(mean)+'" y2="'+Y(mean)+'" stroke="#0C447C" stroke-dasharray="5 4"/><text x="'+(X(ld)+6)+'" y="'+(Y(mean)+3.5)+'" style="fill:#0C447C">moy. '+f2(mean)+'</text>';
+    g+='<rect x="'+L+'" y="'+Y(bHi)+'" width="'+Math.max(X(ld)-L,2)+'" height="'+(Y(bLo)-Y(bHi))+'" fill="var(--accent-wash)"/>';
+    g+='<line x1="'+L+'" x2="'+X(ld)+'" y1="'+Y(mean)+'" y2="'+Y(mean)+'" stroke="var(--accent)" stroke-dasharray="5 4"/><text x="'+(X(ld)+6)+'" y="'+(Y(mean)+3.5)+'" style="fill:var(--accent)">moy. '+f2(mean)+'</text>';
   }
-  if(ld>=0 && CFG.jpsp>0 && CFG.jpsp<=max) g+='<line x1="'+L+'" x2="'+X(ld)+'" y1="'+Y(CFG.jpsp)+'" y2="'+Y(CFG.jpsp)+'" stroke="#B54708" stroke-dasharray="2 3" stroke-width="1.5"/><text x="'+(X(ld)+6)+'" y="'+(Y(CFG.jpsp)+(Math.abs(Y(CFG.jpsp)-Y(mean||0))<12?14:3.5))+'" style="fill:#B54708">réf. '+f2(CFG.jpsp)+'</text>';
+  if(ld>=0 && CFG.jpsp>0 && CFG.jpsp<=max) g+='<line x1="'+L+'" x2="'+X(ld)+'" y1="'+Y(CFG.jpsp)+'" y2="'+Y(CFG.jpsp)+'" stroke="var(--ref)" stroke-dasharray="2 3" stroke-width="1.5"/><text x="'+(X(ld)+6)+'" y="'+(Y(CFG.jpsp)+(Math.abs(Y(CFG.jpsp)-Y(mean||0))<12?14:3.5))+'" style="fill:var(--ref)">réf. '+f2(CFG.jpsp)+'</text>';
   function line(v, color, wdt, op, dash){
     var segs=[], cur=[];
     v.forEach(function(val,ix){ if(val==null){ if(cur.length) segs.push(cur); cur=[]; } else cur.push(X(ix).toFixed(1)+','+Y(val).toFixed(1)); });
@@ -672,8 +689,8 @@ function renderChartB(){
   }
   // Moyenne glissante : ratio des totaux sur 3 sprints (Σ JP ÷ Σ SP).
   var roll=aggv.map(function(v,ix){ if(ix<2||v==null||aggv[ix-1]==null||aggv[ix-2]==null) return null; var c=0,p=0; [0,1,2].forEach(function(k){ var a=agg(list[ix-k]); c+=a.cap; p+=a.sp; }); return p?c/p:null; });
-  g+=line(aggv,'#0C1A2E',2.6);
-  g+=line(roll,'#6B7A90',1.6,.9,'2 4');
+  g+=line(aggv,'var(--ink)',2.6);
+  g+=line(roll,'var(--ink-3)',1.6,.9,'2 4');
   var every=Math.ceil(list.length/26), anyOff=false;
   list.forEach(function(s,ix){
     var a=agg(s), cur=s.status==='current';
@@ -683,11 +700,11 @@ function renderChartB(){
     var off=!cur && a.cap && (v==null || v>max), py=off?Y(max):v!=null?Y(v):0;
     if(off) anyOff=true;
     if((v!=null||off) && a.cap) g+='<text class="hyp" x="'+X(ix)+'" y="'+(off?py+18:py-9)+'" text-anchor="middle">'+f0(hyp)+'</text>';
-    if(v!=null||off) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+py+'" r="4.5" fill="'+(off?'#FFFFFF':'#0C1A2E')+'" stroke="'+(off?'#B42318':'#0C1A2E')+'" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+(v!=null?f2(v)+' JP / SP'+(off?' (hors échelle)':''):'aucun SP livré')+'<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+refLbl(mrate)+' : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
+    if(v!=null||off) g+='<circle class="hov" cx="'+X(ix)+'" cy="'+py+'" r="4.5" fill="'+(off?'var(--surface)':'var(--ink)')+'" stroke="'+(off?'var(--off)':'var(--ink)')+'" stroke-width="2"'+tipAttr('<b>'+esc(s.name)+'</b><br><span class="m">'+(v!=null?f2(v)+' JP / SP'+(off?' (hors échelle)':''):'aucun SP livré')+'<br>'+f0(a.sp)+' SP · '+f1(a.cap)+' '+capLbl()+'<br>'+a.hc+' personnes productives<br>SP hypothétiques à '+refLbl(mrate)+' : <b>'+f0(hyp)+'</b> ('+(dlt>=0?'+':'')+f0(dlt)+' livrés)</span>')+'/>';
     if(ix%every===0) g+='<text x="'+X(ix)+'" y="'+(H-B+16)+'" text-anchor="middle"'+(cur?' style="font-style:italic"':'')+'>'+(s.num!=null?'S'+s.num:esc(s.name))+'</text>';
   });
   $('#chartB').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vélocité normalisée par sprint">'+g+'</svg>';
-  $('#legB').innerHTML='<span><i class="ln" style="background:#0C1A2E;height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:#EAF1F8;border:1px solid #0C447C"></i>Plage habituelle (± 1 écart-type)</span><span><b style="color:#0C447C">123</b>&nbsp;SP hypothétiques (capacité ÷ '+(CFG.jpsp>0?'JP/SP saisi':'moyenne JP/SP')+')</span>'+(CFG.jpsp>0?'<span><i class="ln" style="background:#B54708"></i>JP/SP de référence</span>':'')+(anyOff?'<span><i style="border:2px solid #B42318;border-radius:50%"></i>Sans SP ou hors échelle</span>':'');
+  $('#legB').innerHTML='<span><i class="ln" style="background:var(--ink);height:3px"></i>JP par SP</span><span><i class="dash"></i>Moyenne glissante 3 sprints</span><span><i style="background:var(--accent-wash);border:1px solid var(--accent)"></i>Plage habituelle (± 1 écart-type)</span><span><b style="color:var(--accent)">123</b>&nbsp;SP hypothétiques (capacité ÷ '+(CFG.jpsp>0?'JP/SP saisi':'moyenne JP/SP')+')</span>'+(CFG.jpsp>0?'<span><i class="ln" style="background:var(--ref)"></i>JP/SP de référence</span>':'')+(anyOff?'<span><i style="border:2px solid var(--off);border-radius:50%"></i>Sans SP ou hors échelle</span>':'');
 }
 
 // ── Matrice ──

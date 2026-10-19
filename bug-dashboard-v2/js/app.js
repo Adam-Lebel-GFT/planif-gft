@@ -683,6 +683,23 @@
     document.dispatchEvent(new CustomEvent('bdv2:ready'));
   }
 
+  // Mode clair / sombre : les rampes des heatmaps sont calculées en JS, on redessine.
+  root.addEventListener('tk-themechange', function () { if (S.tickets.length) rerender(); });
+  // Impression toujours en clair : on bascule le temps de l'impression.
+  var printDark = false;
+  root.addEventListener('beforeprint', function () {
+    printDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (!printDark) return;
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (S.tickets.length) rerender();
+  });
+  root.addEventListener('afterprint', function () {
+    if (!printDark) return;
+    printDark = false;
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if (S.tickets.length) rerender();
+  });
+
   root.BDV2App = { state: S, hooks: hooks, available: available, loadArchived: loadArchived, exitArchive: exitArchive, rerender: rerender, analyze: analyze, visibleTickets: visibleTickets, baseTickets: baseTickets, configCtx: configCtx, view: function () { return S.view; }, setView: setView, saveView: saveView, setMsg: setMsg, esc: esc, ticketId: ticketId };
   document.addEventListener('DOMContentLoaded', init);
 })(window);

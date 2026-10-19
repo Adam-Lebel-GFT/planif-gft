@@ -25,7 +25,15 @@
     '.tk-ps button.pri{background:#0C1A2E;border-color:#0C1A2E;color:#fff}' +
     '.tk-ps button:disabled,.tk-ps select:disabled{opacity:.45;cursor:not-allowed}' +
     '.tk-ps-msg{font-family:"DM Mono",monospace;font-size:10px;color:#6B7A90;margin-top:8px;min-height:13px}' +
-    '.tk-ps-msg.err{color:#C0392B}.tk-ps-msg.ok{color:#1A7A42}';
+    '.tk-ps-msg.err{color:#C0392B}.tk-ps-msg.ok{color:#1A7A42}' +
+    // Mode sombre (assets/theme-mode.js) : jetons --tk-* de assets/theme.css.
+    '[data-theme="dark"] .tk-ps{background:var(--tk-surface);border-color:var(--tk-line)}' +
+    '[data-theme="dark"] .tk-ps-lbl,[data-theme="dark"] .tk-ps-msg{color:var(--tk-muted)}' +
+    '[data-theme="dark"] .tk-ps select{background:var(--tk-field);border-color:var(--tk-line);color:var(--tk-ink)}' +
+    '[data-theme="dark"] .tk-ps button{background:var(--tk-surface-2);border-color:var(--tk-line);color:var(--tk-ink)}' +
+    '[data-theme="dark"] .tk-ps button:hover:not(:disabled){border-color:var(--tk-line-2)}' +
+    '[data-theme="dark"] .tk-ps button.pri{background:var(--tk-strong);border-color:var(--tk-strong);color:var(--tk-on-strong)}' +
+    '[data-theme="dark"] .tk-ps-msg.err{color:var(--tk-bad)}[data-theme="dark"] .tk-ps-msg.ok{color:var(--tk-ok)}';
 
   function auth() { return root.PlanifAuth || null; }
   async function getSession() { var A = auth(); if (!A) return null; try { return await A.getSession(); } catch (e) { return null; } }
