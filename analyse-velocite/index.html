@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- Les autres outils du toolkit sont en thème clair : data-theme="light" fige ce thème.
-     Retirer l'attribut laisse la page suivre le thème du système (jetons sombres prêts). -->
+<!-- Le mode clair / sombre est choisi par la molette de la barre noire (assets/theme-mode.js),
+     qui réécrit data-theme sur <html> ; "light" n'est que la valeur de départ. -->
 <html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé de la plateforme (entête commune). Les styles ci-dessous, déclarés après, restent prioritaires. -->
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* ════════════════════════════════════════════════════════════════════
@@ -47,18 +48,6 @@
   --v-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --v-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;
-    --v-line: #223047; --v-line-2: #33445C; --v-texture: rgba(255, 255, 255, .025); --v-accent: #6AA5E8; --v-accent-wash: rgba(106, 165, 232, .14);
-    --v-good-ink: #3cc23c; --v-warn-ink: #F5C048; --v-bad-ink: #F08A8A;
-    --v-good-wash: rgba(12, 163, 12, .22); --v-warn-wash: rgba(250, 178, 25, .18); --v-bad-wash: rgba(208, 59, 59, .24); --v-zone: rgba(12, 163, 12, .16);
-    --v-shadow: 0 1px 3px rgba(0, 0, 0, .4);
-    --v-s0: #3987e5; --v-st-a: #86b6ef; --v-st-d: #3987e5; --v-st-q: #1c5cab;
-    --v-eq-1: #d95926; --v-eq-2: #199e70; --v-eq-3: #c98500; --v-eq-4: #9085e9;
-    color-scheme: dark;
-  }
 }
 :root[data-theme="dark"] {
   --v-page: #0A111C; --v-surface: #111A28; --v-surface-2: #162133; --v-ink: #E8EDF4; --v-ink-2: #B9C4D3; --v-ink-3: #8B98AC;

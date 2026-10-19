@@ -272,6 +272,7 @@ message au lieu de planter.
 **Tout nouvel outil doit reprendre le style de « Capacité à faire »** : un fond quadrillé et un bandeau de titre blanc sous la barre noire. Ce style vit dans `assets/theme.css` (classes `tk-page` et `tk-hero`) : on l'utilise, on ne le recopie pas.
 
 ```html
+<script src="../assets/theme-mode.js"></script>   <!-- mode clair / sombre, avant les styles -->
 <link rel="stylesheet" href="../assets/theme.css">
 …
 <body class="tk-page">
@@ -292,6 +293,17 @@ Règles :
 - le bandeau est **hors** de `<main>` (il occupe toute la largeur) ;
 - ne pas redéfinir `body::before`, `.hero` ni la taille du titre dans l'outil ; pour un thème local (ex. mode sombre), surcharger `--tk-hero-bg`, `--tk-hero-line`, `--tk-hero-ink`, `--tk-hero-muted`, `--tk-grid-line`, `--tk-page-bg` sur `:root` ;
 - exception : une application plein écran sans page de contenu (ex. Tableau blanc) n'a pas de bandeau.
+
+### Mode sombre — obligatoire pour tout outil
+
+Une molette dans la barre noire passe chaque outil du mode clair au mode sombre. Le choix est gardé dans le navigateur (`localStorage`, clé `tk-theme`) et suit d'un outil à l'autre. Tout outil, existant ou nouveau, doit être propre dans les deux modes.
+
+- **Inclusion** : `<script src="../assets/theme-mode.js"></script>` dans `<head>`, avant les feuilles de style (pas de `defer`), pour que la page s'affiche directement dans le bon mode. Le script pose `data-theme="light"` ou `"dark"` sur `<html>` et ajoute la molette au bout de `.tk-topbar__actions`. Une page sans `.tk-topbar` (ex. Tableau blanc) place un `<span data-tk-theme-switch></span>` là où la molette doit aller.
+- **Couleurs** : `assets/theme.css` définit les jetons `--tk-*` (`--tk-page-bg`, `--tk-surface`, `--tk-surface-2`, `--tk-field`, `--tk-ink`, `--tk-ink-2`, `--tk-muted`, `--tk-line`, `--tk-line-2`, `--tk-accent`, `--tk-strong` / `--tk-on-strong`, `--tk-ok`, `--tk-warn`, `--tk-bad`, `--tk-info` et leurs `-bg`…) en clair sur `:root` et en sombre sur `:root[data-theme="dark"]`. Un nouvel outil écrit ses couleurs avec ces jetons. Un outil qui a sa propre palette la raccorde dans un bloc `:root[data-theme="dark"] { … }` placé après son `:root` clair.
+- **Pas de couleur en dur qui ne marche qu'en clair** : ni dans le CSS, ni dans les `style=""`, ni dans le HTML ou le SVG générés en JS. Attention aux variables à double emploi (une même variable utilisée comme texte et comme fond).
+- **Graphiques dessinés en JS** (canvas, SVG, WebGL) : lire les couleurs courantes (`getComputedStyle` sur les variables, ou `TkTheme.isDark()`) et se redessiner sur l'évènement `tk-themechange` émis sur `window`.
+- **Exports en clair** : PowerPoint, Excel, images copiées et impressions restent claires quel que soit le mode (avec html2canvas : `onclone: d => d.documentElement.setAttribute('data-theme', 'light')`).
+- **Vérifier** chaque écran dans les deux modes, avec des données chargées, fenêtres et menus ouverts.
 
 ---
 

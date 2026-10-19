@@ -7,6 +7,7 @@
 <meta name="description" content="Tableau blanc hybride : diagrammes de processus structurés, pense-bêtes et dessin libre à main levée, pour Scrum Masters et coachs agiles.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* =============================================================
@@ -44,6 +45,7 @@
 .wb-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .wb-actions .tk-btn { padding: 8px 12px; font-size: 12px; }
 .wb-actions .grp { display: flex; gap: 4px; align-items: center; }
+.wb-theme { display: inline-flex; flex-shrink: 0; }  /* emplacement de la molette clair / sombre */
 .wb-iconbtn {
   width: 32px; height: 32px; border-radius: var(--radius);
   border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.10);
@@ -415,6 +417,48 @@ svg.wb-layer text { user-select: none; }
   .wb-panel-toggle { display: inline-flex; }
   .wb-hint { display: none; }
 }
+
+/* ── Mode sombre ─────────────────────────────────────────────
+   Toute l'interface passe en sombre ; la feuille de dessin reste
+   claire (encre navy par défaut, formes blanches, post-its pastel,
+   images : illisibles ou dénaturés sur fond sombre). Les exports
+   (PNG, SVG, presse-papier, vignettes) sont dessinés en blanc en JS. */
+:root[data-theme="dark"] body.tk { background: var(--tk-page-bg); }
+[data-theme="dark"] .wb-topbar { background: var(--tk-topbar-bg); }
+/* Zones d'interface : on y raccorde la palette locale aux jetons. */
+[data-theme="dark"] .wb-toolbar,
+[data-theme="dark"] .wb-panel,
+[data-theme="dark"] .wb-panel-toggle,
+[data-theme="dark"] .wb-zoomctl,
+[data-theme="dark"] .wb-hint,
+[data-theme="dark"] .wb-ctx,
+[data-theme="dark"] .wb-modal-bg {
+  --white: var(--tk-surface); --bg: var(--tk-surface-2); --border: var(--tk-line);
+  --navy: var(--tk-ink); --text: var(--tk-ink); --muted: var(--tk-muted);
+  --accent: var(--tk-accent); --red: var(--tk-bad); --red-bg: var(--tk-bad-bg);
+  --shadow: 0 1px 3px var(--tk-shadow-c); --shadow-hover: 0 8px 24px var(--tk-shadow-c);
+}
+[data-theme="dark"] .wb-toolbar { border-right-color: var(--tk-line); }
+[data-theme="dark"] .wb-tool:hover { background: var(--tk-surface-2); }
+[data-theme="dark"] .wb-tool.active { background: var(--tk-strong); color: var(--tk-on-strong); }
+[data-theme="dark"] .wb-tool--action:hover { background: var(--tk-info-bg); }
+[data-theme="dark"] .wb-hint { background: rgba(17, 26, 40, .9); }
+/* Nuanciers : liseré clair pour que le navy et le blanc restent visibles. */
+[data-theme="dark"] .swatch { border-color: rgba(255, 255, 255, .22); }
+[data-theme="dark"] .wb-select { background: var(--tk-field); }
+[data-theme="dark"] .lyr-btn:hover { background: var(--tk-line-2); }
+[data-theme="dark"] .wb-modal-bg { background: var(--tk-overlay); }
+[data-theme="dark"] .lib-row.is-current { background: var(--tk-info-bg); }
+[data-theme="dark"] .lib-thumb { background-color: #FFFFFF; border-color: var(--tk-line-2); }
+[data-theme="dark"] .lib-btn:hover { border-color: var(--tk-line-2); color: var(--tk-ink); }
+[data-theme="dark"] .wb-modal-bg .tk-btn--primary,
+[data-theme="dark"] .wb-modal-bg .tk-btn--danger { color: #FFFFFF; }
+[data-theme="dark"] .wb-modal-bg .tk-btn--danger { background: #C0392B; }
+[data-theme="dark"] #toast { background: var(--tk-surface-2); color: var(--tk-ink); border: 1px solid var(--tk-line-2); }
+[data-theme="dark"] #toast.err { background: #C0392B; color: #FFFFFF; border-color: transparent; }
+@media (max-width: 640px) {
+  [data-theme="dark"] .wb-panel { box-shadow: -8px 0 24px rgba(0, 0, 0, .45); }
+}
 </style>
 </head>
 <body class="tk" data-tool="select">
@@ -460,6 +504,8 @@ svg.wb-layer text { user-select: none; }
       <button class="wb-iconbtn" id="btn-more" title="Exports, import, vider le tableau" aria-label="Plus d'actions" aria-haspopup="true">
         <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>
       </button>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="wb-theme" data-tk-theme-switch></span>
     </div>
     <input type="file" id="file-json" accept=".json,application/json" style="display:none">
     <input type="file" id="file-img" accept="image/*" multiple style="display:none">

@@ -22,7 +22,15 @@
     '.tk-loader-s{font-family:"DM Mono",monospace;font-size:10px;color:#6B7A90;margin:5px 0 14px;min-height:14px}' +
     '.tk-loader-bar{height:8px;border-radius:4px;background:#E8EAED;overflow:hidden}' +
     '.tk-loader-fill{height:100%;width:0;border-radius:4px;background:#0C1A2E;transition:width .25s ease}' +
-    '.tk-loader-pct{font-family:"DM Mono",monospace;font-size:10px;color:#6B7A90;margin-top:7px}';
+    '.tk-loader-pct{font-family:"DM Mono",monospace;font-size:10px;color:#6B7A90;margin-top:7px}' +
+    // Mode sombre (assets/theme-mode.js) : jetons --tk-* de assets/theme.css.
+    '[data-theme="dark"] .tk-loader{background:var(--tk-overlay)}' +
+    '[data-theme="dark"] .tk-loader-card{background:var(--tk-surface);border:1px solid var(--tk-line);box-shadow:0 18px 50px rgba(0,0,0,.5)}' +
+    '[data-theme="dark"] .tk-loader-spin{border-color:var(--tk-line);border-top-color:var(--tk-accent)}' +
+    '[data-theme="dark"] .tk-loader-t{color:var(--tk-ink)}' +
+    '[data-theme="dark"] .tk-loader-s,[data-theme="dark"] .tk-loader-pct{color:var(--tk-muted)}' +
+    '[data-theme="dark"] .tk-loader-bar{background:var(--tk-line)}' +
+    '[data-theme="dark"] .tk-loader-fill{background:var(--tk-accent)}';
   var depth = 0, el = null;
   function build() {
     if (el) return;

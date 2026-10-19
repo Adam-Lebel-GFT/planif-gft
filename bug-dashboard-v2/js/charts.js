@@ -36,8 +36,9 @@
     var pts = values.map(function (v, i) { return [(i / (n - 1)) * (w - 4) + 2, h - 3 - ((v - min) / (max - min)) * (h - 6)]; });
     var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
     var last = pts[pts.length - 1];
-    var col = '#B9C0CC';
-    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="#0C1A2E" stroke="#fff" stroke-width="2"/></svg>';
+    // Couleurs en variables CSS : la courbe suit le mode clair / sombre sans redessin.
+    var col = 'var(--bd-spark)';
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="var(--navy)" stroke="var(--bd-raised)" stroke-width="2"/></svg>';
   }
 
   // ── Légende ────────────────────────────────────────────────────────
@@ -442,7 +443,7 @@
       var s = acc / total * 100; acc += n; var e = acc / total * 100;
       var col = colors[r] || P.CATEGORICAL[i % 8];
       // liseré 2px de surface entre les parts (gap "surface")
-      return col + ' ' + s.toFixed(2) + '% ' + Math.max(s, e - 0.6).toFixed(2) + '%, #fff ' + Math.max(s, e - 0.6).toFixed(2) + '% ' + e.toFixed(2) + '%';
+      return col + ' ' + s.toFixed(2) + '% ' + Math.max(s, e - 0.6).toFixed(2) + '%, var(--bd-halo) ' + Math.max(s, e - 0.6).toFixed(2) + '% ' + e.toFixed(2) + '%';
     });
     var h = '<div class="donut-wrap"><div class="donut" style="background:conic-gradient(' + parts.join(',') + ')"><div class="donut-hole"><div class="n">' + pv.total + '</div><div class="l">tickets</div></div></div>';
     h += '<div class="donut-legend">' + pv.rows.map(function (r, i) {
@@ -759,8 +760,8 @@
       var gx = xOf(lp.t.getTime()), gy1 = yOf(lp.v), gy2 = yOf(le), late = diff < 0;
       if (Math.abs(diff) >= 0.5) {
         gap = '<line class="gap" x1="' + gx.toFixed(1) + '" x2="' + gx.toFixed(1) + '" y1="' + gy1.toFixed(1) + '" y2="' + gy2.toFixed(1) +
-          '" stroke="' + (late ? 'var(--critical)' : '#006300') + '"/>' +
-          '<text class="gap-l" x="' + (gx + 6).toFixed(1) + '" y="' + ((gy1 + gy2) / 2 + 3).toFixed(1) + '" fill="' + (late ? 'var(--critical)' : '#006300') + '">' +
+          '" stroke="' + (late ? 'var(--critical)' : 'var(--bd-good-ink)') + '"/>' +
+          '<text class="gap-l" x="' + (gx + 6).toFixed(1) + '" y="' + ((gy1 + gy2) / 2 + 3).toFixed(1) + '" fill="' + (late ? 'var(--critical)' : 'var(--bd-good-ink)') + '">' +
           (diff > 0 ? '+' : '') + diff + ' pt</text>';
       }
     }
@@ -918,7 +919,7 @@
       var dedans = aGauche;
       etiqs += '<text class="ar-lab" x="' + (aGauche ? xd - 8 : xd + 8).toFixed(1) + '" y="' + ym.toFixed(1) +
         '" text-anchor="' + (aGauche ? 'end' : 'start') + '" fill="' + (dedans ? P.textOn(sr.color) : sr.color) +
-        '" stroke="' + (dedans ? sr.color : '#fff') + '">' + fmtTick(v, opts.unit) + '</text>';
+        '" stroke="' + (dedans ? sr.color : 'var(--bd-halo)') + '">' + fmtTick(v, opts.unit) + '</text>';
     });
 
     var svg = '<svg class="lc bc bt ba" viewBox="0 0 ' + w + ' ' + h + '" role="img">' + bands + g +

@@ -60,6 +60,69 @@
      doivent rester synchronisées avec celles-ci. */
   --bp-mobile: 640px;
   --bp-tablet: 1024px;
+
+  /* ── Couleurs suivant le mode clair / sombre ─────────────
+     La molette (assets/theme-mode.js) pose data-theme="dark" sur
+     <html>. Chaque outil raccorde ses propres variables à celles-ci
+     (voir CONTRIBUTING.md, « Mode sombre »). Valeurs claires ici,
+     valeurs sombres dans le bloc :root[data-theme="dark"] plus bas. */
+  --tk-page-bg:    #F4F5F7;  /* fond de page                   */
+  --tk-surface:    #FFFFFF;  /* cartes, tableaux, panneaux      */
+  --tk-surface-2:  #FAFBFD;  /* en-têtes de tableau, zones calmes */
+  --tk-field:      #F4F5F7;  /* champs de saisie, pistes de barres */
+  --tk-ink:        #0C1A2E;  /* texte principal                 */
+  --tk-ink-2:      #3A4A60;  /* texte secondaire                */
+  --tk-muted:      #6B7A90;  /* libellés, légendes              */
+  --tk-line:       #E8EAED;  /* bordures                        */
+  --tk-line-2:     #C8CDD6;  /* bordures au survol, séparateurs forts */
+  --tk-accent:     #0C447C;  /* liens, focus                    */
+  --tk-strong:     #0C1A2E;  /* fond plein (puce choisie, onglet actif) */
+  --tk-on-strong:  #FFFFFF;  /* texte sur --tk-strong            */
+  --tk-hover:      rgba(12, 26, 46, .04);
+  --tk-ok:         #1A7A42;  --tk-ok-bg:   #E7F2EC;
+  --tk-warn:       #B45309;  --tk-warn-bg: #FFF4E0;
+  --tk-bad:        #C0392B;  --tk-bad-bg:  #FBEAE8;
+  --tk-info:       #1A3A8A;  --tk-info-bg: #EEF3FF;
+  --tk-shadow-c:   rgba(12, 26, 46, .06);
+  --tk-overlay:    rgba(12, 26, 46, .45);  /* voile derrière une fenêtre */
+  --tk-topbar-bg:  #0C1A2E;
+  --tk-tabs-bg:    #1A2E4A;
+  --tk-grid-line:  rgba(12, 26, 46, .03);
+  --tk-hero-bg:    var(--tk-surface);
+  --tk-hero-line:  var(--tk-line);
+  --tk-hero-ink:   var(--tk-ink);
+  --tk-hero-muted: var(--tk-muted);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --tk-page-bg:    #0A111C;
+  --tk-surface:    #111A28;
+  --tk-surface-2:  #162133;
+  --tk-field:      #0D1522;
+  --tk-ink:        #E8EDF4;
+  --tk-ink-2:      #B9C4D3;
+  --tk-muted:      #8B98AC;
+  --tk-line:       #223047;
+  --tk-line-2:     #33445C;
+  --tk-accent:     #6AA5E8;
+  --tk-strong:     #2F6FBF;
+  --tk-on-strong:  #FFFFFF;
+  --tk-hover:      rgba(255, 255, 255, .04);
+  --tk-ok:         #4CC27A;  --tk-ok-bg:   rgba(26, 122, 66, .22);
+  --tk-warn:       #F5C048;  --tk-warn-bg: rgba(250, 178, 25, .16);
+  --tk-bad:        #F08A8A;  --tk-bad-bg:  rgba(208, 59, 59, .22);
+  --tk-info:       #8DB8F0;  --tk-info-bg: rgba(106, 165, 232, .14);
+  --tk-shadow-c:   rgba(0, 0, 0, .35);
+  --tk-overlay:    rgba(2, 6, 12, .65);
+  --tk-topbar-bg:  #070E18;
+  --tk-tabs-bg:    #0F1C2E;
+  --tk-grid-line:  rgba(255, 255, 255, .03);
+  --tk-hero-bg:    var(--tk-surface);
+  --tk-hero-line:  var(--tk-line);
+  --tk-hero-ink:   var(--tk-ink);
+  --tk-hero-muted: var(--tk-muted);
+  color-scheme: dark;
 }
 
 /* ── Base (scopée à .tk) ──────────────────────────────────── */
@@ -141,10 +204,14 @@
 .tk-btn:hover { text-decoration: none; }
 .tk-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.tk-btn--primary { background: var(--green); color: var(--white); }
+/* Un lien-bouton garde son texte clair : .tk a (couleur accent) ne doit pas
+   l'emporter sur les boutons à fond plein ou sur fond navy. */
+.tk a.tk-btn--primary, .tk a.tk-btn--accent, .tk a.tk-btn--on-dark { color: #FFFFFF; }
+
+.tk-btn--primary { background: var(--green); color: #FFFFFF; }
 .tk-btn--primary:hover { background: var(--green-dark); }
 
-.tk-btn--accent { background: var(--accent); color: var(--white); }
+.tk-btn--accent { background: var(--accent); color: #FFFFFF; }
 .tk-btn--accent:hover { background: var(--accent-dark); }
 
 .tk-btn--ghost {
@@ -157,7 +224,7 @@
 /* Bouton sur fond navy (topbars) */
 .tk-btn--on-dark {
   background: rgba(255, 255, 255, .12);
-  color: var(--white);
+  color: #FFFFFF;
   border-color: rgba(255, 255, 255, .22);
 }
 .tk-btn--on-dark:hover { background: rgba(255, 255, 255, .22); }
@@ -172,7 +239,7 @@
   transition: var(--ease);
 }
 .tk-card--hover:hover {
-  border-color: #C8CDD6;
+  border-color: var(--tk-line-2);
   box-shadow: var(--shadow-hover);
   transform: translateY(-3px);
 }
@@ -192,6 +259,7 @@
 }
 .tk-badge--ok      { background: var(--green-bg); color: var(--green); }
 .tk-badge--preview { background: #EAF1F8; color: var(--accent); }
+[data-theme="dark"] .tk-badge--preview { background: var(--tk-info-bg); color: var(--tk-info); }
 .tk-badge--muted   { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 .tk-badge--alert   { background: var(--red-bg); color: var(--red); }
 
@@ -207,9 +275,9 @@
    « Agile Toolkit » (lien vers le lanceur), séparateur, nom de
    l'outil, version, puis emplacement d'actions à droite.
    Couleurs en littéral pour un rendu identique quel que soit le
-   thème local de l'outil. */
+   thème local de l'outil (seul le fond suit le mode sombre). */
 .tk-topbar {
-  background: #0C1A2E;
+  background: var(--tk-topbar-bg, #0C1A2E);
   height: 56px; flex-shrink: 0;
   display: flex; align-items: center; gap: 12px;
   padding-inline: clamp(16px, 4vw, 40px);
@@ -254,8 +322,10 @@
        <main>…</main>
 
    Pas de ligne « Agile Toolkit » dans le titre (déjà dans la topbar).
-   Thème sombre / variantes : surcharger --tk-hero-bg, --tk-hero-line,
-   --tk-hero-ink, --tk-hero-muted et --tk-grid-line sur :root.
+   Les couleurs suivent le mode clair / sombre (variables --tk-* plus
+   haut). Un outil à palette propre peut surcharger --tk-hero-bg,
+   --tk-hero-line, --tk-hero-ink, --tk-hero-muted, --tk-grid-line et
+   --tk-page-bg sur :root.
    Le quadrillage passe derrière le contenu (z-index négatif) : le fond de
    page est donc porté par <html>, <body> reste transparent. */
 html:has(body.tk-page) { background: var(--tk-page-bg, var(--bg, #F4F5F7)); }
@@ -287,3 +357,59 @@ body.tk-page::before {
 }
 .tk-hero__aside { flex-shrink: 0; }
 @media (max-width: 760px) { .tk-hero { padding: 20px 16px 14px; } .tk-hero__title { font-size: 24px; } }
+
+/* ── Molette mode clair / sombre (assets/theme-mode.js) ──────────
+   Soleil sur ciel bleu en mode clair ; il roule vers la droite et
+   devient une lune sur ciel étoilé en mode sombre. */
+.tk-theme-switch {
+  position: relative; flex-shrink: 0; width: 54px; height: 28px; padding: 0; margin: 0;
+  border: 1px solid rgba(255, 255, 255, .22); border-radius: 999px; overflow: hidden; cursor: pointer;
+  background: linear-gradient(180deg, #2C6FB8, #5FA2E0);
+  transition: background .5s ease, border-color .5s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tk-theme-switch:focus-visible { outline: 2px solid #9CC4F2; outline-offset: 2px; }
+.tk-theme-switch__stars { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease .1s; }
+.tk-theme-switch__stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #FFFFFF; }
+.tk-theme-switch__stars i:nth-child(1) { left: 9px; top: 7px; }
+.tk-theme-switch__stars i:nth-child(2) { left: 17px; top: 16px; width: 1.5px; height: 1.5px; }
+.tk-theme-switch__stars i:nth-child(3) { left: 24px; top: 6px; width: 1.5px; height: 1.5px; }
+.tk-theme-switch__stars i:nth-child(4) { left: 12px; top: 20px; width: 1px; height: 1px; }
+.tk-theme-switch__cloud {
+  position: absolute; right: 6px; top: 13px; width: 16px; height: 6px; border-radius: 6px;
+  background: rgba(255, 255, 255, .75); transition: transform .5s ease, opacity .4s ease;
+}
+.tk-theme-switch__cloud::before {
+  content: ''; position: absolute; left: 4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: inherit;
+}
+.tk-theme-switch__knob {
+  position: absolute; top: 2px; left: 3px; width: 22px; height: 22px; border-radius: 50%; overflow: hidden;
+  background: #FFD25C; box-shadow: 0 0 0 3px rgba(255, 210, 92, .25), 0 1px 3px rgba(0, 0, 0, .3);
+  transition: transform .55s cubic-bezier(.68, -.35, .27, 1.35), background .5s ease, box-shadow .5s ease;
+}
+.tk-theme-switch__knob::after { /* l'ombre qui creuse le croissant */
+  content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; top: -4px; left: 14px;
+  background: #1A2E4A; transform: translate(10px, -6px) scale(.4);
+  transition: transform .55s cubic-bezier(.68, -.35, .27, 1.35);
+}
+.tk-theme-switch__knob i { position: absolute; border-radius: 50%; background: rgba(12, 26, 46, .18); opacity: 0; transition: opacity .4s ease .15s; }
+.tk-theme-switch__knob i:nth-child(1) { width: 5px; height: 5px; left: 5px; top: 10px; }
+.tk-theme-switch__knob i:nth-child(2) { width: 3px; height: 3px; left: 10px; top: 15px; }
+.tk-theme-switch[aria-checked="true"] { background: linear-gradient(180deg, #0B1626, #1A2E4A); border-color: rgba(156, 196, 242, .35); }
+.tk-theme-switch[aria-checked="true"] .tk-theme-switch__stars { opacity: 1; }
+.tk-theme-switch[aria-checked="true"] .tk-theme-switch__cloud { transform: translateX(18px); opacity: 0; }
+.tk-theme-switch[aria-checked="true"] .tk-theme-switch__knob {
+  transform: translateX(26px) rotate(-200deg); background: #DCE6F2;
+  box-shadow: 0 0 10px rgba(220, 230, 242, .35), 0 1px 3px rgba(0, 0, 0, .4);
+}
+.tk-theme-switch[aria-checked="true"] .tk-theme-switch__knob::after { transform: translate(-4px, 3px) scale(1); }
+.tk-theme-switch[aria-checked="true"] .tk-theme-switch__knob i { opacity: 1; }
+
+/* Passage d'un mode à l'autre : cercle (View Transitions) ou fondu. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html.tk-theme-fade, html.tk-theme-fade *, html.tk-theme-fade *::before, html.tk-theme-fade *::after {
+  transition: background-color .4s ease, color .4s ease, border-color .4s ease, fill .4s ease, stroke .4s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tk-theme-switch, .tk-theme-switch * { transition: none !important; }
+}

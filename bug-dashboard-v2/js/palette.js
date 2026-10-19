@@ -19,6 +19,13 @@
   // Même construction en vert, pour les heatmaps qui séparent en cours et
   // terminé : le vert est déjà la couleur de « Terminé » dans l'outil.
   var SEQ_GREEN = ['#eff7ef', '#d2ebd2', '#a8d8a8', '#79c179', '#40a640', '#008300', '#046a04', '#033f03'];
+  // Variantes sombres des rampes : la plus faible valeur part de la surface
+  // sombre et monte vers le clair, pour que l'intensité se lise toujours.
+  var SEQ_BLUE_DARK = ['#16243a', '#183457', '#1d4675', '#245a96', '#2c6fb8', '#3987e5', '#6da7ec', '#9ec5f4'];
+  var SEQ_GREEN_DARK = ['#142a1d', '#173a24', '#1c4d2e', '#22633a', '#2a7c47', '#3a9a58', '#5cb874', '#8fd49f'];
+  function isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
+  function seqBlue() { return isDark() ? SEQ_BLUE_DARK : SEQ_BLUE; }
+  function seqGreen() { return isDark() ? SEQ_GREEN_DARK : SEQ_GREEN; }
   var STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
   var NEUTRAL = '#8d94a3';
   var SWATCHES = CATEGORICAL.concat(PRIORITY_RAMP, ['#0d366b', '#5b8def', '#14b8a6', '#c026d3', '#6366f1', NEUTRAL]);
@@ -32,7 +39,7 @@
   function textOn(hex) { return luminance(hex) > 0.36 ? '#0b1a2e' : '#ffffff'; }
 
   function seqColor(v, max, ramp) {
-    ramp = ramp || SEQ_BLUE;
+    ramp = ramp || seqBlue();
     if (!max || v <= 0) return ramp[0];
     var i = Math.min(ramp.length - 1, 1 + Math.floor((v / max) * (ramp.length - 2) + 0.0001));
     if (v >= max) i = ramp.length - 1;
@@ -84,8 +91,12 @@
     return map;
   }
 
-  root.BDV2Palette = {
-    CATEGORICAL: CATEGORICAL, PRIORITY_RAMP: PRIORITY_RAMP, SEQ_BLUE: SEQ_BLUE, STATUS: STATUS, NEUTRAL: NEUTRAL, SWATCHES: SWATCHES,
-    SEQ_GREEN: SEQ_GREEN, textOn: textOn, seqColor: seqColor, progressColor: progressColor, colorsForDim: colorsForDim, luminance: luminance
+  var api = {
+    CATEGORICAL: CATEGORICAL, PRIORITY_RAMP: PRIORITY_RAMP, STATUS: STATUS, NEUTRAL: NEUTRAL, SWATCHES: SWATCHES,
+    textOn: textOn, seqColor: seqColor, progressColor: progressColor, colorsForDim: colorsForDim, luminance: luminance, isDark: isDark
   };
+  // Les rampes des heatmaps suivent le mode clair / sombre au moment du rendu.
+  Object.defineProperty(api, 'SEQ_BLUE', { get: seqBlue, enumerable: true });
+  Object.defineProperty(api, 'SEQ_GREEN', { get: seqGreen, enumerable: true });
+  root.BDV2Palette = api;
 })(window);

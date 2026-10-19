@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
   .adm-topbar__user { display: flex; align-items: center; gap: 10px; }
@@ -65,6 +66,43 @@
 
   #gate-screen, #denied-screen { min-height: 60vh; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }
   #app-screen { display: none; }
+
+  /* ── Molette mode clair / sombre (assets/theme-mode.js) ──── */
+  .adm-theme-slot { display: flex; align-items: center; margin-left: 6px; }
+
+  /* ── Mode sombre : variables de theme.css raccordées aux jetons --tk-* ── */
+  :root[data-theme="dark"] {
+    --bg:      var(--tk-page-bg);
+    --white:   var(--tk-surface);
+    --text:    var(--tk-ink);
+    --navy:    var(--tk-ink);
+    --border:  var(--tk-line);
+    --muted:   var(--tk-muted);
+    --accent:  var(--tk-accent);
+    --green:   var(--tk-ok);   --green-bg: var(--tk-ok-bg);
+    --red:     var(--tk-bad);  --red-bg:   var(--tk-bad-bg);
+    --shadow:       0 1px 3px var(--tk-shadow-c);
+    --shadow-hover: 0 8px 28px rgba(0, 0, 0, .45);
+    background: var(--tk-page-bg); /* marge du body */
+  }
+  /* --white sert aussi de texte sur fond foncé : on fige */
+  [data-theme="dark"] .tk-btn--accent,
+  [data-theme="dark"] .tk-btn--on-dark { color: #FFFFFF; }
+  /* --accent clair en sombre : fond plein du bouton sur --tk-strong */
+  [data-theme="dark"] .tk-btn--accent { background: var(--tk-strong); }
+  [data-theme="dark"] .tk-btn--accent:hover { background: #3A7DD0; }
+  [data-theme="dark"] .tk-btn--ghost:hover { border-color: var(--tk-line-2); background: var(--tk-hover); }
+  [data-theme="dark"] .tk::before {
+    background-image:
+      linear-gradient(var(--tk-grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--tk-grid-line) 1px, transparent 1px);
+  }
+  [data-theme="dark"] .adm-table th { background: var(--tk-surface-2); }
+  [data-theme="dark"] .chip { background: var(--tk-surface-2); border-color: var(--tk-line-2); color: var(--tk-ink-2); }
+  [data-theme="dark"] .chip--accent { background: var(--tk-info-bg); color: var(--tk-info); border-color: rgba(106, 165, 232, .3); }
+  [data-theme="dark"] .adm-input, [data-theme="dark"] .adm-select { background: var(--tk-field); border-color: var(--tk-line-2); }
+  [data-theme="dark"] .adm-input:focus, [data-theme="dark"] .adm-select:focus { border-color: var(--tk-accent); }
+  [data-theme="dark"] .tk-badge--muted { background: var(--tk-surface-2); border-color: var(--tk-line-2); }
 </style>
 </head>
 <body class="tk">
@@ -76,9 +114,13 @@
     </a>
     <span class="tk-topbar__sep"></span>
     <span class="tk-topbar__tool">Administration</span>
-    <div class="tk-topbar__actions adm-topbar__user" id="topbar-user" style="display:none;">
-      <span class="adm-topbar__name" id="topbar-username"></span>
-      <button class="tk-btn tk-btn--on-dark" id="btn-logout" type="button">Déconnexion</button>
+    <div class="tk-topbar__actions">
+      <div class="adm-topbar__user" id="topbar-user" style="display:none;">
+        <span class="adm-topbar__name" id="topbar-username"></span>
+        <button class="tk-btn tk-btn--on-dark" id="btn-logout" type="button">Déconnexion</button>
+      </div>
+      <!-- Molette mode sombre : visible aussi avant connexion / accès refusé -->
+      <span class="adm-theme-slot" data-tk-theme-switch></span>
     </div>
   </header>
 

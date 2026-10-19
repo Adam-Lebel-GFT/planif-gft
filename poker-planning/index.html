@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Thème partagé : bandeau titre .tk-hero + fond quadrillé .tk-page. Les styles inline ci-dessous, déclarés après, restent prioritaires. -->
+<script src="../assets/theme-mode.js"></script>
 <link rel="stylesheet" href="../assets/theme.css">
 <style>
 /* ════════════════════════════════════════════════════════════
@@ -33,6 +34,50 @@
   --shadow-hover: 0 10px 28px rgba(12,26,46,.16);
   --ease: all .18s ease;
   --font-mono: 'DM Mono', monospace;
+  /* Couleurs propres au mode clair/sombre (valeurs claires = rendu d'origine) */
+  --pk-strong:   var(--accent);    /* fond plein : bouton principal, carte choisie */
+  --pk-strong-2: var(--accent-2);  /* survol du fond plein */
+  --pk-on:       #FFFFFF;          /* texte sur fond plein / sur avatar */
+  --pk-field:    var(--white);     /* champs de saisie */
+  --pk-tint:     #EAF1F8;          /* fond bleuté : tour de vote, ligne active */
+  --pk-tint-2:   #F7FAFD;          /* fond bleuté léger : carte choisie, ma ligne */
+  --pk-tint-line:rgba(12,68,124,.18);
+  --pk-ring:     rgba(12,68,124,.12);
+  --pk-back-1:   var(--navy);      /* dos de carte (rayures) */
+  --pk-back-2:   var(--navy-2);
+}
+/* Mode sombre : raccord aux jetons --tk-* de assets/theme.css.
+   --bg, --text, --white servent aussi aux styles de base .tk de theme.css. */
+:root[data-theme="dark"] {
+  --navy:    var(--tk-ink);
+  --navy-2:  #2A3F5E;
+  --accent:  var(--tk-accent);
+  --accent-2:#8DB8F0;
+  --green:   var(--tk-ok);
+  --green-bg:var(--tk-ok-bg);
+  --amber:   var(--tk-warn);
+  --amber-bg:var(--tk-warn-bg);
+  --red:     var(--tk-bad);
+  --red-bg:  var(--tk-bad-bg);
+  --bg:      var(--tk-surface-2);
+  --border:  var(--tk-line);
+  --muted:   var(--tk-muted);
+  --text:    var(--tk-ink);
+  --white:   var(--tk-surface);
+  --shadow:       0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  --shadow-hover: 0 10px 28px rgba(0,0,0,.45);
+  --pk-strong:   var(--tk-strong);
+  --pk-strong-2: #3A7DD0;
+  --pk-field:    var(--tk-field);
+  --pk-tint:     var(--tk-info-bg);
+  --pk-tint-2:   rgba(106,165,232,.08);
+  --pk-tint-line:rgba(106,165,232,.28);
+  --pk-ring:     rgba(106,165,232,.22);
+  --pk-back-1:   #2F6FBF;
+  --pk-back-2:   #1D4A85;
+  --pk-tint-line-2: rgba(106,165,232,.3);
+  --pk-ring-in:  rgba(106,165,232,.2);
+  --pk-pulse:    rgba(106,165,232,.45);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -74,13 +119,13 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   cursor: pointer; transition: var(--ease); white-space: nowrap;
 }
 .tk-btn:hover { border-color: var(--accent); color: var(--accent); }
-.tk-btn--accent { background: var(--accent); border-color: var(--accent); color: var(--white); }
-.tk-btn--accent:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--white); }
+.tk-btn--accent { background: var(--pk-strong); border-color: var(--pk-strong); color: var(--pk-on); }
+.tk-btn--accent:hover { background: var(--pk-strong-2); border-color: var(--pk-strong-2); color: var(--pk-on); }
 .tk-btn--ghost { background: transparent; }
 .tk-btn--on-dark {
-  background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: var(--white);
+  background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: #FFFFFF;
 }
-.tk-btn--on-dark:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); color: var(--white); }
+.tk-btn--on-dark:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); color: #FFFFFF; }
 .tk-btn[disabled] { opacity: .4; cursor: not-allowed; pointer-events: none; }
 
 .tk-badge {
@@ -101,7 +146,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 /* ── Topbar session ─────────────────────────────────────────── */
 /* ── Entête partagée de la plateforme (identique aux autres outils) ── */
 .tk-topbar {
-  background: #0C1A2E; height: 56px; flex-shrink: 0;
+  background: var(--tk-topbar-bg, #0C1A2E); height: 56px; flex-shrink: 0;
   display: flex; align-items: center; gap: 12px;
   padding-inline: clamp(16px, 4vw, 40px);
   position: sticky; top: 0; z-index: 40;
@@ -115,6 +160,17 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .tk-topbar__tool { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .3px; white-space: nowrap; }
 .tk-topbar__version { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: 1px; white-space: nowrap; }
 .tk-topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* Petit écran : la barre de session déborde (bouton + molette poussés hors champ) —
+   on retire le nom de l'outil, puis le mot « Agile Toolkit » (le carré reste le lien). */
+@media (max-width: 640px) {
+  #view-session .tk-topbar__tool, #view-session .tk-topbar__tool + .tk-topbar__sep,
+  #view-recap .tk-topbar__tool, #view-recap .tk-topbar__tool + .tk-topbar__sep { display: none; }
+  .tk-topbar .pk-session { flex: 1 1 auto; }
+  #btn-finish { padding: 7px 11px; font-size: 12px; }
+}
+@media (max-width: 480px) {
+  #view-session .tk-topbar__logo .wm, #view-recap .tk-topbar__logo .wm { display: none; }
+}
 
 .pk-topbar {
   background: var(--navy);
@@ -126,11 +182,11 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   color: rgba(255,255,255,.7); font-size: 13px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
-.pk-back:hover { color: var(--white); }
+.pk-back:hover { color: #FFFFFF; }
 .pk-sep { width: 1px; height: 24px; background: rgba(255,255,255,.16); flex-shrink: 0; }
 .pk-session { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pk-session .name {
-  color: var(--white); font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1.1;
+  color: #FFFFFF; font-weight: 800; font-size: 15px; letter-spacing: -.2px; line-height: 1.1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pk-session .room {
@@ -209,7 +265,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   margin-top: clamp(16px, 2.5vw, 22px);
   display: flex; align-items: center; gap: 14px;
   padding: 14px 18px;
-  background: #EAF1F8; border: 1px solid rgba(12,68,124,.18); border-radius: 12px;
+  background: var(--pk-tint); border: 1px solid var(--pk-tint-line); border-radius: 12px;
 }
 .turn .txt { min-width: 0; }
 .turn .who { font-size: 14px; font-weight: 700; color: var(--navy); }
@@ -228,11 +284,11 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 
 .avatar {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-  background: var(--navy-2); color: var(--white);
+  background: var(--navy-2); color: var(--pk-on);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; letter-spacing: .3px;
 }
-.turn .avatar { width: 38px; height: 38px; background: var(--accent); }
+.turn .avatar { width: 38px; height: 38px; background: var(--pk-strong); }
 
 /* ── Deck de cartes ─────────────────────────────────────────── */
 .deck-wrap { margin-top: clamp(14px, 2.2vw, 20px); }
@@ -248,7 +304,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .pcard:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--shadow-hover); }
 .pcard:active { transform: translateY(-2px) scale(.97); }
 .pcard.special { font-size: 22px; }
-.pcard.sel { background: var(--accent); border-color: var(--accent); color: var(--white); transform: translateY(-7px); box-shadow: var(--shadow-hover); }
+.pcard.sel { background: var(--pk-strong); border-color: var(--pk-strong); color: var(--pk-on); transform: translateY(-7px); box-shadow: var(--shadow-hover); }
 .pcard[disabled] { opacity: .4; cursor: not-allowed; box-shadow: none; }
 .pcard[disabled]:hover { transform: none; border-color: var(--border); }
 .pcard.sel[disabled] { opacity: 1; transform: none; }
@@ -280,8 +336,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .reveal-row .hint b { color: var(--text); font-weight: 700; }
 .btn-pulse { animation: pulse 1.6s ease infinite; }
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(12,68,124,.35); }
-  55%      { box-shadow: 0 0 0 10px rgba(12,68,124,0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--pk-pulse, rgba(12,68,124,.35)); }
+  55%      { box-shadow: 0 0 0 10px transparent; }
 }
 
 /* ── Résultats ──────────────────────────────────────────────── */
@@ -341,8 +397,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 button.person { cursor: pointer; }
 button.person:hover { background: var(--bg); }
-.person.active { background: #EAF1F8; box-shadow: inset 3px 0 0 var(--accent); }
-.person.me { background: #F7FAFD; }
+.person.active { background: var(--pk-tint); box-shadow: inset 3px 0 0 var(--accent); }
+.person.me { background: var(--pk-tint-2); }
 .person .nm {
   flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -354,7 +410,7 @@ button.person:hover { background: var(--bg); }
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 800; color: var(--navy);
 }
-.mini.back { background: repeating-linear-gradient(45deg, var(--navy), var(--navy) 3px, var(--navy-2) 3px, var(--navy-2) 6px); border: 1px solid var(--navy-2); }
+.mini.back { background: repeating-linear-gradient(45deg, var(--pk-back-1), var(--pk-back-1) 3px, var(--pk-back-2) 3px, var(--pk-back-2) 6px); border: 1px solid var(--pk-back-2); }
 .mini.face { background: var(--white); border: 1.5px solid var(--accent); box-shadow: var(--shadow); }
 .mini.none { background: var(--bg); border: 1px dashed var(--border); color: var(--muted); font-weight: 600; font-size: 12px; }
 
@@ -398,12 +454,12 @@ button.person:hover { background: var(--bg); }
 .tk-input {
   width: 100%; padding: 11px 14px;
   border: 1.5px solid var(--border); border-radius: 9px;
-  background: var(--white); color: var(--text);
+  background: var(--pk-field); color: var(--text);
   font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600;
   transition: var(--ease);
 }
 .tk-input::placeholder { color: var(--muted); font-weight: 500; }
-.tk-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(12,68,124,.1); }
+.tk-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--pk-ring-in, rgba(12,68,124,.1)); }
 .tk-input.mono { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
 
 .mode-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -413,7 +469,7 @@ button.person:hover { background: var(--bg); }
   background: var(--white); cursor: pointer; text-align: left; transition: var(--ease);
 }
 .mcard:hover { border-color: var(--accent); }
-.mcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(12,68,124,.12); background: #F7FAFD; }
+.mcard.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--pk-ring); background: var(--pk-tint-2); }
 .mcard .mt { font-size: 13.5px; font-weight: 800; color: var(--navy); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .mcard .mt .tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.5px; color: var(--accent); text-transform: uppercase; font-weight: 500; }
 .mcard .mt .ml { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
@@ -433,8 +489,8 @@ button.person:hover { background: var(--bg); }
   border: 1.5px dashed var(--border); border-radius: 10px;
   background: var(--bg); cursor: pointer; transition: var(--ease); position: relative;
 }
-.jira-import:hover { border-color: var(--accent); background: #F7FAFD; }
-.jira-import.dragover { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 3px rgba(12,68,124,.10); }
+.jira-import:hover { border-color: var(--accent); background: var(--pk-tint-2); }
+.jira-import.dragover { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 3px var(--pk-ring-in, rgba(12,68,124,.10)); }
 .jira-import.has-file { border-style: solid; border-color: rgba(26,122,66,.35); background: var(--green-bg); }
 .jira-import .ji-ic {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px;
@@ -493,7 +549,7 @@ button.person:hover { background: var(--bg); }
 .resume-card {
   margin-top: 20px; padding: 14px 18px;
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between;
-  background: #EAF1F8; border: 1px solid rgba(12,68,124,.2);
+  background: var(--pk-tint); border: 1px solid var(--pk-tint-line-2, rgba(12,68,124,.2));
 }
 .resume-card .rt { font-size: 13px; font-weight: 700; color: var(--navy); }
 .resume-card .rt .code { font-family: var(--font-mono); color: var(--accent); }
@@ -547,6 +603,24 @@ button.person:hover { background: var(--bg); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ── Mode sombre : retouches ciblées ───────────────────────── */
+/* Bordures de pastilles/alertes : teintes claires lisibles sur fond sombre */
+[data-theme="dark"] .tk-badge--ok,
+[data-theme="dark"] .chip--done,
+[data-theme="dark"] .turn.allset     { border-color: rgba(76,194,122,.3); }
+[data-theme="dark"] .tk-badge--warn,
+[data-theme="dark"] .alert.warn      { border-color: rgba(245,192,72,.3); }
+[data-theme="dark"] .tk-badge--danger,
+[data-theme="dark"] .alert           { border-color: rgba(240,138,138,.3); }
+[data-theme="dark"] .jira-import.has-file { border-color: rgba(76,194,122,.4); }
+[data-theme="dark"] .jira-import.has-file .ji-ic { border-color: rgba(76,194,122,.3); }
+[data-theme="dark"] .ls-row .x:hover { border-color: rgba(240,138,138,.45); }
+[data-theme="dark"] .val.suggest     { box-shadow: 0 0 0 3px rgba(76,194,122,.18); }
+/* Pastille « Live » : halo vert plutôt que bleu */
+[data-theme="dark"] .livebadge::before { --pk-pulse: rgba(52,210,123,.35); }
+/* QR code : reste sombre sur fond blanc pour être scanné */
+[data-theme="dark"] .invite-qr .qrimg { border-color: transparent; }
 </style>
 </head>
 <body class="tk tk-page">
@@ -1889,7 +1963,7 @@ function pRender() {
     return m.role === 'p';
   });
   $('ppl-count').textContent = (st.phase === 'revealed') ? 'Tour ' + st.round + ' révélé' : nVoted + ' / ' + ids.length + ' ont voté';
-  rows.push('<div class="person"><span class="avatar" aria-hidden="true" style="background:var(--accent)">🎙</span>' +
+  rows.push('<div class="person"><span class="avatar" aria-hidden="true" style="background:var(--pk-strong)">🎙</span>' +
     '<span class="nm">Animateur</span>' +
     (LP.hostOn ? '<span class="tk-badge tk-badge--ok tk-badge--dot">En ligne</span>' : '<span class="tk-badge tk-badge--danger tk-badge--dot">Absent</span>') + '</div>');
   ids.forEach(function (k, i) {

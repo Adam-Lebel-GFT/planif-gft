@@ -33,6 +33,9 @@
     return null;
   }
   var VERSION_COLORS = ['#0d366b', '#c026d3', '#14b8a6', '#6366f1', '#5b8def', '#a16207', '#be123c', '#0e7490'];
+  // Mode sombre : mêmes teintes, éclaircies pour se lire sur la surface sombre.
+  var VERSION_COLORS_DARK = ['#6AA5E8', '#E070F0', '#2DD4BF', '#A5B4FC', '#8DB4F5', '#E0A43A', '#FB7185', '#22B8D6'];
+  function vColor(r) { var l = P.isDark && P.isDark() ? VERSION_COLORS_DARK : VERSION_COLORS; return l[r % l.length]; }
   var DUR = 0.45;
   var LEG2 = '<span><i class="mv-tg"></i>repoussé vers une version plus tardive</span><span><i class="mv-tg mv-tg--ok"></i>ramené vers une version antérieure</span>';
   var LEG_DOTS = '<span>Traînée d\'étoile filante : le ticket change de case</span><span>✦ flash : recule d\'un statut</span>';
@@ -316,7 +319,7 @@
       var y = g.HEAD + r * g.ROWH, fr = frozenAt(r, t);
       if (over && !fr) return;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = VERSION_COLORS[r % VERSION_COLORS.length]; ctx.font = '800 12px ' + cs.mono; ctx.fillText(vName(r), g.bx + 5, y + 12);
+      ctx.fillStyle = vColor(r); ctx.font = '800 12px ' + cs.mono; ctx.fillText(vName(r), g.bx + 5, y + 12);
       ctx.fillStyle = cs.muted; ctx.font = '600 9.5px ' + cs.mono;
       ctx.fillText(fr ? '❄ gelée' : M.vLab[r] ? C.fmtDate(new Date(td + 'T00:00:00')).slice(0, 5) : '', g.bx + 5, y + 25);
     });
@@ -380,7 +383,7 @@
     M.tds.forEach(function (td, r) {
       // une version s'arrête à son Code freeze (plan de livraisons) : après le gel, plus de courbe
       var lim = fz[r] == null ? t : Math.min(t, fz[r]);
-      var col = VERSION_COLORS[r % VERSION_COLORS.length], pts = function (f) {
+      var col = vColor(r), pts = function (f) {
         var a = [];
         for (var i = 0; i < M.T.length && M.T[i] <= lim; i++) a.push([xOf(M.T[i]), yOf(f(M.counts[r][i]))]);
         var n = a.length; if (n && n < M.T.length) { var q = Math.min(1, (lim - M.T[n - 1]) / (M.T[n] - M.T[n - 1])), v0 = f(M.counts[r][n - 1]), v1 = f(M.counts[r][n]); a.push([xOf(lim), yOf(v0 + (v1 - v0) * q)]); }
@@ -563,7 +566,7 @@
   }
   function mount(rootEl) {
     var tiles = M.tds.map(function (td, r) {
-      var col = VERSION_COLORS[r % VERSION_COLORS.length];
+      var col = vColor(r);
       var nm = vName(r), dt = C.fmtDate(new Date(td + 'T00:00:00'));
       return '<div class="mv-tile" id="mvTl' + r + '"><div class="mv-tt"><i class="mv-sw" style="background:' + col + '"></i>' + (M.vLab[r] ? 'Version ' + esc(nm) + ' <small>· Target ' + esc(dt) + '</small>' : 'Version du ' + esc(dt)) + '<span class="mv-fr" id="mvFr' + r + '"></span></div>' +
         '<div class="mv-big"><span id="mvPc' + r + '">0</span><small>% pondéré</small></div><div class="mv-bar"><i id="mvBr' + r + '" style="background:' + col + '"></i></div><div class="mv-sub" id="mvSub' + r + '"></div></div>';
@@ -613,6 +616,12 @@
     ui.t = Math.min(ui.t, M.T[M.T.length - 1]) || M.T[M.T.length - 1] * .5;
     mount(rootEl);
   }
+  // Mode clair / sombre : les couleurs du canevas sont relues (readTheme) et les tuiles repeintes.
+  window.addEventListener('tk-themechange', function () {
+    if (!M || !$('mvBoard')) return;
+    M.tds.forEach(function (td, r) { var t = $('mvTl' + r); if (!t) return; var sw = t.querySelector('.mv-tt .mv-sw'); if (sw) sw.style.background = vColor(r); var br = $('mvBr' + r); if (br) br.style.background = vColor(r); });
+    render(); drawFx();
+  });
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (M && $('mvBoard')) sizeCanvases(); }, 120); });
   root.BDV2Movie = { render: function (items, rootEl, plan) { renderMovie(items, rootEl, false, plan); }, build: build, rejectReason: rejectReason };
 })(window);
