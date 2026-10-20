@@ -1363,7 +1363,7 @@ function exportCapacityPptx(){
   // Graphiques natifs PowerPoint (modifiables : clic droit > Modifier les données), toujours en thème clair.
   var chartSeries = activeChartSeries(series.ba, series.dev, series.qa, series.autre);
   function addNativeChart(slide, kind, pos){
-    if(!chartSeries.length) return;
+    if(!chartSeries.length){ slide.addText('Aucune capacité sur la période sélectionnée', { x:pos.x, y:pos.y, w:pos.w, h:pos.h, fontSize:14, color:'404040', fontFace:'Calibri', align:'center', valign:'middle' }); return; }
     var data = chartSeries.map(function(se){ return { name:se.name, labels:chartLabels, values:se.vals.map(function(v){ return Math.round(v*10)/10; }) }; });
     var opts = {
       x:pos.x, y:pos.y, w:pos.w, h:pos.h,
@@ -1372,7 +1372,7 @@ function exportCapacityPptx(){
       catAxisLabelFontSize:11, catAxisLabelColor:'404040', catAxisLabelFontFace:'Calibri',
       valAxisLabelFontSize:11, valAxisLabelColor:'404040', valAxisLabelFontFace:'Calibri',
       valAxisLabelFormatCode:'0', valGridLine:{ color:'CCCCCC', size:0.75 }, catGridLine:{ style:'none' },
-      showValue:kind!=='area', dataLabelFontSize:9, dataLabelColor:'000000', dataLabelFormatCode:'0.#',
+      showValue:kind!=='area', dataLabelFontSize:9, dataLabelColor:'000000', dataLabelFormatCode:'General;;',
       showValAxisTitle:true, valAxisTitle:UNIT_LBL[unit], valAxisTitleFontSize:11, valAxisTitleColor:'404040'
     };
     if(kind==='area'){ opts.barGrouping='stacked'; slide.addChart(pres.charts.AREA, data, opts); }
