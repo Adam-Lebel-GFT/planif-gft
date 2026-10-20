@@ -97,6 +97,9 @@ textarea#pasteArea:focus{outline:2px solid var(--accent); border-style:solid;}
 .filter-head{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
 .filter-body{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
 .filter-head .collapse-btn, .section-title .collapse-btn{padding:4px 9px;}
+.cube-head{margin-bottom:14px;}
+.cube-head .sub{margin:2px 0 0;}
+.cube-head.is-folded{margin-bottom:0;}
 .filter-group{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
 .filter-label{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:800; margin-right:2px;}
 .seg{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bd-raised);}
