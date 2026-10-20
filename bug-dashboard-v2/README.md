@@ -97,6 +97,8 @@ comparaison serait fausse.
 
 ## Cube multidimensionnel
 
+La section entière se replie avec le bouton « Réduire / Afficher » de son bandeau (état retenu dans le navigateur).
+
 Tout se règle sur la carte : la poignée ⠿ de l'en-tête la déplace dans la grille (souris ou
 doigt), le titre s'édite en place, les cinq sélecteurs changent lignes, colonnes, découpage,
 mesure et largeur, les icônes changent le style, la corbeille la supprime. La carte « + » en fin de grille en ajoute une
