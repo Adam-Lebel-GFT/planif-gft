@@ -95,7 +95,7 @@ Tant qu'un filtre est actif, les deltas du bandeau et les tuiles
 « Ajoutés / Retirés » se retirent : les photos du journal, elles, ne sont pas filtrées, et la
 comparaison serait fausse.
 
-## Cube multidimensionnel
+## 6. Cube multidimensionnel
 
 La section entière se replie avec le bouton « Réduire / Afficher » de son bandeau (état retenu dans le navigateur).
 
