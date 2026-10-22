@@ -719,7 +719,8 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       { id: 'c4', titre: 'Tickets livrés par version', mesure: 'livres', axe: 'version', decoupe: 'equipe', style: 'colonnes', largeur: 'pleine' }
     ].concat(CAF_OK ? [carteVelocite()] : []);
   }
-  function etatParDefaut() { return { periode: 'all', equipes: DEFAUT_EQ.slice(), etapes: ['a', 'd', 'q'], cafBase: 'net', replie: false, vel: true, cartes: cartesParDefaut() }; }
+  function etatParDefaut() { return { periode: 'all', equipes: DEFAUT_EQ.slice(), etapes: ['a', 'd', 'q'], cafBase: 'net', replie: false, vel: CAF_OK, cartes: cartesParDefaut() }; }
+  var MIS_DE_COTE = [];
   var S = etatParDefaut();
   try {
     var m = JSON.parse(localStorage.getItem(CLE) || 'null');
@@ -729,12 +730,17 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       if (Array.isArray(m.etapes)) { var et = ['a', 'd', 'q'].filter(function (c) { return m.etapes.indexOf(c) !== -1; }); if (et.length) S.etapes = et; }
       S.replie = !!m.replie;
       if (m.cafBase === 'brut') S.cafBase = 'brut';
-      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && AXES[c.axe]; }).map(function (c) { if (!MESURES[c.mesure]) c.mesure = 'jours'; return c; });
+      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && AXES[c.axe]; }).filter(function (c) {
+        // Sans CAF, les cartes de CAF / vélocité sont mises de côté (et conservées à l'enregistrement) plutôt que transformées.
+        if (!CAF_OK && (c.mesure === 'jpt' || c.mesure === 'caf')) { MIS_DE_COTE.push(c); return false; }
+        return true;
+      }).map(function (c) { if (!MESURES[c.mesure]) c.mesure = 'jours'; return c; });
       // Cartes enregistrées avant le branchement de la CAF : la carte de vélocité est ajoutée une seule fois.
+      if (m.vel) S.vel = true;
       if (!m.vel && CAF_OK && !S.cartes.some(function (c) { return c.id === 'c5'; })) S.cartes.push(carteVelocite());
     }
   } catch (e) { /* stockage indisponible : valeurs par défaut */ }
-  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* idem */ } }
+  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(MIS_DE_COTE.length ? Object.assign({}, S, { cartes: S.cartes.concat(MIS_DE_COTE) }) : S)); } catch (e) { /* idem */ } }
   function normaliser(c) {
     if (MESURES[c.mesure].decoupes.indexOf(c.decoupe) === -1) c.decoupe = '';
     if (c.axe === 'equipe' && c.decoupe === 'equipe') c.decoupe = '';
