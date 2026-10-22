@@ -1281,6 +1281,7 @@ function publishCaf(){
         out.push({ v:v.num, eq:t, brut:Math.round(a.jp*100)/100, net:Math.round(a.net*100)/100, pres:Math.round(a.pres*100)/100, jours:days.length });
       });
     });
+    if(!out.length) return; // aucune version couverte : on garde le dernier partage valide
     localStorage.setItem(CAF_KEY, JSON.stringify({ genere:new Date().toISOString(), fichier:state.sourceLabel||'', rows:out }));
   } catch(e){}
 }
