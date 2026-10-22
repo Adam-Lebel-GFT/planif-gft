@@ -539,6 +539,11 @@
     if (scroll) w = need;
     var plot = w - padL - padR, band = plot / Math.max(n, 1);
     var inner = Math.min(band * 0.78, stacked ? 46 : 120);
+    // Étiquettes : toutes affichées ; inclinées quand la colonne est trop
+    // étroite pour les porter à plat (on agrandit alors le bas du graphique).
+    var maxLen = 0; labels.forEach(function (l) { if (String(l).length > maxLen) maxLen = String(l).length; });
+    var lblW = maxLen * 6.4 + 8, rot = band < lblW;
+    if (rot) { var extra = Math.round(Math.min(70, maxLen * 6.4 * 0.58)); padB += extra; h += extra; }
     var yOf = function (v) { return padT + (1 - v / nice) * (h - padT - padB); };
     var g = '';
     for (var i = 0; i <= steps; i++) {
@@ -546,11 +551,14 @@
       g += '<line class="grid" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
         '<text x="' + (padL - 6) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + fmtTick(gv, pct ? '%' : opts.unit) + '</text>';
     }
-    var lx = '', every = Math.max(1, Math.ceil(n / (scroll ? 30 : 9)));
+    var lx = '', every = rot ? Math.max(1, Math.ceil(14 / band)) : 1;
     var bars = '';
     labels.forEach(function (lab, i) {
       var cx = padL + band * i + band / 2;
-      if (i % every === 0 || i === n - 1) lx += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + esc(lab) + '</text>';
+      if (i % every === 0 || i === n - 1) {
+        if (rot) lx += '<text x="' + (cx + 4).toFixed(1) + '" y="' + (h - padB + 14) + '" text-anchor="end" transform="rotate(-35 ' + (cx + 4).toFixed(1) + ' ' + (h - padB + 14) + ')">' + esc(lab) + '</text>';
+        else lx += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle">' + esc(lab) + '</text>';
+      }
       if (stacked) {
         var x = cx - inner / 2, acc = 0, tot = totals[i];
         // du bas vers le haut : seul le segment de tête porte l'arrondi
