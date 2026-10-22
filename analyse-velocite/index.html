@@ -265,7 +265,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
 <div class="tk-hero">
   <div class="tk-hero__text">
     <h1 class="tk-hero__title">Vélocité Stabilisation</h1>
-    <p class="tk-hero__sub">Combien de tickets chaque personne mène de front, et combien de jours il faut pour livrer un ticket, version par version.</p>
+    <p class="tk-hero__sub">Combien de tickets chaque personne mène de front, combien de jours il faut pour livrer un ticket, et combien de jours-personne de disponibilité coûte un ticket livré, version par version.</p>
   </div>
   <div class="tk-hero__aside">
     <span class="demo-note">Chargement des données…</span>
@@ -289,6 +289,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       <div class="filter-group"><span class="filter-label">Historique</span><div class="seg" id="fPeriode"></div></div>
       <div class="filter-group"><span class="filter-label">Équipes</span><span id="fEquipes" class="filter-group"></span></div>
       <div class="filter-group"><span class="filter-label">Étapes</span><span id="fEtapes" class="filter-group"></span></div>
+      <div class="filter-group" id="fCafGrp"><span class="filter-label">CAF</span><div class="seg" id="fCaf"></div></div>
     </div>
   </div>
 
@@ -473,6 +474,18 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   function dateDe(x) { if (!x) return null; var s = String(x); return new Date(s.length <= 10 ? s + 'T23:59:00' : s); }
   function isoDe(x) { return x ? String(x).slice(0, 10) : null; }
 
+  // Capacité à faire : jours-personne de disponibilité par version et par équipe, mémorisés dans ce
+  // navigateur par l'outil Capacité à faire (clé planif:caf-publie).
+  function numVersion(l) { var m = String(l || '').match(/\d+(?:\.\d+)+|\d+/); return m ? m[0] : String(l || '').trim(); }
+  function lireCaf() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('planif:caf-publie') || 'null');
+      if (!raw || !Array.isArray(raw.rows) || !raw.rows.length) return null;
+      var m = {}, vs = {}; raw.rows.forEach(function (r) { m[r.v + '|' + r.eq] = r; vs[r.v] = 1; });
+      return { genere: raw.genere, fichier: raw.fichier, map: m, nbVersions: Object.keys(vs).length };
+    } catch (e) { return null; }
+  }
+
   function construireReel(plan, photosBrutes, cfg) {
     var termine = (cfg && cfg.statuses && Array.isArray(cfg.statuses.done) ? cfg.statuses.done : TERMINE_DEFAUT).map(norm).filter(function (s) { return ABANDON.indexOf(s) === -1; });
     var etapeDe = {};
@@ -504,6 +517,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       });
     });
 
+    var cafSnap = lireCaf();
     var auj = new Date();
     var versions = plan.map(function (p, i) {
       var j = p.jalons || {};
@@ -561,12 +575,13 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
           nj++;
         });
         var et = nj ? { a: ej.a / nj, d: ej.d / nj, q: ej.q / nj } : { a: 0, d: 0, q: 0 };
-        rows.push({ v: v.v, n: v.n, eq: t.id, wip: wip, etp: etp, engages: engages.length, gel: avantGel ? gel : 0, derog: avantGel ? livres - gel : livres,
+        var cf = cafSnap ? cafSnap.map[numVersion(v.v) + '|' + t.nom.toUpperCase()] : null;
+        rows.push({ cafN: cf ? cf.net : null, cafB: cf ? cf.brut : null, v: v.v, n: v.n, eq: t.id, wip: wip, etp: etp, engages: engages.length, gel: avantGel ? gel : 0, derog: avantGel ? livres - gel : livres,
           reportes: engages.length - livres, livres: livres, gelConnu: avantGel && v.etat === 'livree', nj: nj, etapes: et, delai: nj ? et.a + et.d + et.q : null });
       });
     });
     var nbTickets = Object.keys(hist).length;
-    return { reel: true, genere: isoDe(auj.toISOString()), teams: teams, versions: versions, rows: rows,
+    return { reel: true, caf: cafSnap, genere: isoDe(auj.toISOString()), teams: teams, versions: versions, rows: rows,
       meta: { photos: photos.length, tickets: nbTickets, derniere: photos[photos.length - 1].t } };
   }
 
@@ -623,7 +638,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   // Les lignes simulées prennent la forme des lignes réelles.
   if (!REEL) ROWS.forEach(function (r) {
     if (r.gel == null) return;
-    r.livres = r.gel + r.derog; r.gelConnu = true; r.nj = r.gel; r.etapes = jEtapes(r);
+    r.cafN = r.cafB = r.caf; r.livres = r.gel + r.derog; r.gelConnu = true; r.nj = r.gel; r.etapes = jEtapes(r);
     r.delai = r.etapes.a + r.etapes.d + r.etapes.q;
   });
 
@@ -683,23 +698,29 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     wipp:   { nom: 'Tickets en cours ' + PAR, unite: '/ pers.', dec: 1, additif: false, decoupes: ['', 'equipe'], zone: true },
     wip:    { nom: 'Tickets en cours', unite: 'tickets', dec: 0, additif: true, decoupes: ['', 'equipe'] },
     tenue:  { nom: 'Tenue au gel', unite: '%', dec: 0, additif: false, decoupes: ['', 'equipe'], pct: true },
-    caf:    { nom: 'Capacité à faire (CAF)', unite: 'JP', dec: 0, additif: true, decoupes: ['', 'equipe'] }
+    caf:    { nom: 'Capacité à faire (CAF)', unite: 'JP', dec: 0, additif: true, decoupes: ['', 'equipe'] },
+    jpt:    { nom: 'Vélocité : jours-personne par ticket livré', unite: 'JP/ticket', dec: 1, additif: false, decoupes: ['', 'equipe'] }
   };
-  if (REEL) delete MESURES.caf;
+  // En réel, la CAF vient de l'outil Capacité à faire ; sans elle, ces deux mesures n'existent pas.
+  var CAF_OK = !REEL || !!DATA.caf;
+  if (!CAF_OK) { delete MESURES.caf; delete MESURES.jpt; }
+  function cafOf(r) { return S.cafBase === 'brut' ? r.cafB : r.cafN; }
   var AXES = { version: 'Par version', equipe: 'Par équipe' };
   var DECOUPES = { '': 'Sans découpage', etape: 'Par étape', equipe: 'Par équipe' };
   var STYLES = { colonnes: ['▥', 'Colonnes'], barres: ['▤', 'Barres'], courbe: ['⟋', 'Courbe'], tableau: ['▦', 'Tableau'] };
   var LARGEURS = { demi: '1 colonne', pleine: 'Pleine largeur' };
 
+  function carteVelocite() { return { id: 'c5', titre: 'Vélocité : jours-personne par ticket livré', mesure: 'jpt', axe: 'version', decoupe: '', style: 'courbe', largeur: 'pleine' }; }
   function cartesParDefaut() {
     return [
       { id: 'c1', titre: 'Jours par ticket, version par version', mesure: 'jours', axe: 'version', decoupe: 'etape', style: 'colonnes', largeur: 'pleine' },
       { id: 'c2', titre: 'Jours par ticket, par équipe', mesure: 'jours', axe: 'equipe', decoupe: 'etape', style: 'barres', largeur: 'demi' },
       { id: 'c3', titre: 'Tickets en cours ' + PAR, mesure: 'wipp', axe: 'version', decoupe: '', style: 'courbe', largeur: 'demi' },
       { id: 'c4', titre: 'Tickets livrés par version', mesure: 'livres', axe: 'version', decoupe: 'equipe', style: 'colonnes', largeur: 'pleine' }
-    ];
+    ].concat(CAF_OK ? [carteVelocite()] : []);
   }
-  function etatParDefaut() { return { periode: 'all', equipes: DEFAUT_EQ.slice(), etapes: ['a', 'd', 'q'], replie: false, cartes: cartesParDefaut() }; }
+  function etatParDefaut() { return { periode: 'all', equipes: DEFAUT_EQ.slice(), etapes: ['a', 'd', 'q'], cafBase: 'net', replie: false, vel: CAF_OK, cartes: cartesParDefaut() }; }
+  var MIS_DE_COTE = [];
   var S = etatParDefaut();
   try {
     var m = JSON.parse(localStorage.getItem(CLE) || 'null');
@@ -708,10 +729,18 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
       if (Array.isArray(m.equipes)) { var eq = TOUS.filter(function (id) { return m.equipes.indexOf(id) !== -1; }); if (eq.length) S.equipes = eq; }
       if (Array.isArray(m.etapes)) { var et = ['a', 'd', 'q'].filter(function (c) { return m.etapes.indexOf(c) !== -1; }); if (et.length) S.etapes = et; }
       S.replie = !!m.replie;
-      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && AXES[c.axe]; }).map(function (c) { if (!MESURES[c.mesure]) c.mesure = 'jours'; return c; });
+      if (m.cafBase === 'brut') S.cafBase = 'brut';
+      if (Array.isArray(m.cartes)) S.cartes = m.cartes.filter(function (c) { return c && AXES[c.axe]; }).filter(function (c) {
+        // Sans CAF, les cartes de CAF / vélocité sont mises de côté (et conservées à l'enregistrement) plutôt que transformées.
+        if (!CAF_OK && (c.mesure === 'jpt' || c.mesure === 'caf')) { MIS_DE_COTE.push(c); return false; }
+        return true;
+      }).map(function (c) { if (!MESURES[c.mesure]) c.mesure = 'jours'; return c; });
+      // Cartes enregistrées avant le branchement de la CAF : la carte de vélocité est ajoutée une seule fois.
+      if (m.vel) S.vel = true;
+      if (!m.vel && CAF_OK && !S.cartes.some(function (c) { return c.id === 'c5'; })) S.cartes.push(carteVelocite());
     }
   } catch (e) { /* stockage indisponible : valeurs par défaut */ }
-  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* idem */ } }
+  function sauver() { try { localStorage.setItem(CLE, JSON.stringify(MIS_DE_COTE.length ? Object.assign({}, S, { cartes: S.cartes.concat(MIS_DE_COTE) }) : S)); } catch (e) { /* idem */ } }
   function normaliser(c) {
     if (MESURES[c.mesure].decoupes.indexOf(c.decoupe) === -1) c.decoupe = '';
     if (c.axe === 'equipe' && c.decoupe === 'equipe') c.decoupe = '';
@@ -741,7 +770,8 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     if (mesure === 'wip') return avecWip.length ? sum(avecWip, 'wip') / n : null;
     if (mesure === 'wipp') { var e = sum(avecWip, function (r) { return r.etp || 0; }); return e ? sum(avecWip, 'wip') / e : null; }
     if (mesure === 'tenue') { var gc = rs.filter(function (r) { return r.gelConnu; }), en = sum(gc, 'engages'); return en ? sum(gc, 'gel') / en : null; }
-    if (mesure === 'caf') return sum(rs, 'caf') / n;
+    if (mesure === 'caf') { var rc = rs.filter(function (r) { return cafOf(r) != null; }); return rc.length ? sum(rc, cafOf) / n : null; }
+    if (mesure === 'jpt') { var rj = rs.filter(function (r) { return cafOf(r) != null && r.livres > 0; }), li = sum(rj, 'livres'); return li ? sum(rj, cafOf) / li : null; }
     return null;
   }
   // Tableau croisé d'une carte : catégories (axe) × séries (découpage).
@@ -842,6 +872,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var vs = versionsVues(), per = vs.length === DONE.length ? 'tout l\'historique' : 'les ' + vs.length + ' dernières versions';
     var txt = c.axe === 'equipe' ? 'Moyenne sur ' + per + '.' : 'Versions ' + court(vs[0].v) + ' à ' + court(vs[vs.length - 1].v) + '.';
     if (c.mesure === 'jours') txt += ' De l\'entrée en ' + NOM_ETAPE[S.etapes[0]] + ' à la fin de ' + NOM_ETAPE[S.etapes[S.etapes.length - 1]] + '.';
+    if (c.mesure === 'jpt' || c.mesure === 'caf') txt += ' CAF ' + (S.cafBase === 'brut' ? 'brute' : 'nette') + ' de la version (jours de disponibilité des personnes' + (S.cafBase === 'brut' ? '' : ', lead et cérémonies déduits') + ').' + (c.mesure === 'jpt' ? ' Plus la valeur est basse, plus l\'équipe est rapide.' : '');
     if (p.series.length > 1 && !p.empile) txt += ' Séries côte à côte : elles ne s\'additionnent pas.';
     return txt;
   }
@@ -937,6 +968,10 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     $('#fPeriode').innerHTML = [['all', 'Tout (' + DONE.length + ')'], ['12', '12 dernières'], ['6', '6 dernières']].map(function (o) {
       return '<button type="button" data-val="' + o[0] + '" aria-pressed="' + (S.periode === o[0]) + '">' + o[1] + '</button>';
     }).join('');
+    $('#fCafGrp').hidden = !CAF_OK;
+    $('#fCaf').innerHTML = [['net', 'Nette'], ['brut', 'Brute']].map(function (o) {
+      return '<button type="button" data-caf="' + o[0] + '" aria-pressed="' + (S.cafBase === o[0]) + '" title="' + (o[0] === 'net' ? 'Jours de présence moins tâches de lead et cérémonies agiles' : 'Jours de présence, sans déduction de lead ni de cérémonies') + '">' + o[1] + '</button>';
+    }).join('');
     $('#fEquipes').innerHTML = TEAMS.map(function (t) {
       return '<button type="button" class="fchip" data-eq="' + t.id + '" aria-pressed="' + (S.equipes.indexOf(t.id) !== -1) + '"><span class="dot c-' + t.id + '"></span>' + esc(t.nom) + '</button>';
     }).join('');
@@ -948,7 +983,8 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     parts.push(vs.length + ' versions');
     parts.push(S.equipes.length === TOUS.length ? TOUS.length + ' équipes' : S.equipes.map(function (id) { return NOM[id]; }).join(', '));
     if (S.etapes.length < 3) parts.push('étapes : ' + S.etapes.map(function (k) { return NOM_ETAPE[k]; }).join(' + '));
-    filtre = S.periode !== 'all' || S.equipes.join() !== DEFAUT_EQ.join() || S.etapes.length < 3;
+    if (CAF_OK && S.cafBase === 'brut') parts.push('CAF brute');
+    filtre = S.cafBase !== 'net' || S.periode !== 'all' || S.equipes.join() !== DEFAUT_EQ.join() || S.etapes.length < 3;
     var r = $('#fResume');
     r.textContent = parts.join(' · ');
     r.className = 'filter-summary' + (filtre ? ' is-filtered' : '');
@@ -965,7 +1001,8 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     function ligne(nom, b) { return b.n ? '<li><b>' + nom + '</b> : ' + pc(b.tenue) + ' de l\'engagement fini au gel de code, ' + nf(b.delai, 1) + NB + 'jours par ticket (' + b.n + ' cas).</li>' : '<li><b>' + nom + '</b> : aucun cas observé.</li>'; }
     var src = REEL
       ? '<li><b>Source.</b> ' + DATA.meta.photos + ' photos du journal du Dashboard Stabilisation et les ' + VERS.length + ' versions du plan publié. Une photo donne le statut de chaque ticket à un instant : le temps passé entre deux photos est compté dans l\'étape de la première, en jours ouvrés. Les jours par étape sont donc approchés, d\'autant mieux que les analyses sont fréquentes.</li>' +
-        '<li><b>Par personne active.</b> Le journal ne contient que les tickets de stabilisation et la Capacité à faire n\'est pas encore branchée : les compteurs rapportent les tickets en Dev ou en QA aux personnes qui en ont au moins un, en moyenne sur les photos de la version. 1,0 = chacun traite un ticket à la fois ; au-delà, des personnes mènent plusieurs tickets de front.</li>' +
+        '<li><b>Par personne active.</b> Les compteurs de tickets en cours rapportent les tickets en Dev ou en QA aux personnes qui en ont au moins un, en moyenne sur les photos de la version. 1,0 = chacun traite un ticket à la fois ; au-delà, des personnes mènent plusieurs tickets de front.</li>' +
+        '<li><b>Vélocité en jours-personne.</b> ' + (DATA.caf ? 'Jours de disponibilité des personnes de l\'équipe pendant la version (hors gel et tests IAT), lus dans la Capacité à faire : CAF nette = présence moins tâches de lead et cérémonies agiles, CAF brute = présence seule. Vélocité = CAF ÷ tickets livrés de la version, en JP par ticket (plus c\'est bas, plus l\'équipe est rapide). Une version que le fichier de planning ne couvre pas en entier n\'a pas de chiffre.' : 'Pas encore de CAF : ouvrez la Capacité à faire avec le fichier de planning dans ce navigateur, puis revenez ici.') + '</li>' +
         '<li><b>Livré.</b> Un ticket est livré quand son statut fait partie des statuts « terminés » du Dashboard Stabilisation (Configurer → Statuts), hors abandons (Decline…). Il est livré au gel s\'il l\'était sur la dernière photo avant le gel de code.</li>'
       : '<li><b>Données simulées.</b> Connectez-vous depuis le lanceur pour lire le plan publié et le journal du Dashboard Stabilisation.</li>';
     $('#pourquoi').innerHTML = src + (Z.defaut
@@ -989,7 +1026,9 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     $('#sources').innerHTML = REEL
       ? src('🚆', 'Plan de livraisons', VERS.length + ' versions · publié le ' + jj(DATA.meta.publie), 'ok') +
         src('📡', 'Journal du Dashboard Stabilisation', DATA.meta.photos + ' photos · ' + nf(DATA.meta.tickets) + ' tickets · dernière le ' + jj(DATA.meta.derniere), 'ok') +
-        src('📈', 'Capacité à faire', 'Effectif remplacé par les personnes actives', 'Non branché') +
+        (DATA.caf
+          ? src('📈', 'Capacité à faire', DATA.caf.nbVersions + ' versions · jours de disponibilité · calculée le ' + jj(DATA.caf.genere), 'ok')
+          : src('📈', 'Capacité à faire', 'Ouvrez la Capacité à faire avec le fichier de planning dans ce navigateur', 'En attente')) +
         src('🗂', 'Backlog entier', 'Tickets hors stabilisation', 'À venir')
       : src('🚆', 'Plan de livraisons', 'Versions fictives 3.1 à 3.21', 'Simulé') +
         src('📡', 'Journal du Dashboard Stabilisation', 'Tickets fictifs', 'Simulé') +
@@ -1007,8 +1046,9 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var b = e.target.closest('button');
     if (!b) return;
     if (b.id === 'fToggle') { S.replie = !S.replie; sauver(); rendreFiltres(); return; }
-    if (b.id === 'fReset') { S.periode = 'all'; S.equipes = DEFAUT_EQ.slice(); S.etapes = ['a', 'd', 'q']; }
+    if (b.id === 'fReset') { S.cafBase = 'net'; S.periode = 'all'; S.equipes = DEFAUT_EQ.slice(); S.etapes = ['a', 'd', 'q']; }
     else if (b.closest('#fPeriode')) S.periode = b.getAttribute('data-val');
+    else if (b.hasAttribute('data-caf')) S.cafBase = b.getAttribute('data-caf');
     else if (b.hasAttribute('data-eq')) {
       var id = b.getAttribute('data-eq'), i = S.equipes.indexOf(id);
       if (i !== -1 && S.equipes.length === 1) return;

@@ -1261,7 +1261,30 @@ function renderVersionChips(){
   });
 }
 
-function renderAll(){ var lg=$('#lg-sp'); if(lg) lg.style.display=P.sp_on?'':'none'; renderVersionChips(); renderChips(); renderKPIs(); renderTable(); renderGantt(); }
+function renderAll(){ var lg=$('#lg-sp'); if(lg) lg.style.display=P.sp_on?'':'none'; renderVersionChips(); renderChips(); renderKPIs(); renderTable(); renderGantt(); scheduleCafPublish(); }
+
+// ── Capacité partagée avec Vélocité Stabilisation ──
+// Pour chaque version du Plan de livraisons et chaque équipe : jours-personne de disponibilité (CAF brute et nette),
+// calculés sur tout le fichier, sans tenir compte des filtres de l'écran. Mémorisé dans ce navigateur (clé partagée).
+var CAF_KEY='planif:caf-publie', cafTimer=null;
+function scheduleCafPublish(){ clearTimeout(cafTimer); cafTimer=setTimeout(publishCaf, 400); }
+function publishCaf(){
+  try {
+    if(!state.persons || !state.persons.length || !allVersions.length) return;
+    var teams=teamList(), out=[];
+    allVersions.forEach(function(v){
+      var wd=[]; for(var c=pd(v.start), e=pd(v.end); c<=e; c=new Date(c.getTime()+86400000)){ var ds=dsU(c); if(!isWE(ds)) wd.push(ds); }
+      var days=wd.filter(function(d){ return state.dates.indexOf(d)>=0; });
+      if(!wd.length || days.length<wd.length) return; // version non couverte en entier par le fichier : pas de chiffre partiel
+      teams.forEach(function(t){
+        var ppl=state.persons.filter(function(p){ return p.team===t; }), a=aggPeriod({ days:days }, ppl);
+        out.push({ v:v.num, eq:t, brut:Math.round(a.jp*100)/100, net:Math.round(a.net*100)/100, pres:Math.round(a.pres*100)/100, jours:days.length });
+      });
+    });
+    if(!out.length) return; // aucune version couverte : on garde le dernier partage valide
+    localStorage.setItem(CAF_KEY, JSON.stringify({ genere:new Date().toISOString(), fichier:state.sourceLabel||'', rows:out }));
+  } catch(e){}
+}
 
 // ── Export PowerPoint (graphique de capacité par sprint) ──
 // Rôle canonique pour le graphique — même logique de détection que roleRank(), sans distinction Lead
