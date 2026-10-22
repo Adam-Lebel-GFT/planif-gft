@@ -786,9 +786,9 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     var empile = c.decoupe === 'etape' || (c.decoupe === 'equipe' && MESURES[c.mesure].additif);
     var lignes = cats.map(function (cat) {
       var rs = base.filter(cat.filtre);
-      return { cat: cat, vals: series.map(function (s) { return valeur(c.mesure, rs.filter(s.filtre), s.etapes); }), total: valeur(c.mesure, rs, S.etapes) };
+      return { cat: cat, rsSeries: series.map(function (s) { return rs.filter(s.filtre); }), vals: series.map(function (s) { return valeur(c.mesure, rs.filter(s.filtre), s.etapes); }), total: valeur(c.mesure, rs, S.etapes) };
     });
-    return { cats: cats, series: series, lignes: lignes, empile: empile, m: MESURES[c.mesure] };
+    return { cats: cats, series: series, lignes: lignes, empile: empile, m: MESURES[c.mesure], mesure: c.mesure };
   }
   function fmt(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec); }
   function fmtU(p, v) { return v == null ? '–' : p.m.pct ? pc(v) : nf(v, p.m.dec) + NB + p.m.unite; }
@@ -796,7 +796,17 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   // ════════════════════════════════════════════════════════════════════
   // Rendus d'une carte
   // ════════════════════════════════════════════════════════════════════
-  function titreSeg(p, l, i) { return l.cat.nom + ' · ' + p.series[i].nom + ' : ' + fmtU(p, l.vals[i]); }
+  // Pour la vélocité en JP, le détail du calcul par équipe : CAF ÷ tickets livrés.
+  function detailJpt(rs) {
+    return rs.filter(function (r) { return cafOf(r) != null; }).map(function (r) {
+      return NOM[r.eq] + ' : ' + nf(cafOf(r), 1) + ' JP ÷ ' + r.livres + ' livrés' + (r.livres ? ' = ' + nf(cafOf(r) / r.livres, 2) : ' (exclue du total : aucun livré)');
+    });
+  }
+  function titreSeg(p, l, i) {
+    var t = l.cat.nom + ' · ' + p.series[i].nom + ' : ' + fmtU(p, l.vals[i]);
+    if (p.mesure === 'jpt' && l.rsSeries) { var d = detailJpt(l.rsSeries[i]); if (d.length) t += '\n' + d.join('\n'); }
+    return t;
+  }
   function maxDe(p) {
     var m = 0;
     p.lignes.forEach(function (l) {
@@ -859,12 +869,15 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
     return s + '</svg>';
   }
   function tableau(p) {
-    var multi = p.series.length > 1;
+    var multi = p.series.length > 1, detJpt = p.mesure === 'jpt' && !multi;
     var h = '<div class="tbl-wrap"><table class="data"><thead><tr><th>' + (p.cats.length && p.cats[0].cle in NOM ? 'Équipe' : 'Version') + '</th>' +
-      (multi ? p.series.map(function (s) { return '<th>' + esc(s.nom) + '</th>'; }).join('') : '') + '<th>' + esc(multi ? (p.empile ? 'Total' : 'Ensemble') : p.m.nom) + '</th></tr></thead><tbody>';
+      (multi ? p.series.map(function (s) { return '<th>' + esc(s.nom) + '</th>'; }).join('') : '') + '<th>' + esc(multi ? (p.empile ? 'Total' : 'Ensemble') : p.m.nom) + '</th>' + (detJpt ? '<th>CAF (JP)</th><th>Livrés</th>' : '') + '</tr></thead><tbody>';
     h += p.lignes.map(function (l) {
       var tot = p.empile ? (l.vals.some(function (v) { return v != null; }) ? sum(l.vals, function (v) { return v || 0; }) : null) : multi ? l.total : l.vals[0];
-      return '<tr><td>' + esc(l.cat.nom) + '</td>' + (multi ? l.vals.map(function (v) { return '<td>' + fmt(p, v) + '</td>'; }).join('') : '') + '<td>' + fmt(p, tot) + '</td></tr>';
+      return '<tr><td>' + esc(l.cat.nom) + '</td>' + (multi ? l.vals.map(function (v) { return '<td>' + fmt(p, v) + '</td>'; }).join('') : '') + '<td>' + fmt(p, tot) + '</td>' + (detJpt ? (function () {
+        var rj = l.rsSeries[0].filter(function (r) { return cafOf(r) != null && r.livres > 0; });
+        return '<td title="' + esc(detailJpt(l.rsSeries[0]).join('\n')) + '">' + (rj.length ? nf(sum(rj, cafOf), 1) : '–') + '</td><td>' + (rj.length ? nf(sum(rj, 'livres')) : '–') + '</td>';
+      })() : '') + '</tr>';
     }).join('');
     return h + '</tbody></table></div>';
   }
