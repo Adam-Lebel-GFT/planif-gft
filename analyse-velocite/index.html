@@ -799,7 +799,7 @@ details ul { margin: 10px 0 0; padding-left: 20px; color: var(--v-ink-2); displa
   // Pour la vélocité en JP, le détail du calcul par équipe : CAF ÷ tickets livrés.
   function detailJpt(rs) {
     return rs.filter(function (r) { return cafOf(r) != null; }).map(function (r) {
-      return NOM[r.eq] + ' : ' + nf(cafOf(r), 1) + ' JP ÷ ' + r.livres + ' livrés' + (r.livres ? ' = ' + nf(cafOf(r) / r.livres, 2) : '');
+      return NOM[r.eq] + ' : ' + nf(cafOf(r), 1) + ' JP ÷ ' + r.livres + ' livrés' + (r.livres ? ' = ' + nf(cafOf(r) / r.livres, 2) : ' (exclue du total : aucun livré)');
     });
   }
   function titreSeg(p, l, i) {
